@@ -94,25 +94,10 @@
 
       function dci() { docker inspect $(docker-compose ps -q $1) }
 
-      function transfer() {
-        wget --method PUT --body-file=$1 https://up.fbr.ai/$1 -O - -nv
-      }
-
       function nf() {
         pushd ~/.nixpkgs
-        nix --experimental-features "nix-command flakes" build ".#darwinConfigurations.alucard.system"
+        nix --experimental-features "nix-command flakes" build ".#darwinConfigurations.mbp.system"
         ./result/sw/bin/darwin-rebuild switch --flake ~/.nixpkgs
-      }
-
-      function nfh() {
-        pushd ~/.config/nixpkgs
-        nix --experimental-features "nix-command flakes" build ".#homeConfigurations.solid.activationPackage"
-        ./result/activate
-      }
-
-      function nfs() {
-        pushd ~/.config/nixpkgs
-        sudo nixos-rebuild switch --flake ".#rocky"
       }
     '';
 
