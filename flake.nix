@@ -63,6 +63,7 @@
                 allowed-users = [ user ];
                 experimental-features = [ "nix-command" "flakes" ];
               };
+              useDaemon = true;
             };
           })
           home-manager.darwinModule
