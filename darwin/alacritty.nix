@@ -30,10 +30,10 @@
 
       font = let fontname = "JetBrainsMono Nerd Font Mono"; in
         {
-          normal = { family = fontname; style = "Bold"; };
+          normal = { family = fontname; style = "Regular"; };
           bold = { family = fontname; style = "Bold"; };
-          italic = { family = fontname; style = "Light"; };
-          size = 10;
+          italic = { family = fontname; style = "Italic"; };
+          size = 12;
         };
       cursor.style = "Block";
 
