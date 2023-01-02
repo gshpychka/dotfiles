@@ -34,7 +34,7 @@
       NSGlobalDomain = {
         AppleFontSmoothing = 2;
         NSAutomaticSpellingCorrectionEnabled = false;
-        NSAutomaticCapitalizationEnabled = false,
+        NSAutomaticCapitalizationEnabled = false;
         AppleInterfaceStyle = "Dark";
         com.apple.mouse.tapBehavior = 1;
 
