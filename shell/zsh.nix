@@ -63,37 +63,6 @@
         lsd
       }
 
-      function mkd() {
-        mkdir $1
-        builtin cd $1
-      }
-
-      function take() { builtin cd $(mktemp -d) }
-      function vit() { nvim $(mktemp) }
-
-      function lgc() { git commit --signoff -m "$*" }
-
-      function clone() { git clone git@$1.git }
-
-      function gclone() { clone github.com:$1 }
-
-      function bclone() { gclone breuerfelix/$1 }
-
-      function gsm() { git submodule foreach "$* || :" }
-
-      function gitdel() {
-        git tag -d $1
-        git push --delete origin $1
-      }
-
-      function lg() {
-        git add --all
-        git commit --signoff -a -m "$*"
-        git push
-      }
-
-      function dci() { docker inspect $(docker-compose ps -q $1) }
-
       function nf() {
         pushd ~/.nixpkgs
         nix --experimental-features "nix-command flakes" build ".#darwinConfigurations.mbp.system"
@@ -137,10 +106,6 @@
 
       # programs
       g = "git";
-      kc = "kubectl";
-      kca = "kubectl apply -f";
-      ks = "k9s";
-      ku = "kubie";
       dk = "docker";
       dc = "docker-compose";
       pd = "podman";
@@ -159,11 +124,6 @@
       awake = "caffeinate";
       os = "openstack";
 
-      # terminal cheat sheet
-      cht = "cht.sh";
-      # lists node_modules folder and their size
-      npkill = "npx npkill";
-
       # utilities
       psf = "ps -aux | grep";
       lsf = "ls | grep";
@@ -179,8 +139,7 @@
       caps = "xdotool key Caps_Lock";
       gclean = "git fetch -p && for branch in $(git branch -vv | grep ': gone]' | awk '{print $1}'); do git branch -D $branch; done";
       ew = "nvim -c ':cd ~/vimwiki' ~/vimwiki";
-      weather = "curl -4 http://wttr.in/Koeln";
-
+      
       # nix
       ne = "nvim -c ':cd ~/.nixpkgs' ~/.nixpkgs";
       clean = "nix-collect-garbage -d && nix-store --gc && nix-store --verify --check-contents --repair";
