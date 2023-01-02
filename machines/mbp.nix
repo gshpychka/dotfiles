@@ -36,7 +36,7 @@
         NSAutomaticSpellingCorrectionEnabled = false;
         NSAutomaticCapitalizationEnabled = false;
         AppleInterfaceStyle = "Dark";
-        com.apple.mouse.tapBehavior = 1;
+        "com.apple.mouse.tapBehavior" = 1;
 
       };
       dock = {
