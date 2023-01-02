@@ -21,6 +21,7 @@
       url = "github:wfxr/forgit";
       flake = false;
     };
+  };
 
 
   outputs = { self, nixpkgs, darwin, home-manager, ... }@inputs:
@@ -84,4 +85,4 @@
         ];
       };
     };
-};
+}
