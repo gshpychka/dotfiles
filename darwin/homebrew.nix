@@ -30,7 +30,6 @@
 
       "firefox"
       "postman"
-      "bloomrpc"
       #"shottr" # screenshot tool
       #"the-unarchiver"
       "visual-studio-code"
