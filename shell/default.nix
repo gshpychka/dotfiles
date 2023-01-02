@@ -34,7 +34,7 @@
       starship # terminal prompt
       #slides # terminal presentation tool
 
-      _1password # CLI
+      #_1password # CLI
     ];
 
     sessionPath = [
