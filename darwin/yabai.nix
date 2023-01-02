@@ -69,7 +69,7 @@
 
   home.file.skhd = {
     target = ".config/skhd/skhdrc";
-    text = let yabai = "/opt/homebrew/bin/yabai"; in
+    text = let yabai = "/usr/local/bin/yabai"; in
       ''
         # alt + a / u / o / s are blocked due to umlaute
 
