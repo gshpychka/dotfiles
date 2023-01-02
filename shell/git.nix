@@ -1,10 +1,15 @@
 { config, pkgs, lib, ... }: {
+  #file = {
+  #  gitSigningKey = {
+  #    source = fetchurl https://github.com/gshpychka.keys;
+  #    target = ".ssh/id_ed25519.pub";
+  #  };
+  #};
   programs.git = {
     enable = true;
     delta.enable = true;
     userEmail = "23005347+gshpychka@users.noreply.github.com";
     userName = "Glib Shpychka";
-    # TODO: add signing
     aliases = {
       cm = "commit";
       ca = "commit --amend --no-edit";
@@ -28,6 +33,10 @@
       "__sapper__" # svelte
     ];
     extraConfig = {
+      #commit.gpgsign = true;
+      #gpg.format = "ssh";
+      #gpg.ssh.program = "/Applications/1Password.app/Contents/MacOS/op-ssh-sign";
+      #user.signingkey = "~/.ssh/id_ed25519.pub";
       init = { defaultBranch = "main"; };
       pull = {
         ff = false;
@@ -35,9 +44,9 @@
         rebase = true;
       };
       push.autoSetupRemote = true;
-      url = {
-        "ssh://git@github.com" = { insteadOf = "https://github.com"; };
-      };
+      #url = {
+        #"ssh://git@github.com" = { insteadOf = "https://github.com"; };
+      #};
       delta = {
         line-numbers = true;
       };
