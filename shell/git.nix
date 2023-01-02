@@ -1,9 +1,5 @@
 { config, pkgs, lib, ... }: {
   home.file = {
-    #gitSigningKey = {
-    #  text = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICJB81hNdIOcusO1rqdrSlZmlKaH0HJo6Rkpefsma44y";
-    #  target = ".ssh/id_ed25519.pub";
-    #};
     ".ssh/config" = {
       target = ".ssh/config";
       text = ''
