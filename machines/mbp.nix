@@ -12,8 +12,8 @@
   };
 
   networking = {
-    hostName = "alucard";
-    knownNetworkServices = [ "Wi-Fi" ];
+    hostName = "gshpychka-mbp";
+    #knownNetworkServices = [ "Wi-Fi" "Thunderbolt Ethernet Slot 1" ];
     # disabled in favor of my pi-hole at home
     #dns = [
     #"9.9.9.9"
@@ -26,22 +26,38 @@
     fontDir.enable = true;
     fonts = with pkgs; [
       nerdfonts
-      #corefonts # TODO fix
-      recursive
     ];
   };
 
   system = {
     defaults = {
       NSGlobalDomain = {
-        AppleFontSmoothing = 0;
+        AppleFontSmoothing = 2;
         NSAutomaticSpellingCorrectionEnabled = false;
+        NSAutomaticCapitalizationEnabled = false,
+        AppleInterfaceStyle = "Dark";
+        com.apple.mouse.tapBehavior = 1;
+
       };
       dock = {
         autohide = true;
         autohide-delay = 0.0;
         autohide-time-modifier = 0.0;
+        minimize-to-application = true;
       };
+      finder = {
+        AppleShowAllExtensions = true;
+        AppleShowAllFiles = true;
+        ShowPathbar = true;
+      };
+      loginwindow.GuestEnabled = false;
+      LaunchServices.LSQuarantine = false;
+      spaces.spans-displays = true;
     };
+    keyboard = {
+      enableKeyMapping = true;
+      remapCapsLockToEscape = true;
+
+    }
   };
 }

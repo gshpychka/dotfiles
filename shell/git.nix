@@ -2,8 +2,8 @@
   programs.git = {
     enable = true;
     delta.enable = true;
-    userEmail = "fbreuer@pm.me";
-    userName = "Felix Breuer";
+    userEmail = "23005347+gshpychka@users.noreply.github.com";
+    userName = "Glib Shpychka";
     # TODO: add signing
     aliases = {
       cm = "commit";
