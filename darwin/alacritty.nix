@@ -28,12 +28,12 @@
         }
       ];
 
-      font = let fontname = "FiraCode Nerd Font Mono"; in
+      font = let fontname = "JetBrainsMono Nerd Font Mono"; in
         {
           normal = { family = fontname; style = "Bold"; };
           bold = { family = fontname; style = "Bold"; };
           italic = { family = fontname; style = "Light"; };
-          size = 18;
+          size = 10;
         };
       cursor.style = "Block";
 
