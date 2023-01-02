@@ -38,11 +38,11 @@
       #gpg.ssh.program = "/Applications/1Password.app/Contents/MacOS/op-ssh-sign";
       #user.signingkey = "~/.ssh/id_ed25519.pub";
       init = { defaultBranch = "main"; };
-      pull = {
-        ff = false;
-        commit = false;
-        rebase = true;
-      };
+      #pull = {
+        #ff = false;
+        #commit = false;
+        #rebase = true;
+      #};
       push.autoSetupRemote = true;
       #url = {
         #"ssh://git@github.com" = { insteadOf = "https://github.com"; };
