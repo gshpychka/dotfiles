@@ -26,6 +26,8 @@
       "slack"
       "discord"
 
+      "1password"
+
       "firefox"
       "postman"
       "bloomrpc"
@@ -54,6 +56,7 @@
     ];
     masApps = {
       "1Password for Safari" = 1569813296;
+
     };
   };
 }

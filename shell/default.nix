@@ -34,7 +34,6 @@
       starship # terminal prompt
       #slides # terminal presentation tool
 
-      _1password-gui-beta
       _1password # CLI
     ];
 
