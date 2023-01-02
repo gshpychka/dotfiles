@@ -58,6 +58,6 @@
       enableKeyMapping = true;
       remapCapsLockToEscape = true;
 
-    }
+    };
   };
 }
