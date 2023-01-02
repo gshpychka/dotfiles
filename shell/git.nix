@@ -1,7 +1,7 @@
 { config, pkgs, lib, ... }: {
   home.file = {
     #gitSigningKey = {
-    #  source = fetchurl https://github.com/gshpychka.keys;
+    #  text = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICJB81hNdIOcusO1rqdrSlZmlKaH0HJo6Rkpefsma44y";
     #  target = ".ssh/id_ed25519.pub";
     #};
     ".ssh/config" = {
@@ -40,10 +40,10 @@
       "__sapper__" # svelte
     ];
     extraConfig = {
-      #commit.gpgsign = true;
-      #gpg.format = "ssh";
-      #gpg.ssh.program = "/Applications/1Password.app/Contents/MacOS/op-ssh-sign";
-      #user.signingkey = "~/.ssh/id_ed25519.pub";
+      commit.gpgsign = true;
+      gpg.format = "ssh";
+      gpg.ssh.program = "/Applications/1Password.app/Contents/MacOS/op-ssh-sign";
+      user.signingkey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIB737o9Ltm1K3w9XX9SBHNW1JT4NpCPP5qg9R+SB18dG";
       init = { defaultBranch = "main"; };
       #pull = {
         #ff = false;
