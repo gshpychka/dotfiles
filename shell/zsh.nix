@@ -58,7 +58,8 @@
       bindkey '^j' down-line-or-search
 
       bindkey '^r' fzf-history-widget
-      bindkey '^f' fzf-file-widget
+      bindkey '^t' fzf-file-widget
+      bindkey 'ç' fzf-cd-widget
 
       function cd() {
         builtin cd $*
@@ -87,7 +88,6 @@
       free = "free -h";
       du = "du -sh";
       susu = "sudo su";
-      op = "xdg-open";
       del = "rm -rf";
       sdel = "sudo rm -rf";
       lst = "ls --tree -I .git";
