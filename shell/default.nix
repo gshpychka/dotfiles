@@ -31,7 +31,6 @@
       nodePackages.npm
       nodePackages_latest.aws-cdk
 
-      starship # terminal prompt
       #slides # terminal presentation tool
 
       #_1password # CLI
