@@ -6,6 +6,9 @@
       cleanup = "zap";
       autoUpdate = true;
     };
+    caskArgs = {
+      no_quarantine = true;
+    };
     brews = [
       #"skhd" # keybinding manager
       #"yabai" # tiling window manager
