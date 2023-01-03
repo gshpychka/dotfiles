@@ -24,7 +24,6 @@
       # programming
       python3
       poetry # python tools
-      black
       rustup # rust
       nodejs
       nodePackages.npm
@@ -41,7 +40,6 @@
       "$HOME/.cargo/bin"
     ];
     sessionVariables = {
-      EDITOR = "nvim";
       VISUAL = "nvim";
     };
   };
@@ -60,14 +58,6 @@
     lsd = {
       enable = true;
       enableAliases = true;
-    };
-
-    go = {
-      enable = true;
-      package = pkgs.go_1_18;
-      goPath = "go";
-      goBin = "go/bin";
-      goPrivate = [ "github.com/stackitcloud" ];
     };
 
     htop = {

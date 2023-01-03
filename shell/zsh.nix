@@ -20,13 +20,7 @@
     autocd = true;
     dotDir = ".config/zsh";
     #defaultKeymap = "viins"; #vicmd or viins
-
-    sessionVariables = {
-      EDITOR = "nvim";
-      VISUAL = "nvim";
-      NIXPKGS_ALLOW_UNFREE = "1";
-    };
-
+    
     history = {
       expireDuplicatesFirst = true;
       ignoreDups = true;
