@@ -3,12 +3,11 @@
     ./zsh.nix
     ./tmux.nix
     ./git.nix
+    ./nvim.nix
   ];
 
   home = {
     packages = with pkgs; [
-      neovim # customized by overlay
-
       # core
       #fd
       ripgrep # fast search
