@@ -25,6 +25,7 @@
       "zoom"
       "slack"
       "discord"
+      "telegram"
 
       "1password"
 
