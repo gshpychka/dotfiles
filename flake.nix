@@ -75,7 +75,6 @@
               extraSpecialArgs = { inherit inputs; };
               users.${user} = { ... }: {
                 imports = [
-                  ./home/mac.nix
                   ./darwin
                   ./shell
                 ];

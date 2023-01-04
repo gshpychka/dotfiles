@@ -1,121 +1,145 @@
-{ inputs, ... }:
-let
-  folder = "${inputs.sketchybar}/config/sketchybar";
+{ pkgs
+, lib
+, inputs
+, ...
+}:
+let scripts = ./sketchybar/scripts;
 in
 {
-  home.file.sketchybar = {
-    executable = true;
-    target = ".config/sketchybar/sketchybarrc";
-    text = ''
-      #!/usr/bin/env sh
-
-      source "${folder}/colors.sh"
-      source "${folder}/icons.sh"
-
-      ITEM_DIR="${folder}/items" # Directory where the items are configured
-      PLUGIN_DIR="${folder}/plugins" # Directory where all the plugin scripts are stored
-
-      FONT="SF Regular" # Needs to have Regular, Bold, Semibold, Heavy and Black variants
-      SPACE_CLICK_SCRIPT="yabai -m space --focus \$SID 2>/dev/null" # The script that is run for clicking on space components
-      POPUP_CLICK_SCRIPT="sketchybar -m --set \"\$NAME\" popup.drawing=toggle" # The script that toggles the popup windows
-
-      PADDINGS=3 # All paddings use this value (icon, label, background and bar paddings)
-      SEGMENT_SPACING=13 # The spacing between segments
-
-      POPUP_BORDER_WIDTH=2
-      POPUP_CORNER_RADIUS=3
-
-      SHADOW=off
-      SHADOW_DISTANCE=3
-      SHADOW_ANGLE=35
-
-      # Setting up the general bar appearance and default values
-      sketchybar --bar     height=39                                           \
-                           corner_radius=0                                     \
-                           border_width=0                                      \
-                           margin=-200                                         \
-                           blur_radius=0                                       \
-                           position=bottom                                     \
-                           padding_left=4                                      \
-                           padding_right=4                                     \
-                           color=0x000000                                      \
-                           topmost=off                                         \
-                           font_smoothing=off                                  \
-                           y_offset=-32                                        \
-                           shadow=off                                          \
-                           notch_width=0                                       \
-                                                                               \
-                 --default drawing=on                                          \
-                           updates=when_shown                                  \
-                           label.font="$FONT:Semibold:13.0"                    \
-                           icon.font="$FONT:Bold:14.0"                         \
-                           icon.color=$ICON_COLOR                              \
-                           label.color=$LABEL_COLOR                            \
-                           icon.padding_left=$PADDINGS                         \
-                           icon.padding_right=$PADDINGS                        \
-                           label.padding_left=$PADDINGS                        \
-                           label.padding_right=$PADDINGS                       \
-                           background.padding_right=$PADDINGS                  \
-                           background.padding_left=$PADDINGS                   \
-                           popup.background.border_width=$POPUP_BORDER_WIDTH   \
-                           popup.background.corner_radius=$POPUP_CORNER_RADIUS \
-                           popup.background.border_color=$POPUP_BORDER_COLOR   \
-                           popup.background.color=$POPUP_BACKGROUND_COLOR      \
-                           popup.background.shadow.drawing=$SHADOW             \
-                           popup.blur_radius=50                                \
-                           icon.shadow.color=$SHADOW_COLOR                     \
-                           icon.shadow.distance=$SHADOW_DISTANCE               \
-                           icon.shadow.angle=$SHADOW_ANGLE                     \
-                           icon.shadow.drawing=$SHADOW                         \
-                           label.shadow.color=$SHADOW_COLOR                    \
-                           label.shadow.distance=$SHADOW_DISTANCE              \
-                           label.shadow.angle=$SHADOW_ANGLE                    \
-                           label.shadow.drawing=$SHADOW
-
-
-      # Template for the segment labels, i.e. space name, active app, date, ...
-      sketchybar --add item           label_template left                          \
-                 --set label_template icon.drawing=off                             \
-                                      label.font="$FONT:Black:12.0"                \
-                                      label.padding_right=5                        \
-                                      click_script="$PLUGIN_DIR/toggle_bracket.sh" \
-                                      background.padding_left=$SEGMENT_SPACING     \
-                                      background.padding_right=0                   \
-                                      drawing=off
-
-      source "$ITEM_DIR/apple.sh"
-      source "$ITEM_DIR/spaces.sh"
-      source "$ITEM_DIR/calendar.sh"
-      # source "$ITEM_DIR/github.sh"
-      source "$ITEM_DIR/network.sh"
-      source "$ITEM_DIR/memory.sh"
-
-      source "$ITEM_DIR/cpu.sh"
-      source "$ITEM_DIR/system.sh"
-      source "$ITEM_DIR/spotify.sh"
-
+  imports = [
+    ./sketchybar
+  ];
+  services.sketchybar = {
+    enable = true;
+    # package = pkgs.sketchybar-git;
+    package = pkgs.sketchybar;
+    config = ''
+      #!/bin/bash
+      
+      # Unload the macOS on screen indicator overlay for volume change
+      launchctl unload -F /System/Library/LaunchAgents/com.apple.OSDUIHelper.plist > /dev/null 2>&1 & 
+      ############## BAR ##############
+      sketchybar --bar height=40 \
+                       position=bottom \
+                       shadow=on \
+                       color=0xff161616 \
+      ############## GLOBAL DEFAULTS ##############
+      sketchybar --default updates=when_shown \
+                           icon.font="Liga SFMono Nerd Font:Bold:15.0" \
+                           label.font="Liga SFMono Nerd Font:Regular:15.0" \
+                           icon.color=0xffffffff \
+                           label.color=0xffffffff \
+                           background.color=0xff161616 \
+                           background.padding_left=9 \
+                           background.padding_right=9 \
+                           background.height=40
+      ############## ITEMS ############### 
+      SPACE_ICONS=("一" "二" "三" "四" "五" "六" "七" "八" "九" "十")
+      SPACES=()
+      sid=0
+      for i in "''${!SPACE_ICONS[@]}"
+      do 
+        sid=$(($i+1))
+        sketchybar --add space space.$sid left \
+                   --set space.$sid associated_space=$sid \
+                                    icon=''${SPACE_ICONS[i]} \
+                                    icon.padding_left=12 \
+                                    icon.padding_right=12 \
+                                    icon.highlight_color=0xffdde1e6 \
+                                    background.padding_left=-4 \
+                                    background.padding_right=-4 \
+                                    background.drawing=on \
+                                    label.drawing=off \
+                                    click_script="yabai -m space --focus \$SID 2>/dev/null"
+      done
+      
+      sketchybar --add item text1 center \
+                 --set text1 icon="nyoom engineering:" \
+                      icon.font="Liga SFMono Nerd Font:Regular:15.0"
+                      
+      sketchybar --add item window_title center \
+                 --set window_title    script="${scripts}/window_title.sh" \
+                                       icon.drawing=off \
+                                       label.color=0xffffffff \
+                 --subscribe window_title front_app_switched                     
+     
       ############## FINALIZING THE SETUP ##############
       sketchybar --update
+    '';
+  };
 
-      ############## Animation ########################
-      # sketchybar --animate sin 30 \
-      #            --bar y_offset=0 \
-      #                  notch_width=200 \
-      #                  margin=0 \
-      #                  shadow=on \
-      #                  corner_radius=20 \
-      #                  corner_radius=20 \
-      #                  corner_radius=20 \
-      #                  corner_radius=0 \
-      #                  color=0x000000 \
-      #                  color=0x000000 \
-      #                  color=$BAR_COLOR \
-      #                  blur_radius=0 \
-      #                  blur_radius=0 \
-      #                  blur_radius=0 \
-      #                  blur_radius=50
-      #
-      echo "sketchybar configuation loaded.."
+  services.skhd = {
+    enable = true;
+    package = pkgs.skhd;
+    skhdConfig = ''
+      ## Navigation (lalt - ...)
+      # Space Navigation (four spaces per display): lalt - {1, 2, 3, 4}
+      lalt - 1 : DISPLAY="$(yabai -m query --displays --display | jq '.index')"; yabai -m space --focus $((1+4*($DISPLAY - 1)))
+      lalt - 2 : DISPLAY="$(yabai -m query --displays --display | jq '.index')"; yabai -m space --focus $((2+4*($DISPLAY - 1)))
+      lalt - 3 : DISPLAY="$(yabai -m query --displays --display | jq '.index')"; yabai -m space --focus $((3+4*($DISPLAY - 1)))
+      lalt - 4 : DISPLAY="$(yabai -m query --displays --display | jq '.index')"; yabai -m space --focus $((4+4*($DISPLAY - 1)))
+      # Window Navigation (through display borders): lalt - {h, j, k, l}
+      lalt - h : yabai -m window --focus west  || yabai -m display --focus west
+      lalt - j : yabai -m window --focus south || yabai -m display --focus south
+      lalt - k : yabai -m window --focus north || yabai -m display --focus north
+      lalt - l : yabai -m window --focus east  || yabai -m display --focus east
+      # Float / Unfloat window: lalt - space
+      lalt - space : yabai -m window --toggle float; sketchybar --trigger window_focus
+      # Make window zoom to fullscreen: shift + lalt - f
+      shift + lalt - f : yabai -m window --toggle zoom-fullscreen; sketchybar --trigger window_focus
+      # Make window zoom to parent node: lalt - f 
+      lalt - f : yabai -m window --toggle zoom-parent; sketchybar --trigger window_focus
+      ## Window Movement (shift + lalt - ...)
+      # Moving windows in spaces: shift + lalt - {h, j, k, l}
+      shift + lalt - h : yabai -m window --warp west || $(yabai -m window --display west && sketchybar --trigger windows_on_spaces && yabai -m display --focus west && yabai -m window --warp last) || yabai -m window --move rel:-10:0
+      shift + lalt - j : yabai -m window --warp south || $(yabai -m window --display south && sketchybar --trigger windows_on_spaces && yabai -m display --focus south) || yabai -m window --move rel:0:10
+      shift + lalt - k : yabai -m window --warp north || $(yabai -m window --display north && sketchybar --trigger windows_on_spaces && yabai -m display --focus north) || yabai -m window --move rel:0:-10
+      shift + lalt - l : yabai -m window --warp east || $(yabai -m window --display east && sketchybar --trigger windows_on_spaces && yabai -m display --focus east && yabai -m window --warp first) || yabai -m window --move rel:10:0
+      # Toggle split orientation of the selected windows node: shift + lalt - s
+      shift + lalt - s : yabai -m window --toggle split
+      # Moving windows between spaces: shift + lalt - {1, 2, 3, 4, p, n } (Assumes 4 Spaces Max per Display)
+      shift + lalt - 1 : DISPLAY="$(yabai -m query --displays --display | jq '.index')";\
+                        yabai -m window --space $((1+4*($DISPLAY - 1)));\
+                        sketchybar --trigger windows_on_spaces
+      shift + lalt - 2 : DISPLAY="$(yabai -m query --displays --display | jq '.index')";\
+                        yabai -m window --space $((2+4*($DISPLAY - 1)));\
+                        sketchybar --trigger windows_on_spaces
+      shift + lalt - 3 : DISPLAY="$(yabai -m query --displays --display | jq '.index')";\
+                        yabai -m window --space $((3+4*($DISPLAY - 1)));\
+                        sketchybar --trigger windows_on_spaces
+      shift + lalt - 4 : DISPLAY="$(yabai -m query --displays --display | jq '.index')";\
+                        yabai -m window --space $((4+4*($DISPLAY - 1)));\
+                        sketchybar --trigger windows_on_spaces
+      shift + lalt - p : yabai -m window --space prev; yabai -m space --focus prev; sketchybar --trigger windows_on_spaces
+      shift + lalt - n : yabai -m window --space next; yabai -m space --focus next; sketchybar --trigger windows_on_spaces
+      # Mirror Space on X and Y Axis: shift + lalt - {x, y}
+      shift + lalt - x : yabai -m space --mirror x-axis
+      shift + lalt - y : yabai -m space --mirror y-axis
+      ## Stacks (shift + ctrl - ...)
+      # Add the active window to the window or stack to the {direction}: shift + ctrl - {h, j, k, l}
+      shift + ctrl - h    : yabai -m window  west --stack $(yabai -m query --windows --window | jq -r '.id'); sketchybar --trigger window_focus
+      shift + ctrl - j    : yabai -m window south --stack $(yabai -m query --windows --window | jq -r '.id'); sketchybar --trigger window_focus
+      shift + ctrl - k    : yabai -m window north --stack $(yabai -m query --windows --window | jq -r '.id'); sketchybar --trigger window_focus
+      shift + ctrl - l    : yabai -m window  east --stack $(yabai -m query --windows --window | jq -r '.id'); sketchybar --trigger window_focus
+      # Stack Navigation: shift + ctrl - {n, p}
+      shift + ctrl - n : yabai -m window --focus stack.next
+      shift + ctrl - p : yabai -m window --focus stack.prev
+      ## Resize (ctrl + lalt - ...)
+      # Resize windows: ctrl + lalt - {h, j, k, l}
+      ctrl + lalt - h    : yabai -m window --resize right:-100:0 || yabai -m window --resize left:-100:0
+      ctrl + lalt - j    : yabai -m window --resize bottom:0:100 || yabai -m window --resize top:0:100
+      ctrl + lalt - k    : yabai -m window --resize bottom:0:-100 || yabai -m window --resize top:0:-100
+      ctrl + lalt - l : yabai -m window --resize right:100:0 || yabai -m window --resize left:100:0
+      # Equalize size of windows: ctrl + lalt - e
+      ctrl + lalt - e : yabai -m space --balance
+      # Enable / Disable gaps in current workspace: ctrl + lalt - g
+      ctrl + lalt - g : yabai -m space --toggle padding; yabai -m space --toggle gap
+      # Enable / Disable window borders in current workspace: ctrl + lalt - b
+      ctrl + lalt - b : yabai -m config window_border off 
+      shift + ctrl + lalt - b : yabai -m config window_border on
+      ## Misc
+      # Open new Alacritty window
+      cmd - return : alacritty msg create-window
     '';
   };
 }
