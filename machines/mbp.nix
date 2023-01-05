@@ -2,8 +2,13 @@
   environment = {
     systemPackages = with pkgs; [ ];
     variables = {
+      EDITOR = "nvim";
       VISUAL = "nvim";
     };
+  };
+
+  programs = {
+    zsh.enable = true;
   };
 
   networking = {
@@ -32,11 +37,12 @@
         NSAutomaticCapitalizationEnabled = false;
         AppleInterfaceStyle = "Dark";
         "com.apple.mouse.tapBehavior" = 1;
+
       };
       dock = {
         autohide = true;
-        autohide-delay = 3;
-        autohide-time-modifier = 1;
+        autohide-delay = 0.0;
+        autohide-time-modifier = 0.0;
         minimize-to-application = true;
       };
       finder = {

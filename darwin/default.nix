@@ -1,7 +1,7 @@
 { ... }: {
   imports = [
     # TODO implement when burb makes his repo public
-    ./sketchybar.nix
+    #./sketchybar.nix
     # ./yabai.nix
     ./alacritty.nix
   ];
