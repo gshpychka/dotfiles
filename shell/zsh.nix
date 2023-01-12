@@ -66,6 +66,10 @@
         ./result/sw/bin/darwin-rebuild switch --flake ~/.nixpkgs
       }
     '';
+    
+    initExtraBeforeCompInit = ''
+      eval "$(/usr/local/bin/brew shellenv)"
+    '';
 
     dirHashes = {
       dl = "$HOME/Downloads";

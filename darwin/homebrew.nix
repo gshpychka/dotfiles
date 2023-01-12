@@ -43,6 +43,7 @@
       #"kap" # screen recorder software
       #"wireshark" # network sniffer
       #"sf-symbols" # patched font for sketchybar
+      "leapp"
     ];
     taps = [
       # default
