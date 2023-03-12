@@ -32,7 +32,7 @@ cmp.setup({
 
 
 
-local capabilities = require('cmp_nvim_lsp').update_capabilities(vim.lsp.protocol.make_client_capabilities())
+local capabilities = require('cmp_nvim_lsp').default_capabilities()
 local buf_map = function(bufnr, mode, lhs, rhs, opts)
     vim.api.nvim_buf_set_keymap(bufnr, mode, lhs, rhs, opts or {
         silent = true,
