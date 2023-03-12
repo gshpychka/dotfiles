@@ -25,7 +25,7 @@
   fonts = {
     fontDir.enable = true;
     fonts = with pkgs; [
-      nerdfonts
+      (nerdfonts.override { fonts = [ "JetBrainsMono" ]; })
     ];
   };
 
