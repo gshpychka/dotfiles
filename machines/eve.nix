@@ -12,7 +12,7 @@
   };
 
   networking = {
-    hostName = "gshpychka-mbp";
+    hostName = "eve";
     #knownNetworkServices = [ "Wi-Fi" "Thunderbolt Ethernet Slot 1" ];
     # disabled in favor of my pi-hole at home
     #dns = [
@@ -41,8 +41,8 @@
       };
       dock = {
         autohide = true;
-        autohide-delay = 0.0;
-        autohide-time-modifier = 0.0;
+        # autohide-delay = 0.0;
+        # autohide-time-modifier = 0.0;
         minimize-to-application = true;
       };
       finder = {
@@ -57,7 +57,6 @@
     keyboard = {
       enableKeyMapping = true;
       remapCapsLockToEscape = true;
-
     };
   };
 }

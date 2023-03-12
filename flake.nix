@@ -1,7 +1,7 @@
 {
   description = "My Machines";
 
-  # nix --experimental-features "nix-command flakes" build ".#darwinConfigurations.mbp.system"
+  # nix --experimental-features "nix-command flakes" build ".#darwinConfigurations.eve.system"
   # ./result/sw/bin/darwin-rebuild switch --flake ~/.nixpkgs
 
 
@@ -14,12 +14,6 @@
     darwin = {
       url = "github:lnl7/nix-darwin";
       inputs.nixpkgs.follows = "nixpkgs";
-    };
-
-
-    forgit = {
-      url = "github:wfxr/forgit";
-      flake = false;
     };
   };
 
@@ -37,13 +31,12 @@
     in
     {
       # nix-darwin with home-manager for macOS
-      darwinConfigurations.mbp = darwin.lib.darwinSystem {
-        system = "x86_64-darwin";
+      darwinConfigurations.eve = darwin.lib.darwinSystem {
+        system = "aarch64-darwin";
         # makes all inputs availble in imported files
         specialArgs = { inherit inputs; };
         modules = [
-          ./modules
-          ./machines/mbp.nix
+          ./machines/eve.nix
           ./darwin/homebrew.nix
           ({ pkgs, ... }: {
             nixpkgs.config = nixpkgsConfig;

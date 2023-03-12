@@ -160,30 +160,25 @@
         file = "nix-shell.plugin.zsh";
         src = "${pkgs.zsh-nix-shell}/share/zsh-nix-shell";
       }
-      {
-        name = "forgit";
-        file = "forgit.plugin.zsh";
-        src = "${pkgs.forgit}/share/forgit";
-      }
     ];
-    prezto = {
-      enable = true;
-      caseSensitive = false;
-      utility.safeOps = true;
-      editor = {
-        dotExpansion = true;
-        keymap = "vi";
-      };
-      #prompt.showReturnVal = true;
-      #tmux.autoStartLocal = true;
-      pmodules = [
-        "autosuggestions"
-        "completion"
-        "directory"
-        "editor"
-        "git"
-        "terminal"
-      ];
-    };
+    # prezto = {
+    #   enable = true;
+    #   caseSensitive = false;
+    #   utility.safeOps = true;
+    #   editor = {
+    #     dotExpansion = true;
+    #     keymap = "vi";
+    #   };
+    #   #prompt.showReturnVal = true;
+    #   #tmux.autoStartLocal = true;
+    #   pmodules = [
+    #     "autosuggestions"
+    #     "completion"
+    #     "directory"
+    #     "editor"
+    #     "git"
+    #     "terminal"
+    #   ];
+    # };
   };
 }

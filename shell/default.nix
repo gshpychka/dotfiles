@@ -51,8 +51,8 @@
     # shell integrations are enabled by default
     jq.enable = true; # json parser
     bat.enable = true; # pretty cat
-    lazygit.enable = true; # git tui
-    nnn.enable = true; # file browser
+    # lazygit.enable = true; # git tui
+    # nnn.enable = true; # file browser
 
     # pretty ls
     lsd = {

@@ -21,7 +21,7 @@
       #"macfuse" # file system utilities
 
       # virtualization
-      "docker" # docker desktop
+      # "docker" # docker desktop
 
       # communication
       #"mutify" # one click mute button
@@ -33,7 +33,7 @@
       "1password"
 
       "firefox"
-      "postman"
+      # "postman"
       #"shottr" # screenshot tool
       #"the-unarchiver"
       "visual-studio-code"
