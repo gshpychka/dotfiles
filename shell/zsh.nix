@@ -66,9 +66,13 @@
         ./result/sw/bin/darwin-rebuild switch --flake ~/.nixpkgs
       }
     '';
-    
+
+    # TODO: figure out how to access
+    # initExtraBeforeCompInit = ''
+    #   eval "$(${.homebrew.brewPrefix}/brew shellenv)"
+    # '';
     initExtraBeforeCompInit = ''
-      eval "$(/usr/local/bin/brew shellenv)"
+      eval "$(/opt/homebrew/bin/brew shellenv)"
     '';
 
     dirHashes = {
