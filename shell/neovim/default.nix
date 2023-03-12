@@ -28,26 +28,26 @@
       minimap-vim
 
       nvim-lspconfig
-      nvim-treesitter.withAllGrammars
-      # nvim-treesitter.withPlugins (p: with p; [
-      #   bash
-      #   comment
-      #   dockerfile
-      #   html
-      #   javascript
-      #   json
-      #   lua
-      #   nix
-      #   python
-      #   regex
-      #   rust
-      #   sql
-      #   toml
-      #   typescript
-      #   vim
-      #   yaml
-      #   ]
-      # )
+      # nvim-treesitter.withAllGrammars
+      (nvim-treesitter.withPlugins (p: with p; [
+        bash
+        comment
+        dockerfile
+        html
+        javascript
+        json
+        lua
+        nix
+        python
+        regex
+        rust
+        sql
+        toml
+        typescript
+        vim
+        yaml
+        ]
+      ))
       cmp-nvim-lsp
       cmp-buffer
       nvim-cmp
