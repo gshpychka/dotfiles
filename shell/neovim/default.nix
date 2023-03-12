@@ -13,8 +13,9 @@
       gruvbox-nvim
       plenary-nvim
 
-      vim-airline
-      vim-airline-themes
+      lightline-vim
+
+      vista-vim
 
       vim-tpipeline
 
