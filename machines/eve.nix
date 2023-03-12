@@ -13,6 +13,7 @@
 
   networking = {
     hostName = "eve";
+    computerName = "Eve";
     #knownNetworkServices = [ "Wi-Fi" "Thunderbolt Ethernet Slot 1" ];
     # disabled in favor of my pi-hole at home
     #dns = [
