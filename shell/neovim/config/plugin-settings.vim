@@ -21,11 +21,10 @@ let g:minimap_block_filetypes = ['fugitive', 'vista_kind']
 " black fixer
 " let g:black_virtualenv = '~/.local/pipx/venvs/black'
 
-let g:airline_theme='gruvbox'
-let g:airline_powerline_fonts=1
-
-let g:airline_extensions = ['branch', 'hunks', 'vista', 'tabline']
-let g:airline#extensions#tabline#enabled = 1
+" TODO: configure
+let g:lightline = {
+      \ 'colorscheme': 'gruvbox',
+      \ }
 
 let g:tpipeline_focuslost = 0
 let g:tpipeline_split = 1
@@ -47,4 +46,4 @@ exec 'luafile' expand(g:config_path . 'lua/neoscroll.conf.lua')
 
 " let g:copilot_node_command = "~/.nvm/versions/node/v17.9.1/bin/node"
 
-lua require'nvim-rooter'.setup()
+" lua require'nvim-rooter'.setup()
