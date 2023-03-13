@@ -22,12 +22,12 @@
       #graph-easy # draw graphs in the terminal
 
       # programming
-      python3
-      poetry # python tools
-      rustup # rust
-      nodejs
-      nodePackages.npm
-      nodePackages_latest.aws-cdk
+      # python3
+      # poetry # python tools
+      # rustup # rust
+      # nodejs
+      # nodePackages.npm
+      # nodePackages_latest.aws-cdk
 
       #slides # terminal presentation tool
 
