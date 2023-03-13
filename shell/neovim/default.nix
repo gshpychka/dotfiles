@@ -83,8 +83,8 @@
     #extraPython3Packages = pyPkgs: with pyPkgs; [ ];
     extraConfig = ''
 " Disable netrw
-vim.g.loaded_netrw = 1
-vim.g.loaded_netrwPlugin = 1
+let g:loaded_netrw = 1
+let g:loaded_netrwPlugin = 1
 
 let g:config_path = '~/.config/nvim/'
 
