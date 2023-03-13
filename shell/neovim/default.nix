@@ -1,3 +1,13 @@
+# TODO:
+# - [ ] Configure nvim-tree
+# - [ ] Single statusbar
+# - [ ] Configure statusbar contents
+# - [ ] fzf file opening
+# - [ ] fzf buffer switching
+# - [ ] fzf ripgrep
+# - [ ] Top bar with buffers, tabs, etc
+# - [ ] Smooth scrolling for jk
+
 { config, pkgs, lib, ... }: {
   programs.neovim = {
     enable = true;
@@ -72,6 +82,10 @@
     ];
     #extraPython3Packages = pyPkgs: with pyPkgs; [ ];
     extraConfig = ''
+" Disable netrw
+vim.g.loaded_netrw = 1
+vim.g.loaded_netrwPlugin = 1
+
 let g:config_path = '~/.config/nvim/'
 
 func LoadConfig(filename)
