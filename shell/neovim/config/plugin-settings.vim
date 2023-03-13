@@ -43,6 +43,7 @@ set foldmethod=expr
 set foldexpr=nvim_treesitter#foldexpr()
 
 exec 'luafile' expand(g:config_path . 'lua/neoscroll.conf.lua')
+exec 'luafile' expand(g:config_path . 'lua/nvim-tree.conf.lua')
 
 " let g:copilot_node_command = "~/.nvm/versions/node/v17.9.1/bin/node"
 
