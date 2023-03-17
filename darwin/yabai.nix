@@ -1,17 +1,16 @@
 { config, pkgs, lib, ... }: {
   services.yabai = {
-    enable = true;
-    package = "pkgs.yabai";
+    enable = false;
+    # package = "pkgs.yabai";
     enableScriptingAddition = true;
     config = {
       layout = "managed";
-      
     };
   };
 
-  home.file.skhd = {
-    target = ".config/skhd/skhdrc";
-    text = let yabai = "/usr/local/bin/yabai"; in
+  services.skhd = {
+    enable = true;
+    skhdConfig = let yabai = "${pkgs.yabai}/bin/yabai"; in
       ''
         # alt + a / u / o / s are blocked due to umlaute
 
@@ -59,7 +58,7 @@
                   ${yabai} -m window --toggle pip
 
         # reload
-        shift + alt - r : brew services restart skhd; brew services restart yabai; brew services restart sketchybar
+        # shift + alt - r : brew services restart skhd; brew services restart yabai; brew services restart sketchybar
       '';
   };
 }
