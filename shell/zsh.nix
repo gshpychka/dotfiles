@@ -55,6 +55,28 @@
       function nf() {
         darwin-rebuild switch --flake ~/.nixpkgs
       }
+
+      # TODO: a better place for widgets?
+
+      rg-fzf-widget() {
+        local selected_line
+        local rg_command
+         rg_command="rg --color=always --line-number --no-heading --glob '!.git'"
+
+        selected_line=$(eval "$rg_command" 2> /dev/null | fzf --ansi --phony --bind="change:reload:$rg_command {q} || true" --preview 'echo {}' --preview-window=up:3:wrap)
+
+        # open the selected line in neovim
+        if [[ -n $selected_line ]]; then
+            # TODO: get nvim's path from nix store
+            nvim $(echo "$selected_line" | awk -F ':' '{print $1 " +" $2}')
+        fi
+
+        zle reset-prompt
+      }
+
+      zle -N rg-fzf-widget
+
+      bindkey '^f' rg-fzf-widget
     '';
 
     # TODO: figure out how to access
