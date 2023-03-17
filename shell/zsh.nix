@@ -40,16 +40,8 @@
 
       #export LD_LIBRARY_PATH=${lib.makeLibraryPath [pkgs.stdenv.cc.cc]}
 
-      # TODO: handle secrets somehow
-      #source /secrets/environment.bash
-
-      bindkey '^e' edit-command-line
       # this is backspace
       bindkey '^H' autosuggest-accept
-      bindkey '^ ' autosuggest-accept
-
-      bindkey '^k' up-line-or-search
-      bindkey '^j' down-line-or-search
 
       bindkey '^r' fzf-history-widget
       bindkey '^t' fzf-file-widget
@@ -61,9 +53,7 @@
       }
 
       function nf() {
-        pushd ~/.nixpkgs
-        nix --experimental-features "nix-command flakes" build ".#darwinConfigurations.mbp.system"
-        ./result/sw/bin/darwin-rebuild switch --flake ~/.nixpkgs
+        darwin-rebuild switch --flake ~/.nixpkgs
       }
     '';
 
@@ -76,81 +66,8 @@
     '';
 
     dirHashes = {
-      dl = "$HOME/Downloads";
       nix = "$HOME/.nixpkgs";
-      code = "$HOME/code";
-    };
-
-    shellAliases = {
-      # builtins
-      size = "du -sh";
-      cp = "cp -i";
-      mkdir = "mkdir -p";
-      df = "df -h";
-      free = "free -h";
-      du = "du -sh";
-      susu = "sudo su";
-      del = "rm -rf";
-      sdel = "sudo rm -rf";
-      lst = "ls --tree -I .git";
-      lsl = "ls -l";
-      lsa = "ls -a";
-      null = "/dev/null";
-      tmux = "tmux -u";
-      tu = "tmux -u";
-      tua = "tmux a -t";
-
-      # overrides
-      cat = "bat";
-      ssh = "TERM=screen ssh";
-      python = "python3";
-      pip = "python3 -m pip";
-      venv = "python3 -m venv";
-      j = "z";
-
-      # programs
-      g = "git";
-      dk = "docker";
-      dc = "docker-compose";
-      pd = "podman";
-      pc = "podman-compose";
-      li = "lima nerdctl";
-      lc = "limactl";
-      sc = "sudo systemctl";
-      poe = "poetry";
-      fb = "pcmanfm .";
-      space = "ncdu";
-      ca = "cargo";
-      tf = "terraform";
-      diff = "delta";
-      nr = "npm run";
-      py = "python";
-      awake = "caffeinate";
-      os = "openstack";
-
-      # utilities
-      psf = "ps -aux | grep";
-      lsf = "ls | grep";
-      search = "sudo fd . '/' | grep"; # TODO replace with ripgrep
-      shut = "sudo shutdown -h now";
-      tssh = "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null";
-      socks = "ssh -D 1337 -q -C -N";
-
-      # clean
-      dklocal = "docker run --rm -it -v `PWD`:/usr/workdir --workdir=/usr/workdir";
-      dkclean = "docker container rm $(docker container ls -aq)";
-
-      caps = "xdotool key Caps_Lock";
-      gclean = "git fetch -p && for branch in $(git branch -vv | grep ': gone]' | awk '{print $1}'); do git branch -D $branch; done";
-      ew = "nvim -c ':cd ~/vimwiki' ~/vimwiki";
-      
-      # nix
-      ne = "nvim -c ':cd ~/.nixpkgs' ~/.nixpkgs";
-      clean = "nix-collect-garbage -d && nix-store --gc && nix-store --verify --check-contents --repair";
-      nsh = "nix-shell";
-      "," = "nix-shell -p";
-
-      aupt = "sudo apt update && sudo apt upgrade -y && sudo apt autoremove -y";
+      mm = "$HOME/projects/alpha/mm";
     };
 
     plugins = [
