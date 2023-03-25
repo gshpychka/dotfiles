@@ -97,6 +97,8 @@ func LoadConfig(filename)
     exec 'source' g:config_path . a:filename
 endfunc
 
+luafile g:config_path . keymaps.lua
+
 if !exists('g:vscode')
     call LoadConfig('plugin-settings.vim')
     call LoadConfig('keymaps.vim')
@@ -146,13 +148,10 @@ hi LspReferenceRead guibg='#665c54' guifg=none
 hi LspReferenceText guibg='#665c54' guifg=none
 hi LspReferenceWrite guibg='#665c54' guifg=none
 
-" undercurl not supported in alacritty
 hi LspDiagnosticsUnderlineError cterm=undercurl gui=undercurl guisp=#fb4934
 
 " Allow `//` comments in json
 autocmd FileType json syntax match Comment +\/\/.\+$+
-
-set grepprg=rg\ --vimgrep\ --smart-case\ --hidden\ --follow
 
 " Fix matching parenthesis highlighting
 " hi MatchParen ctermfg=208 ctermbg=bg
