@@ -1,15 +1,3 @@
-let g:vimspector_enable_mappings = 'HUMAN'
-
-" python notebook-like config
-let g:slime_target = 'tmux'
-let g:slime_python_ipython = 1
-" always execute in top-right tmux tab without asking
-let g:slime_default_config = {
-    \ 'socket_name': get(split($TMUX, ','), 0),
-    \ 'target_pane': '{top-right}' }
-let g:slime_dont_ask_default = 1
-
-
 let g:vista_sidebar_width=20
 let g:vista_echo_cursor_strategy = 'floating_win'
 let g:vista_default_executive = 'nvim_lsp'
@@ -44,6 +32,7 @@ set foldexpr=nvim_treesitter#foldexpr()
 
 exec 'luafile' expand(g:config_path . 'lua/neoscroll.conf.lua')
 exec 'luafile' expand(g:config_path . 'lua/nvim-tree.conf.lua')
+exec 'luafile' expand(g:config_path . 'lua/telescope.conf.lua')
 
 " let g:copilot_node_command = "~/.nvm/versions/node/v17.9.1/bin/node"
 

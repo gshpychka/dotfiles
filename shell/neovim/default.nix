@@ -64,6 +64,11 @@
       nvim-cmp
       null-ls-nvim
       nvim-lsp-ts-utils
+
+      telescope-nvim
+      telescope-fzf-native-nvim
+
+
     ];
     extraPackages = with pkgs; [
       # LSP servers
@@ -76,7 +81,7 @@
       nodePackages_latest.eslint
       black
 
-      fzf
+      /* fzf */
       ripgrep
       
     ];
@@ -108,7 +113,7 @@ set autoindent          " Keep indentation
 set hidden              " Switch between buffers without having to save first
 set display=lastline    " Show as much as possible of the last line
 set ttyfast             " Faster redrawing
-set lazyredraw          " Only redraw when necessary
+" set lazyredraw          " Only redraw when necessary
 set wrapscan            " Searches wrap around EOF
 set cmdheight=1
 set foldlevelstart=9
