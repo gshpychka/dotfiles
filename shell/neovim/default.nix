@@ -12,8 +12,8 @@
     withNodeJs = true;
     withPython3 = true;
     plugins = with pkgs.vimPlugins; [
-      vim-sensible
-      vim-surround
+      /* vim-sensible */
+      /* vim-surround */
       vim-commentary
       vim-signify
       undotree
@@ -22,23 +22,22 @@
       harpoon
       vim-fugitive
 
-      lightline-vim
+      lualine-nvim
 
-      vista-vim
+      /* vista-vim */
 
-      vim-tpipeline
+      /* vim-tpipeline */
 
       nvim-tree-lua
       nvim-web-devicons
       vim-devicons
 
-      vim-lion
+      /* vim-lion */
       neoscroll-nvim
 
-      minimap-vim
+      /* minimap-vim */
 
       nvim-lspconfig
-      # nvim-treesitter.withAllGrammars
       (nvim-treesitter.withPlugins (p: with p; [
         bash
         comment
@@ -66,8 +65,6 @@
 
       telescope-nvim
       telescope-fzf-native-nvim
-
-
     ];
     extraPackages = with pkgs; [
       # LSP servers
