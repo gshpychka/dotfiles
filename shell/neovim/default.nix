@@ -55,11 +55,15 @@
         typescript
         vim
         yaml
-        ]
+      ]
       ))
-      cmp-nvim-lsp
-      cmp-buffer
+      luasnip
+
       nvim-cmp
+      cmp-nvim-lsp
+      cmp-nvim-lua
+      cmp-buffer
+
       null-ls-nvim
       nvim-lsp-ts-utils
 
@@ -81,7 +85,7 @@
 
       /* fzf */
       ripgrep
-      
+
     ];
     #extraPython3Packages = pyPkgs: with pyPkgs; [ ];
   };
