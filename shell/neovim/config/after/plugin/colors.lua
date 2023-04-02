@@ -3,12 +3,12 @@ require("gruvbox").setup({
   undercurl = true,
   underline = true,
   bold = false,
-  italic = {
-    strings = true,
-    comments = true,
-    operators = false,
-    folds = true,
-  },
+  -- italic = {
+  --   strings = true,
+  --   comments = true,
+  --   operators = false,
+  --   folds = true,
+  -- },
   strikethrough = true,
   invert_selection = false,
   invert_signs = false,
@@ -20,4 +20,3 @@ require("gruvbox").setup({
   transparent_mode = false,
 })
 vim.cmd.colorscheme("gruvbox")
-
