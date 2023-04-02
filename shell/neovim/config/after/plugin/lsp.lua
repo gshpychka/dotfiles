@@ -1,7 +1,7 @@
 local on_attach = function(client, bufnr)
     -- Mappings.
     -- See `:help vim.diagnostic.*` for documentation on any of the below functions
-    local opts = {buffer = bufnr, remap = false}
+    local opts = { buffer = bufnr, remap = false }
     vim.keymap.set('n', '<space>e', function() vim.diagnostic.open_float() end, opts)
     vim.keymap.set('n', '[d', function() vim.diagnostic.goto_prev() end, opts)
     vim.keymap.set('n', ']d', function() vim.diagnostic.goto_next() end, opts)
@@ -9,7 +9,7 @@ local on_attach = function(client, bufnr)
     vim.keymap.set('n', 'gi', function() vim.lsp.buf.implementation() end, opts)
     vim.keymap.set('n', 'gr', function() vim.lsp.buf.references() end, opts)
     vim.keymap.set('n', 'K', function() vim.lsp.buf.hover() end, opts)
-    vim.keymap.set({'n', 'i'}, '<C-s>', function() vim.lsp.buf.signature_help() end, opts)
+    vim.keymap.set({ 'n', 'i' }, '<C-s>', function() vim.lsp.buf.signature_help() end, opts)
     vim.keymap.set('n', '<leader>wa', function() vim.lsp.buf.add_workspace_folder() end, opts)
     vim.keymap.set('n', '<leader>wr', function() vim.lsp.buf.remove_workspace_folder() end, opts)
     vim.keymap.set('n', '<leader>D', function() vim.lsp.buf.type_definition() end, opts)
@@ -21,15 +21,15 @@ local on_attach = function(client, bufnr)
     if client.server_capabilities.documentHighlightProvider then
         local group = vim.api.nvim_create_augroup("LSPDocumentHighlight", {})
         vim.api.nvim_create_autocmd({ "CursorHold" }, {
-            buffer=bufnr,
-            group=group,
+            buffer = bufnr,
+            group = group,
             callback = function()
                 vim.lsp.buf.document_highlight()
             end,
         })
         vim.api.nvim_create_autocmd({ "CursorMoved" }, {
-            buffer=bufnr,
-            group=group,
+            buffer = bufnr,
+            group = group,
             callback = function()
                 vim.lsp.buf.clear_references()
             end,
@@ -44,22 +44,21 @@ local on_attach = function(client, bufnr)
     --     })
     -- end
     vim.api.nvim_create_autocmd({ "CursorHold" }, {
-        buffer=bufnr,
+        buffer = bufnr,
         callback = function()
-            vim.diagnostic.open_float(0, {focusable=false})
+            vim.diagnostic.open_float(0, { focusable = false })
         end,
     })
     vim.lsp.handlers["textDocument/publishDiagnostics"] = vim.lsp.with(
-    vim.lsp.diagnostic.on_publish_diagnostics, {
-        virtual_text = {
-            prefix = ""
-        },
-        severity_sort = true,
-        underline = true,
-        signs = true,
-    }
+        vim.lsp.diagnostic.on_publish_diagnostics, {
+            virtual_text = {
+                prefix = ""
+            },
+            severity_sort = true,
+            underline = true,
+            signs = true,
+        }
     )
-
 end
 
 
@@ -69,10 +68,10 @@ local cmp = require('cmp')
 cmp.setup({
     snippet = {
         expand = function(args)
-        -- vim.fn["vsnip#anonymous"](args.body) -- For `vsnip` users.
-        -- require('luasnip').lsp_expand(args.body) -- For `luasnip` users.
-        -- vim.fn["UltiSnips#Anon"](args.body) -- For `ultisnips` users.
-        -- require'snippy'.expand_snippet(args.body) -- For `snippy` users.
+            -- vim.fn["vsnip#anonymous"](args.body) -- For `vsnip` users.
+            -- require('luasnip').lsp_expand(args.body) -- For `luasnip` users.
+            -- vim.fn["UltiSnips#Anon"](args.body) -- For `ultisnips` users.
+            -- require'snippy'.expand_snippet(args.body) -- For `snippy` users.
         end,
     },
     mapping = cmp.mapping.preset.insert({
@@ -96,7 +95,7 @@ cmp.setup({
 local capabilities = require('cmp_nvim_lsp').default_capabilities()
 
 
-require'lspconfig'.pyright.setup{
+require 'lspconfig'.pyright.setup {
     on_attach = function(client, bufnr)
         on_attach(client, bufnr)
         vim.keymap.set("n", "<leader>f", ":Black<CR>")
@@ -149,52 +148,52 @@ require'lspconfig'.pyright.setup{
     -- }
 }
 
-require'lspconfig'.tsserver.setup({
-  capabilities = capabilities,
-  on_attach = function(client, bufnr)
-      client.server_capabilities.document_formatting = false
-      client.server_capabilities.document_range_formatting = false
+require 'lspconfig'.tsserver.setup({
+    capabilities = capabilities,
+    on_attach = function(client, bufnr)
+        client.server_capabilities.document_formatting = false
+        client.server_capabilities.document_range_formatting = false
 
-      local ts_utils = require("nvim-lsp-ts-utils")
-      ts_utils.setup({})
-      ts_utils.setup_client(client)
+        local ts_utils = require("nvim-lsp-ts-utils")
+        ts_utils.setup({})
+        ts_utils.setup_client(client)
 
-      -- buf_map(bufnr, "n", "gs", ":TSLspOrganize<CR>")
-      -- buf_map(bufnr, "n", "gi", ":TSLspRenameFile<CR>")
-      -- buf_map(bufnr, "n", "go", ":TSLspImportAll<CR>")
+        -- buf_map(bufnr, "n", "gs", ":TSLspOrganize<CR>")
+        -- buf_map(bufnr, "n", "gi", ":TSLspRenameFile<CR>")
+        -- buf_map(bufnr, "n", "go", ":TSLspImportAll<CR>")
 
-      on_attach(client, bufnr)
-  end,
+        on_attach(client, bufnr)
+    end,
 })
 
-require'lspconfig'.lua_ls.setup({
-  capabilities = capabilities,
-  on_attach = on_attach,
-  settings = {
-    Lua = {
-      runtime = {
-        -- Tell the language server which version of Lua you're using (most likely LuaJIT in the case of Neovim)
-        version = 'LuaJIT',
-      },
-      diagnostics = {
-        -- Get the language server to recognize the `vim` global
-        globals = {'vim'},
-      },
-      workspace = {
-        -- Make the server aware of Neovim runtime files
-        library = vim.api.nvim_get_runtime_file("", true),
-      },
-      -- Do not send telemetry data containing a randomized but unique identifier
-      telemetry = {
-        enable = false,
-      },
+require 'lspconfig'.lua_ls.setup({
+    capabilities = capabilities,
+    on_attach = on_attach,
+    settings = {
+        Lua = {
+            runtime = {
+                -- Tell the language server which version of Lua you're using (most likely LuaJIT in the case of Neovim)
+                version = 'LuaJIT',
+            },
+            diagnostics = {
+                -- Get the language server to recognize the `vim` global
+                globals = { 'vim' },
+            },
+            workspace = {
+                -- Make the server aware of Neovim runtime files
+                library = vim.api.nvim_get_runtime_file("", true),
+            },
+            -- Do not send telemetry data containing a randomized but unique identifier
+            telemetry = {
+                enable = false,
+            },
+        },
     },
-  },
 })
 
-require'lspconfig'.rnix.setup{
-  capabilities = capabilities,
-  on_attach = on_attach,
+require 'lspconfig'.rnix.setup {
+    capabilities = capabilities,
+    on_attach = on_attach,
 }
 
 local null_ls = require('null-ls')
