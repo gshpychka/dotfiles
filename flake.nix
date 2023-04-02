@@ -40,7 +40,6 @@
         modules = [
           ./machines/eve.nix
           ./darwin/homebrew.nix
-          ./darwin/yabai.nix
           ({ pkgs, ... }: {
             nixpkgs.config = nixpkgsConfig;
             nixpkgs.overlays = overlays;
@@ -73,6 +72,7 @@
                   ./darwin
                   ./shell
                 ];
+                home.file.".hushlogin".text = "";
                 home.stateVersion = stateVersion;
               };
             };

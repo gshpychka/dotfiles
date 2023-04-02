@@ -4,14 +4,12 @@
     onActivation = {
       # "zap" removes manually installed brews and casks
       cleanup = "zap";
-      autoUpdate = true;
+      autoUpdate = false;
     };
     caskArgs = {
       no_quarantine = true;
     };
     brews = [
-      #"skhd" # keybinding manager
-      #"yabai" # tiling window manager
     ];
     casks = [
       # utilities
@@ -19,9 +17,7 @@
       #"browserosaurus" # choose browser on each link
       #"karabiner-elements" # remap keyboard
       #"macfuse" # file system utilities
-
-      # virtualization
-      # "docker" # docker desktop
+      "hammerspoon"
 
       # communication
       #"mutify" # one click mute button

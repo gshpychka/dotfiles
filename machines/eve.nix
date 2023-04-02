@@ -38,7 +38,10 @@
         NSAutomaticCapitalizationEnabled = false;
         AppleInterfaceStyle = "Dark";
         "com.apple.mouse.tapBehavior" = 1;
+      };
 
+      CustomUserPreferences = {
+        "org.hammerspoon.Hammerspoon".MJConfigFile = "~/.config/hammerspoon.lua";
       };
       dock = {
         autohide = true;
@@ -53,19 +56,19 @@
       };
       loginwindow.GuestEnabled = false;
       LaunchServices.LSQuarantine = false;
-      spaces.spans-displays = false;
+      spaces.spans-displays = true;
     };
     keyboard = {
       enableKeyMapping = true;
       remapCapsLockToEscape = true;
     };
     build.applications = pkgs.lib.mkForce (pkgs.buildEnv {
-        name = "applications";
-        # link home-manager apps into /Applications instead of ~/Applications
-        # fix from https://github.com/LnL7/nix-darwin/issues/139#issuecomment-663117229
-        # TODO: parametrize the username
-        paths = config.environment.systemPackages ++ config.home-manager.users.gshpychka.home.packages;
-        pathsToLink = "/Applications";
+      name = "applications";
+      # link home-manager apps into /Applications instead of ~/Applications
+      # fix from https://github.com/LnL7/nix-darwin/issues/139#issuecomment-663117229
+      # TODO: parametrize the username
+      paths = config.environment.systemPackages ++ config.home-manager.users.gshpychka.home.packages;
+      pathsToLink = "/Applications";
     });
   };
 

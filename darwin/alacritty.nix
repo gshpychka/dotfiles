@@ -7,7 +7,7 @@
         opacity = 1;
         dynamic_title = true;
         dynamic_padding = true;
-        decorations = "full";
+        decorations = "buttonless";
         dimensions = { lines = 0; columns = 0; };
         padding = { x = 5; y = 5; };
       };
@@ -17,7 +17,7 @@
         multiplier = 3;
       };
 
-      mouse = { hide_when_typing = true; };
+      mouse = { hide_when_typing = false; };
 
       key_bindings = [
         {
