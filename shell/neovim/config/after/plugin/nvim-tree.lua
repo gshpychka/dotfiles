@@ -9,3 +9,6 @@ require("nvim-tree").setup({
       dotfiles = true,
     },
   })
+
+local api = require("nvim-tree.api")
+vim.keymap.set("n", api.tree.toggle, {})
