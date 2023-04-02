@@ -99,7 +99,7 @@ local capabilities = require('cmp_nvim_lsp').default_capabilities()
 require'lspconfig'.pyright.setup{
     on_attach = function(client, bufnr)
         on_attach(client, bufnr)
-        buf_map(bufnr, "n", "<leader>f", ":Black<CR>")
+        vim.keymap.set("n", "<leader>f", ":Black<CR>")
     end,
     capabilities = capabilities,
     -- settings = {
