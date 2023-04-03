@@ -2,10 +2,11 @@ local SUPER = { "cmd" }
 local CTRL = { "ctrl" }
 local SHIFT = { "shift" }
 local ALT = { "alt" }
-local ALT_SHIFT = { ALT, SHIFT }
-local CTRL_SHIFT = { CTRL, SHIFT }
-local SUPER_SHIFT = { SUPER, SHIFT }
-local SUPER_CTRL = { SUPER, CTRL }
+local ALT_SHIFT = { "alt", "shift" }
+local CTRL_SHIFT = { "ctrl", "shift" }
+local SUPER_ALT = { "cmd", "alt" }
+local SUPER_SHIFT = { "cmd", "shift" }
+local SUPER_CTRL = { "cmd", "ctrl" }
 
 --
 -- Window movement
