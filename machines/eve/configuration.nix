@@ -41,6 +41,7 @@
       };
 
       CustomUserPreferences = {
+        # TODO: link all hammerspoon stuff together
         "org.hammerspoon.Hammerspoon".MJConfigFile = "~/.config/hammerspoon.lua";
       };
       dock = {

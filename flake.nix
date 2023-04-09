@@ -81,8 +81,41 @@
       };
 
       # NixOS configuration for my Raspberry Pi
-      /* nixosConfigurations.haven = nixpkgs.lib.nixosSystem { */
-      /*   system = "aarch64-linux"; */
-      /* }; */
-  };
+      nixosConfigurations.haven = nixpkgs.lib.nixosSystem {
+        system = "aarch64-linux";
+        # makes all inputs availble in imported files
+        specialArgs = { inherit inputs; };
+        modules = [
+          ./machines/haven/configuration.nix
+          ({ pkgs, ... }: {
+            nixpkgs.config = nixpkgsConfig;
+            nixpkgs.overlays = overlays;
+
+            system.stateVersion = 4;
+
+            users.users.${user} = {
+              shell = pkgs.zsh;
+            };
+
+            nix = {
+              package = pkgs.nix;
+              settings = {
+                allowed-users = [ user ];
+                experimental-features = [ "nix-command" "flakes" ];
+              };
+              useDaemon = true;
+            };
+          })
+          {
+            home-manager.users.pi = { ... }:
+              {
+                imports = [
+                  ./home-manager/common
+                  ./home-manager/haven
+                ];
+              };
+          }
+        ];
+      };
+    };
 }   
