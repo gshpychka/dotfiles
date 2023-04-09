@@ -91,21 +91,14 @@
             nixpkgs.config = nixpkgsConfig;
             nixpkgs.overlays = overlays;
 
-            system.stateVersion = 4;
+            system.stateVersion = "22.11";
 
-            users.users.${user} = {
+            users.users.pi = {
               shell = pkgs.zsh;
             };
 
-            nix = {
-              package = pkgs.nix;
-              settings = {
-                allowed-users = [ user ];
-                experimental-features = [ "nix-command" "flakes" ];
-              };
-              useDaemon = true;
-            };
           })
+          home-manager.nixosModule.home-manager
           {
             home-manager.users.pi = { ... }:
               {
