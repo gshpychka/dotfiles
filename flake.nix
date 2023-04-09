@@ -90,15 +90,8 @@
           ({ pkgs, ... }: {
             nixpkgs.config = nixpkgsConfig;
             nixpkgs.overlays = overlays;
-
-            system.stateVersion = "22.11";
-
-            users.users.pi = {
-              shell = pkgs.zsh;
-            };
-
           })
-          home-manager.nixosModule.home-manager
+          home-manager.nixosModules.home-manager
           {
             home-manager.users.pi = { ... }:
               {
@@ -106,6 +99,7 @@
                   ./home-manager/common
                   ./home-manager/haven
                 ];
+                home.stateVersion = stateVersion;
               };
           }
         ];
