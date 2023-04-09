@@ -83,13 +83,12 @@
     # initExtraBeforeCompInit = ''
     #   eval "$(${.homebrew.brewPrefix}/brew shellenv)"
     # '';
-    initExtraBeforeCompInit = ''
-      eval "$(/opt/homebrew/bin/brew shellenv)"
-    '';
+    /* initExtraBeforeCompInit = '' */
+    /*   eval "$(/opt/homebrew/bin/brew shellenv)" */
+    /* ''; */
 
     dirHashes = {
       nix = "$HOME/.nixpkgs";
-      mm = "$HOME/projects/alpha/mm";
     };
 
     plugins = [

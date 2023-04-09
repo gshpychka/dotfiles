@@ -38,8 +38,8 @@
         # makes all inputs availble in imported files
         specialArgs = { inherit inputs; };
         modules = [
-          ./machines/eve.nix
-          ./darwin/homebrew.nix
+          ./machines/eve/configuration.nix
+          ./machines/eve/homebrew.nix
           ({ pkgs, ... }: {
             nixpkgs.config = nixpkgsConfig;
             nixpkgs.overlays = overlays;
@@ -69,8 +69,8 @@
               extraSpecialArgs = { inherit inputs; };
               users.${user} = { ... }: {
                 imports = [
-                  ./darwin
-                  ./shell
+                  ./home-manager/common
+                  ./home-manager/eve
                 ];
                 home.file.".hushlogin".text = "";
                 home.stateVersion = stateVersion;
@@ -79,5 +79,10 @@
           }
         ];
       };
-    };
-}
+
+      # NixOS configuration for my Raspberry Pi
+      /* nixosConfigurations.haven = nixpkgs.lib.nixosSystem { */
+      /*   system = "aarch64-linux"; */
+      /* }; */
+  };
+}   

@@ -1,47 +1,27 @@
 { config, pkgs, lib, inputs, system, ... }: {
   imports = [
     ./zsh.nix
-    ./tmux.nix
+    ./tmux
     ./git.nix
+    ./alacritty.nix
     ./neovim
   ];
 
   home = {
     packages = with pkgs; [
-      # core
-      #fd
       ripgrep # fast search
-
-      # htop alternatives
-      bottom
-
-      #grc # colored log output
-      #gitAndTools.delta # pretty diff tool
-      #sshfs # mount folders via ssh
       gh # github cli tool
-      #graph-easy # draw graphs in the terminal
-
-      # programming
-      # python3
-      # poetry # python tools
-      # rustup # rust
-      # nodejs
-      # nodePackages.npm
-      # nodePackages_latest.aws-cdk
-
-      #slides # terminal presentation tool
-
       #_1password # CLI
     ];
 
-    sessionPath = [
-      "$HOME/go/bin"
-      "$HOME/.local/bin"
-      "$HOME/.cargo/bin"
-    ];
-    sessionVariables = {
-      VISUAL = "nvim";
-    };
+    /* sessionPath = [ */
+    /*   "$HOME/go/bin" */
+    /*   "$HOME/.local/bin" */
+    /*   "$HOME/.cargo/bin" */
+    /* ]; */
+    /* sessionVariables = { */
+    /*   VISUAL = "nvim"; */
+    /* }; */
   };
 
   programs = {
@@ -78,13 +58,6 @@
         "--inline-info"
         "--bind ctrl-h:preview-down,ctrl-l:preview-up"
       ];
-    };
-    ssh = {
-      enable = true;
-      extraConfig = ''
-        Host *
-          IdentityAgent "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
-      '';
     };
   };
 }
