@@ -41,16 +41,12 @@
 
   virtualisation = {
 
-    podman = {
+    docker = {
       enable = true;
-      dockerCompat = true;
-      defaultNetwork.settings = {
-        dns_enabled = true;
-      };
     };
 
     oci-containers = {
-      backend = "podman";
+      backend = "docker";
       containers = {
         mosquitto = {
           image = "eclipse-mosquitto:2.0";
