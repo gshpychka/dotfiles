@@ -1,6 +1,10 @@
 { config, pkgs, lib, inputs, system, ... }: {
   imports = [
     ./hammerspoon
+    ./neovim
+    ./tmux
+    ./alacritty.nix
+    ./git.nix
   ];
 
   programs = {

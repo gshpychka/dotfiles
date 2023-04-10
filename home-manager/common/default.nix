@@ -1,10 +1,6 @@
 { config, pkgs, lib, inputs, system, ... }: {
   imports = [
     ./zsh.nix
-    ./tmux
-    ./git.nix
-    ./alacritty.nix
-    ./neovim
   ];
 
   home = {
