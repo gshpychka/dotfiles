@@ -3,7 +3,7 @@ permit_join: true
 # Docker Compose makes the MQTT-Server available using "mqtt" hostname
 mqtt:
   base_topic: zigbee2mqtt
-  server: mqtt://mqtt
+  server: mqtt://mosquitto
 # Zigbee Adapter path
 serial:
   port: /dev/ttyACM0
