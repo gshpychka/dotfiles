@@ -68,7 +68,7 @@
         advanced = {
           # TODO: encrypt and change
           network_key = [ 20 190 55 88 82 34 150 92 237 74 167 132 123 219 110 39 ];
-          legacy_api = false;
+          legacy_api = true;
           legacy_availability_payload = false;
         };
         device_options.legacy = false;
