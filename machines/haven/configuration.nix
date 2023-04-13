@@ -99,9 +99,26 @@
     node-red = {
       enable = true;
       # TODO: include nodes here
-      package = pkgs.nodePackages_latest.node-red.override {
-        extraNodePackages = [ ];
-      };
+      package =
+        let node-red-contrib-huemagic-fork = pkgs.buildNpmPackage rec {
+          pname = "node-red-contrib-huemagic-fork";
+          version = 4.2.8;
+
+          src = pkgs.fetchFromGitHub {
+            owner = "mauricedominic";
+            repo = "node-red-contrib-huemagic";
+            rev = "c02a213da7b7c57642e936df21268617d2962a5a";
+            sha256 = "0s9fva96pxwv4hdgl2k0z16d5vbw3z1awnnx8q499046kxh4ygjx";
+          };
+
+          npmDepsHash = "sha256-Zc0dSlxTGjTuw45UqDNfNeL77JBj8arX0EucFo1X/kI=";
+
+        };
+
+        in
+        pkgs.nodePackages_latest.node-red.override {
+          extraNodePackages = [ node-red-contrib-huemagic-fork ];
+        };
       # TODO: declarative configuration of nodes and flows
       withNpmAndGcc = true;
       openFirewall = true;
