@@ -41,7 +41,9 @@
     };
     mosquitto = {
       enable = true;
+      logType = [ "all" ];
       logDest = [ "stdout" ];
+      persistence = false;
       listeners = [
         {
           address = "127.0.0.1";
