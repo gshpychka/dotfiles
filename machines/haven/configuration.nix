@@ -30,43 +30,68 @@
   };
 
   # Enable the OpenSSH daemon.
-  services.openssh = {
-    enable = true;
-    settings = {
-      PasswordAuthentication = false;
-      KbdInteractiveAuthentication = false;
-    };
-    ports = [ 420 ];
-  };
-
-  virtualisation = {
-
-    docker = {
+  services = {
+    openssh = {
       enable = true;
+      settings = {
+        PasswordAuthentication = false;
+        KbdInteractiveAuthentication = false;
+      };
+      ports = [ 420 ];
     };
-
-    oci-containers = {
-      backend = "docker";
-      containers = {
-        mosquitto = {
-          image = "eclipse-mosquitto:2.0";
-          ports = [ "1883:1883" "9001:9001" ];
-          cmd = [ "mosquitto" "-c" "/mosquitto-no-auth.conf" ];
+    mosquitto = {
+      enable = true;
+      listeners.localhost = {
+        address = "127.0.0.1";
+        port = 1776;
+        omitPasswordAuth = true;
+        logDest = "stdout";
+      };
+    };
+    zigbee2mqtt = {
+      enable = true;
+      settings = {
+        permit_join = false;
+        mqtt = {
+          base_topic = "zigbee2mqtt";
+          server = "mqtt://127.0.0.1:1776";
         };
-        zigbee2mqtt = {
-          image = "koenkk/zigbee2mqtt";
-          dependsOn = [ "mosquitto" ];
-          ports = [ "8080:8080" ];
-          environment = {
-            TZ = "Europe/Kiev";
+        serial.port = "/dev/ttyACM0";
+        frontend.port = 8080;
+        advanced = {
+          network_key = [ 20 190 55 88 82 34 150 92 237 74 167 132 123 219 110 39 ];
+          legacy_api = false;
+          legacy_availability_payload = false;
+        };
+        device_options.legacy = false;
+        devices = {
+          "0x00158d0004033fa5" = {
+            friendly_name = "extra_button_0";
           };
-          volumes = [ "${toString ./zigbee2mqtt}:/app/data" "/run/udev:/run/udev:ro" ];
-          extraOptions = [ "--device=/dev/ttyACM0:/dev/ttyACM0" ];
+          "0x00158d0003d4818" = {
+            friendly_name = "room_main_switch";
+          };
+          "0x00158d0004254a53" = {
+            friendly_name = "kitchen_main_switch";
+          };
+          "0x00158d0003d18bbf" = {
+            friendly_name = "bed_button";
+          };
+          "0x00158d000403d816" = {
+            friendly_name = "couch_table_button";
+          };
+          "0x00158d0004238a73" = {
+            friendly_name = "kitchen_table_button";
+          };
         };
       };
     };
+    node-red = {
+      enable = true;
+      withNpmAndGcc = true;
+      openFirewall = true;
+    };
   };
-
 
   # Open ports in the firewall.
   networking.firewall.allowedTCPPorts = [ 8080 ];
