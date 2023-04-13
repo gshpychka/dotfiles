@@ -41,6 +41,7 @@
     };
     mosquitto = {
       enable = true;
+      logDest = "stdout";
       listeners = [
         {
           address = "127.0.0.1";
@@ -49,7 +50,6 @@
           users = { };
           settings = { allow_anonymous = true; };
           acl = [ "topic readwrite #" "pattern readwrite #" ];
-          logDest = "stdout";
         }
       ];
     };
