@@ -96,6 +96,10 @@
     };
     node-red = {
       enable = true;
+      # TODO: include nodes here
+      package = pkgs.nodePackages_latest.node-red.override {
+        extraNodePackages = [ ];
+      };
       # TODO: declarative configuration of nodes and flows
       withNpmAndGcc = true;
       openFirewall = true;
