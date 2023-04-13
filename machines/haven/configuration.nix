@@ -76,9 +76,9 @@
           "0x00158d0004033fa5" = {
             friendly_name = "extra_button_0";
           };
-          /* "0x00158d0003d4818" = { */
-          /*   friendly_name = "room_main_switch"; */
-          /* }; */
+          "0x00158d0003d4d818" = {
+            friendly_name = "room_main_switch";
+          };
           "0x00158d0004254a53" = {
             friendly_name = "kitchen_main_switch";
           };
