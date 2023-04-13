@@ -70,7 +70,7 @@
         advanced = {
           # TODO: encrypt and change
           network_key = [ 20 190 55 88 82 34 150 92 237 74 167 132 123 219 110 39 ];
-          legacy_api = true;
+          legacy_api = false;
           legacy_availability_payload = false;
         };
         device_options.legacy = false;
@@ -104,12 +104,12 @@
       };
       # TODO: declarative configuration of nodes and flows
       withNpmAndGcc = true;
-      openFirewall = true;
+      openFirewall = false;
     };
   };
 
   # Open ports in the firewall.
-  networking.firewall.allowedTCPPorts = [ 8080 ];
+  networking.firewall.allowedTCPPorts = [ ];
   # networking.firewall.allowedUDPPorts = [ ... ];
   # Or disable the firewall altogether.
   # networking.firewall.enable = false;
