@@ -41,12 +41,17 @@
     };
     mosquitto = {
       enable = true;
-      listeners.localhost = {
-        address = "127.0.0.1";
-        port = 1776;
-        omitPasswordAuth = true;
-        logDest = "stdout";
-      };
+      listeners = [
+        {
+          address = "127.0.0.1";
+          port = 1776;
+          omitPasswordAuth = true;
+          users = { };
+          settings = { allow_anonymous = true; };
+          acl = [ "topic readwrite #" "pattern readwrite #" ];
+          logDest = "stdout";
+        }
+      ];
     };
     zigbee2mqtt = {
       enable = true;
