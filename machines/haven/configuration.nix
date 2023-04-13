@@ -46,9 +46,11 @@
         {
           address = "127.0.0.1";
           port = 1776;
+          # TODO: add auth
           omitPasswordAuth = true;
           users = { };
           settings = { allow_anonymous = true; };
+          # TODO: least privilege
           acl = [ "topic readwrite #" "pattern readwrite #" ];
         }
       ];
@@ -64,6 +66,7 @@
         serial.port = "/dev/ttyACM0";
         frontend.port = 8080;
         advanced = {
+          # TODO: encrypt and change
           network_key = [ 20 190 55 88 82 34 150 92 237 74 167 132 123 219 110 39 ];
           legacy_api = false;
           legacy_availability_payload = false;
@@ -93,6 +96,7 @@
     };
     node-red = {
       enable = true;
+      # TODO: declarative configuration of nodes and flows
       withNpmAndGcc = true;
       openFirewall = true;
     };
