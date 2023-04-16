@@ -45,7 +45,7 @@
         "org.hammerspoon.Hammerspoon".MJConfigFile = "~/.config/hammerspoon.lua";
       };
       dock = {
-        autohide = true;
+        autohide = false;
         # autohide-delay = 0.0;
         # autohide-time-modifier = 0.0;
         minimize-to-application = true;
