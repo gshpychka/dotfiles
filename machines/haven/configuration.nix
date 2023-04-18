@@ -106,11 +106,36 @@
       withNpmAndGcc = true;
       openFirewall = false;
     };
+    adguardhome = {
+      enable = true;
+      mutableSettings = false;
+      # only affects the web interface port
+      openFirewall = false;
+      settings = {
+        bind_port = 2999;
+        dns = {
+          bind_hosts = [ "127.0.0.1" "192.168.1.132" ];
+        };
+        filtering_enabled = true;
+        blocked_response_ttl = 60 * 60 * 24;
+        safe_search = {
+          enabled = false;
+        };
+        ratelimit = 100;
+        upstream_dns = [ "1.1.1.1" "1.0.0.1" ];
+        all_servers = true;
+        use_http3_upstreams = true;
+        dhcp = {
+          enabled = false;
+        };
+      };
+    };
+
   };
 
   # Open ports in the firewall.
   networking.firewall.allowedTCPPorts = [ ];
-  # networking.firewall.allowedUDPPorts = [ ... ];
+  networking.firewall.allowedUDPPorts = [ 53 ];
   # Or disable the firewall altogether.
   # networking.firewall.enable = false;
 
