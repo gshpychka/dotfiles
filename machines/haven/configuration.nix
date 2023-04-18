@@ -104,7 +104,7 @@
       };
       # TODO: declarative configuration of nodes and flows
       withNpmAndGcc = true;
-      openFirewall = true;
+      openFirewall = false;
     };
   };
 

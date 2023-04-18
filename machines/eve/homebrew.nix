@@ -18,7 +18,6 @@
       #"karabiner-elements" # remap keyboard
       #"macfuse" # file system utilities
       "hammerspoon"
-      "deluge"
 
       # communication
       #"mutify" # one click mute button
@@ -34,7 +33,7 @@
       #"shottr" # screenshot tool
       #"the-unarchiver"
       "visual-studio-code"
-      "vlc" # media player
+      #"vlc" # media player
       #"eul" # mac monitoring
       #"kindavim" # vim keys for everything
       #"kap" # screen recorder software
