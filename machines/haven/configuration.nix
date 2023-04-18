@@ -113,6 +113,7 @@
       openFirewall = false;
       settings = {
         bind_port = 2999;
+        bind_host = "127.0.0.1";
         dns = rec {
           bind_hosts = [ "127.0.0.1" "192.168.1.132" ];
           filtering_enabled = true;
