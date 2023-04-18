@@ -36,6 +36,7 @@
         AppleFontSmoothing = 2;
         NSAutomaticSpellingCorrectionEnabled = false;
         NSAutomaticCapitalizationEnabled = false;
+        NSAutomaticPeriodSubstitutionEnabled = false;
         AppleInterfaceStyle = "Dark";
         "com.apple.mouse.tapBehavior" = 1;
       };
@@ -49,13 +50,19 @@
         # autohide-delay = 0.0;
         # autohide-time-modifier = 0.0;
         minimize-to-application = true;
+        show-recents = false;
+        static-only = true;
       };
       finder = {
         AppleShowAllExtensions = true;
         AppleShowAllFiles = true;
         ShowPathbar = true;
+        CreateDesktop = false;
       };
-      loginwindow.GuestEnabled = false;
+      loginwindow = {
+        GuestEnabled = false;
+        DisableConsoleAccess = true;
+      };
       LaunchServices.LSQuarantine = false;
       spaces.spans-displays = true;
     };
