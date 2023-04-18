@@ -113,18 +113,19 @@
       openFirewall = false;
       settings = {
         bind_port = 2999;
-        dns = {
+        dns = rec {
           bind_hosts = [ "127.0.0.1" "192.168.1.132" ];
+          filtering_enabled = true;
+          blocked_response_ttl = 60 * 60 * 24;
+          safe_search = {
+            enabled = false;
+          };
+          ratelimit = 100;
+          upstream_dns = [ "1.1.1.1" "1.0.0.1" ];
+          bootstrap_dns = upstream_dns;
+          all_servers = true;
+          use_http3_upstreams = true;
         };
-        filtering_enabled = true;
-        blocked_response_ttl = 60 * 60 * 24;
-        safe_search = {
-          enabled = false;
-        };
-        ratelimit = 100;
-        upstream_dns = [ "1.1.1.1" "1.0.0.1" ];
-        all_servers = true;
-        use_http3_upstreams = true;
         dhcp = {
           enabled = false;
         };
