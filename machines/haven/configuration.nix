@@ -126,6 +126,11 @@
           bootstrap_dns = upstream_dns;
           all_servers = true;
           use_http3_upstreams = true;
+          # respond from cache even after expiry & refresh afterwards
+          cache_optimistic = true;
+          # 50 MBytes
+          cache_size = 1024 * 1024 * 50;
+          cache_ttl_min = 60 * 5;
         };
         dhcp = {
           enabled = false;
