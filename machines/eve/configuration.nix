@@ -30,13 +30,6 @@
     ];
   };
 
-  services = {
-    tailscale = {
-        enable = true;
-        domain = "truealpha.ventures";
-    };
-  };
-
   system = {
     defaults = {
       NSGlobalDomain = {
