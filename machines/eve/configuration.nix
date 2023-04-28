@@ -1,6 +1,8 @@
 { config, pkgs, lib, ... }: {
   environment = {
-    systemPackages = with pkgs; [ ];
+    systemPackages = with pkgs; [ 
+        nodePackages."@githubnext/github-copilot-cli"
+    ];
     variables = {
       EDITOR = "nvim";
       VISUAL = "nvim";
