@@ -33,7 +33,7 @@
       #"shottr" # screenshot tool
       #"the-unarchiver"
       "visual-studio-code"
-      #"vlc" # media player
+      "vlc" # media player
       #"eul" # mac monitoring
       #"kindavim" # vim keys for everything
       #"kap" # screen recorder software
