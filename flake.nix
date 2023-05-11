@@ -8,7 +8,7 @@
 
 
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     home-manager = {
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -52,7 +52,7 @@
             };
 
             nix = {
-              package = pkgs.nix;
+              package = pkgs.nixVersions.nix_2_15;
               settings = {
                 allowed-users = [ user ];
                 experimental-features = [ "nix-command" "flakes" ];
