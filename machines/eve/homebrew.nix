@@ -10,6 +10,11 @@
       no_quarantine = true;
     };
     brews = [
+        {
+            name = "autoraise";
+            args = [ "with-dexperimental_focus_first" ];
+            restart_service = "changed";
+        }
     ];
     casks = [
       # utilities
@@ -53,6 +58,7 @@
       "cmacrae/formulae" # spacebar
       "koekeishiya/formulae" # yabai
       "FelixKratz/formulae" # sketchybar
+      "Dimentium/homebrew-autoraise" # AutoRaise
     ];
     masApps = {
       "1Password for Safari" = 1569813296;
