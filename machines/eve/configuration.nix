@@ -2,6 +2,7 @@
   environment = {
     systemPackages = with pkgs; [ 
         nodePackages."@githubnext/github-copilot-cli"
+        yubikey-manager
     ];
     variables = {
       EDITOR = "nvim";
