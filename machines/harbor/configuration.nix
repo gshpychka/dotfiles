@@ -39,6 +39,10 @@
       };
       ports = [ 420 ];
     };
+    plex = {
+      enable = true;
+      openFirewall = true;
+    };
 
   };
 
