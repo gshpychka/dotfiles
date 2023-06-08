@@ -4,7 +4,8 @@
     onActivation = {
       # "zap" removes manually installed brews and casks
       cleanup = "zap";
-      autoUpdate = false;
+      autoUpdate = true;
+      upgrade = true;
     };
     caskArgs = {
       no_quarantine = true;
@@ -13,7 +14,7 @@
         {
             name = "autoraise";
             args = [ "with-dexperimental_focus_first" ];
-            restart_service = "changed";
+            restart_service = true;
         }
     ];
     casks = [
@@ -23,6 +24,8 @@
       #"karabiner-elements" # remap keyboard
       #"macfuse" # file system utilities
       "hammerspoon"
+      "vmware-fusion"
+      "balenaetcher"
 
       # communication
       #"mutify" # one click mute button
@@ -30,6 +33,9 @@
       "slack"
       "discord"
       "telegram"
+      "krisp"
+
+      #"beeper"
 
       "1password"
 
@@ -44,7 +50,7 @@
       #"kap" # screen recorder software
       #"wireshark" # network sniffer
       #"sf-symbols" # patched font for sketchybar
-      "leapp"
+      #"leapp"
     ];
     taps = [
       # default
