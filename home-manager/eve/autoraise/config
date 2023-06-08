@@ -1,1 +1,2 @@
 delay=0
+stayFocusedBundleIds="com.apple.dock"
