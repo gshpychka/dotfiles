@@ -16,14 +16,17 @@
 
   fileSystems."/" =
     {
-      device = "/dev/disk/by-uuid/44444444-4444-4444-8888-888888888888";
+      device = "/dev/disk/by-label/NIXOS_SD";
       fsType = "ext4";
     };
 
-  swapDevices = [{
-    device = "/var/lib/swapfile";
-    size = 2 * 1024;
-  }];
+  fileSystems."/mnt/ssd" = 
+    {
+      device = "/dev/disk/by-partlabel/SSD";
+      fsType = "ext4";
+    };
+
+  swapDevices = [];
 
   # Enables DHCP on each ethernet and wireless interface. In case of scripted networking
   # (the default) this is the recommended approach. When using systemd-networkd it's
