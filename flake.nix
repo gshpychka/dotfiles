@@ -81,12 +81,12 @@
       };
 
       # NixOS configuration for my Raspberry Pi
-      nixosConfigurations.haven = nixpkgs.lib.nixosSystem {
+      nixosConfigurations.harbor = nixpkgs.lib.nixosSystem {
         system = "aarch64-linux";
         # makes all inputs availble in imported files
         specialArgs = { inherit inputs; };
         modules = [
-          ./machines/haven/configuration.nix
+          ./machines/harbor/configuration.nix
           ({ pkgs, ... }: {
             nixpkgs.config = nixpkgsConfig;
             nixpkgs.overlays = overlays;
@@ -97,7 +97,7 @@
               {
                 imports = [
                   ./home-manager/common
-                  ./home-manager/haven
+                  ./home-manager/harbor
                 ];
                 home.stateVersion = stateVersion;
               };
