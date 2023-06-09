@@ -15,7 +15,7 @@ local on_attach = function(client, bufnr)
     vim.keymap.set('n', '<leader>D', function() vim.lsp.buf.type_definition() end, opts)
     vim.keymap.set('n', '<leader>rn', function() vim.lsp.buf.rename() end, opts)
     vim.keymap.set('n', '<leader>ca', function() vim.lsp.buf.code_action() end, opts)
-    vim.keymap.set('n', '<leader>f', function() vim.lsp.buf.format() end, opts)
+    vim.keymap.set('n', '<leader>fo', function() vim.lsp.buf.format() end, opts)
 
     -- Set autocommands conditional on server_capabilities
     if client.server_capabilities.documentHighlightProvider then
