@@ -22,6 +22,7 @@
 
   outputs = { self, nixpkgs, darwin, home-manager, ... }@inputs:
     let
+      harborVars = import ./machines/harbor/variables.nix;
       nixpkgsConfig = {
         allowUnfree = true;
         allowUnsupportedSystem = false;
@@ -36,7 +37,10 @@
       darwinConfigurations.eve = darwin.lib.darwinSystem {
         system = "aarch64-darwin";
         # makes all inputs availble in imported files
-        specialArgs = { inherit inputs; };
+        specialArgs = {
+          inherit inputs;
+          inherit (harborVars) harborUsername harborSshPort harborHost localDomain;
+        };
         modules = [
           ./machines/eve/configuration.nix
           ./machines/eve/homebrew.nix
@@ -66,7 +70,10 @@
               useGlobalPkgs = true;
               useUserPackages = true;
               # makes all inputs available in imported files for hm
-              extraSpecialArgs = { inherit inputs; };
+              extraSpecialArgs = {
+                inherit inputs;
+                inherit (harborVars) harborUsername harborSshPort harborHost localDomain;
+              };
               users.${user} = { ... }: {
                 imports = [
                   ./home-manager/common

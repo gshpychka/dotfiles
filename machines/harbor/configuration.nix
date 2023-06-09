@@ -1,12 +1,11 @@
 { config, pkgs, ... }:
 
 let
-  hostName = "harbor";
   machineIpAddress = "192.168.1.2";
   networkInterface = "eth0";
   routerIpAddress = "192.168.1.1";
-  localDomain = "lan";
   dnsmasqPort = 5353;
+  sharedVars = import ./variables.nix;
 in
 
 {
@@ -21,7 +20,7 @@ in
   boot.loader.generic-extlinux-compatible.enable = true;
 
   networking = {
-    hostName = hostName;
+    hostName = sharedVars.harborHost;
     defaultGateway = routerIpAddress;
     domain = localDomain;
     useDHCP = false;
@@ -38,7 +37,7 @@ in
 
   time.timeZone = "Europe/Kiev";
 
-  users.users.pi = {
+  users.users.${sharedVars.harborUsername} = {
     isNormalUser = true;
     extraGroups = [ "wheel" ]; # Enable ‘sudo’ for the user.
     packages = with pkgs; [
@@ -59,26 +58,26 @@ in
         PasswordAuthentication = false;
         KbdInteractiveAuthentication = false;
       };
-      ports = [ 420 ];
+      ports = [ sharedVars.harborSshPort ];
     };
     dnsmasq = {
       enable = true;
       resolveLocalQueries = false;
       settings = {
         interface = networkInterface;
-        domain = localDomain;
-        local = "/${localDomain}/";
+        domain = sharedVars.localDomain;
+        local = "/${sharedVars.localDomain}/";
         no-resolv = true;
         no-hosts = true;
         listen-address = "127.0.0.1";
         port = dnsmasqPort;
         address = [
-          "/${hostName}.${localDomain}/${machineIpAddress}"
+          "/${hostName}.${sharedVars.localDomain}/${machineIpAddress}"
         ];
         dhcp-range = "${networkInterface},192.168.1.3,192.168.1.254,24h";
         dhcp-option = [
           "option:router,${routerIpAddress}"
-          "option:domain-name,${localDomain}"
+          "option:domain-name,${sharedVars.localDomain}"
           "option:dns-server,${machineIpAddress}"
         ];
         dhcp-host = [
@@ -156,9 +155,9 @@ in
           upstream_dns = [
             "1.1.1.1"
             "1.0.0.1"
-            "[/${localDomain}/]127.0.0.1:${builtins.toString dnsmasqPort}"
-            "[/wpad.${localDomain}/]#"
-            "[/lb._dns-sd._udp.${localDomain}/]#"
+            "[/${sharedVars.localDomain}/]127.0.0.1:${builtins.toString dnsmasqPort}"
+            "[/wpad.${sharedVars.localDomain}/]#"
+            "[/lb._dns-sd._udp.${sharedVars.localDomain}/]#"
           ];
           bootstrap_dns = upstream_dns;
           all_servers = true;
