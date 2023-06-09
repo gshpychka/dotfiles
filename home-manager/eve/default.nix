@@ -1,4 +1,4 @@
-{ config, pkgs, lib, inputs, system, harborUsername, harborHost, harborSshPort, localDomain, ... }: {
+{ config, pkgs, lib, inputs, system, ... }: {
   imports = [
     ./hammerspoon
     ./autoraise
@@ -16,10 +16,10 @@
           host = "*";
           extraOptions = { IdentityAgent = ''"~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"''; };
         };
-        ${harborHost} = {
-          host = "${harborHost}.${localDomain}";
-          user = harborUsername;
-          port = harborSshPort;
+        ${config.shared.harborHost} = {
+          host = "${config.shared.harborHost}.${config.shared.localDomain}";
+          user = config.shared.harborUsername;
+          port = config.shared.harborSshPort;
         };
       };
     };

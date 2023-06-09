@@ -22,7 +22,7 @@
 
   outputs = { self, nixpkgs, darwin, home-manager, ... }@inputs:
     let
-      harborVars = import ./machines/harbor/variables.nix;
+      shared = import ./machines/harbor/variables.nix;
       nixpkgsConfig = {
         allowUnfree = true;
         allowUnsupportedSystem = false;
@@ -39,7 +39,6 @@
         # makes all inputs availble in imported files
         specialArgs = {
           inherit inputs;
-          inherit (harborVars) harborUsername harborSshPort harborHost localDomain;
         };
         modules = [
           ./machines/eve/configuration.nix
@@ -72,10 +71,10 @@
               # makes all inputs available in imported files for hm
               extraSpecialArgs = {
                 inherit inputs;
-                inherit (harborVars) harborUsername harborSshPort harborHost localDomain;
               };
               users.${user} = { ... }: {
                 imports = [
+                  shared
                   ./home-manager/common
                   ./home-manager/eve
                 ];
@@ -93,6 +92,7 @@
         # makes all inputs availble in imported files
         specialArgs = { inherit inputs; };
         modules = [
+          shared
           ./machines/harbor/configuration.nix
           ({ pkgs, ... }: {
             nixpkgs.config = nixpkgsConfig;
