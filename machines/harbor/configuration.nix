@@ -69,6 +69,7 @@ in
         domain = localDomain;
         local = "/${localDomain}/";
         no-resolv = true;
+        no-hosts = true;
         listen-address = "127.0.0.1";
         port = dnsmasqPort;
         address = [
