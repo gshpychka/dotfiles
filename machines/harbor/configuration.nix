@@ -393,11 +393,11 @@ in
       mutableSettings = false;
       # only affects the web interface port
       openFirewall = true;
-      users = [{
-        name = "glib";
-        password = "$2y$05$y0ENgc6LYa.yRCgtTG9eneZJTimtnlGV6AaIFNbp71byq/Qtn6Oru";
-      }];
       settings = {
+        users = [{
+          name = "glib";
+          password = "$2y$05$y0ENgc6LYa.yRCgtTG9eneZJTimtnlGV6AaIFNbp71byq/Qtn6Oru";
+        }];
         bind_port = 2999;
         bind_host = config.networking.fqdn;
         dns = rec {
