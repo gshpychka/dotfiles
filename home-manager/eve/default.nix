@@ -20,6 +20,7 @@
           host = "${config.shared.harborHost}.${config.shared.localDomain}";
           user = config.shared.harborUsername;
           port = config.shared.harborSshPort;
+          extraOptions = { ForwardAgent = "yes"; };
         };
       };
     };
