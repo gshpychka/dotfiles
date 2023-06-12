@@ -100,6 +100,14 @@ in
       enable = true;
       openFirewall = true;
     };
+    deluge = {
+      enable = true;
+      declarative = true;
+      openFirewall = true;
+      config = {
+        download_location = "/mnt/ssd/torrents";
+      };
+    };
     home-assistant = {
       enable = true;
       extraPackages = python3Packages: with python3Packages; [
@@ -435,7 +443,7 @@ in
   };
 
   # Open ports in the firewall.
-  networking.firewall.allowedTCPPorts = [ ];
+  networking.firewall.allowedTCPPorts = [ 58846 ];
   networking.firewall.allowedUDPPorts = [ 53 67 ];
 
   system.stateVersion = "22.11";
