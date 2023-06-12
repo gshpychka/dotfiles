@@ -19,16 +19,12 @@
     ];
     casks = [
       # utilities
-      #"bartender" # hides mac bar icons
       #"browserosaurus" # choose browser on each link
-      #"karabiner-elements" # remap keyboard
-      #"macfuse" # file system utilities
       "hammerspoon"
       "vmware-fusion"
       "balenaetcher"
 
       # communication
-      #"mutify" # one click mute button
       "zoom"
       "slack"
       "discord"
@@ -38,18 +34,10 @@
       #"beeper"
 
       "1password"
-
       "firefox"
-      # "postman"
-      #"shottr" # screenshot tool
-      #"the-unarchiver"
-      "visual-studio-code"
+      #"visual-studio-code"
       "vlc" # media player
-      #"eul" # mac monitoring
-      #"kindavim" # vim keys for everything
-      #"kap" # screen recorder software
       #"wireshark" # network sniffer
-      #"sf-symbols" # patched font for sketchybar
       #"leapp"
     ];
     taps = [
@@ -62,8 +50,6 @@
       "homebrew/services"
       # custom
       "cmacrae/formulae" # spacebar
-      "koekeishiya/formulae" # yabai
-      "FelixKratz/formulae" # sketchybar
       "Dimentium/homebrew-autoraise" # AutoRaise
     ];
     masApps = {
