@@ -102,7 +102,6 @@ in
     };
     home-assistant = {
       enable = true;
-      configWritable = true;
       extraPackages = python3Packages: with python3Packages; [
         aiohomekit
       ];
@@ -119,7 +118,6 @@ in
         "zha"
         "upnp"
         "thread"
-        "ipp"
         "androidtv"
         "androidtv_remote"
       ];
@@ -383,8 +381,9 @@ in
           ];
 
         default_config = { };
+        openFirewall = true;
         http = {
-          server_host = "127.0.0.1";
+          server_host = [ config.networking.fqdn machineIpAddress ];
           server_port = 8123;
         };
       };
