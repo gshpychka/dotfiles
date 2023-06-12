@@ -381,12 +381,12 @@ in
           ];
 
         default_config = { };
-        openFirewall = true;
         http = {
           server_host = [ config.networking.fqdn machineIpAddress ];
           server_port = 8123;
         };
       };
+      openFirewall = true;
     };
     adguardhome = {
       enable = true;
