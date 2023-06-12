@@ -399,7 +399,7 @@ in
           password = "$2y$05$y0ENgc6LYa.yRCgtTG9eneZJTimtnlGV6AaIFNbp71byq/Qtn6Oru";
         }];
         bind_port = 2999;
-        bind_host = config.networking.fqdn;
+        bind_host = machineIpAddress;
         dns = rec {
           bind_hosts = [ machineIpAddress ];
           filtering_enabled = true;
