@@ -1,13 +1,14 @@
 { config, pkgs, lib, ... }: {
   environment = {
-    systemPackages = with pkgs; [ 
-        nodePackages."@githubnext/github-copilot-cli"
-        yubikey-manager
-        zstd
+    systemPackages = with pkgs; [
+      nodePackages."@githubnext/github-copilot-cli"
+      yubikey-manager
+      zstd
     ];
     variables = {
       EDITOR = "nvim";
       VISUAL = "nvim";
+      SSH_AUTH_SOCK = "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock";
     };
   };
 
@@ -18,13 +19,6 @@
   networking = {
     hostName = "eve";
     computerName = "Eve";
-    #knownNetworkServices = [ "Wi-Fi" "Thunderbolt Ethernet Slot 1" ];
-    # disabled in favor of my pi-hole at home
-    #dns = [
-    #"9.9.9.9"
-    #"1.1.1.1"
-    #"8.8.8.8"
-    #];
   };
 
   fonts = {
