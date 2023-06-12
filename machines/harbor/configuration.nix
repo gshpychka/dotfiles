@@ -392,10 +392,14 @@ in
       enable = true;
       mutableSettings = false;
       # only affects the web interface port
-      openFirewall = false;
+      openFirewall = true;
+      users = [{
+        name = "glib";
+        password = "$2y$05$y0ENgc6LYa.yRCgtTG9eneZJTimtnlGV6AaIFNbp71byq/Qtn6Oru";
+      }];
       settings = {
         bind_port = 2999;
-        bind_host = "127.0.0.1";
+        bind_host = config.networking.fqdn;
         dns = rec {
           bind_hosts = [ machineIpAddress ];
           filtering_enabled = true;
