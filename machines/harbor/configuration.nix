@@ -108,7 +108,7 @@ in
         download_location = "/mnt/ssd/torrents";
         allow_remote = true;
       };
-      authFile = "/run/keys/deluge_auth";
+      authFile = "/var/lib/deluge/auth";
     };
     home-assistant = {
       enable = true;
