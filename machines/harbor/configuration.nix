@@ -106,7 +106,9 @@ in
       openFirewall = true;
       config = {
         download_location = "/mnt/ssd/torrents";
+        allow_remote = true;
       };
+      authFile = "var/keys/deluge_auth";
     };
     home-assistant = {
       enable = true;

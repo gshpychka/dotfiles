@@ -23,6 +23,7 @@
       "hammerspoon"
       "vmware-fusion"
       "balenaetcher"
+      "deluge"
 
       # communication
       "zoom"
