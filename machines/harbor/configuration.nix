@@ -124,6 +124,17 @@ in
         "androidtv_remote"
       ];
       config = {
+        sensor = [
+          {
+            platform = "systemmonitor";
+            resources = [
+              { type = "memory_use"; }
+              { type = "disk_use_percent"; }
+              { type = "processor_use"; }
+              { type = "processor_temperature"; }
+            ];
+          }
+        ];
         yeelight = {
           devices = {
             ${party_light_address} = {
