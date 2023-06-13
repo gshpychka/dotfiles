@@ -64,7 +64,8 @@ in
   };
 
   services = {
-    hardware.argonone.enable = true;
+    # argononed fails to start
+    # hardware.argonone.enable = true;
     openssh = {
       enable = true;
       settings = {
