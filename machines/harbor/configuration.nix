@@ -38,6 +38,10 @@ in
 
   time.timeZone = "Europe/Kiev";
 
+  hardware = {
+    bluetooth.enable = true;
+  };
+
   users.users.${config.shared.harborUsername} = {
     isNormalUser = true;
     extraGroups = [ "wheel" ]; # Enable ‘sudo’ for the user.
@@ -59,8 +63,8 @@ in
     };
   };
 
-  # Enable the OpenSSH daemon.
   services = {
+    hardware.argonone.enable = true;
     openssh = {
       enable = true;
       settings = {
