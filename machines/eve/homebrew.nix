@@ -24,6 +24,7 @@
       "vmware-fusion"
       "balenaetcher"
       "deluge"
+      "via"
 
       # communication
       "zoom"
