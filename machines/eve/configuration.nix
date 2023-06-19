@@ -11,6 +11,8 @@
     };
   };
 
+  services.nix-daemon.enable = true;
+
   programs = {
     zsh.enable = true;
   };
@@ -77,5 +79,5 @@
     });
   };
 
-  security.pam.enableSudoTouchIdAuth = true;
+  security.pam.enableSudoTouchIdAuth = false;
 }
