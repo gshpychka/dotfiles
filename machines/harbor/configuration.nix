@@ -61,7 +61,10 @@ in
       enableSSHAgentAuth = true;
       services.sudo.sshAgentAuth = true;
     };
-    acme.acceptTerms = true;
+    acme = {
+      acceptTerms = true;
+      defaults.email = "glibshpychka@gmail.com";
+    };
   };
 
 
