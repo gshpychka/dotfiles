@@ -334,7 +334,7 @@ in
               (
                 let
                   pressTypeMapping = {
-                    "long_press" = room_buttons;
+                    "triple_press" = room_buttons;
                   };
                 in
                 {
@@ -355,7 +355,7 @@ in
               (
                 let
                   pressTypeMapping = {
-                    "long_press" = kitchen_buttons;
+                    "triple_press" = kitchen_buttons;
                   };
                 in
                 {
