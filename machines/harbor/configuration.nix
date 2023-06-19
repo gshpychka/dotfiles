@@ -172,7 +172,7 @@ in
           http = {
             server_host = [ "127.0.0.1" ];
             server_port = frontendServices.home-assistant.port;
-            use_x_forwarder_for = true;
+            use_x_forwarded_for = true;
             trusted_proxies = [ "127.0.0.1" ];
           };
           sensor = [
