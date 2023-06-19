@@ -99,7 +99,7 @@ in
           # resolve all subdomains to the machine IP address
           address =
             let
-              subdomains = pkgs.lib.attrValues (pkgs.lib.mapAttrs (name: serviceConfig: serviceConfig.subdomain)) frontendServices;
+              subdomains = pkgs.lib.mapAttrsToList (name: serviceConfig: serviceConfig.subdomain) frontendServices;
             in
             (map (subdomain: "/${subdomain}.${config.networking.fqdn}/${machineIpAddress}") subdomains) ++ [
               "/${config.networking.fqdn}/${machineIpAddress}"
