@@ -61,19 +61,15 @@ in
       enableSSHAgentAuth = true;
       services.sudo.sshAgentAuth = true;
     };
-    acme = {
-      acceptTerms = true;
-      defaults.email = "glibshpychka@gmail.com";
-    };
   };
 
 
   services =
     let
       frontendServices = {
-        home-assistant = { subdomain = "hass"; port = 8123; useSSL = true; };
-        plex = { subdomain = "plex"; port = 32400; useSSL = false; };
-        adguard = { subdomain = "adguard"; port = 2999; useSSL = true; };
+        home-assistant = { subdomain = "hass"; port = 8123; };
+        plex = { subdomain = "plex"; port = 32400; };
+        adguard = { subdomain = "adguard"; port = 2999; };
       };
     in
     {
@@ -125,8 +121,7 @@ in
         virtualHosts = pkgs.lib.mapAttrs
           (name: subdomainConfig: {
             serverName = "${subdomainConfig.subdomain}.${config.networking.fqdn}";
-            forceSSL = subdomainConfig.useSSL;
-            enableACME = subdomainConfig.useSSL;
+            addSSL = false;
             extraConfig = ''
               proxy_buffering off;
             '';
@@ -488,7 +483,7 @@ in
     };
 
   # Open ports in the firewall.
-  networking.firewall.allowedTCPPorts = [ 80 443 ];
+  networking.firewall.allowedTCPPorts = [ 80 ];
   networking.firewall.allowedUDPPorts = [ 53 67 ];
 
   system.stateVersion = "22.11";
