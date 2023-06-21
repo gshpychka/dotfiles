@@ -40,8 +40,7 @@
 
       #export LD_LIBRARY_PATH=${lib.makeLibraryPath [pkgs.stdenv.cc.cc]}
 
-      # this is backspace
-      bindkey '^H' autosuggest-accept
+      bindkey '^L' autosuggest-accept
 
       bindkey '^r' fzf-history-widget
       bindkey '^t' fzf-file-widget
