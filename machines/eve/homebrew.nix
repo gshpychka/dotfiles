@@ -25,6 +25,7 @@
       "balenaetcher"
       "deluge"
       "via"
+      "qmk-toolbox"
 
       # communication
       "zoom"
