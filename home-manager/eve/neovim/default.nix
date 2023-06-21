@@ -74,7 +74,7 @@
       # LSP servers
       nodePackages_latest.pyright
       nodePackages_latest.typescript-language-server
-      rnix-lsp
+      nil
       sumneko-lua-language-server
 
 

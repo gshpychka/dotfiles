@@ -195,7 +195,7 @@ require 'lspconfig'.lua_ls.setup({
     },
 })
 
-require 'lspconfig'.rnix.setup {
+require 'lspconfig'.nil_ls.setup {
     capabilities = capabilities,
     on_attach = on_attach,
 }
