@@ -14,7 +14,11 @@
   services.nix-daemon.enable = true;
 
   programs = {
-    zsh.enable = true;
+    zsh = {
+        enable = true;
+        enableCompletion = false;
+        enableBashCompletion = false;
+    };
   };
 
   networking = {
