@@ -44,6 +44,8 @@
       bindkey '^t' fzf-file-widget
       bindkey 'ç' fzf-cd-widget
 
+      bindkey '^l' autosuggest-accept
+
       function cd() {
         builtin cd $*
         lsd
@@ -73,15 +75,6 @@
 
       zle -N rg-fzf-widget
       bindkey '^f' rg-fzf-widget
-
-      autosuggest-accept-and-execute() {
-        zle autosuggest-accept
-        zle accept-line
-      }
-
-      zle -N autosuggest-accept-and-execute
-      # Ctrl+Enter
-      bindkey '^M' autosuggest-accept-and-execute
     '';
 
     # TODO: figure out how to access
