@@ -79,5 +79,6 @@
     });
   };
 
+  # using https://github.com/jnooree/pam-watchid instead
   security.pam.enableSudoTouchIdAuth = false;
 }
