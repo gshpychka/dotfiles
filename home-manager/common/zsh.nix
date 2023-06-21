@@ -40,8 +40,6 @@
 
       #export LD_LIBRARY_PATH=${lib.makeLibraryPath [pkgs.stdenv.cc.cc]}
 
-      bindkey '^L' autosuggest-accept
-
       bindkey '^r' fzf-history-widget
       bindkey '^t' fzf-file-widget
       bindkey 'ç' fzf-cd-widget
@@ -74,8 +72,16 @@
       }
 
       zle -N rg-fzf-widget
-
       bindkey '^f' rg-fzf-widget
+
+      autosuggest-accept-and-execute() {
+        zle autosuggest-accept
+        zle accept-line
+      }
+
+      zle -N autosuggest-accept-and-execute
+      # Ctrl+Enter
+      bindkey '^M' autosuggest-accept-and-execute
     '';
 
     # TODO: figure out how to access
