@@ -16,7 +16,7 @@
   programs.zsh = {
     enable = true;
     enableAutosuggestions = true;
-    enableCompletion = true;
+    enableCompletion = false;
     autocd = true;
     dotDir = ".config/zsh";
     #defaultKeymap = "viins"; #vicmd or viins
