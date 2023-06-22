@@ -6,15 +6,15 @@
 
 { config, pkgs, lib, ... }:
   let
-    flash-nvim = pkgs.vimUtils.buildVimPluginFrom2Nix {
-    name = "flash-nvim";
-    src = pkgs.fetchFromGitHub {
-      owner = "folke";
-      repo = "flash.nvim";
-      rev = "v1.3.0";
-      hash = "sha256-JQIvB3il5UT4P8XTJ3da9uywDwkd4l7rTKGFq43KpEg=";
-    };
-  };
+  #   flash-nvim = pkgs.vimUtils.buildVimPluginFrom2Nix {
+  #   name = "flash-nvim";
+  #   src = pkgs.fetchFromGitHub {
+  #     owner = "folke";
+  #     repo = "flash.nvim";
+  #     rev = "v1.3.0";
+  #     hash = "sha256-JQIvB3il5UT4P8XTJ3da9uywDwkd4l7rTKGFq43KpEg=";
+  #   };
+  # };
     eyeliner-nvim = pkgs.vimUtils.buildVimPluginFrom2Nix {
     name = "eyeliner-nvim";
     src = pkgs.fetchFromGitHub {
@@ -91,7 +91,10 @@
 
       telescope-nvim
       telescope-fzf-native-nvim
-    ] ++ [ flash-nvim eyeliner-nvim ];
+    ] ++ [
+      # flash-nvim
+      eyeliner-nvim
+    ];
     extraPackages = with pkgs; [
       # LSP servers
       nodePackages_latest.pyright
