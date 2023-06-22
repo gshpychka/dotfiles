@@ -20,8 +20,8 @@
     src = pkgs.fetchFromGitHub {
       owner = "jinh0";
       repo = "eyeliner.nvim";
-      rev = "v0.2.0";
-      hash = "sha256-hIXSu8eH4QufpUa1JOX/dMfxaFEVSnsV0wA4vOQ/XiU=";
+      rev = "fa3a0986cb072fe2ab29ef79e022514d2533f0db";
+      hash = "sha256-W1BoT5sUFWvAAZIHSLtQJ6G8rk2v6Xv5E+drMOy1WBw=";
     };
   };
   in 
