@@ -471,6 +471,7 @@ in
             bootstrap_dns = upstream_dns;
             all_servers = true;
             use_http3_upstreams = true;
+            enable_dnssec = true;
             # 50 MBytes
             cache_size = 1024 * 1024 * 50;
           };
