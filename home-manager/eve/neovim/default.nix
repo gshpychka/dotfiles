@@ -4,7 +4,28 @@
 # - [ ] Configure statusbar contents
 # - [ ] Top bar with buffers, tabs, etc
 
-{ config, pkgs, lib, ... }: {
+{ config, pkgs, lib, ... }:
+  let
+    flash-nvim = pkgs.vimUtils.buildVimPluginFrom2Nix {
+    name = "flash-nvim";
+    src = pkgs.fetchFromGitHub {
+      owner = "folke";
+      repo = "flash.nvim";
+      rev = "v1.3.0";
+      hash = "sha256-JQIvB3il5UT4P8XTJ3da9uywDwkd4l7rTKGFq43KpEg=";
+    };
+  };
+    eyeliner-nvim = pkgs.vimUtils.buildVimPluginFrom2Nix {
+    name = "eyeliner-nvim";
+    src = pkgs.fetchFromGitHub {
+      owner = "jinh0";
+      repo = "eyeliner.nvim";
+      rev = "v0.2.0";
+      hash = "sha256-hIXSu8eH4QufpUa1JOX/dMfxaFEVSnsV0wA4vOQ/XiU=";
+    };
+  };
+  in 
+  {
   programs.neovim = {
     enable = true;
     defaultEditor = true;
@@ -14,13 +35,14 @@
     plugins = with pkgs.vimPlugins; [
       /* vim-sensible */
       /* vim-surround */
-      vim-commentary
+      comment-nvim
       vim-signify
       undotree
       gruvbox-nvim
       plenary-nvim
       harpoon
       vim-fugitive
+      which-key-nvim
 
       lualine-nvim
 
@@ -69,7 +91,7 @@
 
       telescope-nvim
       telescope-fzf-native-nvim
-    ];
+    ] ++ [ flash-nvim eyeliner-nvim ];
     extraPackages = with pkgs; [
       # LSP servers
       nodePackages_latest.pyright

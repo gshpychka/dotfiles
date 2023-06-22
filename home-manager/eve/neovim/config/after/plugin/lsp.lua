@@ -1,21 +1,31 @@
 local on_attach = function(client, bufnr)
+    local function createOpts(description)
+        return {
+            buffer = bufnr,
+            remap = false,
+            desc = description
+        }
+    end
+
     -- Mappings.
     -- See `:help vim.diagnostic.*` for documentation on any of the below functions
-    local opts = { buffer = bufnr, remap = false }
-    vim.keymap.set('n', '<space>e', function() vim.diagnostic.open_float() end, opts)
-    vim.keymap.set('n', '[d', function() vim.diagnostic.goto_prev() end, opts)
-    vim.keymap.set('n', ']d', function() vim.diagnostic.goto_next() end, opts)
-    vim.keymap.set('n', 'gd', function() vim.lsp.buf.definition() end, opts)
-    vim.keymap.set('n', 'gi', function() vim.lsp.buf.implementation() end, opts)
-    vim.keymap.set('n', 'gr', function() vim.lsp.buf.references() end, opts)
-    vim.keymap.set('n', 'K', function() vim.lsp.buf.hover() end, opts)
-    vim.keymap.set({ 'n', 'i' }, '<C-s>', function() vim.lsp.buf.signature_help() end, opts)
-    vim.keymap.set('n', '<leader>wa', function() vim.lsp.buf.add_workspace_folder() end, opts)
-    vim.keymap.set('n', '<leader>wr', function() vim.lsp.buf.remove_workspace_folder() end, opts)
-    vim.keymap.set('n', '<leader>D', function() vim.lsp.buf.type_definition() end, opts)
-    vim.keymap.set('n', '<leader>rn', function() vim.lsp.buf.rename() end, opts)
-    vim.keymap.set('n', '<leader>ca', function() vim.lsp.buf.code_action() end, opts)
-    vim.keymap.set('n', '<leader>fo', function() vim.lsp.buf.format() end, opts)
+    vim.keymap.set('n', '<leader>e', function() vim.diagnostic.open_float() end, createOpts("Open LSP diagnostics float"))
+    vim.keymap.set('n', '[d', function() vim.diagnostic.goto_prev() end, createOpts("Go to previous LSP diagnostic"))
+    vim.keymap.set('n', ']d', function() vim.diagnostic.goto_next() end, createOpts("Go to next LSP diagnostic"))
+    vim.keymap.set('n', 'gd', function() vim.lsp.buf.definition() end, createOpts("Go to definition"))
+    vim.keymap.set('n', 'gi', function() vim.lsp.buf.implementation() end, createOpts("Go to implementation"))
+    vim.keymap.set('n', 'gr', function() vim.lsp.buf.references() end, createOpts("Go to references"))
+    vim.keymap.set('n', 'K', function() vim.lsp.buf.hover() end, createOpts("LSP hover"))
+    vim.keymap.set({ 'n', 'i' }, '<C-s>', function() vim.lsp.buf.signature_help() end, createOpts("Signature help"))
+    vim.keymap.set('n', '<leader>wa', function() vim.lsp.buf.add_workspace_folder() end,
+        createOpts("Add workspace folder"))
+    vim.keymap.set('n', '<leader>wr', function() vim.lsp.buf.remove_workspace_folder() end,
+        createOpts("Remove workspace folder"))
+    vim.keymap.set('n', '<leader>D', function() vim.lsp.buf.type_definition() end,
+        createOpts("Go to the type definition"))
+    vim.keymap.set('n', '<leader>rn', function() vim.lsp.buf.rename() end, createOpts("LSP rename"))
+    vim.keymap.set('n', '<leader>ca', function() vim.lsp.buf.code_action() end, createOpts("LSP code action"))
+    vim.keymap.set('n', '<leader>fo', function() vim.lsp.buf.format() end, createOpts("LSP format"))
 
     -- Set autocommands conditional on server_capabilities
     if client.server_capabilities.documentHighlightProvider then
