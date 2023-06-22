@@ -5,10 +5,6 @@
       yubikey-manager
       zstd
     ];
-    variables = {
-      EDITOR = "nvim";
-      VISUAL = "nvim";
-    };
   };
 
   services.nix-daemon.enable = true;
