@@ -6,7 +6,7 @@
 
 { config, pkgs, lib, ... }:
 let
-  #   flash-nvim = pkgs.vimUtils.buildVimPluginFrom2Nix {
+  # flash-nvim = pkgs.vimUtils.buildVimPluginFrom2Nix {
   #   name = "flash-nvim";
   #   src = pkgs.fetchFromGitHub {
   #     owner = "folke";
