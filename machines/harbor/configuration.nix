@@ -43,6 +43,7 @@ in
   };
 
   users.users.${config.shared.harborUsername} = {
+    shell = pkgs.zsh;
     isNormalUser = true;
     extraGroups = [ "wheel" ]; # Enable ‘sudo’ for the user.
     packages = with pkgs; [
@@ -53,6 +54,10 @@ in
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIB737o9Ltm1K3w9XX9SBHNW1JT4NpCPP5qg9R+SB18dG"
     ];
     initialHashedPassword = "";
+  };
+  programs.zsh = {
+    enable = true;
+    enableCompletion = false;
   };
 
   security = {
