@@ -453,7 +453,7 @@ in
           }];
           bind_port = frontendServices.adguard.port;
           bind_host = "127.0.0.1";
-          dns = rec {
+          dns = {
             bind_hosts = [ machineIpAddress ];
             filtering_enabled = true;
             blocked_response_ttl = 60 * 60 * 24;
@@ -462,13 +462,15 @@ in
             };
             ratelimit = 100;
             upstream_dns = [
-              "1.1.1.1"
-              "1.0.0.1"
+              "tls://1dot1dot1dot1.cloudflare-dns.com"
               "[/${config.networking.domain}/]127.0.0.1:${builtins.toString dnsmasqPort}"
               "[/wpad.${config.networking.domain}/]#"
               "[/lb._dns-sd._udp.${config.networking.domain}/]#"
             ];
-            bootstrap_dns = upstream_dns;
+            bootstrap_dns = [
+              "1.1.1.1"
+              "1.0.0.1"
+            ];
             all_servers = true;
             use_http3_upstreams = true;
             enable_dnssec = true;
