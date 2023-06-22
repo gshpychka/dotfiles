@@ -11,11 +11,11 @@
       no_quarantine = true;
     };
     brews = [
-        {
-            name = "autoraise";
-            args = [ "with-dexperimental_focus_first" ];
-            restart_service = true;
-        }
+      {
+        name = "autoraise";
+        args = [ "with-dexperimental_focus_first" ];
+        restart_service = true;
+      }
     ];
     casks = [
       # utilities

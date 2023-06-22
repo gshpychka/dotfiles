@@ -9,7 +9,7 @@
       character = {
         success_symbol = "[➜](bold green) ";
         error_symbol = "[✗](bold red) ";
-     };
+      };
     };
   };
 
@@ -20,7 +20,7 @@
     autocd = true;
     dotDir = ".config/zsh";
     #defaultKeymap = "viins"; #vicmd or viins
-    
+
     history = {
       expireDuplicatesFirst = true;
       ignoreDups = true;

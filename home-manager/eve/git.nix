@@ -19,10 +19,15 @@
       re = "rebase -i";
     };
     ignores = [
-      ".idea" ".vs" ".vsc" ".vscode" # ide
+      ".idea"
+      ".vs"
+      ".vsc"
+      ".vscode" # ide
       ".DS_Store" # mac
-      "node_modules" "npm-debug.log" # npm
-      "__pycache__" "*.pyc" # python
+      "node_modules"
+      "npm-debug.log" # npm
+      "__pycache__"
+      "*.pyc" # python
       ".ipynb_checkpoints" # jupyter
       "__sapper__" # svelte
     ];
@@ -33,13 +38,13 @@
       user.signingkey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIB737o9Ltm1K3w9XX9SBHNW1JT4NpCPP5qg9R+SB18dG";
       init = { defaultBranch = "main"; };
       #pull = {
-        #ff = false;
-        #commit = false;
-        #rebase = true;
+      #ff = false;
+      #commit = false;
+      #rebase = true;
       #};
       push.autoSetupRemote = true;
       #url = {
-        #"ssh://git@github.com" = { insteadOf = "https://github.com"; };
+      #"ssh://git@github.com" = { insteadOf = "https://github.com"; };
       #};
       delta = {
         line-numbers = true;

@@ -5,7 +5,7 @@
 # - [ ] Top bar with buffers, tabs, etc
 
 { config, pkgs, lib, ... }:
-  let
+let
   #   flash-nvim = pkgs.vimUtils.buildVimPluginFrom2Nix {
   #   name = "flash-nvim";
   #   src = pkgs.fetchFromGitHub {
@@ -15,7 +15,7 @@
   #     hash = "sha256-JQIvB3il5UT4P8XTJ3da9uywDwkd4l7rTKGFq43KpEg=";
   #   };
   # };
-    eyeliner-nvim = pkgs.vimUtils.buildVimPluginFrom2Nix {
+  eyeliner-nvim = pkgs.vimUtils.buildVimPluginFrom2Nix {
     name = "eyeliner-nvim";
     src = pkgs.fetchFromGitHub {
       owner = "jinh0";
@@ -24,8 +24,8 @@
       hash = "sha256-W1BoT5sUFWvAAZIHSLtQJ6G8rk2v6Xv5E+drMOy1WBw=";
     };
   };
-  in 
-  {
+in
+{
   programs.neovim = {
     enable = true;
     defaultEditor = true;
@@ -107,6 +107,7 @@
       nodePackages_latest.prettier
       nodePackages_latest.eslint
       black
+      nixpkgs-fmt
 
       /* fzf */
       ripgrep

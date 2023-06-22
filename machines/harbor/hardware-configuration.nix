@@ -20,13 +20,13 @@
       fsType = "ext4";
     };
 
-  fileSystems."/mnt/ssd" = 
+  fileSystems."/mnt/ssd" =
     {
       device = "/dev/disk/by-partlabel/SSD";
       fsType = "ext4";
     };
 
-  swapDevices = [];
+  swapDevices = [ ];
 
   # Enables DHCP on each ethernet and wireless interface. In case of scripted networking
   # (the default) this is the recommended approach. When using systemd-networkd it's

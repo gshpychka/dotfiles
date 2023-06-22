@@ -15,9 +15,9 @@
 
   programs = {
     zsh = {
-        enable = true;
-        enableCompletion = false;
-        enableBashCompletion = false;
+      enable = true;
+      enableCompletion = false;
+      enableBashCompletion = false;
     };
   };
 
