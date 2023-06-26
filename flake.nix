@@ -27,8 +27,7 @@
         allowUnfree = true;
         allowUnsupportedSystem = false;
       };
-      overlays = [
-        import ./overlays/tree-sitter.nix
+      overlays = with inputs; [
       ];
       stateVersion = "22.11";
       user = "gshpychka";
