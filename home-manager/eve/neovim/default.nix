@@ -81,6 +81,8 @@ in
       ))
       luasnip
 
+      copilot-lua
+      copilot-cmp
       nvim-cmp
       cmp-nvim-lsp
       cmp-nvim-lua
