@@ -172,7 +172,6 @@ in
           "thread"
           "androidtv"
           "androidtv_remote"
-          "nanoleaf"
         ];
         config = {
           http = {
