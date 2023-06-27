@@ -1,5 +1,6 @@
 { config, pkgs, lib, inputs, system, ... }: {
   imports = [
+    ./linkapps.nix
     ./hammerspoon
     ./autoraise
     ./neovim

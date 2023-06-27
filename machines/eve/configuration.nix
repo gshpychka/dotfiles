@@ -4,6 +4,7 @@
       nodePackages."@githubnext/github-copilot-cli"
       yubikey-manager
       zstd
+      element-desktop
     ];
   };
 
@@ -69,14 +70,14 @@
       enableKeyMapping = true;
       remapCapsLockToEscape = true;
     };
-    build.applications = pkgs.lib.mkForce (pkgs.buildEnv {
-      name = "applications";
-      # link home-manager apps into /Applications instead of ~/Applications
-      # fix from https://github.com/LnL7/nix-darwin/issues/139#issuecomment-663117229
-      # TODO: parametrize the username
-      paths = config.environment.systemPackages ++ config.home-manager.users.gshpychka.home.packages;
-      pathsToLink = "/Applications";
-    });
+    # build.applications = pkgs.lib.mkForce (pkgs.buildEnv {
+    #   name = "applications";
+    #   # link home-manager apps into /Applications instead of ~/Applications
+    #   # fix from https://github.com/LnL7/nix-darwin/issues/139#issuecomment-663117229
+    #   # TODO: parametrize the username
+    #   paths = config.environment.systemPackages ++ config.home-manager.users.gshpychka.home.packages;
+    #   pathsToLink = "/Applications";
+    # });
   };
 
   # using https://github.com/jnooree/pam-watchid instead
