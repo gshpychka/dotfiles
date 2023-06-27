@@ -5,6 +5,10 @@
       yubikey-manager
       zstd
       element-desktop
+      zoom-us
+      slack
+      discord
+      # _1password-gui-beta
     ];
   };
 

@@ -28,9 +28,6 @@
       "qmk-toolbox"
 
       # communication
-      "zoom"
-      "slack"
-      "discord"
       "telegram"
       "krisp"
 
