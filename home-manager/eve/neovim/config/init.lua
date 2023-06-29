@@ -7,16 +7,23 @@ vim.opt.signcolumn = "yes"
 
 vim.opt.expandtab = true
 vim.opt.tabstop = 2
+-- stylua uses tabs
+-- black uses 4 spaces
 vim.api.nvim_exec(
 	[[
   autocmd FileType python setlocal tabstop=4
-  autocmd FileType lua setlocal tabstop=4 noexpandtab
+  autocmd FileType lua setlocal noexpandtab
 ]],
 	false
 )
 
+-- make Tab characters visible
+vim.opt.list = true
+
+-- softtabstop and shiftwidth follow tabstop
 vim.opt.softtabstop = 0
 vim.opt.shiftwidth = 0
+
 vim.opt.shiftround = true
 
 vim.opt.smartindent = true
@@ -38,7 +45,7 @@ vim.opt.ttyfast = true
 vim.opt.hidden = true
 vim.opt.display = "lastline"
 -- vim.opt.cmdheight = 1
-vim.opt.foldlevelstart = 9
+vim.opt.foldenable = false
 vim.opt.scrolloff = 15
 vim.opt.colorcolumn = "80"
 vim.opt.smartcase = true
