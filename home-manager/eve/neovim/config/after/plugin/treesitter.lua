@@ -7,6 +7,13 @@ require("nvim-treesitter.configs").setup({
 	indent = {
 		emable = true,
 	},
+	incremental_selection = {
+		enable = true,
+		keymaps = {
+			node_incremental = "v",
+			node_decremental = "V",
+		},
+	},
 	additional_vim_regex_highlighting = false,
 })
 -- Set folding method to expression
