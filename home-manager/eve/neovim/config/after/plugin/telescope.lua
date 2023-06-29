@@ -18,6 +18,14 @@ require("telescope").setup({
 			require("telescope.themes").get_dropdown({}),
 		},
 	},
+	pickers = {
+		find_files = {
+			theme = "dropdown",
+		},
+		buffers = {
+			theme = "dropdown",
+		},
+	},
 })
 
 require("telescope").load_extension("ui-select")
