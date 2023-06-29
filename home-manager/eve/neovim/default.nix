@@ -49,6 +49,8 @@ in {
         which-key-nvim
 
         lualine-nvim
+        vim-tpipeline
+        vim-tmux-navigator
 
         # vista-vim
 
