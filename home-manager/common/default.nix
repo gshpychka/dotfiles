@@ -1,7 +1,12 @@
-{ config, pkgs, lib, inputs, system, ... }: {
-  imports = [
-    ./zsh.nix
-  ];
+{
+  config,
+  pkgs,
+  lib,
+  inputs,
+  system,
+  ...
+}: {
+  imports = [./zsh.nix];
 
   home = {
     packages = with pkgs; [
@@ -10,14 +15,14 @@
       #_1password # CLI
     ];
 
-    /* sessionPath = [ */
-    /*   "$HOME/go/bin" */
-    /*   "$HOME/.local/bin" */
-    /*   "$HOME/.cargo/bin" */
-    /* ]; */
-    /* sessionVariables = { */
-    /*   VISUAL = "nvim"; */
-    /* }; */
+    # sessionPath = [
+    # "$HOME/go/bin"
+    # "$HOME/.local/bin"
+    # "$HOME/.cargo/bin"
+    # ];
+    # sessionVariables = {
+    # VISUAL = "nvim";
+    # };
   };
 
   programs = {

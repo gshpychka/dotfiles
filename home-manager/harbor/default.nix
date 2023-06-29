@@ -1,6 +1,12 @@
-{ config, pkgs, lib, inputs, system, ... }: {
-  imports = [
-  ];
+{
+  config,
+  pkgs,
+  lib,
+  inputs,
+  system,
+  ...
+}: {
+  imports = [];
 
-  programs = { };
+  programs = {};
 }

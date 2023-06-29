@@ -1,4 +1,11 @@
-{ config, pkgs, lib, inputs, system, ... }: {
+{
+  config,
+  pkgs,
+  lib,
+  inputs,
+  system,
+  ...
+}: {
   imports = [
     ./linkapps.nix
     ./hammerspoon
@@ -15,13 +22,16 @@
       matchBlocks = {
         "everything" = {
           host = "*";
-          extraOptions = { IdentityAgent = ''"~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"''; };
+          extraOptions = {
+            IdentityAgent = ''
+              "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"'';
+          };
         };
         ${config.shared.harborHost} = {
           host = "${config.shared.harborHost}.${config.shared.localDomain}";
           user = config.shared.harborUsername;
           port = config.shared.harborSshPort;
-          extraOptions = { ForwardAgent = "yes"; };
+          extraOptions = {ForwardAgent = "yes";};
         };
       };
     };

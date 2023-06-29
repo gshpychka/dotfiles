@@ -1,4 +1,9 @@
-{ config, pkgs, lib, ... }: {
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}: {
   programs.alacritty = {
     enable = true;
     settings = {
@@ -8,8 +13,14 @@
         dynamic_title = true;
         dynamic_padding = true;
         decorations = "full";
-        dimensions = { lines = 0; columns = 0; };
-        padding = { x = 5; y = 5; };
+        dimensions = {
+          lines = 0;
+          columns = 0;
+        };
+        padding = {
+          x = 5;
+          y = 5;
+        };
       };
 
       scrolling = {
@@ -17,7 +28,7 @@
         multiplier = 3;
       };
 
-      mouse = { hide_when_typing = false; };
+      mouse = {hide_when_typing = false;};
 
       key_bindings = [
         {
@@ -28,13 +39,23 @@
         }
       ];
 
-      font = let fontname = "JetBrainsMono Nerd Font Mono"; in
-        {
-          normal = { family = fontname; style = "Regular"; };
-          bold = { family = fontname; style = "Bold"; };
-          italic = { family = fontname; style = "Italic"; };
-          size = 12;
+      font = let
+        fontname = "JetBrainsMono Nerd Font Mono";
+      in {
+        normal = {
+          family = fontname;
+          style = "Regular";
         };
+        bold = {
+          family = fontname;
+          style = "Bold";
+        };
+        italic = {
+          family = fontname;
+          style = "Italic";
+        };
+        size = 12;
+      };
       cursor.style = "Block";
 
       colors = {

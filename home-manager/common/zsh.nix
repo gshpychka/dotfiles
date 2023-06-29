@@ -1,5 +1,9 @@
-{ config, pkgs, lib, ... }: {
-
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}: {
   programs.starship = {
     enable = true;
     enableNushellIntegration = true;
@@ -81,13 +85,11 @@
     # initExtraBeforeCompInit = ''
     #   eval "$(${.homebrew.brewPrefix}/brew shellenv)"
     # '';
-    /* initExtraBeforeCompInit = '' */
-    /*   eval "$(/opt/homebrew/bin/brew shellenv)" */
-    /* ''; */
+    # initExtraBeforeCompInit = ''
+    # eval "$(/opt/homebrew/bin/brew shellenv)"
+    # '';
 
-    dirHashes = {
-      nix = "$HOME/.nixpkgs";
-    };
+    dirHashes = {nix = "$HOME/.nixpkgs";};
 
     plugins = [
       {

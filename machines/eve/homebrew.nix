@@ -1,4 +1,9 @@
-{ config, pkgs, lib, ... }: {
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}: {
   homebrew = {
     enable = true;
     onActivation = {
@@ -7,13 +12,11 @@
       autoUpdate = true;
       upgrade = true;
     };
-    caskArgs = {
-      no_quarantine = true;
-    };
+    caskArgs = {no_quarantine = true;};
     brews = [
       {
         name = "autoraise";
-        args = [ "with-dexperimental_focus_first" ];
+        args = ["with-dexperimental_focus_first"];
         restart_service = true;
       }
     ];
@@ -54,7 +57,6 @@
     ];
     masApps = {
       "1Password for Safari" = 1569813296;
-
     };
   };
 }
