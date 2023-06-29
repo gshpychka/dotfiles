@@ -6,9 +6,17 @@ vim.opt.relativenumber = true
 vim.opt.signcolumn = "yes"
 
 vim.opt.expandtab = true
-vim.opt.tabstop = 4
-vim.opt.softtabstop = 4
-vim.opt.shiftwidth = 4
+vim.opt.tabstop = 2
+vim.api.nvim_exec(
+	[[
+  autocmd FileType python setlocal tabstop=4
+  autocmd FileType lua setlocal tabstop=4 noexpandtab
+]],
+	false
+)
+
+vim.opt.softtabstop = 0
+vim.opt.shiftwidth = 0
 vim.opt.shiftround = true
 
 vim.opt.smartindent = true
