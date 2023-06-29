@@ -84,6 +84,7 @@ in {
             yaml
           ]))
         luasnip
+        nvim-lightbulb
 
         copilot-lua
         copilot-cmp
@@ -97,6 +98,7 @@ in {
 
         telescope-nvim
         telescope-fzf-native-nvim
+        telescope-ui-select-nvim
       ]
       ++ [
         # flash-nvim

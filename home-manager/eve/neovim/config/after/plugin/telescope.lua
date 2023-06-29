@@ -14,7 +14,11 @@ require("telescope").setup({
 			fuzzy = true,
 			case_mode = "smart_case",
 		},
+		["ui-select"] = {
+			require("telescope.themes").get_dropdown({}),
+		},
 	},
 })
 
+require("telescope").load_extension("ui-select")
 require("telescope").load_extension("fzf")

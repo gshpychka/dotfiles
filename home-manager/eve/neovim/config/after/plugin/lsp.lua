@@ -94,7 +94,11 @@ local on_attach = function(client, bufnr)
 	})
 end
 
--- setup nvim-cmp
+-- lightbulb if code action available
+require("nvim-lightbulb").setup()
+
+-- Completions
+
 local cmp = require("cmp")
 
 cmp.setup({
@@ -112,7 +116,7 @@ cmp.setup({
 	}),
 	sources = cmp.config.sources({
 		{ name = "nvim_lsp", group_index = 2 },
-		{ name = "copilot", group_index = 2 },
+		{ name = "copilot",  group_index = 2 },
 		-- { name = 'vsnip' }, -- For vsnip users.
 		-- { name = 'luasnip' }, -- For luasnip users.
 		-- { name = 'ultisnips' }, -- For ultisnips users.
@@ -123,10 +127,12 @@ cmp.setup({
 cmp.setup.filetype("lua", {
 	sources = cmp.config.sources({
 		{ name = "cmp-nvim-lua", group_index = 2 },
-		{ name = "nvim_lsp", group_index = 2 },
-		{ name = "copilot", group_index = 2 },
+		{ name = "nvim_lsp",     group_index = 2 },
+		{ name = "copilot",      group_index = 2 },
 	}),
 })
+
+-- LSP servers
 
 local capabilities = require("cmp_nvim_lsp").default_capabilities()
 
