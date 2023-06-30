@@ -6,7 +6,7 @@
 }: {
   environment = {
     systemPackages = with pkgs; [
-      nodePackages."@githubnext/github-copilot-cli"
+      # nodePackages."@githubnext/github-copilot-cli"
       yubikey-manager
       zstd
       element-desktop

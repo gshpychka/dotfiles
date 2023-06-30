@@ -7,7 +7,7 @@
   ...
 }: {
   imports = [
-    ./linkapps.nix
+    # ./linkapps.nix
     ./hammerspoon
     ./autoraise
     ./neovim
