@@ -54,6 +54,16 @@
           users.users.${user} = {
             home = "/Users/${user}";
             shell = pkgs.zsh;
+            packages = with pkgs; [
+              # nodePackages."@githubnext/github-copilot-cli"
+              yubikey-manager
+              zstd
+              element-desktop
+              zoom-us
+              slack
+              discord
+              # _1password-gui-beta
+            ];
           };
 
           nix = {
