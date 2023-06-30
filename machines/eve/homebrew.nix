@@ -23,7 +23,7 @@
     casks = [
       # utilities
       #"browserosaurus" # choose browser on each link
-      "hammerspoon"
+      # "hammerspoon"
       "vmware-fusion"
       "balenaetcher"
       "deluge"
