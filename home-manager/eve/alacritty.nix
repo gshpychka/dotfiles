@@ -21,6 +21,7 @@
           x = 5;
           y = 5;
         };
+        option_as_alt = "OnlyLeft";
       };
 
       scrolling = {
@@ -30,32 +31,14 @@
 
       mouse = {hide_when_typing = false;};
 
-      key_bindings =
-        [
-          {
-            # clear terminal
-            key = "L";
-            mods = "Control";
-            chars = "\\x0c";
-          }
-        ]
-        ++
-        # # https://github.com/alacritty/alacritty/issues/93#issuecomment-1364783147
-        (map (key: {
-          inherit key;
-          mods = "Alt";
-          chars = "\\x1b${lib.strings.toLower key}";
-        }) (lib.strings.stringToCharacters "QWERTYUIOPASDFGHJKLZXCVBNM"))
-        ++ (map (key: {
-          inherit key;
-          mods = "Alt|Shift";
-          chars = "\\x1b${key}";
-        }) (lib.strings.stringToCharacters "QWERTYUIOPASDFGHJKLZXCVBNM"))
-        ++ (map (key: {
-          key = "Key${key}";
-          mods = "Alt";
-          chars = "\\x1b${key}";
-        }) (lib.strings.stringToCharacters "0123456789"));
+      key_bindings = [
+        {
+          # clear terminal
+          key = "L";
+          mods = "Control";
+          chars = "\\x0c";
+        }
+      ];
 
       font = let
         fontname = "JetBrainsMono Nerd Font Mono";
