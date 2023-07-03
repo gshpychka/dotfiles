@@ -17,7 +17,23 @@
     ];
   };
 
-  services.nix-daemon.enable = true;
+  services = {
+    nix-daemon.enable = true;
+    yabai = {
+      enable = true;
+      config = let padding = 10; in {
+        layout = "bsp";
+        focus_follows_mouse = "autofocus";
+        mouse_follows_focus = "off";
+        window_placement = "second_child";
+        top_padding = padding;
+        bottom_padding = padding;
+        left_padding = padding;
+        right_padding = padding;
+        window_gap = padding;
+      };
+    };
+  };
 
   programs = {
     zsh = {
@@ -71,7 +87,7 @@
         DisableConsoleAccess = true;
       };
       LaunchServices.LSQuarantine = false;
-      spaces.spans-displays = true;
+      spaces.spans-displays = false;
     };
     keyboard = {
       enableKeyMapping = true;
@@ -87,6 +103,7 @@
     # });
   };
 
-  # using https://github.com/jnooree/pam-watchid instead
-  security.pam.enableSudoTouchIdAuth = false;
+  # using https://github.com/jnooree/pam-watchid as well
+  # because pam_tid.so (below) does not prompt for Watch auth with lid closed
+  security.pam.enableSudoTouchIdAuth = true;
 }
