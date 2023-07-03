@@ -1,8 +1,28 @@
 vim.g.mapleader = " "
-vim.keymap.set("n", "<m-h>", ":TmuxNavigateLeft<cr>", { noremap = true, desc = "Move left with tmux-navigator" })
-vim.keymap.set("n", "<m-j>", ":TmuxNavigateDown<cr>", { noremap = true, desc = "Move down with tmux-navigator" })
-vim.keymap.set("n", "<m-k>", ":TmuxNavigateUp<cr>", { noremap = true, desc = "Move up with tmux-navigator" })
-vim.keymap.set("n", "<m-l>", ":TmuxNavigateRight<cr>", { noremap = true, desc = "Move right with tmux-navigator" })
+vim.keymap.set(
+	"n",
+	"<m-h>",
+	":TmuxNavigateLeft<cr>",
+	{ noremap = true, silent = true, desc = "Move left with tmux-navigator" }
+)
+vim.keymap.set(
+	"n",
+	"<m-j>",
+	":TmuxNavigateDown<cr>",
+	{ noremap = true, silent = true, desc = "Move down with tmux-navigator" }
+)
+vim.keymap.set(
+	"n",
+	"<m-k>",
+	":TmuxNavigateUp<cr>",
+	{ noremap = true, silent = true, desc = "Move up with tmux-navigator" }
+)
+vim.keymap.set(
+	"n",
+	"<m-l>",
+	":TmuxNavigateRight<cr>",
+	{ noremap = true, silent = true, desc = "Move right with tmux-navigator" }
+)
 
 vim.keymap.set("v", "p", '"_dP', { noremap = true, desc = "Paste without yanking" })
 vim.keymap.set({ "n", "v" }, "<leader>y", '"+y', { noremap = true, desc = "Yank into system clipboard" })
