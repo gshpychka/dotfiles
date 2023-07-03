@@ -84,6 +84,7 @@ in {
             typescript
             vim
             yaml
+            wing
           ]))
         luasnip
         nvim-lightbulb
