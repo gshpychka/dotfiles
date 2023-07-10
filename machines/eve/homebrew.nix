@@ -29,7 +29,6 @@
       "deluge"
       "via"
       "qmk-toolbox"
-      "autodesk-fusion360"
 
       # communication
       "telegram"
