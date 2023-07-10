@@ -51,3 +51,9 @@ vim.opt.colorcolumn = "80"
 vim.opt.smartcase = true
 vim.opt.showmode = false
 vim.o.foldenable = false
+
+vim.filetype.add({
+	extension = {
+		w = "wing",
+	},
+})
