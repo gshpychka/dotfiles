@@ -253,7 +253,7 @@ null_ls.setup({
 		null_ls.builtins.code_actions.eslint_d,
 		null_ls.builtins.code_actions.gitsigns,
 		null_ls.builtins.code_actions.statix,
-		null_ls.builtins.diagnostics.eslint_d,
+		-- null_ls.builtins.diagnostics.eslint_d,
 		null_ls.builtins.diagnostics.flake8,
 		null_ls.builtins.diagnostics.jsonlint,
 		-- null_ls.builtins.diagnostics.mypy,
