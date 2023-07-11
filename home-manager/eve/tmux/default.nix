@@ -7,6 +7,7 @@
   programs.tmux = {
     enable = true;
     shortcut = "o";
+    mouse = true;
     baseIndex = 1;
     escapeTime = 0;
     historyLimit = 10000;
