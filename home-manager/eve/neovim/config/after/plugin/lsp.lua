@@ -127,7 +127,7 @@ cmp.setup({
 cmp.setup.filetype("lua", {
 	sources = cmp.config.sources({
 		{ name = "cmp-nvim-lua", group_index = 2 },
-		{ name = "nvim_lsp",     group_index = 2 },
+		{ name = "nvim_lsp", group_index = 2 },
 		-- { name = "copilot",      group_index = 2 },
 	}),
 })
@@ -268,3 +268,12 @@ null_ls.setup({
 	},
 	on_attach = on_attach,
 })
+
+LaunchWing = function()
+	local client_id = vim.lsp.start_client({ cmd = { "wing", "lsp" } })
+	vim.lsp.buf_attach_client(0, client_id)
+end
+
+vim.cmd([[
+	command! -range LaunchWing execute 'lua LaunchWing()'
+]])
