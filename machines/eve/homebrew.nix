@@ -29,6 +29,7 @@
       "deluge"
       "via"
       "qmk-toolbox"
+      "adobe-acrobat-reader"
 
       # communication
       "telegram"
