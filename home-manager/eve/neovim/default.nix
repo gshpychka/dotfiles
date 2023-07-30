@@ -86,6 +86,7 @@ in {
             yaml
             wing
           ]))
+        neogen
         luasnip
         nvim-lightbulb
 
