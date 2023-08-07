@@ -26,7 +26,7 @@
       # "hammerspoon"
       "vmware-fusion"
       "balenaetcher"
-      "deluge"
+      "transmission"
       "via"
       "qmk-toolbox"
       "adobe-acrobat-reader"
@@ -34,7 +34,6 @@
       # communication
       "telegram"
       "krisp"
-
       #"beeper"
 
       "1password"
@@ -42,18 +41,12 @@
       #"visual-studio-code"
       "vlc" # media player
       #"wireshark" # network sniffer
-      #"leapp"
+      "leapp"
+      "slack"
     ];
     taps = [
-      # default
-      "homebrew/bundle"
-      "homebrew/cask"
-      "homebrew/cask-drivers"
-      "homebrew/cask-fonts"
-      "homebrew/core"
       "homebrew/services"
-      # custom
-      "cmacrae/formulae" # spacebar
+      # "cmacrae/formulae" # spacebar
       "Dimentium/homebrew-autoraise" # AutoRaise
     ];
     masApps = {
