@@ -170,6 +170,7 @@ in {
         "thread"
         "androidtv"
         "androidtv_remote"
+        "denonavr"
       ];
       config = {
         http = {
