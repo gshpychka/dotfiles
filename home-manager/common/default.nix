@@ -53,7 +53,7 @@
 
     fzf = {
       enable = true;
-      defaultCommand = "fd --type f --hidden --follow --exclude .git --exclude .vim --exclude .cache --exclude vendor";
+      defaultCommand = "fd --type f --hidden --follow --exclude .git --exclude .vim --exclude .cache --exclude vendor --exclude node_modules";
       defaultOptions = [
         "--border sharp"
         "--inline-info"
