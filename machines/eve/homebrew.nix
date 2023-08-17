@@ -21,7 +21,7 @@
       }
     ];
     casks = [
-      # utilities
+      # -- utilities --
       #"browserosaurus" # choose browser on each link
       # "hammerspoon"
       "vmware-fusion"
@@ -31,18 +31,23 @@
       "qmk-toolbox"
       "adobe-acrobat-reader"
 
-      # communication
+      # -- communication --
       "telegram"
       "krisp"
       #"beeper"
+
+      # -- work --
+      "drata-agent"
+      "lastpass"
+      "leapp"
+      "slack"
+      "docker"
 
       "1password"
       "firefox"
       #"visual-studio-code"
       "vlc" # media player
       #"wireshark" # network sniffer
-      "leapp"
-      "slack"
     ];
     taps = [
       "homebrew/services"
