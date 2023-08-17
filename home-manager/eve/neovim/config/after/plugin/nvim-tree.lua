@@ -5,6 +5,11 @@ require("nvim-tree").setup({
 	renderer = {
 		group_empty = true,
 	},
+	sync_root_with_cwd = true,
+	reload_on_bufenter = true,
+	update_focused_file = {
+		enable = true,
+	},
 	filters = {
 		dotfiles = false,
 	},

@@ -9,6 +9,9 @@ vim.keymap.set("n", "<leader>fr", builtin.lsp_references, { desc = "Telescope LS
 vim.keymap.set("n", "<leader>ts", builtin.treesitter, {})
 
 require("telescope").setup({
+	defaults = {
+		file_ignore_patterns = { "%.lock" },
+	},
 	extensions = {
 		fzf = {
 			fuzzy = true,
@@ -25,6 +28,9 @@ require("telescope").setup({
 		buffers = {
 			theme = "dropdown",
 		},
+		-- live_grep = {
+		-- 	glob_patern = "!*.lock",
+		-- },
 	},
 })
 
