@@ -13,6 +13,7 @@
       # zoom-us
       # slack
       discord
+      _1password
       # _1password-gui-beta
     ];
   };
