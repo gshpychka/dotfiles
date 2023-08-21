@@ -46,6 +46,7 @@ in {
         harpoon
         vim-fugitive
         gitsigns-nvim
+        diffview-nvim
         which-key-nvim
 
         lualine-nvim
