@@ -106,7 +106,7 @@ require("nvim-lightbulb").setup({
 		enabled = true,
 		-- See |updatetime|.
 		-- Set to a negative value to avoid setting the updatetime.
-		updatetime = 200,
+		updatetime = 50,
 		-- See |nvim_create_autocmd|.
 		events = { "CursorHold", "CursorHoldI" },
 		-- See |nvim_create_autocmd| and |autocmd-pattern|.
