@@ -22,7 +22,7 @@
     ];
     casks = [
       # -- utilities --
-      #"browserosaurus" # choose browser on each link
+      "finicky" # choose browser on each link
       # "hammerspoon"
       "vmware-fusion"
       "balenaetcher"
