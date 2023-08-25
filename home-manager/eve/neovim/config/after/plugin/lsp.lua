@@ -70,6 +70,15 @@ local on_attach = function(client, bufnr)
 			end,
 		})
 	end
+
+	if client.server_capabilities.documentFormattingProvider then
+		vim.api.nvim_create_autocmd({ "BufWritePre" }, {
+			buffer = bufnr,
+			callback = function()
+				vim.lsp.buf.format()
+			end,
+		})
+	end
 	-- if client.server_capabilities.signatureHelpProvider then
 	--     vim.api.nvim_create_autocmd({ "CursorHoldI" }, {
 	--         buffer=bufnr,
@@ -93,9 +102,6 @@ local on_attach = function(client, bufnr)
 		signs = true,
 	})
 end
-
--- lightbulb if code action available
-require("nvim-lightbulb").setup()
 
 -- LSP servers
 
@@ -156,12 +162,11 @@ require("lspconfig").pyright.setup({
 require("lspconfig").tsserver.setup({
 	capabilities = capabilities,
 	on_attach = function(client, bufnr)
-		client.server_capabilities.document_formatting = false
-		client.server_capabilities.document_range_formatting = false
-
-		local ts_utils = require("nvim-lsp-ts-utils")
-		ts_utils.setup({})
-		ts_utils.setup_client(client)
+		client.server_capabilities.documentFormattingProvider = false
+		client.server_capabilities.documentRangeFormattingProvider = false
+		-- local ts_utils = require("nvim-lsp-ts-utils")
+		-- ts_utils.setup({})
+		-- ts_utils.setup_client(client)
 
 		-- buf_map(bufnr, "n", "gs", ":TSLspOrganize<CR>")
 		-- buf_map(bufnr, "n", "gi", ":TSLspRenameFile<CR>")
@@ -187,7 +192,7 @@ require("lspconfig").lua_ls.setup({
 			workspace = {
 				-- Make the server aware of Neovim runtime files
 				library = vim.api.nvim_get_runtime_file("", true),
-				checkThirdParty = false,
+				checkThirdParty = true,
 			},
 			-- Do not send telemetry data containing a randomized but unique identifier
 			telemetry = {
@@ -215,14 +220,13 @@ local null_ls = require("null-ls")
 
 null_ls.setup({
 	sources = {
-		null_ls.builtins.code_actions.eslint_d,
+		-- null_ls.builtins.code_actions.eslint_d,
 		null_ls.builtins.code_actions.statix,
-		-- null_ls.builtins.diagnostics.eslint_d,
+		null_ls.builtins.diagnostics.eslint_d,
 		null_ls.builtins.diagnostics.flake8,
 		null_ls.builtins.diagnostics.jsonlint,
 		-- null_ls.builtins.diagnostics.mypy,
-		-- null_ls.builtins.formatting.eslint_d,
-		null_ls.builtins.formatting.prettier,
+		null_ls.builtins.formatting.eslint_d,
 		null_ls.builtins.formatting.fixjson,
 		null_ls.builtins.formatting.black,
 		null_ls.builtins.formatting.autoflake,
