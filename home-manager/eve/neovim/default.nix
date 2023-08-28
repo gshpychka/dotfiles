@@ -1,8 +1,9 @@
 # TODO:
-# - [ ] Configure nvim-tree
-# - [ ] Single statusbar
-# - [ ] Configure statusbar contents
+# - [x] Configure nvim-tree
+# - [x] Single statusline
+# - [X] Configure statusline contents
 # - [ ] Top bar with buffers, tabs, etc
+# - [ ] Window manipulation mappings
 {
   config,
   pkgs,
