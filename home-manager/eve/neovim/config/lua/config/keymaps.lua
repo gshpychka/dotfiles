@@ -35,3 +35,30 @@ vim.keymap.set("n", "<C-u>", "<C-u>zz", { desc = "Move up and keep cursor in the
 
 vim.keymap.set("n", "n", "nzzzv", { desc = "Next result in the middle of the screen" })
 vim.keymap.set("n", "N", "Nzzzv", { desc = "Previous result in the middle of the screen" })
+
+vim.keymap.set("n", "<leader>w", "<C-W>", { noremap = false, desc = "Window commands" })
+
+vim.keymap.set(
+	"n",
+	"<leader><leader>.",
+	":vert resize +10<CR>",
+	{ noremap = true, silent = true, desc = "Increase window width by 10" }
+)
+vim.keymap.set(
+	"n",
+	"<leader><leader>,",
+	":vert resize -10<CR>",
+	{ noremap = true, silent = true, desc = "Dectrase window width by 10" }
+)
+vim.keymap.set(
+	"n",
+	"<leader><leader>>",
+	":resize +10<CR>",
+	{ noremap = true, silent = true, desc = "Increase window height by 10" }
+)
+vim.keymap.set(
+	"n",
+	"<leader><leader><",
+	":resize -10<CR>",
+	{ noremap = true, silent = true, desc = "Decrease window height by 10" }
+)
