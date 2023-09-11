@@ -22,7 +22,9 @@
     nix-daemon.enable = true;
     yabai = {
       enable = true;
-      config = let padding = 10; in {
+      config = let
+        padding = 10;
+      in {
         layout = "bsp";
         focus_follows_mouse = "autofocus";
         mouse_follows_focus = "off";
@@ -33,6 +35,22 @@
         right_padding = padding;
         window_gap = padding;
       };
+    };
+    skhd = {
+      enable = true;
+      skhdConfig = "
+        # Move focus between windows
+        ctrl + alt - h : yabai -m window --focus west
+        ctrl + alt - j : yabai -m window --focus south
+        ctrl + alt - k : yabai -m window --focus north
+        ctrl + alt - l : yabai -m window --focus east
+
+        # Move windows around
+        shift + alt - h : yabai -m window --swap west
+        shift + alt - j : yabai -m window --swap south
+        shift + alt - k : yabai -m window --swap north
+        shift + alt - l : yabai -m window --swap east
+      ";
     };
   };
 
