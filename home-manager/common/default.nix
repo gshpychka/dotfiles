@@ -12,6 +12,7 @@
     packages = with pkgs; [
       ripgrep # fast search
       gh # github cli tool
+      fd
       #_1password # CLI
     ];
 
@@ -51,9 +52,13 @@
       };
     };
 
-    fzf = {
+    fzf = let
+      fdOpts = "--exclude node_modules --exclude .git --exclude .cache";
+    in {
       enable = true;
-      defaultCommand = "fd --type f --hidden --follow --exclude .git --exclude .vim --exclude .cache --exclude vendor --exclude node_modules";
+      defaultCommand = "${pkgs.fd}/bin/fd --type f --hidden --follow " + fdOpts;
+      changeDirWidgetCommand = "${pkgs.fd}/bin/fd --type d " + fdOpts;
+      tmux.enableShellIntegration = true;
       defaultOptions = [
         "--border sharp"
         "--inline-info"
