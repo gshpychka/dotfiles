@@ -211,27 +211,27 @@ require("lspconfig").nil_ls.setup({
 })
 
 local null_ls = require("null-ls")
+local find_eslint_root = function(params)
+	return require("null-ls.utils").root_pattern(
+		-- need to support sub-projects in monorepos
+		".eslintrc.json"
+	)(params.bufname)
+end
 
 null_ls.setup({
 	debug = true,
-	root_dir = require("null-ls.utils").root_pattern(
-		-- need to support sub-projects in monorepos
-		".eslintrc.json",
-		"tsconfig.json",
-		"tsconfig.dev.json",
-		"package.json",
-		"pyproject.toml",
-		"requirements.txt",
-		".git"
-	),
 	sources = {
 		-- null_ls.builtins.code_actions.eslint_d,
 		null_ls.builtins.code_actions.statix,
-		null_ls.builtins.diagnostics.eslint_d,
+		null_ls.builtins.diagnostics.eslint_d.with({
+			cwd = find_eslint_root,
+		}),
 		null_ls.builtins.diagnostics.flake8,
 		null_ls.builtins.diagnostics.jsonlint,
 		-- null_ls.builtins.diagnostics.mypy,
-		null_ls.builtins.formatting.eslint_d,
+		null_ls.builtins.formatting.eslint_d.with({
+			cwd = find_eslint_root,
+		}),
 		null_ls.builtins.formatting.fixjson,
 		null_ls.builtins.formatting.black,
 		null_ls.builtins.formatting.autoflake,
