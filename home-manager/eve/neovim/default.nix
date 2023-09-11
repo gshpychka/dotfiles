@@ -48,7 +48,9 @@ in {
         vim-fugitive
         gitsigns-nvim
         diffview-nvim
+
         which-key-nvim
+        hydra-nvim
 
         lualine-nvim
         vim-tpipeline
