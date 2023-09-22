@@ -94,8 +94,8 @@ in {
         luasnip
         nvim-lightbulb
 
-        # copilot-lua
-        # copilot-cmp
+        copilot-lua
+        copilot-cmp
         nvim-cmp
         cmp-nvim-lsp
         cmp-nvim-lua

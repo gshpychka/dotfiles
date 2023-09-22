@@ -4,6 +4,10 @@ local has_words_before = function()
 	return col ~= 0 and vim.api.nvim_buf_get_lines(0, line - 1, line, true)[1]:sub(col, col):match("%s") == nil
 end
 
+require("copilot").setup({
+	suggestion = { enabled = false },
+	panel = { enabled = false },
+})
 local luasnip = require("luasnip")
 local cmp = require("cmp")
 
@@ -52,8 +56,8 @@ cmp.setup({
 		end, { "i", "s" }),
 	}),
 	sources = cmp.config.sources({
+		{ name = "copilot", group_index = 2 },
 		{ name = "nvim_lsp", group_index = 2 },
-		-- { name = "copilot",  group_index = 2 },
 		-- { name = 'vsnip' }, -- For vsnip users.
 		-- { name = 'luasnip' }, -- For luasnip users.
 		-- { name = 'ultisnips' }, -- For ultisnips users.
@@ -65,7 +69,6 @@ cmp.setup.filetype("lua", {
 	sources = cmp.config.sources({
 		{ name = "cmp-nvim-lua", group_index = 2 },
 		{ name = "nvim_lsp", group_index = 2 },
-		-- { name = "copilot",      group_index = 2 },
+		{ name = "copilot", group_index = 2 },
 	}),
 })
-
