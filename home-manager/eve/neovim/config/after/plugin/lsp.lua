@@ -39,7 +39,7 @@ local on_attach = function(client, bufnr)
 	vim.keymap.set("n", "<leader>rn", function()
 		vim.lsp.buf.rename()
 	end, createOpts("LSP rename"))
-	vim.keymap.set("n", "<leader>ca", function()
+	vim.keymap.set("n", "<leader>cda", function()
 		vim.lsp.buf.code_action()
 	end, createOpts("LSP code action"))
 	vim.keymap.set("n", "<leader>fo", function()
@@ -211,11 +211,20 @@ require("lspconfig").nil_ls.setup({
 })
 
 local null_ls = require("null-ls")
-local find_eslint_root = function(params)
-	return require("null-ls.utils").root_pattern(
-		-- need to support sub-projects in monorepos
-		".eslintrc.json"
-	)(params.bufname)
+local root_patterns = {
+	eslint = ".eslintrc.json",
+	python = "pyproject.toml",
+}
+
+local get_root_finder = function(kind)
+	local pattern = root_patterns[kind]
+	if not pattern then
+		error("Unkown kind: " .. kind)
+	end
+
+	return function(params)
+		return require("null-ls.utils").root_pattern(pattern)(params.bufname)
+	end
 end
 
 null_ls.setup({
@@ -224,16 +233,19 @@ null_ls.setup({
 		-- null_ls.builtins.code_actions.eslint_d,
 		null_ls.builtins.code_actions.statix,
 		null_ls.builtins.diagnostics.eslint_d.with({
-			cwd = find_eslint_root,
+			cwd = get_root_finder("eslint"),
 		}),
 		null_ls.builtins.diagnostics.flake8,
 		null_ls.builtins.diagnostics.jsonlint,
 		-- null_ls.builtins.diagnostics.mypy,
 		null_ls.builtins.formatting.eslint_d.with({
-			cwd = find_eslint_root,
+			cwd = get_root_finder("eslint"),
 		}),
 		null_ls.builtins.formatting.fixjson,
 		null_ls.builtins.formatting.black,
+		-- null_ls.builtins.formatting.black.with({
+		-- 	cwd = get_root_finder("python"),
+		-- }),
 		null_ls.builtins.formatting.autoflake,
 		null_ls.builtins.formatting.isort,
 		null_ls.builtins.formatting.alejandra,
