@@ -61,6 +61,8 @@
             settings = {
               allowed-users = [user];
               experimental-features = ["nix-command" "flakes"];
+              # needed for devenv to enable cachix
+              accept-flake-config = true;
             };
           };
         })
