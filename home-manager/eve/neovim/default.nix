@@ -48,6 +48,7 @@
       inc-rename-nvim
       leap-nvim
       peek-nvim
+      indent-blankline-nvim
 
       nvim-lspconfig
       (nvim-treesitter.withPlugins (p:
