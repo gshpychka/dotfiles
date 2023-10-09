@@ -13,7 +13,6 @@
       ripgrep # fast search
       gh # github cli tool
       fd
-      #_1password # CLI
     ];
 
     # sessionPath = [

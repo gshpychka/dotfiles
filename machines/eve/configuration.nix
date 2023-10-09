@@ -4,20 +4,6 @@
   lib,
   ...
 }: {
-  environment = {
-    systemPackages = with pkgs; [
-      # nodePackages."@githubnext/github-copilot-cli"
-      yubikey-manager
-      zstd
-      # element-desktop
-      # zoom-us
-      # slack
-      discord
-      _1password
-      # _1password-gui-beta
-    ];
-  };
-
   services = {
     nix-daemon.enable = true;
     yabai = {
