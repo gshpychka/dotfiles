@@ -123,6 +123,7 @@
   };
 
   # using https://github.com/jnooree/pam-watchid as well
+  # auth       sufficient     pam_watchid.so "reason=execute a command as root"
   # because pam_tid.so (below) does not prompt for Watch auth with lid closed
   security.pam.enableSudoTouchIdAuth = true;
 }
