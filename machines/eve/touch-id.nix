@@ -1,4 +1,3 @@
-# https://github.com/DylanRJohnston/nixos/blob/362a8253d8b80d09b23b91a9c1e58695b735bd5b/common/nix-darwin/touchID.nix#L19
 {
   config,
   lib,
