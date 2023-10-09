@@ -17,6 +17,14 @@
     ./git.nix
   ];
 
+  home = {
+    packages = with pkgs; [
+      yubikey-manager
+      zstd
+      discord
+      _1password
+    ];
+  };
   programs = {
     ssh = {
       enable = true;
@@ -45,3 +53,4 @@
     };
   };
 }
+
