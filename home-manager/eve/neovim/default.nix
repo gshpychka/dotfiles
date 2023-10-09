@@ -47,7 +47,7 @@
       noice-nvim
       inc-rename-nvim
       leap-nvim
-      peek-nvim
+      # peek-nvim
       indent-blankline-nvim
 
       nvim-lspconfig
