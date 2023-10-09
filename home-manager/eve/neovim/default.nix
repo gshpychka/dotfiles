@@ -47,6 +47,7 @@
       noice-nvim
       inc-rename-nvim
       leap-nvim
+      peek-nvim
 
       nvim-lspconfig
       (nvim-treesitter.withPlugins (p:
