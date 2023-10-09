@@ -13,17 +13,9 @@
       upgrade = true;
     };
     caskArgs = {no_quarantine = true;};
-    brews = [
-      {
-        name = "autoraise";
-        args = ["with-dexperimental_focus_first"];
-        restart_service = true;
-      }
-    ];
     casks = [
       # -- utilities --
       "finicky" # choose browser on each link
-      # "hammerspoon"
       "vmware-fusion"
       "balenaetcher"
       "transmission"
@@ -45,14 +37,11 @@
 
       "1password"
       "firefox"
-      #"visual-studio-code"
       "vlc" # media player
-      #"wireshark" # network sniffer
     ];
     taps = [
       "homebrew/services"
       # "cmacrae/formulae" # spacebar
-      "Dimentium/homebrew-autoraise" # AutoRaise
     ];
     masApps = {
       "1Password for Safari" = 1569813296;

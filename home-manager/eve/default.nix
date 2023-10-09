@@ -8,8 +8,6 @@
 }: {
   imports = [
     # ./linkapps.nix
-    # ./hammerspoon
-    ./autoraise
     ./finicky
     ./neovim
     ./tmux
