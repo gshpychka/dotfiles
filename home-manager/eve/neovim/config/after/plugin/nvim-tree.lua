@@ -1,7 +1,10 @@
 require("nvim-tree").setup({
-	sort_by = "case_sensitive",
 	hijack_netrw = true,
 	hijack_cursor = true,
+	sort_by = "case_sensitive",
+	view = {
+		width = 50,
+	},
 	renderer = {
 		group_empty = true,
 	},
