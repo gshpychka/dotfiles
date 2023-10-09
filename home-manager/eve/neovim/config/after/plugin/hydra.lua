@@ -5,7 +5,7 @@ Hydra({
 	name = "Git",
 	config = {
 		-- buffer = bufnr,
-		color = "pink",
+		color = "red",
 		invoke_on_body = true,
 		hint = {
 			border = "rounded",
@@ -14,8 +14,9 @@ Hydra({
 			vim.cmd("mkview")
 			vim.cmd("silent! %foldopen!")
 			vim.bo.modifiable = false
-			-- gitsigns.toggle_signs(true)
-			gitsigns.toggle_line_blame(true)
+			gitsigns.toggle_signs(true)
+			gitsigns.toggle_numhl(true)
+			gitsigns.toggle_current_line_blame(true)
 			gitsigns.toggle_linehl(true)
 			gitsigns.toggle_deleted(true)
 		end,
@@ -24,8 +25,9 @@ Hydra({
 			vim.cmd("loadview")
 			vim.api.nvim_win_set_cursor(0, cursor_pos)
 			vim.cmd("normal zv")
-			-- gitsigns.toggle_signs(false)
-			gitsigns.toggle_line_blame(false)
+			gitsigns.toggle_signs(false)
+			gitsigns.toggle_numhl(false)
+			gitsigns.toggle_current_line_blame(false)
 			gitsigns.toggle_linehl(false)
 			gitsigns.toggle_deleted(false)
 		end,
@@ -65,7 +67,6 @@ Hydra({
 		{ "R", gitsigns.reset_buffer, { silent = true, desc = "Reset buffer" } },
 		{ "u", gitsigns.undo_stage_hunk, { desc = "Unstage hunk" } },
 		{ "p", gitsigns.preview_hunk, { desc = "Preview hunk" } },
-		{ "d", gitsigns.toggle_deleted, { nowait = true, desc = "Toggle deleted" } },
 		{ "d", gitsigns.diffthis, { nowait = true, desc = "Diff" } },
 		{
 			"B",
