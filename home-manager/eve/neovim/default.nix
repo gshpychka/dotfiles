@@ -100,6 +100,7 @@ in {
 
         copilot-lua
         copilot-cmp
+        lspkind-nvim
         nvim-cmp
         cmp-nvim-lsp
         cmp-nvim-lua
