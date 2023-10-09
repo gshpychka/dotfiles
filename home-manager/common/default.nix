@@ -14,15 +14,6 @@
       gh # github cli tool
       fd
     ];
-
-    # sessionPath = [
-    # "$HOME/go/bin"
-    # "$HOME/.local/bin"
-    # "$HOME/.cargo/bin"
-    # ];
-    # sessionVariables = {
-    # VISUAL = "nvim";
-    # };
   };
 
   programs = {
@@ -51,12 +42,10 @@
       };
     };
 
-    fzf = let
-      fdOpts = "--exclude node_modules --exclude .git --exclude .cache";
-    in {
+    fzf = {
       enable = true;
-      defaultCommand = "${pkgs.fd}/bin/fd --type f --hidden --follow " + fdOpts;
-      changeDirWidgetCommand = "${pkgs.fd}/bin/fd --type d " + fdOpts;
+      fileWidgetCommand = "${pkgs.fd}/bin/fd --type f --strip-cwd-prefix";
+      changeDirWidgetCommand = "${pkgs.fd}/bin/fd --type d --strip-cwd-prefix";
       tmux.enableShellIntegration = true;
       defaultOptions = [
         "--border sharp"

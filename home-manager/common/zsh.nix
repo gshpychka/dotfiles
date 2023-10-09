@@ -32,6 +32,9 @@
       size = 20000;
       share = true;
     };
+    historySubstringSearch = {
+      enable = true;
+    };
 
     initExtra = ''
       bindkey '^l' autosuggest-accept
