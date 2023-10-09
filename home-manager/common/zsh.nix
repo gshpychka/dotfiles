@@ -23,7 +23,6 @@
     enableCompletion = true;
     autocd = true;
     dotDir = ".config/zsh";
-    #defaultKeymap = "viins"; #vicmd or viins
 
     history = {
       expireDuplicatesFirst = true;
@@ -35,15 +34,6 @@
     };
 
     initExtra = ''
-      # fixes starship swallowing newlines
-      # precmd() {
-      #   precmd() {
-      #     echo
-      #   }
-      # }
-
-      #export LD_LIBRARY_PATH=${lib.makeLibraryPath [pkgs.stdenv.cc.cc]}
-
       bindkey '^l' autosuggest-accept
 
       function cd() {
