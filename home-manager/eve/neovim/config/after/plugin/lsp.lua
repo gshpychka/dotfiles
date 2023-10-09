@@ -36,9 +36,7 @@ local on_attach = function(client, bufnr)
 	vim.keymap.set({ "n", "i" }, "<C-s>", function()
 		vim.lsp.buf.signature_help()
 	end, createOpts("Signature help"))
-	vim.keymap.set("n", "<leader>rn", function()
-		vim.lsp.buf.rename()
-	end, createOpts("LSP rename"))
+	vim.keymap.set("n", "<leader>rn", ":IncRename ", createOpts("LSP rename"))
 	vim.keymap.set("n", "<leader>cda", function()
 		vim.lsp.buf.code_action()
 	end, createOpts("LSP code action"))
@@ -254,6 +252,8 @@ null_ls.setup({
 	},
 	on_attach = on_attach,
 })
+
+require("inc_rename").setup()
 
 LaunchWing = function()
 	local client_id = vim.lsp.start_client({ cmd = { "wing", "lsp" } })

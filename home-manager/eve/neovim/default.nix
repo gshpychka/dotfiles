@@ -68,6 +68,10 @@ in {
         neoscroll-nvim
 
         # minimap-vim
+        nui-nvim
+        nvim-notify
+        noice-nvim
+        inc-rename-nvim
 
         nvim-lspconfig
         (nvim-treesitter.withPlugins (p:
