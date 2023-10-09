@@ -37,7 +37,7 @@
       #"beeper"
 
       # -- work --
-      "drata-agent"
+      # "drata-agent"
       "lastpass"
       "leapp"
       "slack"
