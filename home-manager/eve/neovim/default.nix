@@ -9,114 +9,91 @@
   pkgs,
   lib,
   ...
-}: let
-  # flash-nvim = pkgs.vimUtils.buildVimPluginFrom2Nix {
-  #   name = "flash-nvim";
-  #   src = pkgs.fetchFromGitHub {
-  #     owner = "folke";
-  #     repo = "flash.nvim";
-  #     rev = "v1.3.0";
-  #     hash = "sha256-JQIvB3il5UT4P8XTJ3da9uywDwkd4l7rTKGFq43KpEg=";
-  #   };
-  # };
-  eyeliner-nvim = pkgs.vimUtils.buildVimPluginFrom2Nix {
-    name = "eyeliner-nvim";
-    src = pkgs.fetchFromGitHub {
-      owner = "jinh0";
-      repo = "eyeliner.nvim";
-      rev = "fa3a0986cb072fe2ab29ef79e022514d2533f0db";
-      hash = "sha256-W1BoT5sUFWvAAZIHSLtQJ6G8rk2v6Xv5E+drMOy1WBw=";
-    };
-  };
-in {
+}: {
   programs.neovim = {
     enable = true;
     defaultEditor = true;
     vimAlias = true;
     withNodeJs = true;
     withPython3 = true;
-    plugins = with pkgs.vimPlugins;
-      [
-        # vim-sensible
-        # vim-surround
-        comment-nvim
-        vim-signify
-        undotree
-        gruvbox-nvim
-        plenary-nvim
-        harpoon
-        vim-fugitive
-        gitsigns-nvim
-        diffview-nvim
+    plugins = with pkgs.vimPlugins; [
+      # vim-sensible
+      # vim-surround
+      comment-nvim
+      undotree
+      gruvbox-nvim
+      plenary-nvim
+      harpoon
+      vim-fugitive
+      gitsigns-nvim
+      diffview-nvim
 
-        which-key-nvim
-        hydra-nvim
+      which-key-nvim
+      hydra-nvim
 
-        lualine-nvim
-        vim-tpipeline
-        vim-tmux-navigator
+      barbar-nvim
+      lualine-nvim
+      vim-tpipeline
+      vim-tmux-navigator
 
-        # vista-vim
+      # vista-vim
 
-        # vim-tpipeline
+      # vim-tpipeline
 
-        nvim-tree-lua
-        nvim-web-devicons
-        vim-devicons
+      nvim-tree-lua
+      nvim-web-devicons
+      vim-devicons
 
-        # vim-lion
-        neoscroll-nvim
+      # vim-lion
+      neoscroll-nvim
 
-        # minimap-vim
-        nui-nvim
-        nvim-notify
-        noice-nvim
-        inc-rename-nvim
+      # minimap-vim
+      nui-nvim
+      nvim-notify
+      noice-nvim
+      inc-rename-nvim
+      leap-nvim
 
-        nvim-lspconfig
-        (nvim-treesitter.withPlugins (p:
-          with p; [
-            bash
-            comment
-            dockerfile
-            html
-            javascript
-            json
-            lua
-            nix
-            python
-            regex
-            rust
-            sql
-            toml
-            typescript
-            vim
-            yaml
-            wing
-          ]))
-        neogen
-        luasnip
-        nvim-lightbulb
+      nvim-lspconfig
+      (nvim-treesitter.withPlugins (p:
+        with p; [
+          bash
+          comment
+          dockerfile
+          html
+          javascript
+          json
+          lua
+          nix
+          python
+          regex
+          rust
+          sql
+          toml
+          typescript
+          vim
+          yaml
+          wing
+        ]))
+      neogen
+      luasnip
+      nvim-lightbulb
 
-        copilot-lua
-        copilot-cmp
-        lspkind-nvim
-        nvim-cmp
-        cmp-nvim-lsp
-        cmp-nvim-lua
-        cmp-buffer
+      copilot-lua
+      copilot-cmp
+      lspkind-nvim
+      nvim-cmp
+      cmp-nvim-lsp
+      cmp-nvim-lua
+      cmp-buffer
 
-        null-ls-nvim
-        nvim-lsp-ts-utils
+      null-ls-nvim
+      nvim-lsp-ts-utils
 
-        telescope-nvim
-        telescope-fzf-native-nvim
-        telescope-ui-select-nvim
-      ]
-      ++ [
-        # flash-nvim
-        eyeliner-nvim
-      ];
+      telescope-nvim
+      telescope-fzf-native-nvim
+      telescope-ui-select-nvim
+    ];
     extraPackages = with pkgs; [
       # LSP servers
       nodePackages_latest.pyright

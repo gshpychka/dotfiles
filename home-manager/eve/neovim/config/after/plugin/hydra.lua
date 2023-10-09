@@ -60,13 +60,13 @@ Hydra({
 			end,
 			{ expr = true, desc = "prev hunk" },
 		},
-		{ "s", gitsigns.stage_hunk, { silent = true, desc = "Stage hunk" } },
-		{ "S", gitsigns.stage_buffer, { desc = "Stage buffer" } },
-		{ "r", gitsigns.reset_hunk, { silent = true, desc = "Reset hunk" } },
-		{ "R", gitsigns.reset_buffer, { silent = true, desc = "Reset buffer" } },
+		{ "s", gitsigns.stage_hunk,      { silent = true, desc = "Stage hunk" } },
+		{ "S", gitsigns.stage_buffer,    { desc = "Stage buffer" } },
+		{ "r", gitsigns.reset_hunk,      { silent = true, desc = "Reset hunk" } },
+		{ "R", gitsigns.reset_buffer,    { silent = true, desc = "Reset buffer" } },
 		{ "u", gitsigns.undo_stage_hunk, { desc = "Unstage hunk" } },
-		{ "p", gitsigns.preview_hunk, { desc = "Preview hunk" } },
-		{ "d", gitsigns.diffthis, { nowait = true, desc = "Diff" } },
+		{ "p", gitsigns.preview_hunk,    { desc = "Preview hunk" } },
+		{ "d", gitsigns.diffthis,        { nowait = true, desc = "Diff" } },
 		{
 			"B",
 			function()
@@ -76,7 +76,7 @@ Hydra({
 		},
 		{ "/", gitsigns.show, { exit = true, desc = "show base file" } }, -- show the base of the file
 		-- { "<Enter>", "<Cmd>Neogit<CR>", { exit = true, desc = "Neogit" } },
-		{ "q", nil, { exit = true, nowait = true, desc = "exit" } },
+		{ "q", nil,           { exit = true, nowait = true, desc = "exit" } },
 	},
 })
 
@@ -190,19 +190,20 @@ Hydra({
 			end,
 			{ nowait = true, exit = true, desc = "Close current tab" },
 		},
+		-- barbar.nvim keymaps
 		{
 			"n",
 			function()
-				vim.cmd("tabnext")
+				vim.cmd("BufferPrevious")
 			end,
-			{ nowait = true, desc = "Next tab" },
+			{ nowait = true, desc = "Next buffer" },
 		},
 		{
 			"p",
 			function()
-				vim.cmd("tabprev")
+				vim.cmd("BufferNext")
 			end,
-			{ nowait = true, desc = "Previous tab" },
+			{ nowait = true, desc = "Previous buffer" },
 		},
 	},
 })
