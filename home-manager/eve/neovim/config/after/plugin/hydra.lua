@@ -15,7 +15,9 @@ Hydra({
 			vim.cmd("silent! %foldopen!")
 			vim.bo.modifiable = false
 			-- gitsigns.toggle_signs(true)
+			gitsigns.toggle_line_blame(true)
 			gitsigns.toggle_linehl(true)
+			gitsigns.toggle_deleted(true)
 		end,
 		on_exit = function()
 			local cursor_pos = vim.api.nvim_win_get_cursor(0)
@@ -23,6 +25,7 @@ Hydra({
 			vim.api.nvim_win_set_cursor(0, cursor_pos)
 			vim.cmd("normal zv")
 			-- gitsigns.toggle_signs(false)
+			gitsigns.toggle_line_blame(false)
 			gitsigns.toggle_linehl(false)
 			gitsigns.toggle_deleted(false)
 		end,
@@ -61,9 +64,9 @@ Hydra({
 		{ "r", gitsigns.reset_hunk, { silent = true, desc = "Reset hunk" } },
 		{ "R", gitsigns.reset_buffer, { silent = true, desc = "Reset buffer" } },
 		{ "u", gitsigns.undo_stage_hunk, { desc = "Unstage hunk" } },
-		{ "p", gitsigns.preview_hunk, { desc = "preview hunk" } },
-		{ "d", gitsigns.toggle_deleted, { nowait = true, desc = "toggle deleted" } },
-		{ "b", gitsigns.blame_line, { desc = "Git blame" } },
+		{ "p", gitsigns.preview_hunk, { desc = "Preview hunk" } },
+		{ "d", gitsigns.toggle_deleted, { nowait = true, desc = "Toggle deleted" } },
+		{ "d", gitsigns.diffthis, { nowait = true, desc = "Diff" } },
 		{
 			"B",
 			function()
@@ -72,7 +75,7 @@ Hydra({
 			{ desc = "blame show full" },
 		},
 		{ "/", gitsigns.show, { exit = true, desc = "show base file" } }, -- show the base of the file
-		{ "<Enter>", "<Cmd>Neogit<CR>", { exit = true, desc = "Neogit" } },
+		-- { "<Enter>", "<Cmd>Neogit<CR>", { exit = true, desc = "Neogit" } },
 		{ "q", nil, { exit = true, nowait = true, desc = "exit" } },
 	},
 })
