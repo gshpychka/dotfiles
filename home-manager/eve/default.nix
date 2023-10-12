@@ -20,7 +20,6 @@
       yubikey-manager
       zstd
       discord
-      _1password
       pam-reattach
     ];
   };

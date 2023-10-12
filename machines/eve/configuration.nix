@@ -7,6 +7,11 @@
   imports = [
     ./touch-id.nix
   ];
+  environment = {
+    systemPackages = with pkgs; [
+      _1password
+    ];
+  };
   services = {
     nix-daemon.enable = true;
     yabai = {
