@@ -19,6 +19,24 @@
       url = "github:reckenrode/mkalias";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    nix-homebrew.url = "github:zhaofengli-wip/nix-homebrew";
+
+    homebrew-core = {
+      url = "github:homebrew/homebrew-core";
+      flake = false;
+    };
+    homebrew-cask = {
+      url = "github:homebrew/homebrew-cask";
+      flake = false;
+    };
+    homebrew-services = {
+      url = "github:homebrew/homebrew-services";
+      flake = false;
+    };
+    homebrew-bundle = {
+      url = "github:homebrew/homebrew-bundle";
+      flake = false;
+    };
   };
 
   outputs = {
@@ -26,6 +44,11 @@
     nixpkgs,
     darwin,
     home-manager,
+    nix-homebrew,
+    homebrew-core,
+    homebrew-cask,
+    homebrew-services,
+    homebrew-bundle,
     ...
   } @ inputs: let
     shared = import ./machines/harbor/variables.nix;
@@ -78,6 +101,28 @@
               home.file.".hushlogin".text = "";
               home.stateVersion = stateVersion;
             };
+          };
+        }
+        nix-homebrew.darwinModules.nix-homebrew
+        {
+          nix-homebrew = {
+            # Install Homebrew under the default prefix
+            enable = true;
+
+            enableRosetta = true;
+
+            # User owning the Homebrew prefix
+            user = user;
+
+            taps = {
+              "homebrew/homebrew-core" = homebrew-core;
+              "homebrew/homebrew-cask" = homebrew-cask;
+              "homebrew/services" = homebrew-services;
+              "homebrew/bundle" = homebrew-bundle;
+            };
+
+            # Automatically migrate existing Homebrew installations
+            autoMigrate = true;
           };
         }
       ];

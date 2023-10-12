@@ -39,10 +39,6 @@
       "firefox"
       "vlc" # media player
     ];
-    taps = [
-      "homebrew/services"
-      # "cmacrae/formulae" # spacebar
-    ];
     masApps = {
       "1Password for Safari" = 1569813296;
     };
