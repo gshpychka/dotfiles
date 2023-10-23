@@ -439,8 +439,9 @@ in {
             password = "$2y$05$y0ENgc6LYa.yRCgtTG9eneZJTimtnlGV6AaIFNbp71byq/Qtn6Oru";
           }
         ];
-        bind_port = frontendServices.adguard.port;
-        bind_host = "127.0.0.1";
+        http = {
+          address = "127.0.0.1:${frontendServices.adguard.port}";
+        };
         dns = {
           bind_hosts = [machineIpAddress];
           filtering_enabled = true;
