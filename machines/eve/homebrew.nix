@@ -22,6 +22,7 @@
       "via"
       "qmk-toolbox"
       "adobe-acrobat-reader"
+      "philips-hue-sync"
 
       # -- communication --
       "telegram"

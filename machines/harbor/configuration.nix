@@ -440,18 +440,20 @@ in {
           }
         ];
         http = {
-          address = "127.0.0.1:${frontendServices.adguard.port}";
+          address = "127.0.0.1:${toString frontendServices.adguard.port}";
         };
         dns = {
           bind_hosts = [machineIpAddress];
-          filtering_enabled = true;
-          blocked_response_ttl = 60 * 60 * 24;
-          safe_search = {enabled = false;};
+          filtering = {
+            filtering_enabled = true;
+            blocked_response_ttl = 60 * 60 * 24;
+            safe_search = {enabled = false;};
+          };
           ratelimit = 100;
           upstream_dns = [
             "tls://1dot1dot1dot1.cloudflare-dns.com"
             "[/${config.networking.domain}/]127.0.0.1:${
-              builtins.toString dnsmasqPort
+              toString dnsmasqPort
             }"
             "[/wpad.${config.networking.domain}/]#"
             "[/lb._dns-sd._udp.${config.networking.domain}/]#"
