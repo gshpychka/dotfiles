@@ -152,16 +152,6 @@ in {
       enable = true;
       openFirewall = false;
     };
-    deluge = {
-      enable = true;
-      declarative = true;
-      openFirewall = true;
-      config = {
-        download_location = "/mnt/ssd/torrents";
-        allow_remote = true;
-      };
-      authFile = "/var/lib/deluge/auth";
-    };
     home-assistant = {
       enable = true;
       openFirewall = false;
