@@ -22,7 +22,8 @@
       "via"
       "qmk-toolbox"
       "adobe-acrobat-reader"
-      "philips-hue-sync"
+      # "philips-hue-sync"
+      "dropbox"
 
       # -- communication --
       "telegram"
@@ -30,7 +31,7 @@
       #"beeper"
 
       # -- work --
-      # "drata-agent"
+      "drata-agent"
       "lastpass"
       "leapp"
       "slack"
@@ -38,6 +39,7 @@
 
       "1password"
       "firefox"
+      "google-chrome"
       "vlc" # media player
     ];
     masApps = {
