@@ -12,10 +12,21 @@
 in {
   imports = [./hardware-configuration.nix];
 
-  # Use the extlinux boot loader. (NixOS wants to enable GRUB by default)
-  boot.loader.grub.enable = false;
-  # Enables the generation of /boot/extlinux/extlinux.conf
-  boot.loader.generic-extlinux-compatible.enable = true;
+  boot = {
+    initrd = {
+      availableKernelModules = ["xhci_pci" "usbhid" "usb_storage"];
+      # kernelModules = [];
+    };
+    kernelPackages = pkgs.linuxKernel.packages.linux_rpi4;
+    # kernelModules = [];
+    # extraModulePackages = [];
+    # Use the extlinux boot loader. (NixOS wants to enable GRUB by default)
+    loader = {
+      grub.enable = false;
+      # Enables the generation of /boot/extlinux/extlinux.conf
+      generic-extlinux-compatible.enable = true;
+    };
+  };
 
   networking = {
     hostName = config.shared.harborHost;
