@@ -151,8 +151,7 @@ require("lspconfig").pyright.setup({
 	-- }
 })
 
-require("lspconfig").tsserver.setup({
-	capabilities = capabilities,
+require("typescript-tools").setup({
 	on_attach = function(client, bufnr)
 		client.server_capabilities.documentFormattingProvider = false
 		client.server_capabilities.documentRangeFormattingProvider = false
@@ -230,9 +229,9 @@ null_ls.setup({
 	sources = {
 		-- null_ls.builtins.code_actions.eslint_d,
 		null_ls.builtins.code_actions.statix,
-		null_ls.builtins.diagnostics.eslint_d.with({
-			cwd = get_root_finder("eslint"),
-		}),
+		-- null_ls.builtins.diagnostics.eslint_d.with({
+		-- 	cwd = get_root_finder("eslint"),
+		-- }),
 		null_ls.builtins.diagnostics.flake8,
 		null_ls.builtins.diagnostics.jsonlint,
 		-- null_ls.builtins.diagnostics.mypy,

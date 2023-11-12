@@ -89,6 +89,7 @@
       telescope-nvim
       telescope-fzf-native-nvim
       telescope-ui-select-nvim
+      typescript-tools-nvim
     ];
     extraPackages = with pkgs; [
       # LSP servers

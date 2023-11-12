@@ -10,6 +10,10 @@ vim.keymap.set("n", "<leader>ts", builtin.treesitter, {})
 
 require("telescope").setup({
 	defaults = {
+		layout_config = {
+			vertical = { width = 0.85 },
+			horizontal = { width = 0.85 },
+		},
 		file_ignore_patterns = { "%.lock" },
 	},
 	extensions = {
