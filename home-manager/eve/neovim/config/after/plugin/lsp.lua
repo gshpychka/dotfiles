@@ -41,7 +41,7 @@ local on_attach = function(client, bufnr)
 		vim.lsp.buf.code_action()
 	end, createOpts("LSP code action"))
 	vim.keymap.set("n", "<leader>fo", function()
-		vim.lsp.buf.format()
+		vim.lsp.buf.format({ timeout_ms = 5000 })
 	end, createOpts("LSP format"))
 
 	-- Set autocommands conditional on server_capabilities
@@ -67,7 +67,7 @@ local on_attach = function(client, bufnr)
 		vim.api.nvim_create_autocmd({ "BufWritePre" }, {
 			buffer = bufnr,
 			callback = function()
-				vim.lsp.buf.format()
+				vim.lsp.buf.format({ timeout_ms = 2000 })
 			end,
 		})
 	end
@@ -229,9 +229,9 @@ null_ls.setup({
 	sources = {
 		-- null_ls.builtins.code_actions.eslint_d,
 		null_ls.builtins.code_actions.statix,
-		-- null_ls.builtins.diagnostics.eslint_d.with({
-		-- 	cwd = get_root_finder("eslint"),
-		-- }),
+		null_ls.builtins.diagnostics.eslint_d.with({
+			cwd = get_root_finder("eslint"),
+		}),
 		null_ls.builtins.diagnostics.flake8,
 		null_ls.builtins.diagnostics.jsonlint,
 		-- null_ls.builtins.diagnostics.mypy,
@@ -240,10 +240,7 @@ null_ls.setup({
 		}),
 		null_ls.builtins.formatting.fixjson,
 		null_ls.builtins.formatting.black,
-		-- null_ls.builtins.formatting.black.with({
-		-- 	cwd = get_root_finder("python"),
-		-- }),
-		null_ls.builtins.formatting.autoflake,
+		-- null_ls.builtins.formatting.autoflake,
 		null_ls.builtins.formatting.isort,
 		null_ls.builtins.formatting.alejandra,
 		null_ls.builtins.formatting.stylua,
