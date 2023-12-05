@@ -19,11 +19,9 @@
       "vmware-fusion"
       "balenaetcher"
       "transmission"
-      "via"
-      "qmk-toolbox"
       "adobe-acrobat-reader"
-      # "philips-hue-sync"
       "dropbox"
+      "bambu-studio"
 
       # -- communication --
       "telegram"
