@@ -21,6 +21,7 @@
       zstd
       discord
       pam-reattach
+      awscli2
     ];
   };
   programs = {
