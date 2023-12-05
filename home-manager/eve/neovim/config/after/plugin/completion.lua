@@ -9,9 +9,9 @@ require("copilot").setup({
 	panel = { enabled = false },
 })
 require("copilot_cmp").setup()
-local lspkind = require("lspkind")
 vim.api.nvim_set_hl(0, "CmpItemKindCopilot", { fg = "#6CC644" })
 
+local lspkind = require("lspkind")
 local luasnip = require("luasnip")
 local cmp = require("cmp")
 

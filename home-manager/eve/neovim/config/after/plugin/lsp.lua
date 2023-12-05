@@ -104,57 +104,12 @@ require("lspconfig").pyright.setup({
 		on_attach(client, bufnr)
 	end,
 	capabilities = capabilities,
-	-- settings = {
-	--     python = {
-	--         analysis = {
-	--             -- stubPath = "/home/gshpychka/venvs/.typestubs",
-	--             useLibraryCodeForTypes = false,
-	--             diagnosticMode = "openFilesOnly",
-	--             -- autoSearchPaths = false,
-	--             typeCheckingMode = "basic",
-	--             reportMissingTypeStubs = false,
-	--             diagnosticSeverityOverrides = {
-	--                 reportUninitializedInstanceVariable = "warning",
-	--                 reportMissingImports = "error",
-	--                 reportImportCycles = "warning",
-	--                 reportDuplicateImport = "info",
-	--                 reportOverlappingOverload = "warning",
-	--                 reportIncompatibleMethodOverride = "warning",
-	--                 reportIncompatibleVariableOverride = "warning",
-	--                 strictParameterNoneValue = "info",
-	--                 strictListInference = true,
-	--                 strictDictionaryInference = true,
-	--                 strictSetInference = true,
-	--                 reportUnnecessaryCast = "info",
-	--                 reportUnnecessaryComparison = "info",
-	--                 reportUnnecessaryIsInstance = "info",
-	--                 reportUnnecessaryTypeIgnoreComment = "info",
-	--                 reportImplicitStringConcatenation = "warning",
-	--                 reportCallInDefaultInitializer = "error",
-	--                 reportPropertyTypeMismatch = "warning",
-	--                 reportUntypedFunctionDecorator = "info",
-	--                 reportUntypedClassDecorator = "info",
-	--                 reportUntypedBaseClass = "info",
-	--                 reportPrivateUsage = "warning",
-	--                 reportConstantRedefinition = "warning",
-	--                 reportMissingSuperCall = "warning",
-	--                 reportUnknownParameterType = "none",
-	--                 reportUnknownArgumentType = "none",
-	--                 reportUnknownVariableType = "none",
-	--                 reportUnknownMemberType = "none",
-	--                 reportMissingParameterType = "none",
-	--                 reportMissingTypeArgument = "none",
-	--                 reportUnusedVariable = "info",
-	--             }
-	--         }
-	--     }
-	-- }
 })
 
 require("typescript-tools").setup({
 	on_attach = function(client, bufnr)
-		client.server_capabilities.documentFormattingProvider = false
-		client.server_capabilities.documentRangeFormattingProvider = false
+		client.server_capabilities.documentFormattingProvider = nil
+		client.server_capabilities.documentRangeFormattingProvider = nil
 		-- local ts_utils = require("nvim-lsp-ts-utils")
 		-- ts_utils.setup({})
 		-- ts_utils.setup_client(client)
@@ -165,6 +120,7 @@ require("typescript-tools").setup({
 
 		on_attach(client, bufnr)
 	end,
+	capabilities = capabilities,
 })
 
 require("lspconfig").lua_ls.setup({
@@ -200,18 +156,19 @@ require("lspconfig").nil_ls.setup({
 		["nil"] = {
 			nix = {
 				flake = {
-					autoEvalInputs = true,
+					autoEvalInputs = false,
 				},
 			},
 		},
 	},
 })
 
-local null_ls = require("null-ls")
 local root_patterns = {
 	eslint = ".eslintrc.json",
 	python = "pyproject.toml",
 }
+
+local null_ls_utils = require("null-ls.utils")
 
 local get_root_finder = function(kind)
 	local pattern = root_patterns[kind]
@@ -220,10 +177,11 @@ local get_root_finder = function(kind)
 	end
 
 	return function(params)
-		return require("null-ls.utils").root_pattern(pattern)(params.bufname)
+		return null_ls_utils.root_pattern(pattern)(params.bufname)
 	end
 end
 
+local null_ls = require("null-ls")
 null_ls.setup({
 	debug = true,
 	sources = {
@@ -239,9 +197,9 @@ null_ls.setup({
 			cwd = get_root_finder("eslint"),
 		}),
 		null_ls.builtins.formatting.fixjson,
-		null_ls.builtins.formatting.black,
-		-- null_ls.builtins.formatting.autoflake,
+		null_ls.builtins.formatting.autopep8,
 		null_ls.builtins.formatting.isort,
+		null_ls.builtins.formatting.black,
 		null_ls.builtins.formatting.alejandra,
 		null_ls.builtins.formatting.stylua,
 		null_ls.builtins.formatting.yamlfmt,
