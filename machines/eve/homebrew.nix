@@ -21,7 +21,10 @@
       "transmission"
       "adobe-acrobat-reader"
       "dropbox"
+
+      # -- 3d printing
       "bambu-studio"
+      "orcaslicer"
 
       # -- communication --
       "telegram"
@@ -38,7 +41,7 @@
       "1password"
       "firefox"
       "google-chrome"
-      "vlc" # media player
+      "vlc"
     ];
     masApps = {
       "1Password for Safari" = 1569813296;
