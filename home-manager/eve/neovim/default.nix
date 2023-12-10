@@ -17,7 +17,6 @@
       undotree
       gruvbox-nvim
       plenary-nvim
-      harpoon
       vim-fugitive
       gitsigns-nvim
       diffview-nvim
