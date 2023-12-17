@@ -81,6 +81,10 @@ in {
         subdomain = "adguard";
         port = 2999;
       };
+      deluge = {
+        subdomain = "deluge";
+        port = 8112;
+      };
     };
   in {
     # argononed fails to start
@@ -469,10 +473,9 @@ in {
     deluge = {
       enable = true;
       declarative = true;
-      authFile = "/run/keys/deluge-auth";
+      authFile = /run/keys/deluge_auth;
       web = {
         enable = true;
-        openFirewall = true;
       };
       config = {
         daemon_port = 58846;
@@ -482,14 +485,17 @@ in {
         torrentfiles_location = "/mnt/torrents";
         move_completed = true;
         move_completed_path = "/mnt/media";
+        max_upload_speed = 0;
+        stop_seed_at_ratio = true;
+        stop_seed_ratio = 0;
+        new_release_check = false;
       };
-      openFirewall = true;
     };
   };
 
   # Open ports in the firewall.
-  networking.firewall.allowedTCPPorts = [80 58846];
-  networking.firewall.allowedUDPPorts = [53 67 58846];
+  networking.firewall.allowedTCPPorts = [80];
+  networking.firewall.allowedUDPPorts = [53 67];
 
   system.stateVersion = "22.11";
 }
