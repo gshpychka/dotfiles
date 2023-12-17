@@ -470,6 +470,10 @@ in {
       enable = true;
       declarative = true;
       authFile = "/run/keys/deluge-auth";
+      web = {
+        enable = true;
+        openFirewall = true;
+      };
       config = {
         daemon_port = 58846;
         allow_remote = true;
