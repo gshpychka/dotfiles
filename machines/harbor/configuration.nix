@@ -479,17 +479,22 @@ in {
         enable = true;
       };
       config = {
-        daemon_port = 58846;
-        allow_remote = false;
+        # required for webui
+        allow_remote = true;
         pre_allocate_storage = true;
+        enabled_plugins = ["autoadd"];
         download_location = "/mnt/torrents";
         torrentfiles_location = "/mnt/torrents";
         move_completed = true;
         move_completed_path = "/mnt/media";
         max_upload_speed = 0;
         stop_seed_at_ratio = true;
+        remove_seed_at_ratio = true;
         stop_seed_ratio = 0;
         new_release_check = false;
+        max_active_limit = 10;
+        max_active_downloading = 10;
+        max_active_seeding = 0;
       };
     };
   };
