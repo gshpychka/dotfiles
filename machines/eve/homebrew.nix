@@ -37,6 +37,7 @@
       "leapp"
       "slack"
       "docker"
+      "visual-studio-code"
 
       "1password"
       "firefox"
