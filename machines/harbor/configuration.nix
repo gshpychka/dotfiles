@@ -466,11 +466,26 @@ in {
         clients = {runtime_sources = {hosts = false;};};
       };
     };
+    deluge = {
+      enable = true;
+      declarative = true;
+      authFile = "/run/keys/deluge-auth";
+      config = {
+        daemon_port = 58846;
+        allow_remote = true;
+        pre_allocate_storage = true;
+        download_location = "/mnt/torrents";
+        torrentfiles_location = "/mnt/torrents";
+        move_completed = true;
+        move_completed_path = "/mnt/media";
+      };
+      openFirewall = true;
+    };
   };
 
   # Open ports in the firewall.
-  networking.firewall.allowedTCPPorts = [80];
-  networking.firewall.allowedUDPPorts = [53 67];
+  networking.firewall.allowedTCPPorts = [80 58846];
+  networking.firewall.allowedUDPPorts = [53 67 58846];
 
   system.stateVersion = "22.11";
 }
