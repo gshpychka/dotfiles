@@ -473,13 +473,14 @@ in {
     deluge = {
       enable = true;
       declarative = true;
-      authFile = /run/keys/deluge_auth;
+      # we don't allow remote connections anyway, password doesn't need to be secure
+      authFile = builtins.toFile "auth" "localclient:deluge:10\n";
       web = {
         enable = true;
       };
       config = {
         daemon_port = 58846;
-        allow_remote = true;
+        allow_remote = false;
         pre_allocate_storage = true;
         download_location = "/mnt/torrents";
         torrentfiles_location = "/mnt/torrents";
