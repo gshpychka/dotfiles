@@ -77,10 +77,6 @@ in {
         subdomain = "hass";
         port = 8123;
       };
-      plex = {
-        subdomain = "plex";
-        port = 32400;
-      };
       adguard = {
         subdomain = "adguard";
         port = 2999;
@@ -150,7 +146,7 @@ in {
     };
     plex = {
       enable = true;
-      openFirewall = false;
+      openFirewall = true;
     };
     home-assistant = {
       enable = true;
