@@ -36,6 +36,11 @@
       enable = true;
     };
 
+    shellAliases = {
+      # cd to the root of the git repo
+      cdr = "cd $(git rev-parse --show-toplevel)";
+    };
+
     initExtra = ''
       bindkey '^l' autosuggest-accept
 
@@ -48,16 +53,6 @@
         darwin-rebuild switch --flake ~/.nixpkgs
       }
     '';
-
-    # TODO: figure out how to access
-    # initExtraBeforeCompInit = ''
-    #   eval "$(${.homebrew.brewPrefix}/brew shellenv)"
-    # '';
-    # initExtraBeforeCompInit = ''
-    # eval "$(/opt/homebrew/bin/brew shellenv)"
-    # '';
-
-    dirHashes = {nix = "$HOME/.nixpkgs";};
 
     plugins = [
       {
