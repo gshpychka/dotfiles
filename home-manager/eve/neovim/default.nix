@@ -107,7 +107,6 @@
       python311Packages.flake8
       black
       isort
-      statix
       alejandra
       stylua
 

@@ -186,7 +186,6 @@ null_ls.setup({
 	debug = true,
 	sources = {
 		-- null_ls.builtins.code_actions.eslint_d,
-		null_ls.builtins.code_actions.statix,
 		null_ls.builtins.diagnostics.eslint_d.with({
 			cwd = get_root_finder("eslint"),
 		}),
