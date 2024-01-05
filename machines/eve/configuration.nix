@@ -29,6 +29,11 @@
         right_padding = padding;
         window_gap = padding;
       };
+      extraConfig = "
+        yabai -m rule --add app='System Preferences' manage=off
+        yabai -m rule --add app='Krisp' manage=off
+        yabai -m rule --add app='Leapp' manage=off
+      ";
     };
     skhd = {
       enable = true;
@@ -116,6 +121,8 @@
     #   paths = config.environment.systemPackages ++ config.home-manager.users.gshpychka.home.packages;
     #   pathsToLink = "/Applications";
     # });
+
+    # https://github.com/zhaofengli/nix-homebrew/issues/3#issuecomment-1622240992
     activationScripts = {
       extraUserActivation.text = lib.mkOrder 1501 (lib.concatStringsSep "\n" (lib.mapAttrsToList (prefix: d:
         if d.enable
