@@ -80,7 +80,6 @@
           };
 
           nix = {
-            package = pkgs.nixVersions.nix_2_15;
             settings = {
               allowed-users = [user];
               trusted-users = ["root" user];
