@@ -1,7 +1,6 @@
 module.exports = {
   defaultBrowser: ({ urlString }) => ({
-    name: "Firefox",
-    args: ["-P", "personal", urlString],
+    name: "Chrome",
   }), 
   options: {
     checkForUpdate: false
@@ -25,12 +24,10 @@ module.exports = {
             targetHostName.toLowerCase()
           )
         );
-        finicky.log('Opening in work profile');
         return basedOnOpener || basedOnUrl;
       },
       browser: ({ urlString }) => ({
         name: "Firefox",
-        args: ["-P", "work", urlString],
       }),
     },
   ]
