@@ -116,6 +116,16 @@
     #   paths = config.environment.systemPackages ++ config.home-manager.users.gshpychka.home.packages;
     #   pathsToLink = "/Applications";
     # });
+    activationScripts = {
+      extraUserActivation.text = lib.mkOrder 1501 (lib.concatStringsSep "\n" (lib.mapAttrsToList (prefix: d:
+        if d.enable
+        then ''
+          sudo chown -R ${config.nix-homebrew.user} ${prefix}/bin
+          sudo chgrp -R ${config.nix-homebrew.group} ${prefix}/bin
+        ''
+        else "")
+      config.nix-homebrew.prefixes));
+    };
   };
 
   # using https://github.com/jnooree/pam-watchid as well

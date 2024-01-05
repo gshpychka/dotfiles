@@ -109,7 +109,7 @@
             # Install Homebrew under the default prefix
             enable = true;
 
-            enableRosetta = true;
+            enableRosetta = false;
 
             # User owning the Homebrew prefix
             user = user;
@@ -117,12 +117,10 @@
             taps = {
               "homebrew/homebrew-core" = homebrew-core;
               "homebrew/homebrew-cask" = homebrew-cask;
-              "homebrew/services" = homebrew-services;
-              "homebrew/bundle" = homebrew-bundle;
+              "homebrew/homebrew-services" = homebrew-services;
+              "homebrew/homebrew-bundle" = homebrew-bundle;
             };
-
-            # Automatically migrate existing Homebrew installations
-            autoMigrate = true;
+            mutableTaps = false;
           };
         }
       ];

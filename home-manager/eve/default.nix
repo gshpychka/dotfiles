@@ -19,7 +19,6 @@
     packages = with pkgs; [
       yubikey-manager
       zstd
-      discord
       pam-reattach
       awscli2
     ];
