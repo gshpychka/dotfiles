@@ -117,8 +117,7 @@
     #   name = "applications";
     #   # link home-manager apps into /Applications instead of ~/Applications
     #   # fix from https://github.com/LnL7/nix-darwin/issues/139#issuecomment-663117229
-    #   # TODO: parametrize the username
-    #   paths = config.environment.systemPackages ++ config.home-manager.users.gshpychka.home.packages;
+    #   paths = config.environment.systemPackages ++ config.home-manager.users.${config.user}.home.packages;
     #   pathsToLink = "/Applications";
     # });
 
