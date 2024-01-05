@@ -34,6 +34,7 @@
       "balenaetcher"
       "adobe-acrobat-reader"
       "dropbox"
+      "google-drive"
 
       # -- 3d printing
       "bambu-studio"

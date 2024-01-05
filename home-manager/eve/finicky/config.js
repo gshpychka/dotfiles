@@ -1,6 +1,6 @@
 module.exports = {
   defaultBrowser: ({ urlString }) => ({
-    name: "Chrome",
+    name: "Google Chrome",
   }), 
   options: {
     checkForUpdate: false
