@@ -6,10 +6,16 @@
 }: {
   homebrew = {
     enable = true;
+    taps = builtins.attrNames config.nix-homebrew.taps;
+    global = {
+      # nix-homebrew is handling homebrew updates
+      autoUpdate = false;
+    };
     onActivation = {
       # "zap" removes manually installed brews and casks
       cleanup = "zap";
-      autoUpdate = true;
+      # nix-homebrew is handling homebrew updates
+      autoUpdate = false;
       upgrade = true;
     };
     caskArgs = {no_quarantine = true;};
