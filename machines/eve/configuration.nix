@@ -86,10 +86,6 @@
         "com.apple.mouse.tapBehavior" = 1;
       };
 
-      # CustomUserPreferences = {
-      #   # TODO: link all hammerspoon stuff together
-      #   "org.hammerspoon.Hammerspoon".MJConfigFile = "~/.config/hammerspoon.lua";
-      # };
       dock = {
         autohide = true;
         autohide-delay = 0.1;
