@@ -83,9 +83,18 @@
             package = pkgs.nixVersions.nix_2_15;
             settings = {
               allowed-users = [user];
+              trusted-users = ["root" user];
               experimental-features = ["nix-command" "flakes"];
+              auto-optimise-store = true;
               # needed for devenv to enable cachix
               accept-flake-config = true;
+            };
+            gc = {
+              automatic = true;
+              interval = {
+                Hour = 12;
+              };
+              options = "--delete-old";
             };
           };
         })
