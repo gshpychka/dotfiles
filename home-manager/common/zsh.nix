@@ -23,6 +23,7 @@
     enableCompletion = true;
     autocd = true;
     dotDir = ".config/zsh";
+    defaultKeymap = "viins";
 
     history = {
       expireDuplicatesFirst = true;
