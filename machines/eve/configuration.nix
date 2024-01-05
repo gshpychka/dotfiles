@@ -29,13 +29,13 @@
         right_padding = padding;
         window_gap = padding;
       };
-      extraConfig = "
+      extraConfig = ''
         yabai -m rule --add app='System Settings' manage=off
         yabai -m rule --add app='krisp' manage=off
         yabai -m rule --add app='Leapp' manage=off
         # Make non-resizable windows floating
-        yabai -m signal --add event=window_created action='yabai -m query --windows --window $YABAI_WINDOW_ID | jq -er \".\\\"can-resize\\\" or .\\\"is-floating\\\"\" || yabai -m window $YABAI_WINDOW_ID --toggle float'
-      ";
+        yabai -m signal --add event=window_created action='yabai -m query --windows --window $YABAI_WINDOW_ID | ${pkgs.jq}/bin/jq -er ".\"can-resize\" or .\"is-floating\"" || yabai -m window $YABAI_WINDOW_ID --toggle float'
+      '';
     };
     skhd = {
       enable = true;
