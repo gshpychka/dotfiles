@@ -16,7 +16,7 @@
     casks = [
       # -- essentials --
       "1password"
-      "chromium"
+      "google-chrome"
       "firefox"
       "raycast"
       "vlc"
