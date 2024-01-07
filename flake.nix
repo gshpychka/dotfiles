@@ -143,12 +143,16 @@
         shared
         ./machines/harbor/configuration.nix
         ({pkgs, ...}: {
-          nixpkgs.config = nixpkgsConfig;
+          nixpkgs.config =
+            {
+              permittedInseurePackages = ["openssl-1.1.1w"];
+            }
+            // nixpkgsConfig;
           nixpkgs.overlays = overlays;
           nix = {
-            package = pkgs.nixVersions.nix_2_15;
             settings = {
               allowed-users = ["pi"];
+              trusted-users = ["root" "pi"];
               experimental-features = ["nix-command" "flakes"];
               accept-flake-config = true;
             };
