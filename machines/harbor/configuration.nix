@@ -65,8 +65,8 @@ in {
         ];
         initialHashedPassword = "";
       };
-      ${config.system.services.plex.user}.extraGroups = [mediaGroup];
-      ${config.system.services.deluge.user}.extraGroups = [mediaGroup];
+      ${config.services.plex.user}.extraGroups = [mediaGroup];
+      ${config.services.deluge.user}.extraGroups = [mediaGroup];
     };
   };
 
