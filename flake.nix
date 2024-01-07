@@ -145,7 +145,7 @@
         ({pkgs, ...}: {
           nixpkgs.config =
             {
-              permittedInseurePackages = ["openssl-1.1.1w"];
+              permittedInsecurePackages = ["openssl-1.1.1w"];
             }
             // nixpkgsConfig;
           nixpkgs.overlays = overlays;
