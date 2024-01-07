@@ -9,8 +9,10 @@
   routerIpAddress = "192.168.1.1";
   dnsmasqPort = 5353;
 
-  party_light_address = "192.168.1.35";
-  p1s_address = "192.168.1.159";
+  partyLightIpAddress = "192.168.1.35";
+  p1sIpAddress = "192.168.1.159";
+  hueIpAddress = "192.168.1.131";
+  camIpAddress = "192.168.1.146";
   mediaGroup = "media";
 in {
   imports = [./hardware-configuration.nix];
@@ -135,8 +137,10 @@ in {
           "option:dns-server,${machineIpAddress}"
         ];
         dhcp-host = [
-          "00:17:88:A4:FF:6B,hue,192.168.1.131"
-          "5C:E5:0C:AD:6A:7B,party-light,${party_light_address}"
+          "00:17:88:A4:FF:6B,hue,${hueIpAddress}"
+          "04:17:B6:4B:FC:F7,cam,${camIpAddress}"
+          "7C:87:CE:9F:30:E0,p1s,${p1sIpAddress}"
+          "5C:E5:0C:AD:6A:7B,party-light,${partyLightIpAddress}"
         ];
       };
     };
@@ -205,7 +209,7 @@ in {
         ];
         yeelight = {
           devices = {
-            ${party_light_address} = {
+            ${partyLightIpAddress} = {
               name = "Party light";
               model = "color";
             };
@@ -491,9 +495,10 @@ in {
       authFile = builtins.toFile "auth" "localclient:deluge:10\n";
       web = {
         enable = true;
+        port = frontendServices.deluge.port;
       };
       config = {
-        # required for webui
+        # required for webui, only from localhost due to firewall
         allow_remote = true;
         pre_allocate_storage = true;
         enabled_plugins = ["autoadd"];
