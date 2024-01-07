@@ -178,9 +178,10 @@ in {
         "ukraine_alarm"
         "zha"
         "upnp"
-        "thread"
         "androidtv"
         "androidtv_remote"
+        "samsungtv"
+        "smartthings"
       ];
       config = {
         http = {
