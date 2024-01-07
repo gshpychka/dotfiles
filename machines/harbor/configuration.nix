@@ -1,6 +1,7 @@
 {
   config,
   pkgs,
+  lib,
   ...
 }: let
   machineIpAddress = "192.168.1.2";
@@ -9,6 +10,7 @@
   dnsmasqPort = 5353;
 
   party_light_address = "192.168.1.35";
+  p1s_address = "192.168.1.159";
 in {
   imports = [./hardware-configuration.nix];
 
@@ -497,6 +499,11 @@ in {
         max_active_seeding = 0;
       };
     };
+  };
+  system.activationScripts = {
+    mediaAccess.text = lib.mkOrder 1501 ''
+      sudo chmod -R 777 /mnt/media
+    '';
   };
 
   # Open ports in the firewall.
