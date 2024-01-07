@@ -50,16 +50,26 @@ in {
 
   hardware = {bluetooth.enable = true;};
 
-  users.users.${config.shared.harborUsername} = {
-    shell = pkgs.zsh;
-    isNormalUser = true;
-    extraGroups = ["wheel"]; # Enable ‘sudo’ for the user.
-    packages = with pkgs; [neovim git];
-    openssh.authorizedKeys.keys = [
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIB737o9Ltm1K3w9XX9SBHNW1JT4NpCPP5qg9R+SB18dG"
-    ];
-    initialHashedPassword = "";
+  users = let
+    mediaGroup = "media";
+  in {
+    groups.${mediaGroup} = {};
+    users = {
+      ${config.shared.harborUsername} = {
+        shell = pkgs.zsh;
+        isNormalUser = true;
+        extraGroups = ["wheel" mediaGroup];
+        packages = with pkgs; [neovim git];
+        openssh.authorizedKeys.keys = [
+          "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIB737o9Ltm1K3w9XX9SBHNW1JT4NpCPP5qg9R+SB18dG"
+        ];
+        initialHashedPassword = "";
+      };
+      ${config.system.services.plex.user}.extraGroups = [mediaGroup];
+      ${config.system.services.deluge.user}.extraGroups = [mediaGroup];
+    };
   };
+
   programs.zsh = {
     enable = true;
     enableCompletion = false;
@@ -499,11 +509,6 @@ in {
         max_active_seeding = 0;
       };
     };
-  };
-  system.activationScripts = {
-    mediaAccess.text = lib.mkOrder 1501 ''
-      sudo chmod -R 777 /mnt/media
-    '';
   };
 
   # Open ports in the firewall.
