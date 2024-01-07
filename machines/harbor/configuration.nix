@@ -11,6 +11,7 @@
 
   party_light_address = "192.168.1.35";
   p1s_address = "192.168.1.159";
+  mediaGroup = "media";
 in {
   imports = [./hardware-configuration.nix];
 
@@ -50,9 +51,7 @@ in {
 
   hardware = {bluetooth.enable = true;};
 
-  users = let
-    mediaGroup = "media";
-  in {
+  users = {
     groups.${mediaGroup} = {};
     users = {
       ${config.shared.harborUsername} = {
@@ -65,8 +64,6 @@ in {
         ];
         initialHashedPassword = "";
       };
-      ${config.services.plex.user}.extraGroups = [mediaGroup];
-      ${config.services.deluge.user}.extraGroups = [mediaGroup];
     };
   };
 
@@ -163,6 +160,7 @@ in {
     plex = {
       enable = true;
       openFirewall = true;
+      group = mediaGroup;
     };
     home-assistant = {
       enable = true;
@@ -485,6 +483,7 @@ in {
     deluge = {
       enable = true;
       declarative = true;
+      group = mediaGroup;
       # we don't allow remote connections anyway, password doesn't need to be secure
       authFile = builtins.toFile "auth" "localclient:deluge:10\n";
       web = {
