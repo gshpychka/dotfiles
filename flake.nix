@@ -56,7 +56,7 @@
       allowUnfree = true;
       allowUnsupportedSystem = false;
     };
-    overlays = [];
+    overlays = with inputs; [];
     stateVersion = "22.11";
     user = "gshpychka";
   in {
@@ -151,8 +151,8 @@
           nixpkgs.overlays = overlays;
           nix = {
             settings = {
-              allowed-users = [shared.harborUsername];
-              trusted-users = ["root" shared.harborUsername];
+              allowed-users = ["pi"];
+              trusted-users = ["root" "pi"];
               experimental-features = ["nix-command" "flakes"];
               accept-flake-config = true;
             };
@@ -160,7 +160,7 @@
         })
         home-manager.nixosModules.home-manager
         {
-          home-manager.users.${shared.harborUsername} = {...}: {
+          home-manager.users.pi = {...}: {
             imports = [./home-manager/common ./home-manager/harbor];
             home.stateVersion = stateVersion;
           };
