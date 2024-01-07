@@ -165,23 +165,25 @@ in {
     home-assistant = {
       enable = true;
       openFirewall = false;
-      extraPackages = python3Packages: with python3Packages; [aiohomekit];
+      extraPackages = python3Packages: with python3Packages; [aiohomekit python-otbr-api];
       extraComponents = [
         "adguard"
+        "plex"
+        "asuswrt"
+        "deluge"
+        "ukraine_alarm"
         "xiaomi_miio"
         "xiaomi_aqara"
-        "hue"
+        "smartthings"
         "homekit"
+        "hue"
         "apple_tv"
-        "plex"
         "cast"
-        "ukraine_alarm"
-        "zha"
-        "upnp"
         "androidtv"
         "androidtv_remote"
         "samsungtv"
-        "smartthings"
+        "xbox"
+        "zha"
       ];
       config = {
         http = {
