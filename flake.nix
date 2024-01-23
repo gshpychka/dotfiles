@@ -19,8 +19,11 @@
       url = "github:reckenrode/mkalias";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    nix-homebrew.url = "github:gshpychka/nix-homebrew";
-
+    nix-homebrew = {
+      url = "github:zhaofengli/nix-homebrew";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.nix-darwin.follows = "darwin";
+    };
     homebrew-core = {
       url = "github:homebrew/homebrew-core";
       flake = false;
