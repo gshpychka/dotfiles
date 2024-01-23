@@ -31,14 +31,7 @@
 
       mouse = {hide_when_typing = false;};
 
-      key_bindings = [
-        {
-          # clear terminal
-          key = "L";
-          mods = "Control";
-          chars = "\\x0c";
-        }
-      ];
+      keyboard.bindings = [];
 
       font = let
         fontname = "JetBrainsMono Nerd Font Mono";
