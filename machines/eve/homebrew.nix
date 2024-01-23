@@ -23,10 +23,8 @@
       # -- essentials --
       "1password"
       "google-chrome"
-      "firefox"
       "raycast"
       "vlc"
-      "krisp"
 
       # -- utilities --
       "finicky" # choose browser on each link
@@ -48,6 +46,8 @@
       #"beeper"
 
       # -- work --
+      "firefox"
+      "krisp"
       "drata-agent"
       "lastpass"
       "leapp"
