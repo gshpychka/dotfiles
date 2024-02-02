@@ -48,8 +48,6 @@
       # -- work --
       "firefox"
       "krisp"
-      "drata-agent"
-      "lastpass"
       "leapp"
       "slack"
       "docker"
