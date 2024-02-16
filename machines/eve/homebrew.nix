@@ -29,7 +29,6 @@
       # -- utilities --
       "finicky" # choose browser on each link
       "vmware-fusion"
-      "balenaetcher"
       "adobe-acrobat-reader"
       "dropbox"
       "google-drive"
