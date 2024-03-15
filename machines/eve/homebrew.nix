@@ -27,6 +27,7 @@
       "vlc"
 
       # -- utilities --
+      "surfshark"
       "finicky" # choose browser on each link
       "vmware-fusion"
       "adobe-acrobat-reader"
