@@ -67,6 +67,8 @@
           vim
           yaml
           wing
+          markdown
+          markdown_inline
         ]))
       neogen
       luasnip
