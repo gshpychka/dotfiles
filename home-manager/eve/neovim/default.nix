@@ -26,12 +26,9 @@
 
       barbar-nvim
       lualine-nvim
-      vim-tpipeline
       vim-tmux-navigator
 
       # vista-vim
-
-      # vim-tpipeline
 
       nvim-tree-lua
       nvim-web-devicons
