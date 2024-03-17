@@ -30,6 +30,8 @@
       lualine-nvim
       vim-tmux-navigator
 
+      nvim-bqf
+
       # vista-vim
 
       nvim-tree-lua
@@ -103,6 +105,7 @@
       nodePackages_latest.prettier
       nodePackages_latest.eslint_d
       nodePackages_latest.jsonlint
+      nodePackages_latest.fixjson
       yamlfmt
       autoflake
       python311Packages.autopep8
