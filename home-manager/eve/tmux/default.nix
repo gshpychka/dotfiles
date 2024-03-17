@@ -19,14 +19,6 @@
         plugin = tilish;
         extraConfig = "set -g @tilish-navigator 'on'";
       }
-      {
-        plugin = prefix-highlight;
-        # TODO: gruvbox colors
-        extraConfig = "
-          set -g @prefix_highlight_fg 'white'
-          set -g @prefix_highlight_bg 'blue'
-        ";
-      }
     ];
     extraConfig = lib.concatStringsSep "\n" (
       map lib.fileContents [
