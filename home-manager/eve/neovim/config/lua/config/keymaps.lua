@@ -24,17 +24,47 @@ vim.keymap.set(
 	{ noremap = true, silent = true, desc = "Move right with tmux-navigator" }
 )
 
-vim.keymap.set("v", "p", '"_dP', { noremap = true, desc = "Paste without yanking" })
-vim.keymap.set({ "n", "v" }, "<leader>y", '"+y', { noremap = true, desc = "Yank into system clipboard" })
+vim.keymap.set(
+	"v",
+	"p",
+	'"_dP',
+	{ noremap = true, desc = "Paste without yanking" }
+)
+vim.keymap.set(
+	{ "n", "v" },
+	"<leader>y",
+	'"+y',
+	{ noremap = true, desc = "Yank into system clipboard" }
+)
 
 vim.keymap.set("v", "J", ":m '>+1<CR>gv=gv", { desc = "Move selection up" })
 vim.keymap.set("v", "K", ":m '<-1<CR>gv=gv", { desc = "Move selection down" })
 
-vim.keymap.set("n", "<C-d>", "<C-d>zz", { desc = "Move down and keep cursor in the middle" })
-vim.keymap.set("n", "<C-u>", "<C-u>zz", { desc = "Move up and keep cursor in the middle" })
+vim.keymap.set(
+	"n",
+	"<C-d>",
+	"<C-d>zz",
+	{ desc = "Move down and keep cursor in the middle" }
+)
+vim.keymap.set(
+	"n",
+	"<C-u>",
+	"<C-u>zz",
+	{ desc = "Move up and keep cursor in the middle" }
+)
 
-vim.keymap.set("n", "n", "nzzzv", { desc = "Next result in the middle of the screen" })
-vim.keymap.set("n", "N", "Nzzzv", { desc = "Previous result in the middle of the screen" })
+vim.keymap.set(
+	"n",
+	"n",
+	"nzzzv",
+	{ desc = "Next result in the middle of the screen" }
+)
+vim.keymap.set(
+	"n",
+	"N",
+	"Nzzzv",
+	{ desc = "Previous result in the middle of the screen" }
+)
 
 -- Toggle displaying absolute line numbers in addition to relative
 local toggleAbsoluteLineNumbers = function()
@@ -45,4 +75,9 @@ local toggleAbsoluteLineNumbers = function()
 	end
 end
 
-vim.keymap.set("n", "<leader>ln", toggleAbsoluteLineNumbers, { desc = "Toggle absolute line numbers" })
+vim.keymap.set(
+	"n",
+	"<leader>ln",
+	toggleAbsoluteLineNumbers,
+	{ desc = "Toggle absolute line numbers" }
+)
