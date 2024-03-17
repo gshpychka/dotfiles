@@ -16,15 +16,24 @@
     # tmuxinator.enable = true;
     plugins = with pkgs.tmuxPlugins; [
       {
-        plugin = gruvbox;
-        extraConfig = "set -g @tmux-gruvbox 'dark'";
-      }
-      tmux-fzf
-      {
         plugin = tilish;
         extraConfig = "set -g @tilish-navigator 'on'";
       }
+      {
+        plugin = prefix-highlight;
+        # TODO: gruvbox colors
+        extraConfig = "
+          set -g @prefix_highlight_fg 'white'
+          set -g @prefix_highlight_bg 'blue'
+        ";
+      }
     ];
-    extraConfig = lib.strings.fileContents ./tmux.conf;
+    extraConfig = lib.concatStringsSep "\n" (
+      map lib.fileContents [
+        ./tmux.conf
+        ./gruvbox-dark.conf
+        ./status.conf
+      ]
+    );
   };
 }
