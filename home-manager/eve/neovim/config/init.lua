@@ -38,8 +38,6 @@ vim.opt.hlsearch = false
 vim.opt.incsearch = true
 vim.opt.wrapscan = true
 
-vim.opt.termguicolors = true
-
 vim.opt.updatetime = 8
 vim.opt.ttyfast = true
 
