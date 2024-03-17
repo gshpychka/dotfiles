@@ -12,7 +12,6 @@
     historyLimit = 10000;
     keyMode = "vi";
     disableConfirmationPrompt = true;
-    terminal = "screen-256color";
     # TODO: set up tmuxinator
     # tmuxinator.enable = true;
     plugins = with pkgs.tmuxPlugins; [
