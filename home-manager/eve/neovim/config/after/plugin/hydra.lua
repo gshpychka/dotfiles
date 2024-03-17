@@ -13,7 +13,6 @@ Hydra({
 			vim.cmd("mkview")
 			vim.cmd("silent! %foldopen!")
 			vim.bo.modifiable = false
-			gitsigns.toggle_signs(true)
 			gitsigns.toggle_numhl(true)
 			gitsigns.toggle_current_line_blame(true)
 			gitsigns.toggle_linehl(true)
@@ -24,7 +23,6 @@ Hydra({
 			vim.cmd("loadview")
 			vim.api.nvim_win_set_cursor(0, cursor_pos)
 			vim.cmd("normal zv")
-			gitsigns.toggle_signs(false)
 			gitsigns.toggle_numhl(false)
 			gitsigns.toggle_current_line_blame(false)
 			gitsigns.toggle_linehl(false)
