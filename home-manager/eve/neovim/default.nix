@@ -37,10 +37,11 @@
       # vim-lion
       neoscroll-nvim
 
-      # minimap-vim
+      # noice requires nui-nvim and nvim-notify
       nui-nvim
       nvim-notify
       noice-nvim
+
       inc-rename-nvim
       leap-nvim
       # peek-nvim
