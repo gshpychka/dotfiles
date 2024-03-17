@@ -35,3 +35,14 @@ vim.keymap.set("n", "<C-u>", "<C-u>zz", { desc = "Move up and keep cursor in the
 
 vim.keymap.set("n", "n", "nzzzv", { desc = "Next result in the middle of the screen" })
 vim.keymap.set("n", "N", "Nzzzv", { desc = "Previous result in the middle of the screen" })
+
+-- Toggle displaying absolute line numbers in addition to relative
+local toggleAbsoluteLineNumbers = function()
+	if vim.o.statuscolumn == "%s %l %r" then
+		vim.o.statuscolumn = "%s %r"
+	else
+		vim.o.statuscolumn = "%s %l %r"
+	end
+end
+
+vim.keymap.set("n", "<leader>ln", toggleAbsoluteLineNumbers, { desc = "Toggle absolute line numbers" })
