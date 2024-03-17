@@ -22,7 +22,6 @@ require("noice").setup({
 		},
 	},
 	lsp = {
-		progress = false,
 		message = {
 			enabled = false,
 		},
