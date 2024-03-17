@@ -1,9 +1,4 @@
-{
-  config,
-  pkgs,
-  lib,
-  ...
-}: {
+{config, ...}: {
   homebrew = {
     enable = true;
     taps = builtins.attrNames config.nix-homebrew.taps;
@@ -33,6 +28,7 @@
       "adobe-acrobat-reader"
       "dropbox"
       "google-drive"
+      "teamviewer"
 
       # -- 3d printing
       "bambu-studio"
