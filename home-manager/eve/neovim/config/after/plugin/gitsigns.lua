@@ -39,3 +39,8 @@ require("gitsigns").setup({
 		enable = false,
 	},
 })
+
+-- Gruvbox colors
+vim.api.nvim_set_hl(0, "GitSignsAdd", { link = "GruvBoxGreenSign" })
+vim.api.nvim_set_hl(0, "GitSignsChange", { link = "GruvBoxYellowSign" })
+vim.api.nvim_set_hl(0, "GitSignsDelete", { link = "GruvBoxRedSign" })
