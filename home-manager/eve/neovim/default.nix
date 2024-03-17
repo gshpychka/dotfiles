@@ -17,9 +17,11 @@
       undotree
       gruvbox-nvim
       plenary-nvim
+
       vim-fugitive
       gitsigns-nvim
       diffview-nvim
+      gitlinker-nvim
 
       which-key-nvim
       hydra-nvim
