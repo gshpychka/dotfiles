@@ -21,4 +21,3 @@ require("gruvbox").setup({
 })
 vim.opt.termguicolors = true
 vim.cmd.colorscheme("gruvbox")
--- TODO: undercurl for diagnostics

@@ -7,7 +7,7 @@
   programs.alacritty = {
     enable = true;
     settings = {
-      env.TERM = "xterm-256color";
+      env.TERM = "alacritty";
       window = {
         opacity = 1;
         dynamic_title = true;
