@@ -13,6 +13,7 @@
     ./tmux
     ./alacritty.nix
     ./git.nix
+    ./1password.nix
   ];
 
   home = {
@@ -28,12 +29,8 @@
     ssh = {
       enable = true;
       matchBlocks = {
-        "everything" = {
+        everything = {
           host = "*";
-          extraOptions = {
-            IdentityAgent = ''
-              "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"'';
-          };
           setEnv = {
             TERM = "xterm-256color";
           };
