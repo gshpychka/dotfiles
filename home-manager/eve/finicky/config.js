@@ -9,7 +9,7 @@ module.exports = {
     {
       match: ({ opener, url }) => {
         const basedOnOpener =  [
-          "Slack",
+          "Teams",
           "Leapp"
         ].some(
           appName => opener.path.toLowerCase().includes(
@@ -18,7 +18,7 @@ module.exports = {
         );
         const basedOnUrl = [
           "aws.amazon.com",
-          "github.com",
+          "gitlab.com",
         ].some(
           targetHostName => url.host.toLowerCase().includes(
             targetHostName.toLowerCase()
