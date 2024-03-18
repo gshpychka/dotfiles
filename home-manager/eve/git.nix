@@ -48,10 +48,17 @@
         rebase = true;
       };
       push.autoSetupRemote = true;
-      #url = {
-      #"ssh://git@github.com" = { insteadOf = "https://github.com"; };
-      #};
       delta = {line-numbers = true;};
     };
+    includes = [
+      {
+        condition = "hasconfig:remote.*.url:git@gitlab.com:*";
+        contents = {
+          user.signingkey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILo71XBp2p5c7UPaizrAL70I3QkspxLg5zyKsKjAnswr";
+          user.email = "20539359-gshpychka@users.noreply.gitlab.com";
+          init.defaultBranch = "master";
+        };
+      }
+    ];
   };
 }
