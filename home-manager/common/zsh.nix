@@ -42,6 +42,13 @@
         };
       };
 
+      nix_shell = {
+        # just the symbol
+        format = "[$symbol]($style)";
+        style = "#7EBAE4";
+        symbol = "󱄅 ";
+      };
+
       # this seems to be the only way to move "custom" to the top
       format = builtins.concatStringsSep "" [
         "$custom"
