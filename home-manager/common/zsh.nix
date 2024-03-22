@@ -19,11 +19,13 @@
 
   programs.zsh = {
     enable = true;
-    enableAutosuggestions = true;
     enableCompletion = true;
     autocd = true;
     dotDir = ".config/zsh";
     defaultKeymap = "viins";
+    autosuggestion = {
+      enable = true;
+    };
 
     history = {
       expireDuplicatesFirst = true;
