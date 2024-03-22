@@ -9,6 +9,7 @@
   ];
   environment = {
     systemPackages = with pkgs; [
+      # 1Password has to be installed system-wide
       _1password
     ];
   };
