@@ -15,8 +15,8 @@
     "1Password/ssh/agent.toml" = {
       source = (pkgs.formats.toml {}).generate "1password-ssh-agent-config" {
         "ssh-keys" = [
-          {Vault = "Personal";}
-          {Vault = "Work";}
+          {vault = "Personal";}
+          {vault = "Work";}
         ];
       };
     };
