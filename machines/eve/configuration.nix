@@ -129,6 +129,9 @@
         ''
         else "")
       config.nix-homebrew.prefixes));
+      postActivation.text = ''
+        ${pkgs.skhd}/bin/skhd -r
+      '';
     };
   };
 
