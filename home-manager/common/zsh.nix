@@ -22,16 +22,25 @@
         repo_root_format = "";
       };
 
-      custom = {
+      custom = let
+        # display a host-specific icon for git repos
+        generateGitHostIconModule = host: symbol: {
+          when = "${pkgs.git}/bin/git config --get remote.origin.url | grep -q ${host}";
+          command = "";
+          symbol = symbol;
+        };
+      in {
+        github = generateGitHostIconModule "github" " ";
+        gitlab = generateGitHostIconModule "gitlab" "";
         # show the git org/repo name
         repo_name = {
           command =
             "basename \"$(${pkgs.git}/bin/git config --get remote.origin.url)\""
             + "| sed 's/\.git$//'";
           when = "${pkgs.git}/bin/git rev-parse --is-inside-work-tree 2> /dev/null";
-          symbol = " ";
         };
       };
+
       # this seems to be the only way to move "custom" to the top
       format = builtins.concatStringsSep "" [
         "$custom"
