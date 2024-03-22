@@ -34,7 +34,7 @@
       keyboard.bindings = [];
 
       font = let
-        fontname = "JetBrainsMono Nerd Font Mono";
+        fontname = "JetBrainsMono Nerd Font";
       in {
         normal = {
           family = fontname;
