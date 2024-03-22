@@ -34,6 +34,8 @@ vim.opt.wrap = false
 vim.opt.undodir = os.getenv("HOME") .. "/.nvim/undodir"
 vim.opt.undofile = true
 
+vim.opt.swapfile = false
+
 vim.opt.hlsearch = false
 vim.opt.incsearch = true
 vim.opt.wrapscan = true
