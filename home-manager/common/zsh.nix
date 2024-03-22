@@ -42,6 +42,10 @@
         };
       };
 
+      status = {
+        disabled = false;
+      };
+
       nix_shell = {
         # just the symbol
         format = "[$symbol]($style)";
