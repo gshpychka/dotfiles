@@ -24,14 +24,15 @@
 
       custom = let
         # display a host-specific icon for git repos
-        generateGitHostIconModule = host: symbol: {
+        generateGitHostIconModule = host: symbol: color: {
           when = "${pkgs.git}/bin/git config --get remote.origin.url | grep -q ${host}";
           command = "";
+          style = color;
           symbol = symbol;
         };
       in {
-        github = generateGitHostIconModule "github" " ";
-        gitlab = generateGitHostIconModule "gitlab" "";
+        github = generateGitHostIconModule "github" " " "#4078c0";
+        gitlab = generateGitHostIconModule "gitlab" " " "#fc6d26";
         # show the git org/repo name
         repo_name = {
           command =
