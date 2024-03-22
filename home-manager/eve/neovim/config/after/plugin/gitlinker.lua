@@ -8,6 +8,5 @@ require("gitlinker").setup({
 		-- print the url after performing the action
 		print_url = true,
 	},
-	-- default mapping to call url generation with action_callback
-	mappings = "<leader>gy",
+	mappings = "<leader>gl",
 })
