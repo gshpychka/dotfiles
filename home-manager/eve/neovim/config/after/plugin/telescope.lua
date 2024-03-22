@@ -7,7 +7,7 @@ vim.keymap.set(
 )
 vim.keymap.set(
 	"n",
-	"<leader>fg",
+	"<leader>fgg",
 	builtin.live_grep,
 	{ desc = "Telescope live grep" }
 )
