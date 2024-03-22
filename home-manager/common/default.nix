@@ -26,12 +26,6 @@
     # lazygit.enable = true; # git tui
     # nnn.enable = true; # file browser
 
-    # pretty ls
-    lsd = {
-      enable = true;
-      enableAliases = true;
-    };
-
     htop = {
       enable = true;
       settings = {

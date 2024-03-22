@@ -17,6 +17,12 @@
     };
   };
 
+  # pretty ls
+  programs.lsd = {
+    enable = true;
+    enableAliases = true;
+  };
+
   programs.zsh = {
     enable = true;
     enableCompletion = true;
