@@ -61,17 +61,14 @@
         "$git_state"
         "$git_status"
         "$docker_context"
-        "$package"
         "$lua"
         "$nodejs"
         "$python"
         "$terraform"
         "$nix_shell"
         "$aws"
-        "$direnv"
         "$sudo"
         "$status"
-        "$shell"
       ];
     };
   };
