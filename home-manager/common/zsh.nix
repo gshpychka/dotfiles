@@ -14,6 +14,44 @@
         success_symbol = "[➜](bold green) ";
         error_symbol = "[✗](bold red) ";
       };
+
+      directory = {
+        # disable directory when in a git repo
+        repo_root_style = "";
+        before_repo_root_style = "";
+        repo_root_format = "";
+      };
+
+      custom = {
+        # show the git org/repo name
+        repo_name = {
+          command =
+            "basename \"$(${pkgs.git}/bin/git config --get remote.origin.url)\""
+            + "| sed 's/\.git$//'";
+          when = "${pkgs.git}/bin/git rev-parse --is-inside-work-tree 2> /dev/null";
+          symbol = " ";
+        };
+      };
+      # this seems to be the only way to move "custom" to the top
+      format = builtins.concatStringsSep "" [
+        "$custom"
+        "$directory"
+        "$git_branch"
+        "$git_state"
+        "$git_status"
+        "$docker_context"
+        "$package"
+        "$lua"
+        "$nodejs"
+        "$python"
+        "$terraform"
+        "$nix_shell"
+        "$aws"
+        "$direnv"
+        "$sudo"
+        "$status"
+        "$shell"
+      ];
     };
   };
 
