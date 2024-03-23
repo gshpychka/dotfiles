@@ -109,16 +109,9 @@ require("lspconfig").pyright.setup({
 
 require("typescript-tools").setup({
 	on_attach = function(client, bufnr)
+		-- Formatting is handled by eslint via null_ls
 		client.server_capabilities.documentFormattingProvider = nil
 		client.server_capabilities.documentRangeFormattingProvider = nil
-		-- local ts_utils = require("nvim-lsp-ts-utils")
-		-- ts_utils.setup({})
-		-- ts_utils.setup_client(client)
-
-		-- buf_map(bufnr, "n", "gs", ":TSLspOrganize<CR>")
-		-- buf_map(bufnr, "n", "gi", ":TSLspRenameFile<CR>")
-		-- buf_map(bufnr, "n", "go", ":TSLspImportAll<CR>")
-
 		on_attach(client, bufnr)
 	end,
 	capabilities = capabilities,
