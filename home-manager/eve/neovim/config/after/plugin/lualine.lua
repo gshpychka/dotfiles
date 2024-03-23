@@ -2,8 +2,8 @@ require("lualine").setup({
 	options = {
 		icons_enabled = true,
 		theme = "auto",
-		-- component_separators = { left = "", right = "" },
-		-- section_separators = { left = "", right = "" },
+		component_separators = { left = "", right = "" },
+		section_separators = { left = "", right = "" },
 		disabled_filetypes = {
 			statusline = {},
 			winbar = {},
@@ -24,12 +24,6 @@ require("lualine").setup({
 			{
 				"diff",
 				colored = true, -- Displays a colored diff status if set to true
-				diff_color = {
-					-- Same color values as the general color option can be used here.
-					added = "DiffAdd", -- Changes the diff's added color
-					modified = "DiffChange", -- Changes the diff's modified color
-					removed = "DiffDelete", -- Changes the diff's removed color you
-				},
 				symbols = { added = "+", modified = "~", removed = "-" }, -- Changes the symbols used by the diff.
 				source = nil, -- A function that works as a data source for diff.
 				-- It must return a table as such:
@@ -48,13 +42,6 @@ require("lualine").setup({
 				-- Displays diagnostics for the defined severity types
 				sections = { "error", "warn", "info", "hint" },
 
-				diagnostics_color = {
-					-- Same values as the general color option can be used here.
-					error = "DiagnosticError", -- Changes diagnostics' error color.
-					warn = "DiagnosticWarn", -- Changes diagnostics' warn color.
-					info = "DiagnosticInfo", -- Changes diagnostics' info color.
-					hint = "DiagnosticHint", -- Changes diagnostics' hint color.
-				},
 				symbols = { error = "E", warn = "W", info = "I", hint = "H" },
 				colored = true, -- Displays diagnostics status in color if set to true.
 				update_in_insert = false, -- Update diagnostics in insert mode.
@@ -110,7 +97,6 @@ require("lualine").setup({
 				buffers_color = {
 					-- Same values as the general color option can be used here.
 					active = "GruvboxYellowSign", -- Color for active buffer.
-					inactive = "lualine_c_inactive", -- Color for inactive buffer.
 				},
 
 				symbols = {
