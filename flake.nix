@@ -40,6 +40,9 @@
       url = "github:homebrew/homebrew-bundle";
       flake = false;
     };
+    neovim-nightly-overlay = {
+      url = "github:nix-community/neovim-nightly-overlay";
+    };
   };
 
   outputs = {
@@ -59,7 +62,9 @@
       allowUnfree = true;
       allowUnsupportedSystem = false;
     };
-    overlays = with inputs; [];
+    overlays = with inputs; [
+      neovim-nightly-overlay.overlay
+    ];
     stateVersion = "22.11";
     user = "gshpychka";
   in {
