@@ -12,7 +12,7 @@
         opacity = 1;
         dynamic_title = true;
         dynamic_padding = true;
-        decorations = "full";
+        decorations = "buttonless";
         dimensions = {
           lines = 0;
           columns = 0;
