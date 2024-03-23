@@ -23,6 +23,9 @@
       diffview-nvim
       gitlinker-nvim
 
+      # decorated scrollbar
+      satellite-nvim
+
       which-key-nvim
       hydra-nvim
 
