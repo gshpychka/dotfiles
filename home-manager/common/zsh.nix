@@ -26,6 +26,7 @@
         # display a host-specific icon for git repos
         generateGitHostIconModule = host: symbol: color: {
           when = "${pkgs.git}/bin/git config --get remote.origin.url | grep -q ${host}";
+          require_repo = true;
           command = "";
           style = color;
           symbol = symbol;
@@ -38,7 +39,20 @@
           command =
             "basename \"$(${pkgs.git}/bin/git config --get remote.origin.url)\""
             + "| sed 's/\.git$//'";
-          when = "${pkgs.git}/bin/git rev-parse --is-inside-work-tree 2> /dev/null";
+          # no space after
+          format = "[$symbol($output)]($style)";
+          when = true;
+          require_repo = true;
+        };
+        # directory relative to the root of the git repo
+        git_directory = {
+          # strip the last slash
+          command = "${pkgs.git}/bin/git rev-parse --show-prefix | sed 's:/*$::'";
+          when = true;
+          require_repo = true;
+          format = "[$symbol($output)]($style) ";
+          symbol = "/";
+          style = "bold cyan";
         };
       };
 
@@ -55,8 +69,11 @@
 
       # this seems to be the only way to move "custom" to the top
       format = builtins.concatStringsSep "" [
-        "$custom"
         "$directory"
+        "$\{custom.github}"
+        "$\{custom.gitlab}"
+        "$\{custom.repo_name}"
+        "$\{custom.git_directory}"
         "$git_branch"
         "$git_state"
         "$git_status"
@@ -66,9 +83,8 @@
         "$python"
         "$terraform"
         "$nix_shell"
-        "$aws"
         "$sudo"
-        "$status"
+        "$character"
       ];
     };
   };
