@@ -62,7 +62,7 @@
 
       nix_shell = {
         # just the symbol
-        format = "[$symbol]($style)";
+        format = "[$symbol ]($style)";
         style = "#7EBAE4";
         symbol = "󱄅 ";
       };
