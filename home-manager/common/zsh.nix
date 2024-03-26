@@ -148,24 +148,5 @@
         src = "${pkgs.zsh-nix-shell}/share/zsh/site-functions";
       }
     ];
-    # prezto = {
-    #   enable = true;
-    #   caseSensitive = false;
-    #   utility.safeOps = true;
-    #   editor = {
-    #     dotExpansion = true;
-    #     keymap = "vi";
-    #   };
-    #   #prompt.showReturnVal = true;
-    #   #tmux.autoStartLocal = true;
-    #   pmodules = [
-    #     "autosuggestions"
-    #     "completion"
-    #     "directory"
-    #     "editor"
-    #     "git"
-    #     "terminal"
-    #   ];
-    # };
   };
 }
