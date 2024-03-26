@@ -57,10 +57,6 @@
         };
       };
 
-      status = {
-        disabled = false;
-      };
-
       nix_shell = {
         # just the symbol
         format = "[$symbol ]($style)";
@@ -149,12 +145,7 @@
       {
         name = "zsh-nix-shell";
         file = "nix-shell.plugin.zsh";
-        src = pkgs.fetchFromGitHub {
-          owner = "chisui";
-          repo = "zsh-nix-shell";
-          rev = "v0.8.0";
-          sha256 = "Z6EYQdasvpl1P78poj9efnnLj7QQg13Me8x1Ryyw+dM=";
-        };
+        src = "${pkgs.zsh-nix-shell}/share/zsh/site-functions";
       }
     ];
     # prezto = {
