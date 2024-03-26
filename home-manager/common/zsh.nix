@@ -30,12 +30,13 @@
           command = "";
           style = color;
           symbol = symbol;
+          description = "Custom icon for ${host}";
         };
       in {
         github = generateGitHostIconModule "github" " " "#4078c0";
         gitlab = generateGitHostIconModule "gitlab" " " "#fc6d26";
-        # show the git org/repo name
         repo_name = {
+          description = "Name of the current git repository";
           command =
             "basename \"$(${pkgs.git}/bin/git config --get remote.origin.url)\""
             + "| sed 's/\.git$//'";
@@ -44,8 +45,8 @@
           when = true;
           require_repo = true;
         };
-        # directory relative to the root of the git repo
         git_directory = {
+          description = "directory relative to the root of the git repo";
           # strip the last slash
           command = "${pkgs.git}/bin/git rev-parse --show-prefix | sed 's:/*$::'";
           when = true;
