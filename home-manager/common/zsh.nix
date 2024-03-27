@@ -76,7 +76,6 @@
         "$git_status"
         "$docker_context"
         "$lua"
-        "$nodejs"
         "$python"
         "$terraform"
         "$nix_shell"
