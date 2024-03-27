@@ -29,6 +29,7 @@
       "dropbox"
       "google-drive"
       "teamviewer"
+      "todoist"
 
       # -- 3d printing
       "bambu-studio"
