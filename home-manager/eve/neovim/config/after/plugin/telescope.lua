@@ -56,38 +56,25 @@ vim.keymap.set(
 	{ desc = "Telescope keymaps" }
 )
 
--- Git
-vim.keymap.set(
-	"n",
-	"<leader>fgcc",
-	builtin.git_commits,
-	{ desc = "Telescope Git commits" }
-)
-vim.keymap.set(
-	"n",
-	"<leader>fgcb",
-	builtin.git_bcommits,
-	{ desc = "Telescope Git buffer commits" }
-)
-vim.keymap.set(
-	"v",
-	"<leader>fgcb",
-	builtin.git_bcommits_range,
-	{ desc = "Telescope Git commits for range" }
-)
-vim.keymap.set(
-	"n",
-	"<leader>fgb",
-	builtin.git_branches,
-	{ desc = "Telescope Git branches" }
-)
-vim.keymap.set(
-	"n",
-	"<leader>fgs",
-	builtin.git_status,
-	{ desc = "Telescope Git status" }
-)
+local action_state = require("telescope.actions.state")
 
+local git_commits_config = {
+	mappings = {
+		i = {
+			["<C-M-d>"] = function()
+				-- Open in diffview
+				local selected_entry = action_state.get_selected_entry()
+				local value = selected_entry.value
+				-- close Telescope window properly prior to switching windows
+				vim.api.nvim_win_close(0, true)
+				vim.cmd("stopinsert")
+				vim.schedule(function()
+					vim.cmd(("DiffviewOpen %s^!"):format(value))
+				end)
+			end,
+		},
+	},
+}
 require("telescope").setup({
 	defaults = {
 		layout_config = {
@@ -112,9 +99,9 @@ require("telescope").setup({
 		buffers = {
 			theme = "dropdown",
 		},
-		-- live_grep = {
-		-- 	glob_patern = "!*.lock",
-		-- },
+		git_commits = git_commits_config,
+		git_bcommits = git_commits_config,
+		git_bcommits_range = git_commits_config,
 	},
 })
 

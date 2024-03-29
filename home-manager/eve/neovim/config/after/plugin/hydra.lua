@@ -1,14 +1,13 @@
 local Hydra = require("hydra")
 local gitsigns = require("gitsigns")
+local ts_builtin = require("telescope.builtin")
 
 Hydra({
 	name = "Git",
 	config = {
 		color = "pink",
 		invoke_on_body = true,
-		hint = {
-			border = "rounded",
-		},
+		hint = false,
 		on_enter = function()
 			gitsigns.toggle_numhl(true)
 			gitsigns.toggle_current_line_blame(true)
@@ -22,7 +21,7 @@ Hydra({
 			gitsigns.toggle_deleted(false)
 		end,
 	},
-	mode = { "n", "x" },
+	mode = { "n", "x", "v" },
 	body = "<leader>gg",
 	heads = {
 		{
@@ -77,9 +76,38 @@ Hydra({
 			end,
 			{ desc = "blame show full" },
 		},
+		{
+			"<leader>fc",
+			ts_builtin.git_commits,
+			{ desc = "Telescope Git commits" },
+		},
+		{
+			"<leader>fbc",
+			ts_builtin.git_bcommits,
+			{ desc = "Telescope Git buffer commits" },
+		},
+		{
+			"<leader>fbc",
+			ts_builtin.git_bcommits_range,
+			{ mode = "v", desc = "Telescope Git commits for range" },
+		},
+		{
+			"<leader>fbr",
+			ts_builtin.git_branches,
+			{ desc = "Telescope Git branches" },
+		},
+		{
+			"<leader>fs",
+			ts_builtin.git_status,
+			{ desc = "Telescope Git status" },
+		},
 		{ "/", gitsigns.show, { exit = true, desc = "show base file" } }, -- show the base of the file
 		-- { "<Enter>", "<Cmd>Neogit<CR>", { exit = true, desc = "Neogit" } },
-		{ "q", nil, { exit = true, nowait = true, desc = "exit" } },
+		{
+			"<esc>",
+			nil,
+			{ exit = true, nowait = true, desc = "exit" },
+		},
 	},
 })
 
@@ -88,9 +116,7 @@ Hydra({
 	config = {
 		color = "pink",
 		invoke_on_body = true,
-		hint = {
-			border = "rounded",
-		},
+		hint = false,
 	},
 	mode = { "n", "x" },
 	body = "<leader>w",
