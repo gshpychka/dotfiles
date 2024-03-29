@@ -54,7 +54,7 @@
         shift + alt - k : yabai -m window --swap north
         shift + alt - l : yabai -m window --swap east
 
-        shift + alt + r : yabai -m space --rotate 90
+        shift + alt - r : yabai -m space --rotate 90
       ";
     };
   };
