@@ -30,6 +30,7 @@
       "google-drive"
       "teamviewer"
       "todoist"
+      "element"
 
       # -- 3d printing
       "bambu-studio"
