@@ -30,7 +30,7 @@
       "google-drive"
       "teamviewer"
       "todoist"
-      "element"
+      "yubico-yubikey-manager"
 
       # -- 3d printing
       "bambu-studio"
@@ -41,7 +41,7 @@
       "signal"
       "discord"
       "whatsapp"
-      #"beeper"
+      "element"
 
       # -- work --
       "firefox"
