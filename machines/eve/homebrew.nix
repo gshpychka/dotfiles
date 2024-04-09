@@ -49,8 +49,8 @@
       "leapp"
       "slack"
       "docker"
-      "visual-studio-code"
       "microsoft-teams"
+      "tailscale"
     ];
     masApps = {
       "1Password for Safari" = 1569813296;
