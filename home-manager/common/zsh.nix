@@ -51,7 +51,7 @@
           command = "${pkgs.git}/bin/git rev-parse --show-prefix | sed 's:/*$::'";
           when = true;
           require_repo = true;
-          format = "[$symbol($output)]($style) ";
+          format = "[$symbol($output) ]($style)";
           symbol = "/";
           style = "bold cyan";
         };
@@ -60,6 +60,7 @@
       env_var = {
         NODE_ENV = {
           variable = "NODE_ENV";
+          # TODO: style brackets and contents
           format = "<[$env_value]($style)> ";
           style = "white";
         };
