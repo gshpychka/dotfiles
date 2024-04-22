@@ -57,6 +57,14 @@
         };
       };
 
+      env_var = {
+        NODE_ENV = {
+          variable = "NODE_ENV";
+          format = "<[$env_value]($style)> ";
+          style = "white";
+        };
+      };
+
       nix_shell = {
         # just the symbol
         format = "[$symbol ]($style)";
@@ -79,6 +87,7 @@
         "$python"
         "$terraform"
         "$nix_shell"
+        "$env_var"
         "$sudo"
         "$character"
       ];
