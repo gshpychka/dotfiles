@@ -31,6 +31,7 @@
       "teamviewer"
       "todoist"
       "yubico-yubikey-manager"
+      "trezor-suite"
 
       # -- 3d printing
       "bambu-studio"
