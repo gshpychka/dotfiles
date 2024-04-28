@@ -160,6 +160,7 @@ require("lspconfig").nil_ls.setup({
 local root_patterns = {
 	eslint = ".eslintrc.json",
 	python = "pyproject.toml",
+	prettier = ".prettierrc.json",
 }
 
 local null_ls_utils = require("null-ls.utils")
@@ -188,6 +189,9 @@ null_ls.setup({
 		-- null_ls.builtins.diagnostics.mypy,
 		null_ls.builtins.formatting.eslint_d.with({
 			cwd = get_root_finder("eslint"),
+		}),
+		null_ls.builtins.formatting.prettier.with({
+			cwd = get_root_finder("prettier"),
 		}),
 		null_ls.builtins.formatting.fixjson,
 		null_ls.builtins.formatting.autopep8,
