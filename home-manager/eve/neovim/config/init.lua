@@ -47,7 +47,7 @@ vim.opt.ttyfast = true
 
 vim.opt.hidden = true
 vim.opt.display = "lastline"
--- vim.opt.cmdheight = 1
+vim.opt.cmdheight = 0
 vim.opt.foldenable = false
 vim.opt.scrolloff = 15
 vim.opt.colorcolumn = "120"
