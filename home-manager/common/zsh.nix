@@ -131,6 +131,10 @@
     initExtra = ''
       bindkey '^l' autosuggest-accept
 
+      # delete past insert start in insert mode
+      bindkey -M viins '^?' backward-delete-char # If Backspace sends DEL (127)
+      bindkey -M viins '^H' backward-delete-char # If Backspace sends Ctrl-H
+
       function cd() {
         builtin cd $*
         ${pkgs.lsd}/bin/lsd
