@@ -1,4 +1,3 @@
-vim.o.background = "dark"
 require("gruvbox").setup({
 	undercurl = true,
 	underline = true,
@@ -20,6 +19,7 @@ require("gruvbox").setup({
 	transparent_mode = false,
 })
 vim.opt.termguicolors = true
+vim.o.background = "dark"
 vim.cmd.colorscheme("gruvbox")
 -- TODO: investigate
 -- Something (likely LSP semantic highlighting) is overriding the text color to grey after a second
