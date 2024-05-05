@@ -13,10 +13,10 @@ local on_attach = function(client, bufnr)
 		vim.diagnostic.open_float()
 	end, createOpts("Open LSP diagnostics float"))
 	vim.keymap.set("n", "[d", function()
-		vim.diagnostic.goto_prev()
+		vim.diagnostic.goto_prev({ severity = vim.diagnostic.severity.ERROR })
 	end, createOpts("Go to previous LSP diagnostic"))
 	vim.keymap.set("n", "]d", function()
-		vim.diagnostic.goto_next()
+		vim.diagnostic.goto_next({ severity = vim.diagnostic.severity.ERROR })
 	end, createOpts("Go to next LSP diagnostic"))
 	vim.keymap.set("n", "gd", function()
 		vim.lsp.buf.definition()
@@ -221,12 +221,3 @@ null_ls.setup({
 })
 
 require("inc_rename").setup()
-
-LaunchWing = function()
-	local client_id = vim.lsp.start_client({ cmd = { "wing", "lsp" } })
-	vim.lsp.buf_attach_client(0, client_id)
-end
-
-vim.cmd([[
-	command! -range LaunchWing execute 'lua LaunchWing()'
-]])
