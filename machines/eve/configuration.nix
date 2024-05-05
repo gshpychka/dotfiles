@@ -36,7 +36,10 @@
         yabai -m rule --add app='Leapp' manage=off
         yabai -m config mouse_modifier cmd
         # Make non-resizable windows floating
-        yabai -m signal --add event=window_created action='yabai -m query --windows --window $YABAI_WINDOW_ID | ${pkgs.jq}/bin/jq -er ".\"can-resize\" or .\"is-floating\"" || yabai -m window $YABAI_WINDOW_ID --toggle float'
+        yabai -m signal --add event=window_created action='yabai -m query --windows --window $YABAI_WINDOW_ID |\
+        ${pkgs.jq}/bin/jq -er ".\"can-resize\" or .\"is-floating\"" ||\
+        yabai -m window $YABAI_WINDOW_ID --toggle float ||\
+        yabai -m window $YABAI_WINDOW_ID --focus'
       '';
     };
     skhd = {
