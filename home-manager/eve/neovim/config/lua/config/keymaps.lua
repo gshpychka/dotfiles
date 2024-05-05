@@ -59,3 +59,16 @@ vim.keymap.set(
 	toggle_absolute_line_numbers,
 	{ desc = "Toggle absolute line numbers" }
 )
+
+vim.keymap.set(
+	"n",
+	"]q",
+	":cnext<CR>",
+	{ desc = "Go to the next item in the Quickfix list" }
+)
+vim.keymap.set(
+	"n",
+	"[q",
+	":cprevious<CR>",
+	{ desc = "Go to the previous item in the Quickfix list" }
+)
