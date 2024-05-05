@@ -21,3 +21,7 @@ require("gruvbox").setup({
 })
 vim.opt.termguicolors = true
 vim.cmd.colorscheme("gruvbox")
+-- TODO: investigate
+-- Something (likely LSP semantic highlighting) is overriding the text color to grey after a second
+-- Background is not affected
+vim.api.nvim_set_hl(0, "TODO", { link = "GruvboxYellow" })
