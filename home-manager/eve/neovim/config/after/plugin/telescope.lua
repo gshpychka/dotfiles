@@ -51,7 +51,7 @@ vim.keymap.set(
 )
 vim.keymap.set(
 	"n",
-	"<leader>fnk",
+	"<leader>fkm",
 	builtin.keymaps,
 	{ desc = "Telescope keymaps" }
 )

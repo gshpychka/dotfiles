@@ -1,28 +1,4 @@
 vim.g.mapleader = " "
-vim.keymap.set(
-	"n",
-	"<m-h>",
-	":TmuxNavigateLeft<cr>",
-	{ noremap = true, silent = true, desc = "Move left with tmux-navigator" }
-)
-vim.keymap.set(
-	"n",
-	"<m-j>",
-	":TmuxNavigateDown<cr>",
-	{ noremap = true, silent = true, desc = "Move down with tmux-navigator" }
-)
-vim.keymap.set(
-	"n",
-	"<m-k>",
-	":TmuxNavigateUp<cr>",
-	{ noremap = true, silent = true, desc = "Move up with tmux-navigator" }
-)
-vim.keymap.set(
-	"n",
-	"<m-l>",
-	":TmuxNavigateRight<cr>",
-	{ noremap = true, silent = true, desc = "Move right with tmux-navigator" }
-)
 
 vim.keymap.set(
 	"v",
@@ -36,9 +12,6 @@ vim.keymap.set(
 	'"+y',
 	{ noremap = true, desc = "Yank into system clipboard" }
 )
-
-vim.keymap.set("v", "J", ":m '>+1<CR>gv=gv", { desc = "Move selection up" })
-vim.keymap.set("v", "K", ":m '<-1<CR>gv=gv", { desc = "Move selection down" })
 
 vim.keymap.set(
 	"n",

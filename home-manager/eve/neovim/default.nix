@@ -26,31 +26,30 @@
       # decorated scrollbar
       satellite-nvim
 
-      which-key-nvim
+      # which-key-nvim
       hydra-nvim
 
       barbar-nvim
       lualine-nvim
       vim-tmux-navigator
 
-      nvim-bqf
+      # nvim-bqf
 
       # vista-vim
 
       nvim-tree-lua
       nvim-web-devicons
-      vim-devicons
 
       # vim-lion
       neoscroll-nvim
 
       # noice requires nui-nvim and nvim-notify
-      nui-nvim
-      nvim-notify
-      noice-nvim
+      # nui-nvim
+      # nvim-notify
+      # noice-nvim
 
       inc-rename-nvim
-      leap-nvim
+      # leap-nvim
       # peek-nvim
       indent-blankline-nvim
 
@@ -79,7 +78,7 @@
         ]))
       neogen
       luasnip
-      nvim-lightbulb
+      # nvim-lightbulb
 
       copilot-lua
       copilot-cmp
@@ -90,7 +89,7 @@
       cmp-buffer
 
       null-ls-nvim
-      nvim-lsp-ts-utils
+      # nvim-lsp-ts-utils
 
       telescope-nvim
       telescope-fzf-native-nvim
