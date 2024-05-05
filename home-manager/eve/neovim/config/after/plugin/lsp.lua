@@ -94,6 +94,9 @@ local on_attach = function(client, bufnr)
 			underline = true,
 			signs = true,
 		})
+	if client.server_capabilities.inlayHintProvider then
+		vim.lsp.inlay_hint.enable()
+	end
 end
 
 -- LSP servers
@@ -115,6 +118,19 @@ require("typescript-tools").setup({
 		on_attach(client, bufnr)
 	end,
 	capabilities = capabilities,
+	settings = {
+		tsserver_file_preferences = {
+			includeInlayParameterNameHints = "all",
+			includeInlayParameterNameHintsWhenArgumentMatchesName = true,
+			includeInlayFunctionParameterTypeHints = true,
+			includeInlayVariableTypeHints = true,
+			includeInlayPropertyDeclarationTypeHints = true,
+			includeInlayFunctionLikeReturnTypeHints = true,
+			includeInlayEnumMemberValueHints = true,
+			-- TODO: revisit
+			importModuleSpecifierPreference = "relative",
+		},
+	},
 })
 
 require("lspconfig").lua_ls.setup({
