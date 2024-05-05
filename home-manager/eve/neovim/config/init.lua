@@ -1,4 +1,3 @@
-require("config")
 vim.g.loaded_netrw = 1
 vim.g.loaded_netrwPlugin = 1
 
@@ -7,6 +6,9 @@ vim.loader.enable()
 vim.opt.number = true
 vim.opt.relativenumber = true
 vim.opt.signcolumn = "yes"
+vim.opt.numberwidth = 3
+vim.opt.statuscolumn =
+	"%=%{v:virtnum < 1 ? (v:relnum ? v:relnum : v:lnum < 10 ? v:lnum . '  ' : v:lnum) : ''}%=%s"
 
 vim.opt.expandtab = true
 vim.opt.tabstop = 2
@@ -60,3 +62,4 @@ vim.filetype.add({
 		w = "wing",
 	},
 })
+require("config")

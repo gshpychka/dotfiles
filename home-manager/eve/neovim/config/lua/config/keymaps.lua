@@ -41,18 +41,21 @@ vim.keymap.set(
 	{ desc = "Previous result in the middle of the screen" }
 )
 
--- Toggle displaying absolute line numbers in addition to relative
-local toggleAbsoluteLineNumbers = function()
-	if vim.o.statuscolumn == "%s %l %r" then
-		vim.o.statuscolumn = "%s %r"
+-- Toggle displaying absolute line numbers instead of relative
+local default_statuscolumn = vim.o.statuscolumn
+
+local toggle_absolute_line_numbers = function()
+	if vim.o.statuscolumn == default_statuscolumn then
+		vim.o.statuscolumn =
+			"%=%{v:virtnum < 1 ? (v:lnum < 10 ? v:lnum . '  ' : v:lnum) : ''}%=%s"
 	else
-		vim.o.statuscolumn = "%s %l %r"
+		vim.o.statuscolumn = default_statuscolumn
 	end
 end
 
 vim.keymap.set(
 	"n",
 	"<leader>ln",
-	toggleAbsoluteLineNumbers,
+	toggle_absolute_line_numbers,
 	{ desc = "Toggle absolute line numbers" }
 )
