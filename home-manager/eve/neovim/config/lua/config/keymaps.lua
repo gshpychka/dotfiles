@@ -1,4 +1,6 @@
 vim.g.mapleader = " "
+-- cannot be in after/plugin because has to run before plugin
+vim.g.tmux_navigator_no_mappings = 1
 
 vim.keymap.set(
 	"v",
