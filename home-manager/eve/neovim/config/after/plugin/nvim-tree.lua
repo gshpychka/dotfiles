@@ -7,6 +7,19 @@ require("nvim-tree").setup({
 	},
 	renderer = {
 		group_empty = true,
+		icons = {
+			glyphs = {
+				git = {
+					unstaged = "󱇨", -- ✗ 󰷈 󰩌 󱪘 󱇧 󰩋
+					staged = "󰸩", -- ✓ 󰩎 󱧇 󱪙 󰩍 󰈖
+					unmerged = "", -- 󰢪 󱀶
+					renamed = "󱀱", -- ➜ 󰬳 󱀹 󰪹
+					untracked = "󰻭", -- 󰝒 󱪝 󱪞
+					deleted = "󱀷", -- 󱪟 󱪛 󱪢 󱪠 󱪜 󰮘
+					ignored = "󰘓", -- ◌ 󰷇 󰷆
+				},
+			},
+		},
 	},
 	sync_root_with_cwd = true,
 	reload_on_bufenter = true,
@@ -15,6 +28,9 @@ require("nvim-tree").setup({
 	},
 	filters = {
 		dotfiles = false,
+		custom = {
+			"^.git$",
+		},
 	},
 })
 
