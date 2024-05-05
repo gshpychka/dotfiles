@@ -21,7 +21,7 @@ require("gruvbox").setup({
 vim.opt.termguicolors = true
 vim.o.background = "dark"
 vim.cmd.colorscheme("gruvbox")
--- TODO: investigate
--- Something (likely LSP semantic highlighting) is overriding the text color to grey after a second
--- Background is not affected
-vim.api.nvim_set_hl(0, "TODO", { link = "GruvboxYellow" })
+-- @lsp.type.comment from LSP overrides @comment.todo from Treesitter
+-- So this does not work properly
+-- The backgroung is preserved, since the LSP highlight doesn't touch it
+vim.api.nvim_set_hl(0, "TODO", { link = "GruvboxYellowSign" })
