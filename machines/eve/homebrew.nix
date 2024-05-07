@@ -32,6 +32,7 @@
       "todoist"
       "yubico-yubikey-manager"
       "trezor-suite"
+      "kindavim"
 
       # -- 3d printing
       "bambu-studio"
