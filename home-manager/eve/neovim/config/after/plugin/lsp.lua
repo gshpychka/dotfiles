@@ -43,6 +43,13 @@ local on_attach = function(client, bufnr)
 	vim.keymap.set("n", "<leader>fo", function()
 		vim.lsp.buf.format({ timeout_ms = 5000 })
 	end, createOpts("LSP format"))
+	vim.keymap.set("n", "<leader>il", function()
+		if client.server_capabilities.inlayHintProvider then
+			vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled())
+		else
+			print("LSP server doesn't support Inlay hints")
+		end
+	end, createOpts("Toggle LSP inlay hints"))
 
 	-- Set autocommands conditional on server_capabilities
 	if client.server_capabilities.documentHighlightProvider then
@@ -94,9 +101,6 @@ local on_attach = function(client, bufnr)
 			underline = true,
 			signs = true,
 		})
-	if client.server_capabilities.inlayHintProvider then
-		vim.lsp.inlay_hint.enable()
-	end
 end
 
 -- LSP servers
@@ -215,7 +219,12 @@ null_ls.setup({
 		null_ls.builtins.formatting.black,
 		null_ls.builtins.formatting.alejandra,
 		null_ls.builtins.formatting.stylua,
-		null_ls.builtins.formatting.yamlfmt,
+		null_ls.builtins.formatting.yamlfmt.with({
+			extra_args = {
+				"-formatter",
+				"retain_line_breaks_single=true,max_line_length=120",
+			},
+		}),
 	},
 	on_attach = on_attach,
 })
