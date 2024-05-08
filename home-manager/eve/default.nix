@@ -11,6 +11,7 @@
     ./finicky
     ./neovim
     ./tmux
+    ./ghostty
     ./alacritty.nix
     ./git.nix
     ./1password.nix
