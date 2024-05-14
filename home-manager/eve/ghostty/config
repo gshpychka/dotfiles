@@ -6,10 +6,11 @@ font-family-bold-italic = "JetBrainsMono Nerd Font"
 font-style = "Regular"
 font-style-bold = "Bold"
 font-style-italic = "Italic"
+font-thicken = true
 
 font-size = 12
 
-theme = GruvboxDarkHard
+theme = GruvboxDark
 
 cursor-style = block
 
