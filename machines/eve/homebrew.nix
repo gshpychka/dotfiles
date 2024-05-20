@@ -33,6 +33,8 @@
       "yubico-yubikey-manager"
       "trezor-suite"
       "kindavim"
+      "gimp"
+      "chatgpt"
 
       # -- 3d printing
       "bambu-studio"
