@@ -1,9 +1,4 @@
-{
-  config,
-  pkgs,
-  lib,
-  ...
-}: {
+{pkgs, ...}: {
   programs.neovim = {
     enable = true;
     defaultEditor = true;
@@ -13,7 +8,6 @@
     plugins = with pkgs.vimPlugins; [
       # vim-sensible
       # vim-surround
-      comment-nvim
       undotree
       gruvbox-nvim
       plenary-nvim
@@ -101,7 +95,7 @@
       nodePackages_latest.pyright
       nodePackages_latest.typescript-language-server
       nil
-      sumneko-lua-language-server
+      lua-language-server
 
       # Linters and formatters
       nodePackages_latest.prettier
