@@ -223,6 +223,8 @@ null_ls.setup({
 			extra_args = {
 				"-formatter",
 				"retain_line_breaks_single=true,max_line_length=120",
+				"-continue_on_error",
+				"true",
 			},
 		}),
 	},
