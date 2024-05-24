@@ -177,6 +177,9 @@ require("lspconfig").nil_ls.setup({
 	},
 })
 
+require("lspconfig").sourcekit.setup({})
+require("lspconfig").zls.setup({})
+
 local root_patterns = {
 	eslint = ".eslintrc.json",
 	python = "pyproject.toml",
