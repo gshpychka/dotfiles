@@ -63,7 +63,7 @@
       allowUnsupportedSystem = false;
     };
     overlays = with inputs; [
-      neovim-nightly-overlay.overlay
+      neovim-nightly-overlay.overlays.default
     ];
     stateVersion = "22.11";
     user = "gshpychka";
