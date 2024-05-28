@@ -213,9 +213,6 @@ null_ls.setup({
 		null_ls.builtins.formatting.eslint_d.with({
 			cwd = get_root_finder("eslint"),
 		}),
-		null_ls.builtins.formatting.prettier.with({
-			cwd = get_root_finder("prettier"),
-		}),
 		null_ls.builtins.formatting.fixjson,
 		null_ls.builtins.formatting.autopep8,
 		null_ls.builtins.formatting.isort,
