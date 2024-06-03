@@ -45,7 +45,9 @@ local on_attach = function(client, bufnr)
 	end, createOpts("LSP format"))
 	vim.keymap.set("n", "<leader>il", function()
 		if client.server_capabilities.inlayHintProvider then
-			vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled())
+			vim.lsp.inlay_hint.enable(
+				not vim.lsp.inlay_hint.is_enabled({ bufnr = 0 })
+			)
 		else
 			print("LSP server doesn't support Inlay hints")
 		end
@@ -231,4 +233,4 @@ null_ls.setup({
 	on_attach = on_attach,
 })
 
-require("inc_rename").setup()
+require("inc_rename").setup({})
