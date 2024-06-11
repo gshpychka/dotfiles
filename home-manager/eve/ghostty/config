@@ -1,7 +1,7 @@
-font-family = "Cousine Nerd Font"
-font-family-bold = "Cousine Nerd Font"
-font-family-italic = "Cousine Nerd Font"
-font-family-bold-italic = "Cousine Nerd Font" 
+font-family = "JetBrainsMono Nerd Font"
+font-family-bold = "JetBrainsMono Nerd Font"
+font-family-italic = "JetBrainsMono Nerd Font"
+font-family-bold-italic = "JetBrainsMono Nerd Font" 
 
 font-style = "Regular"
 font-style-bold = "Bold"
