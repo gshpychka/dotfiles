@@ -83,7 +83,7 @@
 
   fonts = {
     fontDir.enable = true;
-    fonts = with pkgs; [(nerdfonts.override {fonts = ["JetBrainsMono"];})];
+    fonts = with pkgs; [(nerdfonts.override {fonts = ["JetBrainsMono" "Cousine"];})];
   };
 
   system = {
