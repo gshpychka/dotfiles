@@ -92,8 +92,8 @@
     ];
     extraPackages = with pkgs; [
       # LSP servers
-      nodePackages_latest.pyright
       nodePackages_latest.typescript-language-server
+      pyright
       nil
       lua-language-server
       zls
