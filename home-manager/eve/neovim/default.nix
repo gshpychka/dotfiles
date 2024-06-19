@@ -97,7 +97,6 @@
       nil
       lua-language-server
       zls
-      sourcekit-lsp
 
       # Linters and formatters
       nodePackages_latest.prettier

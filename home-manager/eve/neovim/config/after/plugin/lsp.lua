@@ -95,14 +95,14 @@ local on_attach = function(client, bufnr)
 		end,
 	})
 	vim.lsp.handlers["textDocument/publishDiagnostics"] =
-		vim.lsp.with(vim.lsp.diagnostic.on_publish_diagnostics, {
-			virtual_text = {
-				prefix = "",
-			},
-			severity_sort = true,
-			underline = true,
-			signs = true,
-		})
+			vim.lsp.with(vim.lsp.diagnostic.on_publish_diagnostics, {
+				virtual_text = {
+					prefix = "",
+				},
+				severity_sort = true,
+				underline = true,
+				signs = true,
+			})
 end
 
 -- LSP servers
@@ -179,7 +179,6 @@ require("lspconfig").nil_ls.setup({
 	},
 })
 
-require("lspconfig").sourcekit.setup({})
 require("lspconfig").zls.setup({})
 
 local root_patterns = {
