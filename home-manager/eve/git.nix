@@ -44,7 +44,7 @@
         commit.gpgsign = true;
         gpg.format = "ssh";
         user.signingkey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIB737o9Ltm1K3w9XX9SBHNW1JT4NpCPP5qg9R+SB18dG";
-        init = {defaultBranch = "main";};
+        init.defaultBranch = "main";
         pull = {
           ff = false;
           commit = false;
@@ -52,6 +52,7 @@
         };
         push.autoSetupRemote = true;
         delta.line-numbers = true;
+        rerere.enabled = true;
       };
       includes = [
         {
