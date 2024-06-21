@@ -99,8 +99,8 @@
       zls
 
       # Linters and formatters
+      vscode-langservers-extracted
       nodePackages_latest.prettier
-      nodePackages_latest.eslint_d
       nodePackages_latest.jsonlint
       nodePackages_latest.fixjson
       yamlfmt

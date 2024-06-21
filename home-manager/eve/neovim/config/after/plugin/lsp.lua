@@ -1,10 +1,14 @@
+function CreateOpts(bufnr, description)
+	return {
+		buffer = bufnr,
+		remap = false,
+		desc = description,
+	}
+end
+
 local on_attach = function(client, bufnr)
 	local function createOpts(description)
-		return {
-			buffer = bufnr,
-			remap = false,
-			desc = description,
-		}
+		return CreateOpts(bufnr, description)
 	end
 
 	-- Mappings.
@@ -13,10 +17,10 @@ local on_attach = function(client, bufnr)
 		vim.diagnostic.open_float()
 	end, createOpts("Open LSP diagnostics float"))
 	vim.keymap.set("n", "[d", function()
-		vim.diagnostic.goto_prev({ severity = vim.diagnostic.severity.ERROR })
+		vim.diagnostic.goto_prev({ _highest = true })
 	end, createOpts("Go to previous LSP diagnostic"))
 	vim.keymap.set("n", "]d", function()
-		vim.diagnostic.goto_next({ severity = vim.diagnostic.severity.ERROR })
+		vim.diagnostic.goto_next({ _highest = true })
 	end, createOpts("Go to next LSP diagnostic"))
 	vim.keymap.set("n", "gd", function()
 		vim.lsp.buf.definition()
@@ -41,7 +45,11 @@ local on_attach = function(client, bufnr)
 		vim.lsp.buf.code_action()
 	end, createOpts("LSP code action"))
 	vim.keymap.set("n", "<leader>fo", function()
-		vim.lsp.buf.format({ timeout_ms = 5000 })
+		if client.server_capabilities.documentHighlightProvider then
+			vim.lsp.buf.format({ timeout_ms = 5000 })
+		else
+			print("LSP server doesn't support formatting")
+		end
 	end, createOpts("LSP format"))
 	vim.keymap.set("n", "<leader>il", function()
 		if client.server_capabilities.inlayHintProvider then
@@ -76,7 +84,7 @@ local on_attach = function(client, bufnr)
 		vim.api.nvim_create_autocmd({ "BufWritePre" }, {
 			buffer = bufnr,
 			callback = function()
-				vim.lsp.buf.format({ timeout_ms = 2000 })
+				vim.lsp.buf.format({ timeout_ms = 5000 })
 			end,
 		})
 	end
@@ -91,18 +99,21 @@ local on_attach = function(client, bufnr)
 	vim.api.nvim_create_autocmd({ "CursorHold" }, {
 		buffer = bufnr,
 		callback = function()
-			vim.diagnostic.open_float(0, { focusable = false })
+			vim.diagnostic.open_float({
+				severity_sort = true,
+				focusable = false,
+			})
 		end,
 	})
 	vim.lsp.handlers["textDocument/publishDiagnostics"] =
-			vim.lsp.with(vim.lsp.diagnostic.on_publish_diagnostics, {
-				virtual_text = {
-					prefix = "",
-				},
-				severity_sort = true,
-				underline = true,
-				signs = true,
-			})
+		vim.lsp.with(vim.lsp.diagnostic.on_publish_diagnostics, {
+			virtual_text = {
+				prefix = "",
+			},
+			severity_sort = true,
+			underline = true,
+			signs = true,
+		})
 end
 
 -- LSP servers
@@ -179,41 +190,30 @@ require("lspconfig").nil_ls.setup({
 	},
 })
 
+require("lspconfig").eslint.setup({
+	-- on_attach = on_attach,
+	on_attach = function(client, bufnr)
+		vim.api.nvim_create_autocmd("BufWritePre", {
+			buffer = bufnr,
+			command = "EslintFixAll",
+		})
+		client.server_capabilities.documentFormattingProvider = nil
+		client.server_capabilities.documentRangeFormattingProvider = nil
+		vim.keymap.set("n", "<leader>fo", function()
+			vim.cmd("EslintFixAll")
+		end, CreateOpts(bufnr, "LSP format"))
+		on_attach(client, bufnr)
+	end,
+})
+
 require("lspconfig").zls.setup({})
-
-local root_patterns = {
-	eslint = ".eslintrc.json",
-	python = "pyproject.toml",
-	prettier = ".prettierrc.json",
-}
-
-local null_ls_utils = require("null-ls.utils")
-
-local get_root_finder = function(kind)
-	local pattern = root_patterns[kind]
-	if not pattern then
-		error("Unkown kind: " .. kind)
-	end
-
-	return function(params)
-		return null_ls_utils.root_pattern(pattern)(params.bufname)
-	end
-end
 
 local null_ls = require("null-ls")
 null_ls.setup({
 	debug = true,
 	sources = {
-		-- null_ls.builtins.code_actions.eslint_d,
-		null_ls.builtins.diagnostics.eslint_d.with({
-			cwd = get_root_finder("eslint"),
-		}),
 		null_ls.builtins.diagnostics.flake8,
 		null_ls.builtins.diagnostics.jsonlint,
-		-- null_ls.builtins.diagnostics.mypy,
-		null_ls.builtins.formatting.eslint_d.with({
-			cwd = get_root_finder("eslint"),
-		}),
 		null_ls.builtins.formatting.fixjson,
 		null_ls.builtins.formatting.autopep8,
 		null_ls.builtins.formatting.isort,
