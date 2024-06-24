@@ -12,7 +12,6 @@
       systemd-boot.enable = true;
       efi.canTouchEfiVariables = true;
     };
-    binfmt.emulatedSystems = ["x86_64-linux"];
   };
 
   networking = {
@@ -24,7 +23,7 @@
 
   hardware = {
     bluetooth.enable = true;
-    gpgSmartCards.enable = true;
+    gpgSmartcards.enable = true;
   };
 
   users = {
