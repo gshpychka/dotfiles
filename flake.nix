@@ -220,6 +220,13 @@
             };
           };
         })
+        home-manager.nixosModules.home-manager
+        {
+          home-manager.users.gshpychka = {...}: {
+            imports = [./home-manager/common ./home-manager/reaper];
+            home.stateVersion = "24.05";
+          };
+        }
       ];
     };
   };
