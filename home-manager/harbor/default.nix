@@ -6,7 +6,7 @@
   system,
   ...
 }: {
-  imports = [];
+  imports = [../common];
 
   programs = {};
 }

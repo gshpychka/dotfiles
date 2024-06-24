@@ -16,10 +16,11 @@
 
   networking = {
     hostName = "reaper";
+    computerName = "Reaper";
     networkmanager.enable = true;
   };
 
-  time.timeZone = "Europe/Kiev";
+  time.timeZone = "Europe/Kyiv";
 
   hardware = {
     bluetooth.enable = true;
@@ -44,6 +45,11 @@
   programs.zsh = {
     enable = true;
     enableCompletion = false;
+    enableBashCompletion = false;
+  };
+
+  fonts = {
+    packages = with pkgs; [(nerdfonts.override {fonts = ["JetBrainsMono"];})];
   };
 
   security = {

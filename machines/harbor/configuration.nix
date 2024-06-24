@@ -50,7 +50,7 @@ in {
     };
   };
 
-  time.timeZone = "Europe/Kiev";
+  time.timeZone = "Europe/Kyiv";
 
   hardware = {bluetooth.enable = true;};
 

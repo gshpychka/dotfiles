@@ -107,24 +107,6 @@
               };
               options = "--delete-old";
             };
-            distributedBuilds = true;
-            buildMachines = [
-              {
-                hostName = shared.harborHost;
-                # cross-compilation
-                system = "x86_64-linux";
-                maxJobs = 1;
-                supportedFeatures = ["kvm"];
-                mandatoryFeatures = [];
-              }
-              {
-                hostName = shared.harborHost;
-                system = "aarch64-linux";
-                maxJobs = 1;
-                supportedFeatures = ["kvm"];
-                mandatoryFeatures = [];
-              }
-            ];
           };
         })
         home-manager.darwinModule
@@ -135,7 +117,7 @@
             # makes all inputs available in imported files for hm
             extraSpecialArgs = {inherit inputs;};
             users.${user} = {...}: {
-              imports = [shared ./home-manager/common ./home-manager/eve];
+              imports = [shared ./home-manager/eve];
               home.file.".hushlogin".text = "";
               home.stateVersion = stateVersion;
             };
@@ -146,12 +128,9 @@
           nix-homebrew = {
             # Install Homebrew under the default prefix
             enable = true;
-
             enableRosetta = false;
-
             # User owning the Homebrew prefix
             user = user;
-
             taps = {
               "homebrew/homebrew-core" = homebrew-core;
               "homebrew/homebrew-cask" = homebrew-cask;
@@ -190,8 +169,12 @@
         })
         home-manager.nixosModules.home-manager
         {
+          useGlobalPkgs = true;
+          useUserPackages = true;
+          # makes all inputs available in imported files for hm
+          extraSpecialArgs = {inherit inputs;};
           home-manager.users.pi = {...}: {
-            imports = [./home-manager/common ./home-manager/harbor];
+            imports = [./home-manager/harbor];
             home.stateVersion = stateVersion;
           };
         }
@@ -222,8 +205,12 @@
         })
         home-manager.nixosModules.home-manager
         {
+          useGlobalPkgs = true;
+          useUserPackages = true;
+          # makes all inputs available in imported files for hm
+          extraSpecialArgs = {inherit inputs;};
           home-manager.users.gshpychka = {...}: {
-            imports = [./home-manager/common ./home-manager/reaper];
+            imports = [./home-manager/reaper];
             home.stateVersion = "24.05";
           };
         }
