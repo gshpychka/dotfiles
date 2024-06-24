@@ -197,5 +197,30 @@
         }
       ];
     };
+
+    # NixOS configuration for reaper
+    nixosConfigurations.reaper = nixpkgs.lib.nixosSystem {
+      system = "x86_64-linux";
+      specialArgs = {inherit inputs;};
+      modules = [
+        ./machines/reaper/configuration.nix
+        ({pkgs, ...}: {
+          nixpkgs.config =
+            {
+              permittedInsecurePackages = ["openssl-1.1.1w"];
+            }
+            // nixpkgsConfig;
+          nixpkgs.overlays = overlays;
+          nix = {
+            settings = {
+              allowed-users = ["gshpychka"];
+              trusted-users = ["root" "gshpychka"];
+              experimental-features = ["nix-command" "flakes"];
+              accept-flake-config = true;
+            };
+          };
+        })
+      ];
+    };
   };
 }
