@@ -169,10 +169,6 @@
         })
         home-manager.nixosModules.home-manager
         {
-          useGlobalPkgs = true;
-          useUserPackages = true;
-          # makes all inputs available in imported files for hm
-          extraSpecialArgs = {inherit inputs;};
           home-manager.users.pi = {...}: {
             imports = [./home-manager/harbor];
             home.stateVersion = stateVersion;
@@ -205,10 +201,6 @@
         })
         home-manager.nixosModules.home-manager
         {
-          useGlobalPkgs = true;
-          useUserPackages = true;
-          # makes all inputs available in imported files for hm
-          extraSpecialArgs = {inherit inputs;};
           home-manager.users.gshpychka = {...}: {
             imports = [./home-manager/reaper];
             home.stateVersion = "24.05";

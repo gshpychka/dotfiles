@@ -16,7 +16,6 @@
 
   networking = {
     hostName = "reaper";
-    computerName = "Reaper";
     networkmanager.enable = true;
   };
 
