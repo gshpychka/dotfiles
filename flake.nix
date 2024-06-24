@@ -107,6 +107,24 @@
               };
               options = "--delete-old";
             };
+            distributedBuilds = true;
+            buildMachines = [
+              {
+                hostName = shared.harborHost;
+                # cross-compilation
+                system = "x86_64-linux";
+                maxJobs = 1;
+                supportedFeatures = ["kvm"];
+                mandatoryFeatures = [];
+              }
+              {
+                hostName = shared.harborHost;
+                system = "aarch64-linux";
+                maxJobs = 1;
+                supportedFeatures = ["kvm"];
+                mandatoryFeatures = [];
+              }
+            ];
           };
         })
         home-manager.darwinModule
