@@ -53,21 +53,23 @@ local on_attach = function(client, bufnr)
 		)
 	end, createOpts("Toggle LSP inlay hints"))
 
-	local group = vim.api.nvim_create_augroup("LSPDocumentHighlight", {})
-	vim.api.nvim_create_autocmd({ "CursorHold" }, {
-		buffer = bufnr,
-		group = group,
-		callback = function()
-			vim.lsp.buf.document_highlight()
-		end,
-	})
-	vim.api.nvim_create_autocmd({ "CursorMoved" }, {
-		buffer = bufnr,
-		group = group,
-		callback = function()
-			vim.lsp.buf.clear_references()
-		end,
-	})
+	if client.server_capabilities.documentHighlightProvider then
+		local group = vim.api.nvim_create_augroup("LSPDocumentHighlight", {})
+		vim.api.nvim_create_autocmd({ "CursorHold" }, {
+			buffer = bufnr,
+			group = group,
+			callback = function()
+				vim.lsp.buf.document_highlight()
+			end,
+		})
+		vim.api.nvim_create_autocmd({ "CursorMoved" }, {
+			buffer = bufnr,
+			group = group,
+			callback = function()
+				vim.lsp.buf.clear_references()
+			end,
+		})
+	end
 
 	vim.api.nvim_create_autocmd({ "BufWritePre" }, {
 		buffer = bufnr,
