@@ -43,6 +43,10 @@
           port = config.shared.harborSshPort;
           extraOptions = {ForwardAgent = "yes";};
         };
+        # local = {
+        #   host = "*.${config.shared.localDomain}";
+        #   extraOptions = {ForwardAgent = "yes";};
+        # };
       };
     };
     direnv = {
