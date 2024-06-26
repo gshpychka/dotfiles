@@ -45,49 +45,38 @@ local on_attach = function(client, bufnr)
 		vim.lsp.buf.code_action()
 	end, createOpts("LSP code action"))
 	vim.keymap.set("n", "<leader>fo", function()
-		if client.server_capabilities.documentHighlightProvider then
-			vim.lsp.buf.format({ timeout_ms = 5000 })
-		else
-			print("LSP server doesn't support formatting")
-		end
+		vim.lsp.buf.format({ timeout_ms = 5000 })
 	end, createOpts("LSP format"))
 	vim.keymap.set("n", "<leader>il", function()
-		if client.server_capabilities.inlayHintProvider then
-			vim.lsp.inlay_hint.enable(
-				not vim.lsp.inlay_hint.is_enabled({ bufnr = 0 })
-			)
-		else
-			print("LSP server doesn't support Inlay hints")
-		end
+		vim.lsp.inlay_hint.enable(
+			not vim.lsp.inlay_hint.is_enabled({ bufnr = bufnr })
+		)
 	end, createOpts("Toggle LSP inlay hints"))
 
-	-- Set autocommands conditional on server_capabilities
-	if client.server_capabilities.documentHighlightProvider then
-		local group = vim.api.nvim_create_augroup("LSPDocumentHighlight", {})
-		vim.api.nvim_create_autocmd({ "CursorHold" }, {
-			buffer = bufnr,
-			group = group,
-			callback = function()
-				vim.lsp.buf.document_highlight()
-			end,
-		})
-		vim.api.nvim_create_autocmd({ "CursorMoved" }, {
-			buffer = bufnr,
-			group = group,
-			callback = function()
-				vim.lsp.buf.clear_references()
-			end,
-		})
-	end
+	local group = vim.api.nvim_create_augroup("LSPDocumentHighlight", {})
+	vim.api.nvim_create_autocmd({ "CursorHold" }, {
+		buffer = bufnr,
+		group = group,
+		callback = function()
+			vim.lsp.buf.document_highlight()
+		end,
+	})
+	vim.api.nvim_create_autocmd({ "CursorMoved" }, {
+		buffer = bufnr,
+		group = group,
+		callback = function()
+			vim.lsp.buf.clear_references()
+		end,
+	})
 
-	if client.server_capabilities.documentFormattingProvider then
-		vim.api.nvim_create_autocmd({ "BufWritePre" }, {
-			buffer = bufnr,
-			callback = function()
+	vim.api.nvim_create_autocmd({ "BufWritePre" }, {
+		buffer = bufnr,
+		callback = function()
+			if client.server_capabilities.documentFormattingProvider then
 				vim.lsp.buf.format({ timeout_ms = 5000 })
-			end,
-		})
-	end
+			end
+		end,
+	})
 	-- if client.server_capabilities.signatureHelpProvider then
 	--     vim.api.nvim_create_autocmd({ "CursorHoldI" }, {
 	--         buffer=bufnr,
@@ -121,15 +110,12 @@ end
 local capabilities = require("cmp_nvim_lsp").default_capabilities()
 
 require("lspconfig").pyright.setup({
-	on_attach = function(client, bufnr)
-		on_attach(client, bufnr)
-	end,
 	capabilities = capabilities,
 })
 
 require("typescript-tools").setup({
 	on_attach = function(client, bufnr)
-		-- Formatting is handled by eslint via null_ls
+		-- Formatting is handled by eslint via its LSP server
 		client.server_capabilities.documentFormattingProvider = nil
 		client.server_capabilities.documentRangeFormattingProvider = nil
 		on_attach(client, bufnr)
@@ -191,19 +177,9 @@ require("lspconfig").nil_ls.setup({
 })
 
 require("lspconfig").eslint.setup({
-	-- on_attach = on_attach,
-	on_attach = function(client, bufnr)
-		vim.api.nvim_create_autocmd("BufWritePre", {
-			buffer = bufnr,
-			command = "EslintFixAll",
-		})
-		client.server_capabilities.documentFormattingProvider = nil
-		client.server_capabilities.documentRangeFormattingProvider = nil
-		vim.keymap.set("n", "<leader>fo", function()
-			vim.cmd("EslintFixAll")
-		end, CreateOpts(bufnr, "LSP format"))
-		on_attach(client, bufnr)
-	end,
+	settings = {
+		workingDirectory = { mode = "auto" },
+	},
 })
 
 require("lspconfig").zls.setup({})
