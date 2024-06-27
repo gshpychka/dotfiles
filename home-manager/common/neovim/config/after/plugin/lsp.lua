@@ -1,18 +1,5 @@
 local util = require("vim.lsp.util")
 
-local function keymap_exists(mode, lhs)
-	-- Fetch all current keymaps for the given mode
-	local keymaps = vim.api.nvim_get_keymap(mode)
-	for _, keymap in ipairs(keymaps) do
-		if keymap.lhs == lhs then
-			return true
-		end
-	end
-	return false
-end
-
-local format_keymap = "<leader>fo"
-
 local on_attach = function(client, bufnr)
 	local function createOpts(description)
 		return {
@@ -71,7 +58,7 @@ local on_attach = function(client, bufnr)
 		-- This is so that Eslint formatting keymap takes precedence
 		-- This will throw an error on an existing keymap, so we wrap it in a pcall()
 		-- For some reason wrapping vim.keymap.set() does not suppress the error
-		pcall(vim.api.nvim_buf_set_keymap, bufnr, "n", format_keymap, function()
+		pcall(vim.api.nvim_buf_set_keymap, bufnr, "n", "<leader>fo", function()
 			local params = util.make_formatting_params({})
 			client.request("textDocument/formatting", params, nil, bufnr)
 		end, { noremap = true, unique = true, desc = "LSP Format" })
@@ -210,7 +197,7 @@ require("lspconfig").eslint.setup({
 		-- because they set `unique` to true
 		client.server_capabilities.documentFormattingProvider = nil
 		client.server_capabilities.documentRangeFormattingProvider = nil
-		vim.keymap.set("n", format_keymap, function()
+		vim.keymap.set("n", "<leader>fo", function()
 			vim.cmd("EslintFixAll")
 		end, { desc = "Eslint formatting", remap = false, buffer = bufnr })
 		on_attach(client, bufnr)
