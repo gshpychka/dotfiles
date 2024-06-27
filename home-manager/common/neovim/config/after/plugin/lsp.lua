@@ -139,7 +139,12 @@ end
 
 -- LSP servers
 
-local capabilities = require("cmp_nvim_lsp").default_capabilities()
+local capabilities = vim.tbl_deep_extend(
+	"force",
+	vim.lsp.protocol.make_client_capabilities(),
+	require("cmp_nvim_lsp").default_capabilities(),
+	{ workspace = { didChangeWatchedFiles = { dynamicRegistration = true } } }
+)
 
 require("lspconfig").pyright.setup({
 	capabilities = capabilities,
@@ -178,13 +183,22 @@ require("lspconfig").lua_ls.setup({
 
 require("lspconfig").nil_ls.setup({
 	capabilities = capabilities,
-	on_attach = on_attach,
+	on_attach = function(client, bufnr)
+		-- Formatting is handled by alejandra
+		client.server_capabilities.documentFormattingProvider = nil
+		client.server_capabilities.documentRangeFormattingProvider = nil
+		on_attach(client, bufnr)
+	end,
 	settings = {
 		["nil"] = {
 			nix = {
 				flake = {
 					autoEvalInputs = false,
+					autoArchive = false,
 				},
+				-- formatting = {
+				-- 	command = { "alejandra --quiet" },
+				-- },
 			},
 		},
 	},

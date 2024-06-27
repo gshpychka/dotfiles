@@ -65,6 +65,7 @@
           toml
           typescript
           vim
+          vimdoc
           yaml
           wing
           markdown
