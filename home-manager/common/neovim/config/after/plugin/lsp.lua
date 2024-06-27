@@ -75,7 +75,12 @@ local on_attach = function(client, bufnr)
 		vim.keymap.set("n", "<leader>fo", function()
 			local params = util.make_formatting_params({})
 			client.request("textDocument/formatting", params, nil, bufnr)
-		end, createOpts("LSP formatting"))
+		end, {
+			noremap = true,
+			buffer = bufnr,
+			unique = true,
+			desc = "LSP formatting",
+		})
 	end
 
 	vim.keymap.set("n", "<leader>il", function()
