@@ -1,5 +1,18 @@
 local util = require("vim.lsp.util")
 
+local function keymap_exists(bufnr, mode, lhs)
+	-- Replace <leader> in lhs with the actual mapleader value
+	local leader = vim.g.mapleader or "\\"
+	lhs = (lhs:gsub("<leader>", leader))
+	local keymaps = vim.api.nvim_buf_get_keymap(bufnr, mode)
+	for _, keymap in ipairs(keymaps) do
+		if keymap.lhs == lhs then
+			return true
+		end
+	end
+	return false
+end
+
 local on_attach = function(client, bufnr)
 	local function createOpts(description)
 		return {
@@ -53,15 +66,16 @@ local on_attach = function(client, bufnr)
 		vim.lsp.buf.code_action()
 	end, createOpts("LSP code action"))
 
-	if client.server_capabilities.documentFormattingProvider then
+	if
+		client.server_capabilities.documentFormattingProvider
+		and not keymap_exists(bufnr, "n", "<leader>fo")
+	then
 		-- Do not override if already mapped
 		-- This is so that Eslint formatting keymap takes precedence
-		-- This will throw an error on an existing keymap, so we wrap it in a pcall()
-		-- For some reason wrapping vim.keymap.set() does not suppress the error
-		pcall(vim.api.nvim_buf_set_keymap, bufnr, "n", "<leader>fo", function()
+		vim.keymap.set("n", "<leader>fo", function()
 			local params = util.make_formatting_params({})
 			client.request("textDocument/formatting", params, nil, bufnr)
-		end, { noremap = true, unique = true, desc = "LSP Format" })
+		end, createOpts("LSP formatting"))
 	end
 
 	vim.keymap.set("n", "<leader>il", function()
@@ -128,7 +142,12 @@ require("lspconfig").pyright.setup({
 
 require("lspconfig").lua_ls.setup({
 	capabilities = capabilities,
-	on_attach = on_attach,
+	on_attach = function(client, bufnr)
+		-- Formatting is handled by stylua
+		client.server_capabilities.documentFormattingProvider = nil
+		client.server_capabilities.documentRangeFormattingProvider = nil
+		on_attach(client, bufnr)
+	end,
 	settings = {
 		Lua = {
 			runtime = {
