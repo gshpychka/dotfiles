@@ -1,16 +1,51 @@
 local builtin = require("telescope.builtin")
-vim.keymap.set(
-	"n",
-	"<leader>ff",
-	builtin.find_files,
-	{ desc = "Telescope find files" }
-)
+local actions = require("telescope.actions")
+local utils = require("telescope.utils")
+local Path = require("plenary.path")
+
+vim.keymap.set("n", "<leader>ff", function()
+	builtin.git_files({ show_untracked = true })
+end, { desc = "Telescope find files" })
 vim.keymap.set(
 	"n",
 	"<leader>fgg",
 	builtin.live_grep,
 	{ desc = "Telescope live grep" }
 )
+vim.keymap.set("n", "<leader>fgr", function()
+	-- Select a folder to search from, and then search text down from it
+
+	-- The default selection will be the current buffer's folder
+	-- relative to the cwd
+
+	local relative_path = Path:new(utils.buffer_dir()):normalize()
+	-- Set relative_path to empty if it's just the current directory
+	if relative_path == "." then
+		relative_path = ""
+	end
+
+	builtin.find_files({
+		find_command = { "fd", "--type", "d", "--strip-cwd-prefix" },
+		prompt_title = "Choose directory to search from",
+		default_text = relative_path,
+		previewer = false,
+		hidden = true,
+		attach_mappings = function(prompt_bufnr, map)
+			actions.select_default:replace(function()
+				-- actions.close(prompt_bufnr)
+				local selection =
+					require("telescope.actions.state").get_selected_entry()
+				-- Open live_grep with the cwd set to the selected directory
+				builtin.live_grep({
+					cwd = selection.value,
+					prompt_title = "Search in " .. selection.value,
+				})
+			end)
+			return true
+		end,
+	})
+end, { desc = "Telescope live grep relative to a directory" })
+
 vim.keymap.set(
 	"n",
 	"<leader>fb",
@@ -93,6 +128,7 @@ require("telescope").setup({
 		find_files = {
 			theme = "dropdown",
 		},
+		lsp_references = {},
 		buffers = {
 			theme = "dropdown",
 		},
