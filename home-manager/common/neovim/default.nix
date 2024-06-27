@@ -29,12 +29,9 @@
 
       # nvim-bqf
 
-      # vista-vim
-
       nvim-tree-lua
       nvim-web-devicons
 
-      # vim-lion
       neoscroll-nvim
 
       # noice requires nui-nvim and nvim-notify
@@ -43,8 +40,6 @@
       # noice-nvim
 
       inc-rename-nvim
-      # leap-nvim
-      # peek-nvim
       indent-blankline-nvim
 
       nvim-lspconfig

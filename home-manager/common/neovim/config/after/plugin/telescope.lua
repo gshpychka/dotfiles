@@ -12,6 +12,12 @@ vim.keymap.set(
 	builtin.live_grep,
 	{ desc = "Telescope live grep" }
 )
+vim.keymap.set(
+	"v",
+	"<leader>fgg",
+	builtin.grep_string,
+	{ desc = "Telescope grep selection" }
+)
 vim.keymap.set("n", "<leader>fgr", function()
 	-- Select a folder to search from, and then search text down from it
 
