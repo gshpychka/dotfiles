@@ -1,5 +1,20 @@
+local util = require("vim.lsp.util")
+
+local function keymap_exists(mode, lhs)
+	-- Fetch all current keymaps for the given mode
+	local keymaps = vim.api.nvim_get_keymap(mode)
+	for _, keymap in ipairs(keymaps) do
+		if keymap.lhs == lhs then
+			return true
+		end
+	end
+	return false
+end
+
+local format_keymap = "<leader>fo"
+
 local on_attach = function(client, bufnr)
-	local function createOpts(bufnr, description)
+	local function createOpts(description)
 		return {
 			buffer = bufnr,
 			remap = false,
@@ -51,9 +66,16 @@ local on_attach = function(client, bufnr)
 		vim.lsp.buf.code_action()
 	end, createOpts("LSP code action"))
 
-	vim.keymap.set("n", "<leader>fo", function()
-		vim.lsp.buf.format({ timeout_ms = 5000 })
-	end, createOpts("LSP format"))
+	if client.server_capabilities.documentFormattingProvider then
+		-- Do not override if already mapped
+		-- This is so that Eslint formatting keymap takes precedence
+		-- This will throw an error on an existing keymap, so we wrap it in a pcall()
+		-- For some reason wrapping vim.keymap.set() does not suppress the error
+		pcall(vim.api.nvim_buf_set_keymap, bufnr, "n", format_keymap, function()
+			local params = util.make_formatting_params({})
+			client.request("textDocument/formatting", params, nil, bufnr)
+		end, { noremap = true, unique = true, desc = "LSP Format" })
+	end
 
 	vim.keymap.set("n", "<leader>il", function()
 		vim.lsp.inlay_hint.enable(
@@ -79,14 +101,15 @@ local on_attach = function(client, bufnr)
 		})
 	end
 
-	vim.api.nvim_create_autocmd({ "BufWritePre" }, {
-		buffer = bufnr,
-		callback = function()
-			if client.server_capabilities.documentFormattingProvider then
-				vim.lsp.buf.format({ timeout_ms = 5000, async = true })
-			end
-		end,
-	})
+	if client.server_capabilities.documentFormattingProvider then
+		vim.api.nvim_create_autocmd({ "BufWritePre" }, {
+			buffer = bufnr,
+			callback = function()
+				local params = util.make_formatting_params({})
+				client.request("textDocument/formatting", params, nil, bufnr)
+			end,
+		})
+	end
 
 	vim.api.nvim_create_autocmd({ "CursorHold" }, {
 		buffer = bufnr,
@@ -158,7 +181,7 @@ require("lspconfig").nil_ls.setup({
 
 require("typescript-tools").setup({
 	on_attach = function(client, bufnr)
-		-- Formatting is handled by eslint via its LSP server
+		-- Formatting is handled by eslint and prettier
 		client.server_capabilities.documentFormattingProvider = nil
 		client.server_capabilities.documentRangeFormattingProvider = nil
 		on_attach(client, bufnr)
@@ -180,6 +203,18 @@ require("typescript-tools").setup({
 })
 
 require("lspconfig").eslint.setup({
+	on_attach = function(client, bufnr)
+		-- only run Eslint formatting when invoked explicitly with a keymap
+		-- as it is quite slow
+		-- Setting the binding here will override other LSPs' keymaps
+		-- because they set `unique` to true
+		client.server_capabilities.documentFormattingProvider = nil
+		client.server_capabilities.documentRangeFormattingProvider = nil
+		vim.keymap.set("n", format_keymap, function()
+			vim.cmd("EslintFixAll")
+		end, { desc = "Eslint formatting", remap = false, buffer = bufnr })
+		on_attach(client, bufnr)
+	end,
 	settings = {
 		workingDirectory = { mode = "auto" },
 	},
@@ -194,6 +229,10 @@ null_ls.setup({
 		null_ls.builtins.diagnostics.flake8,
 		null_ls.builtins.diagnostics.jsonlint,
 		null_ls.builtins.formatting.fixjson,
+		null_ls.builtins.formatting.prettier.with({
+			-- only use prettier if it is installed in the project
+			only_local = "node_modules/.bin",
+		}),
 		null_ls.builtins.formatting.autopep8,
 		null_ls.builtins.formatting.isort,
 		null_ls.builtins.formatting.black,

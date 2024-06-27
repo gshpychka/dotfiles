@@ -83,7 +83,6 @@
       cmp-buffer
 
       null-ls-nvim
-      # nvim-lsp-ts-utils
 
       telescope-nvim
       telescope-fzf-native-nvim
@@ -99,8 +98,7 @@
       zls
 
       # Linters and formatters
-      vscode-langservers-extracted
-      nodePackages_latest.prettier
+      vscode-langservers-extracted # eslint
       nodePackages_latest.jsonlint
       nodePackages_latest.fixjson
       yamlfmt
