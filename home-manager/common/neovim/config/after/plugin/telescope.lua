@@ -17,12 +17,9 @@ vim.keymap.set(
 	builtin.buffers,
 	{ desc = "Telescope buffers" }
 )
-vim.keymap.set(
-	"n",
-	"<leader>fr",
-	builtin.lsp_references,
-	{ desc = "Telescope LSP references" }
-)
+vim.keymap.set("n", "<leader>fr", function()
+	builtin.lsp_references({ include_declaration = false, reuse_win = true })
+end, { desc = "Telescope LSP references" })
 vim.keymap.set(
 	"n",
 	"<leader>fht",
