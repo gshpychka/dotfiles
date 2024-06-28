@@ -40,6 +40,32 @@ local on_attach = function(client, bufnr)
     vim.lsp.buf.definition()
   end, createOpts("Go to definition"))
 
+  vim.keymap.set("n", "md", function()
+    local handler = function(_, result, ctx, config)
+      if result == nil or vim.tbl_isempty(result) then
+        return nil
+      end
+      if vim.islist(result) then
+        -- Hack: in case of multiple results, pick the first one
+        result = result[1]
+      end
+      local item = util.locations_to_items({ result }, client.offset_encoding)[1]
+
+      local current_bufname = vim.api.nvim_buf_get_name(bufnr)
+      if item.filename == current_bufname then
+        vim.api.nvim_buf_set_mark(bufnr, "d", item.lnum, item.col, {})
+        return nil
+      else
+        -- If definition is in a different file, show the path
+        local relative_path = require("plenary.path"):new(item.filename):normalize()
+        util.open_floating_preview({ "Definition is in another file:", "", relative_path }, "messages")
+        return nil
+      end
+    end
+
+    vim.lsp.buf_request(bufnr, "textDocument/definition", util.make_position_params(), handler)
+  end, createOpts("Create mark at definition"))
+
   vim.keymap.set("n", "gD", function()
     vim.lsp.buf.type_definition()
   end, createOpts("Go to the type definition"))
@@ -203,27 +229,6 @@ require("typescript-tools").setup({
     -- Formatting is handled by eslint and prettier
     client.server_capabilities.documentFormattingProvider = nil
     client.server_capabilities.documentRangeFormattingProvider = nil
-    client.handlers["textDocument/definition"] = function(_, result, ctx, config)
-      if result == nil or vim.tbl_isempty(result) then
-        return nil
-      end
-      if vim.islist(result) then
-        -- Hack: in case of multiple results, pick the first one
-        result = result[1]
-      end
-      local item = util.locations_to_items({ result }, client.offset_encoding)[1]
-
-      local current_bufname = vim.api.nvim_buf_get_name(bufnr)
-      if item.filename == current_bufname then
-        vim.api.nvim_buf_set_mark(bufnr, "d", item.lnum, item.col, {})
-        return nil
-      else
-        -- If definition is in a different file, show the path
-        local relative_path = require("plenary.path"):new(item.filename):normalize()
-        util.open_floating_preview({ "Definition is in another file:", "", relative_path }, "messages")
-        return nil
-      end
-    end
     on_attach(client, bufnr)
   end,
   capabilities = capabilities,
