@@ -209,6 +209,31 @@ require("typescript-tools").setup({
 		-- Formatting is handled by eslint and prettier
 		client.server_capabilities.documentFormattingProvider = nil
 		client.server_capabilities.documentRangeFormattingProvider = nil
+		client.handlers["textDocument/definition"] = function(
+			_,
+			result,
+			ctx,
+			config
+		)
+			if result == nil or vim.tbl_isempty(result) then
+				return nil
+			end
+			if vim.islist(result) then
+				-- Hack: in case of multiple results, pick the first one
+				result = result[1]
+			end
+			local item =
+				util.locations_to_items({ result }, client.offset_encoding)[1]
+
+			-- Will break if the definition is in another buffer
+			vim.api.nvim_buf_set_mark(bufnr, "D", item.lnum, item.col, {})
+			vim.api.nvim_notify(
+				"Definition mark saved",
+				vim.log.levels.INFO,
+				{}
+			)
+			return nil
+		end
 		on_attach(client, bufnr)
 	end,
 	capabilities = capabilities,
