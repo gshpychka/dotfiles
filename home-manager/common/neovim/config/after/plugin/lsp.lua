@@ -141,20 +141,29 @@ local on_attach = function(client, bufnr)
     buffer = bufnr,
     callback = function()
       vim.diagnostic.open_float({
-        severity_sort = true,
         focusable = false,
+        close_events = { "BufLeave", "CursorMoved", "InsertEnter", "FocusLost" },
       })
     end,
   })
-  vim.lsp.handlers["textDocument/publishDiagnostics"] = vim.lsp.with(vim.lsp.diagnostic.on_publish_diagnostics, {
-    virtual_text = {
-      prefix = "",
-    },
-    severity_sort = true,
-    underline = true,
-    signs = true,
-  })
 end
+
+vim.diagnostic.config({
+  virtual_text = {
+    prefix = " ",
+    source = false,
+  },
+  update_in_insert = false,
+  severity_sort = true,
+  underline = true,
+  float = {
+    header = "",
+    prefix = "",
+    border = "rounded",
+    scope = "line",
+    source = false,
+  },
+})
 
 -- LSP servers
 
