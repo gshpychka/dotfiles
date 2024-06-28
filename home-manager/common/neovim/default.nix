@@ -1,104 +1,114 @@
 {pkgs, ...}:
 # gitlab-nvim builds its own binary, which is not supported with nix
-# let
-# gitlab-nvim = pkgs.vimUtils.buildVimPlugin {
-#   name = "gitlab-nvim";
-#   src = pkgs.fetchFromGitHub {
-#     owner = "harrisoncramer";
-#     repo = "gitlab.nvim";
-#     rev = "v2.6.4";
-#     hash = "sha256-1RI8I0V/QeS1cdXHtERGiZFqX6a9hwZp8L4JYayzWm0=";
-#   };
-# };
-# in
-{
+let
+  # gitlab-nvim = pkgs.vimUtils.buildVimPlugin {
+  #   name = "gitlab-nvim";
+  #   src = pkgs.fetchFromGitHub {
+  #     owner = "harrisoncramer";
+  #     repo = "gitlab.nvim";
+  #     rev = "v2.6.4";
+  #     hash = "sha256-1RI8I0V/QeS1cdXHtERGiZFqX6a9hwZp8L4JYayzWm0=";
+  #   };
+  # };
+  tsc-nvim = pkgs.vimUtils.buildVimPlugin {
+    name = "tsc-nvim";
+    src = pkgs.fetchFromGitHub {
+      owner = "dmmulroy";
+      repo = "tsc.nvim";
+      rev = "v2.3.0";
+      hash = "sha256-7TO4HoyyQErJwqB5F5MmuxegN7AyikHtPaxUnqDLDgM=";
+    };
+  };
+in {
   programs.neovim = {
     enable = true;
     defaultEditor = true;
     vimAlias = true;
     withNodeJs = true;
     withPython3 = true;
-    plugins = with pkgs.vimPlugins; [
-      # vim-sensible
-      # vim-surround
-      undotree
-      gruvbox-nvim
-      plenary-nvim
+    plugins = with pkgs.vimPlugins;
+      [
+        # vim-sensible
+        # vim-surround
+        undotree
+        gruvbox-nvim
+        plenary-nvim
 
-      vim-fugitive
-      gitsigns-nvim
-      diffview-nvim
-      gitlinker-nvim
+        vim-fugitive
+        gitsigns-nvim
+        diffview-nvim
+        gitlinker-nvim
 
-      # decorated scrollbar
-      satellite-nvim
+        # decorated scrollbar
+        satellite-nvim
 
-      # which-key-nvim
-      hydra-nvim
+        # which-key-nvim
+        hydra-nvim
 
-      barbar-nvim
-      lualine-nvim
-      vim-tmux-navigator
+        barbar-nvim
+        lualine-nvim
+        vim-tmux-navigator
 
-      # nvim-bqf
+        # nvim-bqf
 
-      nvim-tree-lua
-      nvim-web-devicons
+        nvim-tree-lua
+        nvim-web-devicons
 
-      neoscroll-nvim
+        neoscroll-nvim
 
-      # noice requires nui-nvim and nvim-notify
-      nui-nvim
-      nvim-notify
-      noice-nvim
+        # noice requires nui-nvim and nvim-notify
+        nui-nvim
+        nvim-notify
+        noice-nvim
 
-      inc-rename-nvim
-      indent-blankline-nvim
-      text-case-nvim
+        inc-rename-nvim
+        indent-blankline-nvim
+        text-case-nvim
 
-      nvim-lspconfig
-      (nvim-treesitter.withPlugins (p:
-        with p; [
-          bash
-          comment
-          dockerfile
-          html
-          javascript
-          json
-          lua
-          nix
-          python
-          regex
-          rust
-          sql
-          toml
-          typescript
-          vim
-          vimdoc
-          yaml
-          wing
-          markdown
-          markdown_inline
-        ]))
-      neogen
-      luasnip
-      # nvim-lightbulb
+        nvim-lspconfig
+        (nvim-treesitter.withPlugins (p:
+          with p; [
+            bash
+            comment
+            dockerfile
+            html
+            javascript
+            json
+            lua
+            nix
+            python
+            regex
+            rust
+            sql
+            toml
+            typescript
+            vim
+            vimdoc
+            yaml
+            wing
+            markdown
+            markdown_inline
+          ]))
+        neogen
+        luasnip
+        # nvim-lightbulb
 
-      copilot-lua
-      copilot-cmp
-      lspkind-nvim
-      nvim-cmp
-      cmp-nvim-lsp
-      cmp-nvim-lua
-      cmp-buffer
+        copilot-lua
+        copilot-cmp
+        lspkind-nvim
+        nvim-cmp
+        cmp-nvim-lsp
+        cmp-nvim-lua
+        cmp-buffer
 
-      null-ls-nvim
+        null-ls-nvim
 
-      telescope-nvim
-      telescope-fzf-native-nvim
-      telescope-ui-select-nvim
-      typescript-tools-nvim
-    ];
+        telescope-nvim
+        telescope-fzf-native-nvim
+        telescope-ui-select-nvim
+        typescript-tools-nvim
+      ]
+      ++ [tsc-nvim];
     extraPackages = with pkgs; [
       # LSP servers
       nodePackages_latest.typescript-language-server
