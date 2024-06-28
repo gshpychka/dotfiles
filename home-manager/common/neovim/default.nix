@@ -54,6 +54,7 @@
 
       inc-rename-nvim
       indent-blankline-nvim
+      text-case-nvim
 
       nvim-lspconfig
       (nvim-treesitter.withPlugins (p:
