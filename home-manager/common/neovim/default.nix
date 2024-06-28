@@ -1,4 +1,17 @@
-{pkgs, ...}: {
+{pkgs, ...}:
+# gitlab-nvim builds its own binary, which is not supported with nix
+# let
+# gitlab-nvim = pkgs.vimUtils.buildVimPlugin {
+#   name = "gitlab-nvim";
+#   src = pkgs.fetchFromGitHub {
+#     owner = "harrisoncramer";
+#     repo = "gitlab.nvim";
+#     rev = "v2.6.4";
+#     hash = "sha256-1RI8I0V/QeS1cdXHtERGiZFqX6a9hwZp8L4JYayzWm0=";
+#   };
+# };
+# in
+{
   programs.neovim = {
     enable = true;
     defaultEditor = true;
@@ -35,9 +48,9 @@
       neoscroll-nvim
 
       # noice requires nui-nvim and nvim-notify
-      # nui-nvim
-      # nvim-notify
-      # noice-nvim
+      nui-nvim
+      nvim-notify
+      noice-nvim
 
       inc-rename-nvim
       indent-blankline-nvim
