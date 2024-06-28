@@ -62,7 +62,6 @@ local on_attach = function(client, bufnr)
         return nil
       end
     end
-
     vim.lsp.buf_request(bufnr, "textDocument/definition", util.make_position_params(), handler)
   end, createOpts("Create mark at definition"))
 
@@ -224,6 +223,27 @@ require("lspconfig").nil_ls.setup({
   },
 })
 
+local original_handler = vim.lsp.handlers["textDocument/references"]
+local function filtered_references(err, result, ctx, config)
+  if err then
+    vim.notify("LSP: " .. err.message, vim.log.levels.ERROR)
+    return
+  end
+  local client = assert(vim.lsp.get_client_by_id(ctx.client_id))
+
+  if client.name == "typescript-tools" then
+    -- Filter out import statements
+    result = vim.tbl_filter(function(location)
+      local item = util.locations_to_items({ location }, client.offset_encoding)[1]
+      return not item.text:match("^import")
+    end, result)
+  end
+
+  return original_handler(nil, result, ctx, config)
+end
+
+vim.lsp.handlers["textDocument/references"] = filtered_references
+
 require("typescript-tools").setup({
   on_attach = function(client, bufnr)
     -- Formatting is handled by eslint and prettier
@@ -268,7 +288,6 @@ require("lspconfig").eslint.setup({
 require("lspconfig").zls.setup({})
 
 local null_ls = require("null-ls")
-local null_utils = require("null-ls.utils")
 null_ls.setup({
   debug = true,
   sources = {

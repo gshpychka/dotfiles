@@ -78,7 +78,7 @@ require("telescope").setup({
       vertical = { width = 0.85 },
       horizontal = { width = 0.85 },
     },
-    file_ignore_patterns = { "%.lock" },
+    file_ignore_patterns = { "%.lock", "node_modules" },
   },
   extensions = {
     fzf = {
@@ -93,7 +93,6 @@ require("telescope").setup({
     find_files = {
       theme = "dropdown",
     },
-    lsp_references = {},
     buffers = {
       theme = "dropdown",
     },
