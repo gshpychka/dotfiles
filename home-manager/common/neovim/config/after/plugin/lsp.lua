@@ -225,14 +225,20 @@ require("typescript-tools").setup({
 			local item =
 				util.locations_to_items({ result }, client.offset_encoding)[1]
 
-			-- Will break if the definition is in another buffer
-			vim.api.nvim_buf_set_mark(bufnr, "D", item.lnum, item.col, {})
-			vim.api.nvim_notify(
-				"Definition mark saved",
-				vim.log.levels.INFO,
-				{}
-			)
-			return nil
+			local current_bufname = vim.api.nvim_buf_get_name(bufnr)
+			if item.filename == current_bufname then
+				vim.api.nvim_buf_set_mark(bufnr, "d", item.lnum, item.col, {})
+				return nil
+			else
+				-- If definition is in a different file, show the path
+				local relative_path =
+					require("plenary.path"):new(item.filename):normalize()
+				util.open_floating_preview(
+					{ "Definition is in another file:", "", relative_path },
+					"messages"
+				)
+				return nil
+			end
 		end
 		on_attach(client, bufnr)
 	end,
