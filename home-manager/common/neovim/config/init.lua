@@ -7,19 +7,17 @@ vim.opt.number = true
 vim.opt.relativenumber = true
 vim.opt.signcolumn = "yes"
 vim.opt.numberwidth = 3
-vim.opt.statuscolumn =
-	"%=%{v:virtnum < 1 ? (v:relnum ? v:relnum : v:lnum < 10 ? v:lnum . '  ' : v:lnum) : ''}%=%s"
+vim.opt.statuscolumn = "%=%{v:virtnum < 1 ? (v:relnum ? v:relnum : v:lnum < 10 ? v:lnum . '  ' : v:lnum) : ''}%=%s"
 
 vim.opt.expandtab = true
 vim.opt.tabstop = 2
 -- stylua uses tabs
 -- black uses 4 spaces
 vim.api.nvim_exec(
-	[[
+  [[
   autocmd FileType python setlocal tabstop=4
-  autocmd FileType lua setlocal noexpandtab
 ]],
-	false
+  false
 )
 
 -- make Tab characters visible
@@ -58,8 +56,8 @@ vim.opt.showmode = false
 vim.o.foldenable = false
 
 vim.filetype.add({
-	extension = {
-		w = "wing",
-	},
+  extension = {
+    w = "wing",
+  },
 })
 require("config")
