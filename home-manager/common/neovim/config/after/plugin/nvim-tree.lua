@@ -5,6 +5,14 @@ require("nvim-tree").setup({
   view = {
     width = 50,
   },
+  diagnostics = {
+    enable = true,
+    show_on_dirs = true,
+    show_on_open_dirs = false,
+    severity = {
+      min = vim.diagnostic.severity.ERROR,
+    },
+  },
   renderer = {
     group_empty = true,
     icons = {
