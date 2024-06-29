@@ -1,5 +1,7 @@
 local actions = require("diffview.actions")
 
+vim.keymap.set("n", "<leader>dfo", ":DiffviewOpen<CR>", { desc = "Open Diffview" })
+vim.keymap.set("n", "<leader>dfc", ":DiffviewClose<CR>", { desc = "Close Diffview" })
 require("diffview").setup({
   diff_binaries = false, -- Show diffs for binaries
   enhanced_diff_hl = false, -- See ':h diffview-config-enhanced_diff_hl'
