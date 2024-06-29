@@ -1,17 +1,5 @@
 local util = require("vim.lsp.util")
 
-local function keymap_exists(bufnr, mode, lhs)
-  -- Replace <leader> in lhs with the actual mapleader value
-  local leader = vim.g.mapleader or "\\"
-  lhs = (lhs:gsub("<leader>", leader))
-  local keymaps = vim.api.nvim_buf_get_keymap(bufnr, mode)
-  for _, keymap in ipairs(keymaps) do
-    if keymap.lhs == lhs then
-      return true
-    end
-  end
-  return false
-end
 
 vim.api.nvim_create_autocmd({ "CursorHold" }, {
   callback = function()
@@ -55,11 +43,13 @@ local on_attach = function(client, bufnr)
   if client.server_capabilities.documentHighlightProvider then
     local group = vim.api.nvim_create_augroup("LSPDocumentHighlight", {})
     vim.api.nvim_create_autocmd({ "CursorHold" }, {
+      desc = "LSP highlight symbol",
       buffer = bufnr,
       group = group,
       callback = vim.lsp.buf.document_highlight,
     })
     vim.api.nvim_create_autocmd({ "CursorMoved" }, {
+      desc = "Clear LSP highlighting",
       buffer = bufnr,
       group = group,
       callback = vim.lsp.buf.clear_references,
@@ -86,6 +76,9 @@ require("lspconfig").lua_ls.setup({
       diagnostics = {
         -- Get the language server to recognize the `vim` global
         globals = { "vim" },
+      },
+      formate = {
+        enable = false,
       },
       workspace = {
         -- Make the server aware of Neovim runtime files
@@ -115,7 +108,50 @@ require("lspconfig").nil_ls.setup({
   },
 })
 
+require("lspconfig").dockerls.setup({
+  capabilities = capabilities,
+  on_attach = on_attach,
+})
+
+require("lspconfig").jsonls.setup({
+  capabilities = capabilities,
+  on_attach = on_attach,
+  init_options = {
+    provideFormatter = false,
+  },
+})
+
+require("lspconfig").yamlls.setup({
+  capabilities = capabilities,
+  on_attach = on_attach,
+})
+
+require("lspconfig").zls.setup({
+  on_attach = on_attach,
+  capabilities = capabilities,
+})
+
+local ts_api = require("typescript-tools.api")
 require("typescript-tools").setup({
+  handlers = {
+    -- Exclude imports from references
+    -- TODO: exclude current line
+    ["textDocument/references"] = function(err, result, ctx, config)
+      local client = assert(vim.lsp.get_client_by_id(ctx.client_id))
+
+      result = vim.tbl_filter(function(location)
+        -- `util.locations_to_items()` changes the order,
+        -- so calling it for each result separately
+        local item = util.locations_to_items({ location }, client.offset_encoding)[1]
+        return not item.text:match("^import")
+      end, result)
+
+      return vim.lsp.handlers["textDocument/references"](err, result, ctx, config)
+    end,
+    ["textDocument/publishDiagnostics"] = ts_api.filter_diagnostics({
+      6133, -- unused vars
+    }),
+  },
   on_attach = function(client, bufnr)
     vim.keymap.set("n", "md", function()
       local handler = function(_, result, ctx, config)
@@ -142,23 +178,15 @@ require("typescript-tools").setup({
       vim.lsp.buf_request(bufnr, "textDocument/definition", util.make_position_params(), handler)
     end, { desc = "Create mark at definition" })
 
-    -- Exclude imports from references
-    -- TODO: exclude current line
-    local function filtered_references(err, result, ctx, config)
-      if err then
-        vim.notify("LSP: " .. err.message, vim.log.levels.ERROR)
-        return
-      end
-
-      -- Filter out import statements
-      result = vim.tbl_filter(function(location)
-        local item = util.locations_to_items({ location }, client.offset_encoding)[1]
-        return not item.text:match("^import")
-      end, result)
-
-      return vim.lsp.handlers["textDocument/references"](nil, result, ctx, config)
-    end
-    client.handlers["textDocument/references"] = filtered_references
+    vim.api.nvim_create_autocmd({ "BufWritePre" }, {
+      desc = "tsserver fix imports",
+      buffer = bufnr,
+      callback = function()
+        ts_api.remove_unused_imports(true)
+        ts_api.add_missing_imports(true)
+        ts_api.organize_imports(true)
+      end,
+    })
 
     on_attach(client, bufnr)
   end,
@@ -172,8 +200,7 @@ require("typescript-tools").setup({
       includeInlayPropertyDeclarationTypeHints = true,
       includeInlayFunctionLikeReturnTypeHints = true,
       includeInlayEnumMemberValueHints = true,
-      -- TODO: revisit
-      importModuleSpecifierPreference = "relative",
+      importModuleSpecifierPreference = "shortest",
     },
   },
 })
@@ -187,11 +214,6 @@ require("lspconfig").eslint.setup({
   settings = {
     workingDirectory = { mode = "auto" },
   },
-})
-
-require("lspconfig").zls.setup({
-  on_attach = on_attach,
-  capabilities = capabilities,
 })
 
 local null_ls = require("null-ls")
@@ -225,13 +247,14 @@ null_ls.setup({
   },
   on_attach = function(client, bufnr)
     vim.api.nvim_create_autocmd({ "BufWritePre" }, {
+      desc = "null_ls formatting on write",
       buffer = bufnr,
       callback = function()
         local params = util.make_formatting_params({})
         return client.request("textDocument/formatting", params, nil, bufnr)
       end,
     })
-    if not keymap_exists(bufnr, "n", "<leader>fo") then
+    if not require("keymaps").keymap_exists("<leader>fo", "n") then
       -- Do not override if already mapped
       -- This is so that LSP-specific formatting keymap takes precedence
       vim.keymap.set("n", "<leader>fo", function()

@@ -54,6 +54,8 @@ vim.opt.colorcolumn = "120"
 vim.opt.smartcase = true
 vim.opt.showmode = false
 vim.o.foldenable = false
+vim.o.splitright = true
+vim.o.splitbelow = true
 
 vim.filetype.add({
   extension = {

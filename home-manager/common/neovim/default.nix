@@ -33,39 +33,29 @@ in {
         undotree
         gruvbox-nvim
         plenary-nvim
-
         vim-fugitive
         gitsigns-nvim
         diffview-nvim
         gitlinker-nvim
-
         # decorated scrollbar
         satellite-nvim
-
-        # which-key-nvim
         hydra-nvim
-
         barbar-nvim
         lualine-nvim
         vim-tmux-navigator
-
-        # nvim-bqf
-
         nvim-tree-lua
         nvim-web-devicons
-
         neoscroll-nvim
-
         # noice requires nui-nvim and nvim-notify
         nui-nvim
         nvim-notify
         noice-nvim
-
         inc-rename-nvim
         indent-blankline-nvim
         text-case-nvim
-
         nvim-lspconfig
+        null-ls-nvim
+        flash-nvim
         (nvim-treesitter.withPlugins (p:
           with p; [
             bash
@@ -92,7 +82,6 @@ in {
         neogen
         luasnip
         # nvim-lightbulb
-
         copilot-lua
         copilot-cmp
         lspkind-nvim
@@ -100,9 +89,6 @@ in {
         cmp-nvim-lsp
         cmp-nvim-lua
         cmp-buffer
-
-        null-ls-nvim
-
         telescope-nvim
         telescope-fzf-native-nvim
         telescope-ui-select-nvim
@@ -116,10 +102,11 @@ in {
       nil
       lua-language-server
       zls
+      bash-language-server
+      yaml-language-server
+      vscode-langservers-extracted # eslint, json
 
       # Linters and formatters
-      vscode-langservers-extracted # eslint
-      nodePackages_latest.jsonlint
       nodePackages_latest.fixjson
       yamlfmt
       autoflake
