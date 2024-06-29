@@ -13,140 +13,14 @@ local function keymap_exists(bufnr, mode, lhs)
   return false
 end
 
-local on_attach = function(client, bufnr)
-  local function createOpts(description)
-    return {
-      buffer = bufnr,
-      remap = false,
-      desc = description,
-    }
-  end
-
-  -- Mappings.
-  -- See `:help vim.diagnostic.*` for documentation on any of the below functions
-  vim.keymap.set("n", "<leader>e", function()
-    vim.diagnostic.open_float()
-  end, createOpts("Open LSP diagnostics float"))
-
-  vim.keymap.set("n", "[d", function()
-    vim.diagnostic.goto_prev({ _highest = true })
-  end, createOpts("Go to previous LSP diagnostic"))
-
-  vim.keymap.set("n", "]d", function()
-    vim.diagnostic.goto_next({ _highest = true })
-  end, createOpts("Go to next LSP diagnostic"))
-
-  vim.keymap.set("n", "gd", function()
-    vim.lsp.buf.definition()
-  end, createOpts("Go to definition"))
-
-  vim.keymap.set("n", "md", function()
-    local handler = function(_, result, ctx, config)
-      if result == nil or vim.tbl_isempty(result) then
-        return nil
-      end
-      if vim.islist(result) then
-        -- Hack: in case of multiple results, pick the first one
-        result = result[1]
-      end
-      local item = util.locations_to_items({ result }, client.offset_encoding)[1]
-
-      local current_bufname = vim.api.nvim_buf_get_name(bufnr)
-      if item.filename == current_bufname then
-        vim.api.nvim_buf_set_mark(bufnr, "d", item.lnum, item.col, {})
-        return nil
-      else
-        -- If definition is in a different file, show the path
-        local relative_path = require("plenary.path"):new(item.filename):normalize()
-        util.open_floating_preview({ "Definition is in another file:", "", relative_path }, "messages")
-        return nil
-      end
-    end
-    vim.lsp.buf_request(bufnr, "textDocument/definition", util.make_position_params(), handler)
-  end, createOpts("Create mark at definition"))
-
-  vim.keymap.set("n", "gD", function()
-    vim.lsp.buf.type_definition()
-  end, createOpts("Go to the type definition"))
-
-  vim.keymap.set("n", "gi", function()
-    vim.lsp.buf.implementation()
-  end, createOpts("Go to implementation"))
-
-  vim.keymap.set("n", "gr", function()
-    vim.lsp.buf.references()
-  end, createOpts("Go to references"))
-
-  vim.keymap.set("n", "K", function()
-    vim.lsp.buf.hover()
-  end, createOpts("LSP hover"))
-
-  vim.keymap.set({ "n", "i" }, "<C-s>", function()
-    vim.lsp.buf.signature_help()
-  end, createOpts("Signature help"))
-
-  vim.keymap.set("n", "<leader>rn", ":IncRename ", createOpts("LSP rename"))
-
-  vim.keymap.set("n", "<leader>cda", function()
-    vim.lsp.buf.code_action()
-  end, createOpts("LSP code action"))
-
-  if client.server_capabilities.documentFormattingProvider and not keymap_exists(bufnr, "n", "<leader>fo") then
-    -- Do not override if already mapped
-    -- This is so that Eslint formatting keymap takes precedence
-    vim.keymap.set("n", "<leader>fo", function()
-      local params = util.make_formatting_params({})
-      client.request("textDocument/formatting", params, nil, bufnr)
-    end, {
-      noremap = true,
-      buffer = bufnr,
-      unique = true,
-      desc = "LSP formatting",
+vim.api.nvim_create_autocmd({ "CursorHold" }, {
+  callback = function()
+    vim.diagnostic.open_float({
+      focusable = false,
+      close_events = { "BufLeave", "CursorMoved", "InsertEnter", "FocusLost" },
     })
-  end
-
-  vim.keymap.set("n", "<leader>il", function()
-    vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled({ bufnr = bufnr }))
-  end, createOpts("Toggle LSP inlay hints"))
-
-  if client.server_capabilities.documentHighlightProvider then
-    local group = vim.api.nvim_create_augroup("LSPDocumentHighlight", {})
-    vim.api.nvim_create_autocmd({ "CursorHold" }, {
-      buffer = bufnr,
-      group = group,
-      callback = function()
-        vim.lsp.buf.document_highlight()
-      end,
-    })
-    vim.api.nvim_create_autocmd({ "CursorMoved" }, {
-      buffer = bufnr,
-      group = group,
-      callback = function()
-        vim.lsp.buf.clear_references()
-      end,
-    })
-  end
-
-  if client.server_capabilities.documentFormattingProvider then
-    vim.api.nvim_create_autocmd({ "BufWritePre" }, {
-      buffer = bufnr,
-      callback = function()
-        local params = util.make_formatting_params({})
-        client.request("textDocument/formatting", params, nil, bufnr)
-      end,
-    })
-  end
-
-  vim.api.nvim_create_autocmd({ "CursorHold" }, {
-    buffer = bufnr,
-    callback = function()
-      vim.diagnostic.open_float({
-        focusable = false,
-        close_events = { "BufLeave", "CursorMoved", "InsertEnter", "FocusLost" },
-      })
-    end,
-  })
-end
+  end,
+})
 
 vim.diagnostic.config({
   virtual_text = {
@@ -165,27 +39,44 @@ vim.diagnostic.config({
   },
 })
 
--- LSP servers
-
 local capabilities = vim.tbl_deep_extend(
   "force",
   vim.lsp.protocol.make_client_capabilities(),
   require("cmp_nvim_lsp").default_capabilities(),
-  { workspace = { didChangeWatchedFiles = { dynamicRegistration = true } } }
+  {
+    workspace = {
+      didChangeWatchedFiles = { dynamicRegistration = true },
+      didChangeWorkspaceFolders = { dynamicRegistration = true },
+    },
+  }
 )
+
+local on_attach = function(client, bufnr)
+  if client.server_capabilities.documentHighlightProvider then
+    local group = vim.api.nvim_create_augroup("LSPDocumentHighlight", {})
+    vim.api.nvim_create_autocmd({ "CursorHold" }, {
+      buffer = bufnr,
+      group = group,
+      callback = vim.lsp.buf.document_highlight,
+    })
+    vim.api.nvim_create_autocmd({ "CursorMoved" }, {
+      buffer = bufnr,
+      group = group,
+      callback = vim.lsp.buf.clear_references,
+    })
+  end
+end
+
+-- LSP servers
 
 require("lspconfig").pyright.setup({
   capabilities = capabilities,
+  on_attach = on_attach,
 })
 
 require("lspconfig").lua_ls.setup({
   capabilities = capabilities,
-  on_attach = function(client, bufnr)
-    -- Formatting is handled by stylua
-    client.server_capabilities.documentFormattingProvider = nil
-    client.server_capabilities.documentRangeFormattingProvider = nil
-    on_attach(client, bufnr)
-  end,
+  on_attach = on_attach,
   settings = {
     Lua = {
       runtime = {
@@ -211,12 +102,7 @@ require("lspconfig").lua_ls.setup({
 
 require("lspconfig").nil_ls.setup({
   capabilities = capabilities,
-  on_attach = function(client, bufnr)
-    -- Formatting is handled by alejandra
-    client.server_capabilities.documentFormattingProvider = nil
-    client.server_capabilities.documentRangeFormattingProvider = nil
-    on_attach(client, bufnr)
-  end,
+  on_attach = on_attach,
   settings = {
     ["nil"] = {
       nix = {
@@ -224,40 +110,56 @@ require("lspconfig").nil_ls.setup({
           autoEvalInputs = false,
           autoArchive = false,
         },
-        -- formatting = {
-        -- 	command = { "alejandra --quiet" },
-        -- },
       },
     },
   },
 })
 
-local original_handler = vim.lsp.handlers["textDocument/references"]
-local function filtered_references(err, result, ctx, config)
-  if err then
-    vim.notify("LSP: " .. err.message, vim.log.levels.ERROR)
-    return
-  end
-  local client = assert(vim.lsp.get_client_by_id(ctx.client_id))
-
-  if client.name == "typescript-tools" then
-    -- Filter out import statements
-    result = vim.tbl_filter(function(location)
-      local item = util.locations_to_items({ location }, client.offset_encoding)[1]
-      return not item.text:match("^import")
-    end, result)
-  end
-
-  return original_handler(nil, result, ctx, config)
-end
-
-vim.lsp.handlers["textDocument/references"] = filtered_references
-
 require("typescript-tools").setup({
   on_attach = function(client, bufnr)
-    -- Formatting is handled by eslint and prettier
-    client.server_capabilities.documentFormattingProvider = nil
-    client.server_capabilities.documentRangeFormattingProvider = nil
+    vim.keymap.set("n", "md", function()
+      local handler = function(_, result, ctx, config)
+        if result == nil or vim.tbl_isempty(result) then
+          return nil
+        end
+        if vim.islist(result) then
+          -- Hack: in case of multiple results, pick the first one
+          result = result[1]
+        end
+        local item = util.locations_to_items({ result }, client.offset_encoding)[1]
+
+        local current_bufname = vim.api.nvim_buf_get_name(bufnr)
+        if item.filename == current_bufname then
+          vim.api.nvim_buf_set_mark(bufnr, "d", item.lnum, item.col, {})
+          return nil
+        else
+          -- If definition is in a different file, show the path
+          local relative_path = require("plenary.path"):new(item.filename):normalize()
+          util.open_floating_preview({ "Definition is in another file:", "", relative_path }, "messages")
+          return nil
+        end
+      end
+      vim.lsp.buf_request(bufnr, "textDocument/definition", util.make_position_params(), handler)
+    end, { desc = "Create mark at definition" })
+
+    -- Exclude imports from references
+    -- TODO: exclude current line
+    local function filtered_references(err, result, ctx, config)
+      if err then
+        vim.notify("LSP: " .. err.message, vim.log.levels.ERROR)
+        return
+      end
+
+      -- Filter out import statements
+      result = vim.tbl_filter(function(location)
+        local item = util.locations_to_items({ location }, client.offset_encoding)[1]
+        return not item.text:match("^import")
+      end, result)
+
+      return vim.lsp.handlers["textDocument/references"](nil, result, ctx, config)
+    end
+    client.handlers["textDocument/references"] = filtered_references
+
     on_attach(client, bufnr)
   end,
   capabilities = capabilities,
@@ -278,23 +180,19 @@ require("typescript-tools").setup({
 
 require("lspconfig").eslint.setup({
   on_attach = function(client, bufnr)
-    -- only run Eslint formatting when invoked explicitly with a keymap
-    -- as it is quite slow
-    -- Setting the binding here will override other LSPs' keymaps
-    -- because they set `unique` to true
-    client.server_capabilities.documentFormattingProvider = nil
-    client.server_capabilities.documentRangeFormattingProvider = nil
     vim.keymap.set("n", "<leader>fo", function()
       vim.cmd("EslintFixAll")
     end, { desc = "Eslint formatting", remap = false, buffer = bufnr })
-    on_attach(client, bufnr)
   end,
   settings = {
     workingDirectory = { mode = "auto" },
   },
 })
 
-require("lspconfig").zls.setup({})
+require("lspconfig").zls.setup({
+  on_attach = on_attach,
+  capabilities = capabilities,
+})
 
 local null_ls = require("null-ls")
 null_ls.setup({
@@ -302,7 +200,11 @@ null_ls.setup({
   sources = {
     null_ls.builtins.diagnostics.flake8,
     null_ls.builtins.diagnostics.jsonlint,
-    null_ls.builtins.formatting.fixjson,
+    null_ls.builtins.formatting.fixjson.with({
+      extra_args = {
+        "--indent 2",
+      },
+    }),
     null_ls.builtins.formatting.prettier.with({
       -- only use prettier if it is installed in the project
       only_local = "node_modules/.bin",
@@ -321,7 +223,26 @@ null_ls.setup({
       },
     }),
   },
-  on_attach = on_attach,
+  on_attach = function(client, bufnr)
+    vim.api.nvim_create_autocmd({ "BufWritePre" }, {
+      buffer = bufnr,
+      callback = function()
+        local params = util.make_formatting_params({})
+        return client.request("textDocument/formatting", params, nil, bufnr)
+      end,
+    })
+    if not keymap_exists(bufnr, "n", "<leader>fo") then
+      -- Do not override if already mapped
+      -- This is so that LSP-specific formatting keymap takes precedence
+      vim.keymap.set("n", "<leader>fo", function()
+        local params = util.make_formatting_params({})
+        client.request("textDocument/formatting", params, nil, bufnr)
+      end, {
+        buffer = bufnr,
+        remap = false,
+        unique = true,
+        desc = "Formatting",
+      })
+    end
+  end,
 })
-
-require("inc_rename").setup({})
