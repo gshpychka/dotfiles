@@ -19,6 +19,7 @@ module.exports = {
         const basedOnUrl = [
           "aws.amazon.com",
           "gitlab.com",
+          "atlassian",
         ].some(
           targetHostName => url.host.toLowerCase().includes(
             targetHostName.toLowerCase()
