@@ -105,6 +105,7 @@ in {
       bash-language-server
       yaml-language-server
       vscode-langservers-extracted # eslint, json
+      bun
 
       # Linters and formatters
       nodePackages_latest.fixjson
