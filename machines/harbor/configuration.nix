@@ -461,6 +461,7 @@ in {
         http = {
           address = "127.0.0.1:${toString frontendServices.adguard.port}";
         };
+        theme = "dark";
         dns = {
           bind_hosts = [machineIpAddress];
           filtering = {
@@ -468,7 +469,7 @@ in {
             blocked_response_ttl = 60 * 60 * 24;
             safe_search = {enabled = false;};
           };
-          ratelimit = 100;
+          ratelimit = 0;
           upstream_dns = [
             "tls://1dot1dot1dot1.cloudflare-dns.com"
             "[/${config.networking.domain}/]127.0.0.1:${
@@ -477,7 +478,10 @@ in {
             "[/wpad.${config.networking.domain}/]#"
             "[/lb._dns-sd._udp.${config.networking.domain}/]#"
           ];
+          allowed_clients = ["${routerIpAddress}/24" "127.0.0.1/32"];
           bootstrap_dns = ["1.1.1.1" "1.0.0.1"];
+          aaaa_disabled = true;
+          upstream_timeout = "1s";
           all_servers = true;
           use_http3_upstreams = true;
           enable_dnssec = true;
