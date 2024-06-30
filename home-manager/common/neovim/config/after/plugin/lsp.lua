@@ -1,4 +1,7 @@
 local util = require("vim.lsp.util")
+local function keymap_exists(lhs, mode)
+  return vim.fn.maparg(lhs, mode) ~= nil
+end
 
 
 vim.api.nvim_create_autocmd({ "CursorHold" }, {
@@ -122,6 +125,11 @@ require("lspconfig").jsonls.setup({
 })
 
 require("lspconfig").yamlls.setup({
+  capabilities = capabilities,
+  on_attach = on_attach,
+})
+
+require("lspconfig").bashls.setup({
   capabilities = capabilities,
   on_attach = on_attach,
 })
@@ -254,7 +262,7 @@ null_ls.setup({
         return client.request("textDocument/formatting", params, nil, bufnr)
       end,
     })
-    if not require("keymaps").keymap_exists("<leader>fo", "n") then
+    if not keymap_exists("<leader>fo", "n") then
       -- Do not override if already mapped
       -- This is so that LSP-specific formatting keymap takes precedence
       vim.keymap.set("n", "<leader>fo", function()

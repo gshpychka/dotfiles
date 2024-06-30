@@ -116,8 +116,9 @@ in {
       isort
       alejandra
       stylua
+      # beautysh
+      shfmt
 
-      # fzf
       ripgrep
     ];
     #extraPython3Packages = pyPkgs: with pyPkgs; [ ];
