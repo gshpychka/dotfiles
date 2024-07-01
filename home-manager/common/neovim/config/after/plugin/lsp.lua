@@ -3,7 +3,6 @@ local function keymap_exists(lhs, mode)
   return vim.fn.maparg(lhs, mode) ~= nil
 end
 
-
 vim.api.nvim_create_autocmd({ "CursorHold" }, {
   callback = function()
     vim.diagnostic.open_float({
@@ -215,7 +214,7 @@ require("lspconfig").zls.setup({
 -- })
 
 require("lspconfig").tsserver.setup({
-  cmd = {"bun", "run", "--bun", "typescript-language-server", "--stdio"},
+  cmd = { "bun", "run", "--bun", "typescript-language-server", "--stdio" },
   on_attach = on_attach,
   capabilities = capabilities,
   settings = {
@@ -228,7 +227,8 @@ require("lspconfig").tsserver.setup({
       includeInlayFunctionLikeReturnTypeHints = true,
       includeInlayEnumMemberValueHints = true,
       importModuleSpecifierPreference = "shortest",
-    }}
+    },
+  },
 })
 
 require("lspconfig").eslint.setup({
@@ -247,15 +247,10 @@ null_ls.setup({
   debug = true,
   sources = {
     null_ls.builtins.diagnostics.flake8,
-    null_ls.builtins.diagnostics.jsonlint,
     null_ls.builtins.formatting.fixjson.with({
       extra_args = {
         "--indent 2",
       },
-    }),
-    null_ls.builtins.formatting.prettier.with({
-      -- only use prettier if it is installed in the project
-      only_local = "node_modules/.bin",
     }),
     null_ls.builtins.formatting.autopep8,
     null_ls.builtins.formatting.isort,
