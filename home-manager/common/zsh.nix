@@ -58,11 +58,18 @@
       };
 
       env_var = {
-        NODE_ENV = {
+        NODE_ENV_NONPROD = {
           variable = "NODE_ENV";
           # TODO: style brackets and contents
-          format = "<[$env_value]($style)> ";
+          format = "<(white)[$env_value]($style)>(white) ";
+          when = "[ $NODE_ENV ~= 'production' ]";
           style = "white";
+        };
+        NODE_ENV_PROD = {
+          variable = "NODE_ENV";
+          format = "<(white)[$env_value]($style)>(white) ";
+          when = "[ $NODE_ENV == 'production' ]";
+          style = "red";
         };
       };
 
