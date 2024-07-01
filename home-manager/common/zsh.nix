@@ -33,7 +33,7 @@
           description = "Custom icon for ${host}";
         };
       in {
-        github = generateGitHostIconModule "github" " " "#4078c0";
+        github = generateGitHostIconModule "github" " " "#4078c0";
         gitlab = generateGitHostIconModule "gitlab" " " "#fc6d26";
         repo_name = {
           description = "Name of the current git repository";
