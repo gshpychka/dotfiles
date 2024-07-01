@@ -55,6 +55,26 @@
         "type": "github"
       }
     },
+    "ghostty-bin": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1719855637,
+        "narHash": "sha256-54xcoM3Aqff9wnWCNDC+YwLxBUlm5D64naXXUQXpMmU=",
+        "ref": "refs/heads/main",
+        "rev": "46a5db32e613605a9316e48312d9356477521eef",
+        "revCount": 1,
+        "type": "git",
+        "url": "ssh://git@github.com/gshpychka/ghostty-bin"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@github.com/gshpychka/ghostty-bin"
+      }
+    },
     "home-manager": {
       "inputs": {
         "nixpkgs": [
@@ -203,6 +223,7 @@
     "root": {
       "inputs": {
         "darwin": "darwin",
+        "ghostty-bin": "ghostty-bin",
         "home-manager": "home-manager",
         "homebrew-bundle": "homebrew-bundle",
         "homebrew-cask": "homebrew-cask",

@@ -57,4 +57,6 @@
       enableNushellIntegration = false;
     };
   };
+
+  modules.ghostty.enable = true;
 }

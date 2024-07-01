@@ -40,6 +40,10 @@
       url = "github:homebrew/homebrew-bundle";
       flake = false;
     };
+    ghostty-bin = {
+      url = "git+ssh://git@github.com/gshpychka/ghostty-bin";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     # neovim-nightly-overlay = {
     #   url = "github:nix-community/neovim-nightly-overlay";
     #   inputs.nixpkgs.follows = "nixpkgs";
@@ -56,6 +60,7 @@
     homebrew-cask,
     homebrew-services,
     homebrew-bundle,
+    ghostty-bin,
     ...
   } @ inputs: let
     shared = import ./machines/harbor/variables.nix;
@@ -79,8 +84,13 @@
         ./machines/eve/homebrew.nix
         ({pkgs, ...}: {
           nixpkgs.config = nixpkgsConfig;
-          nixpkgs.overlays = overlays;
-
+          nixpkgs.overlays =
+            overlays
+            ++ [
+              (final: prev: {
+                ghostty = ghostty-bin.packages.${prev.system}.default;
+              })
+            ];
           system.stateVersion = 4;
 
           users.users.${user} = {
