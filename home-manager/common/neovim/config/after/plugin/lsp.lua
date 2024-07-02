@@ -57,6 +57,13 @@ local on_attach = function(client, bufnr)
       callback = vim.lsp.buf.clear_references,
     })
   end
+  vim.api.nvim_create_autocmd({ "BufWritePre" }, {
+    desc = "LSP formatting on write",
+    callback = function()
+      vim.lsp.buf.format({ bufnr = bufnr })
+    end,
+    buffer = bufnr,
+  })
 end
 
 -- LSP servers
@@ -119,7 +126,7 @@ require("lspconfig").jsonls.setup({
   capabilities = capabilities,
   on_attach = on_attach,
   init_options = {
-    provideFormatter = false,
+    provideFormatter = true,
   },
 })
 
@@ -232,13 +239,12 @@ require("lspconfig").tsserver.setup({
 })
 
 require("lspconfig").eslint.setup({
-  on_attach = function(client, bufnr)
-    vim.keymap.set("n", "<leader>fo", function()
-      vim.cmd("EslintFixAll")
-    end, { desc = "Eslint formatting", remap = false, buffer = bufnr })
-  end,
+  on_attach = on_attach,
   settings = {
     workingDirectory = { mode = "auto" },
+    format = {
+      enable = true,
+    },
   },
 })
 
@@ -247,11 +253,6 @@ null_ls.setup({
   debug = true,
   sources = {
     null_ls.builtins.diagnostics.flake8,
-    null_ls.builtins.formatting.fixjson.with({
-      extra_args = {
-        "--indent 2",
-      },
-    }),
     null_ls.builtins.formatting.autopep8,
     null_ls.builtins.formatting.isort,
     null_ls.builtins.formatting.black,
@@ -266,27 +267,4 @@ null_ls.setup({
       },
     }),
   },
-  on_attach = function(client, bufnr)
-    vim.api.nvim_create_autocmd({ "BufWritePre" }, {
-      desc = "null_ls formatting on write",
-      buffer = bufnr,
-      callback = function()
-        local params = util.make_formatting_params({})
-        return client.request("textDocument/formatting", params, nil, bufnr)
-      end,
-    })
-    if not keymap_exists("<leader>fo", "n") then
-      -- Do not override if already mapped
-      -- This is so that LSP-specific formatting keymap takes precedence
-      vim.keymap.set("n", "<leader>fo", function()
-        local params = util.make_formatting_params({})
-        client.request("textDocument/formatting", params, nil, bufnr)
-      end, {
-        buffer = bufnr,
-        remap = false,
-        unique = true,
-        desc = "Formatting",
-      })
-    end
-  end,
 })

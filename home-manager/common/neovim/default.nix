@@ -108,16 +108,13 @@ in {
       bun
 
       # Linters and formatters
-      nodePackages_latest.fixjson
       yamlfmt
-      autoflake
       python311Packages.autopep8
       python311Packages.flake8
       black
       isort
       alejandra
       stylua
-      # beautysh
       shfmt
 
       ripgrep

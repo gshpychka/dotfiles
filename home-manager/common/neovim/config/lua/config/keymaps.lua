@@ -51,3 +51,7 @@ vim.keymap.set("n", "<leader>cda", vim.lsp.buf.code_action, { desc = "Code actio
 vim.keymap.set("n", "<leader>il", function()
   vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled({ bufnr = 0 }))
 end, { desc = "Toggle inlay hints" })
+
+vim.keymap.set({ "n" }, "<leader>fo", function()
+  vim.lsp.buf.format({ async = true })
+end, { desc = "LSP formatting" })
