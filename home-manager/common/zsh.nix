@@ -58,18 +58,11 @@
       };
 
       env_var = {
-        NODE_ENV_NONPROD = {
+        NODE_ENV = {
           variable = "NODE_ENV";
           # TODO: style brackets and contents
-          format = "<(white)[$env_value]($style)>(white) ";
-          when = "[ $NODE_ENV ~= 'production' ]";
+          format = "<[$env_value]($style)> ";
           style = "white";
-        };
-        NODE_ENV_PROD = {
-          variable = "NODE_ENV";
-          format = "<(white)[$env_value]($style)>(white) ";
-          when = "[ $NODE_ENV == 'production' ]";
-          style = "red";
         };
       };
 
@@ -150,6 +143,10 @@
       function nf() {
         darwin-rebuild switch --flake ~/.nixpkgs
       }
+      if command -v tmux &> /dev/null && [ -n "$PS1" ] && [[ ! "$TERM" =~ screen ]] && [[ ! "$TERM" =~ tmux ]] && [ -z "$TMUX" ]; then
+        exec tmux
+      fi
+
     '';
 
     plugins = [
@@ -166,4 +163,3 @@
     ];
   };
 }
-
