@@ -144,88 +144,70 @@ require("lspconfig").zls.setup({
   on_attach = on_attach,
   capabilities = capabilities,
 })
---
--- local ts_api = require("typescript-tools.api")
--- require("typescript-tools").setup({
---   handlers = {
---     -- Exclude imports from references
---     -- TODO: exclude current line
---     ["textDocument/references"] = function(err, result, ctx, config)
---       local client = assert(vim.lsp.get_client_by_id(ctx.client_id))
---
---       result = vim.tbl_filter(function(location)
---         -- `util.locations_to_items()` changes the order,
---         -- so calling it for each result separately
---         local item = util.locations_to_items({ location }, client.offset_encoding)[1]
---         return not item.text:match("^import")
---       end, result)
---
---       return vim.lsp.handlers["textDocument/references"](err, result, ctx, config)
---     end,
---     ["textDocument/publishDiagnostics"] = ts_api.filter_diagnostics({
---       6133, -- unused vars
---     }),
---   },
---   on_attach = function(client, bufnr)
---     vim.keymap.set("n", "md", function()
---       local handler = function(_, result, ctx, config)
---         if result == nil or vim.tbl_isempty(result) then
---           return nil
---         end
---         if vim.islist(result) then
---           -- Hack: in case of multiple results, pick the first one
---           result = result[1]
---         end
---         local item = util.locations_to_items({ result }, client.offset_encoding)[1]
---
---         local current_bufname = vim.api.nvim_buf_get_name(bufnr)
---         if item.filename == current_bufname then
---           vim.api.nvim_buf_set_mark(bufnr, "d", item.lnum, item.col, {})
---           return nil
---         else
---           -- If definition is in a different file, show the path
---           local relative_path = require("plenary.path"):new(item.filename):normalize()
---           util.open_floating_preview({ "Definition is in another file:", "", relative_path }, "messages")
---           return nil
---         end
---       end
---       vim.lsp.buf_request(bufnr, "textDocument/definition", util.make_position_params(), handler)
---     end, { desc = "Create mark at definition" })
---
---     vim.api.nvim_create_autocmd({ "BufWritePre" }, {
---       desc = "tsserver fix imports",
---       buffer = bufnr,
---       callback = function()
---         ts_api.remove_unused_imports(true)
---         ts_api.add_missing_imports(true)
---         ts_api.organize_imports(true)
---       end,
---     })
---
---     on_attach(client, bufnr)
---   end,
---   capabilities = capabilities,
---   settings = {
---   separate_diagnostic_server = false,
---     tsserver_file_preferences = {
---       includeInlayParameterNameHints = "all",
---       includeInlayParameterNameHintsWhenArgumentMatchesName = true,
---       includeInlayFunctionParameterTypeHints = true,
---       includeInlayVariableTypeHints = true,
---       includeInlayPropertyDeclarationTypeHints = true,
---       includeInlayFunctionLikeReturnTypeHints = true,
---       includeInlayEnumMemberValueHints = true,
---       importModuleSpecifierPreference = "shortest",
---     },
---   },
--- })
 
-require("lspconfig").tsserver.setup({
-  cmd = { "bun", "run", "--bun", "typescript-language-server", "--stdio" },
-  on_attach = on_attach,
+local ts_api = require("typescript-tools.api")
+require("typescript-tools").setup({
+  handlers = {
+    -- Exclude imports from references
+    -- TODO: exclude current line
+    ["textDocument/references"] = function(err, result, ctx, config)
+      local client = assert(vim.lsp.get_client_by_id(ctx.client_id))
+
+      result = vim.tbl_filter(function(location)
+        -- `util.locations_to_items()` changes the order,
+        -- so calling it for each result separately
+        local item = util.locations_to_items({ location }, client.offset_encoding)[1]
+        return not item.text:match("^import")
+      end, result)
+
+      return vim.lsp.handlers["textDocument/references"](err, result, ctx, config)
+    end,
+    ["textDocument/publishDiagnostics"] = ts_api.filter_diagnostics({
+      6133, -- unused vars
+    }),
+  },
+  on_attach = function(client, bufnr)
+    vim.keymap.set("n", "md", function()
+      local handler = function(_, result, ctx, config)
+        if result == nil or vim.tbl_isempty(result) then
+          return nil
+        end
+        if vim.islist(result) then
+          -- Hack: in case of multiple results, pick the first one
+          result = result[1]
+        end
+        local item = util.locations_to_items({ result }, client.offset_encoding)[1]
+
+        local current_bufname = vim.api.nvim_buf_get_name(bufnr)
+        if item.filename == current_bufname then
+          vim.api.nvim_buf_set_mark(bufnr, "d", item.lnum, item.col, {})
+          return nil
+        else
+          -- If definition is in a different file, show the path
+          local relative_path = require("plenary.path"):new(item.filename):normalize()
+          util.open_floating_preview({ "Definition is in another file:", "", relative_path }, "messages")
+          return nil
+        end
+      end
+      vim.lsp.buf_request(bufnr, "textDocument/definition", util.make_position_params(), handler)
+    end, { desc = "Create mark at definition" })
+
+    vim.api.nvim_create_autocmd({ "BufWritePre" }, {
+      desc = "tsserver fix imports",
+      buffer = bufnr,
+      callback = function()
+        ts_api.remove_unused_imports(true)
+        ts_api.add_missing_imports(true)
+        ts_api.organize_imports(true)
+      end,
+    })
+
+    on_attach(client, bufnr)
+  end,
   capabilities = capabilities,
   settings = {
-    preferences = {
+    separate_diagnostic_server = false,
+    tsserver_file_preferences = {
       includeInlayParameterNameHints = "all",
       includeInlayParameterNameHintsWhenArgumentMatchesName = true,
       includeInlayFunctionParameterTypeHints = true,
@@ -233,7 +215,7 @@ require("lspconfig").tsserver.setup({
       includeInlayPropertyDeclarationTypeHints = true,
       includeInlayFunctionLikeReturnTypeHints = true,
       includeInlayEnumMemberValueHints = true,
-      importModuleSpecifierPreference = "shortest",
+      importModuleSpecifierPreference = "relative",
     },
   },
 })

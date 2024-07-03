@@ -105,7 +105,7 @@ in {
       bash-language-server
       yaml-language-server
       vscode-langservers-extracted # eslint, json
-      bun
+      nodePackages_latest.dockerfile-language-server-nodejs
 
       # Linters and formatters
       yamlfmt
