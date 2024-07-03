@@ -1,6 +1,8 @@
 require("flash").setup({
-  char = {
-    enabled = false,
+  modes = {
+    char = {
+      enabled = false,
+    },
   },
 })
 
