@@ -192,15 +192,15 @@ require("typescript-tools").setup({
       vim.lsp.buf_request(bufnr, "textDocument/definition", util.make_position_params(), handler)
     end, { desc = "Create mark at definition" })
 
-    vim.api.nvim_create_autocmd({ "BufWritePre" }, {
-      desc = "tsserver fix imports",
-      buffer = bufnr,
-      callback = function()
-        ts_api.remove_unused_imports(true)
-        ts_api.add_missing_imports(true)
-        ts_api.organize_imports(true)
-      end,
-    })
+    -- vim.api.nvim_create_autocmd({ "BufWritePre" }, {
+    --   desc = "tsserver fix imports",
+    --   buffer = bufnr,
+    --   callback = function()
+    --     ts_api.remove_unused_imports(true)
+    --     ts_api.add_missing_imports(true)
+    --     ts_api.organize_imports(true)
+    --   end,
+    -- })
 
     on_attach(client, bufnr)
   end,
