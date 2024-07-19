@@ -54,7 +54,6 @@
       "slack"
       "docker"
       "microsoft-teams"
-      "tailscale"
     ];
     masApps = {
       "1Password for Safari" = 1569813296;
