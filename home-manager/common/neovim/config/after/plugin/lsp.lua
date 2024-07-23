@@ -1,7 +1,4 @@
 local util = require("vim.lsp.util")
-local function keymap_exists(lhs, mode)
-  return vim.fn.maparg(lhs, mode) ~= nil
-end
 
 vim.api.nvim_create_autocmd({ "CursorHold" }, {
   callback = function()
@@ -191,14 +188,14 @@ require("typescript-tools").setup({
         end
       end
       vim.lsp.buf_request(bufnr, "textDocument/definition", util.make_position_params(), handler)
-    end, { desc = "Create mark at definition" })
+    end, { desc = "Create mark at definition", buffer = bufnr })
 
     vim.keymap.set("n", "<leader>fo", function()
       ts_api.remove_unused_imports(true)
       ts_api.add_missing_imports(true)
       ts_api.organize_imports(true)
-      vim.lsp.buf.format({ async = false })
-    end, { desc = "Organize imports and format" })
+      vim.lsp.buf.format({ async = false, bufnr = bufnr })
+    end, { desc = "Organize imports and format", buffer = bufnr })
 
     on_attach(client, bufnr)
   end,
