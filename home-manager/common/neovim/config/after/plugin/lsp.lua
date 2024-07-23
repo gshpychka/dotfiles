@@ -165,6 +165,7 @@ require("typescript-tools").setup({
     ["textDocument/publishDiagnostics"] = ts_api.filter_diagnostics({
       6133, -- unused vars
     }),
+    ["textDocument/formatting"] = nil,
   },
   on_attach = function(client, bufnr)
     vim.keymap.set("n", "md", function()
@@ -192,21 +193,18 @@ require("typescript-tools").setup({
       vim.lsp.buf_request(bufnr, "textDocument/definition", util.make_position_params(), handler)
     end, { desc = "Create mark at definition" })
 
-    -- vim.api.nvim_create_autocmd({ "BufWritePre" }, {
-    --   desc = "tsserver fix imports",
-    --   buffer = bufnr,
-    --   callback = function()
-    --     ts_api.remove_unused_imports(true)
-    --     ts_api.add_missing_imports(true)
-    --     ts_api.organize_imports(true)
-    --   end,
-    -- })
+    vim.keymap.set("n", "<leader>fo", function()
+      ts_api.remove_unused_imports(true)
+      ts_api.add_missing_imports(true)
+      ts_api.organize_imports(true)
+      vim.lsp.buf.format({ async = false })
+    end, { desc = "Organize imports and format" })
 
     on_attach(client, bufnr)
   end,
   capabilities = capabilities,
   settings = {
-    separate_diagnostic_server = false,
+    separate_diagnostic_server = true,
     tsserver_file_preferences = {
       includeInlayParameterNameHints = "all",
       includeInlayParameterNameHintsWhenArgumentMatchesName = true,
