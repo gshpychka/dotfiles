@@ -55,3 +55,25 @@ end, { desc = "Toggle inlay hints" })
 vim.keymap.set({ "n" }, "<leader>fo", function()
   vim.lsp.buf.format({ async = true })
 end, { desc = "LSP formatting" })
+
+local function toggle_quickfix()
+  local quickfix_open = false
+  for _, win in ipairs(vim.fn.getwininfo()) do
+    if win.quickfix == 1 then
+      quickfix_open = true
+      break
+    end
+  end
+  if quickfix_open then
+    vim.cmd("cclose")
+  else
+    vim.cmd("copen")
+  end
+end
+
+vim.keymap.set(
+  { "n" },
+  "<leader>qf",
+  toggle_quickfix,
+  { noremap = true, silent = true, desc = "Toggle the quickfix window" }
+)
