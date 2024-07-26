@@ -38,6 +38,22 @@ local capabilities = vim.tbl_deep_extend(
   }
 )
 
+-- A function that takes a map and returns a new one with the given key changed
+local function copy_table_with_change(originalTable, key, newValue)
+  local newTable = {}
+  for k, v in pairs(originalTable) do
+    newTable[k] = v
+  end
+  newTable[key] = newValue
+  return newTable
+end
+
+local capabilities_no_format = copy_table_with_change(
+  capabilities,
+  "textDocument",
+  copy_table_with_change(capabilities.textDocument, "formatting", false)
+)
+
 local on_attach = function(client, bufnr)
   if client.server_capabilities.documentHighlightProvider then
     local group = vim.api.nvim_create_augroup("LSPDocumentHighlight", {})
@@ -66,12 +82,12 @@ end
 -- LSP servers
 
 require("lspconfig").pyright.setup({
-  capabilities = capabilities,
+  capabilities = capabilities_no_format,
   on_attach = on_attach,
 })
 
 require("lspconfig").lua_ls.setup({
-  capabilities = capabilities,
+  capabilities = capabilities_no_format,
   on_attach = on_attach,
   settings = {
     Lua = {
@@ -100,7 +116,7 @@ require("lspconfig").lua_ls.setup({
 })
 
 require("lspconfig").nil_ls.setup({
-  capabilities = capabilities,
+  capabilities = capabilities_no_format,
   on_attach = on_attach,
   settings = {
     ["nil"] = {
@@ -128,7 +144,7 @@ require("lspconfig").jsonls.setup({
 })
 
 require("lspconfig").yamlls.setup({
-  capabilities = capabilities,
+  capabilities = capabilities_no_format,
   on_attach = on_attach,
 })
 
@@ -160,9 +176,9 @@ require("typescript-tools").setup({
       return vim.lsp.handlers["textDocument/references"](err, result, ctx, config)
     end,
     ["textDocument/publishDiagnostics"] = ts_api.filter_diagnostics({
-      6133, -- unused vars
+      6196, -- unused vars
+      6133, -- also unused vars, even though the error code doesn't match the docs
     }),
-    ["textDocument/formatting"] = nil,
   },
   on_attach = function(client, bufnr)
     vim.keymap.set("n", "md", function()
@@ -194,12 +210,12 @@ require("typescript-tools").setup({
       ts_api.remove_unused_imports(true)
       ts_api.add_missing_imports(true)
       ts_api.organize_imports(true)
-      vim.lsp.buf.format({ async = false, bufnr = bufnr })
+      vim.lsp.buf.format({ async = false, bufnr = bufnr, timeout_ms = 10000 })
     end, { desc = "Organize imports and format", buffer = bufnr })
 
     on_attach(client, bufnr)
   end,
-  capabilities = capabilities,
+  capabilities = capabilities_no_format,
   settings = {
     separate_diagnostic_server = true,
     tsserver_file_preferences = {
