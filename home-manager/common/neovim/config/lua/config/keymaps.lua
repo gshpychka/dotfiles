@@ -53,7 +53,13 @@ vim.keymap.set("n", "<leader>il", function()
 end, { desc = "Toggle inlay hints" })
 
 vim.keymap.set({ "n" }, "<leader>fo", function()
-  vim.lsp.buf.format({ async = true })
+  vim.lsp.buf.format({
+    async = true,
+    timeout_ms = 10000,
+    filter = function(client)
+      return client.name ~= "typescript-tools"
+    end,
+  })
 end, { desc = "LSP formatting" })
 
 local function toggle_quickfix()

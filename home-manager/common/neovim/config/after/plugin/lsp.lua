@@ -38,57 +38,46 @@ local capabilities = vim.tbl_deep_extend(
   }
 )
 
--- A function that takes a map and returns a new one with the given key changed
-local function copy_table_with_change(originalTable, key, newValue)
-  local newTable = {}
-  for k, v in pairs(originalTable) do
-    newTable[k] = v
+local create_on_attach = function(formatting)
+  local on_attach = function(client, bufnr)
+    if client.server_capabilities.documentHighlightProvider then
+      local group = vim.api.nvim_create_augroup("LSPDocumentHighlight", {})
+      vim.api.nvim_create_autocmd({ "CursorHold" }, {
+        desc = "LSP highlight symbol",
+        buffer = bufnr,
+        group = group,
+        callback = vim.lsp.buf.document_highlight,
+      })
+      vim.api.nvim_create_autocmd({ "CursorMoved" }, {
+        desc = "Clear LSP highlighting",
+        buffer = bufnr,
+        group = group,
+        callback = vim.lsp.buf.clear_references,
+      })
+    end
+    if formatting then
+      vim.api.nvim_create_autocmd({ "BufWritePre" }, {
+        desc = "LSP formatting on write",
+        callback = function()
+          vim.lsp.buf.format({ bufnr = bufnr, name = client.name })
+        end,
+        buffer = bufnr,
+      })
+    end
   end
-  newTable[key] = newValue
-  return newTable
-end
-
-local capabilities_no_format = copy_table_with_change(
-  capabilities,
-  "textDocument",
-  copy_table_with_change(capabilities.textDocument, "formatting", false)
-)
-
-local on_attach = function(client, bufnr)
-  if client.server_capabilities.documentHighlightProvider then
-    local group = vim.api.nvim_create_augroup("LSPDocumentHighlight", {})
-    vim.api.nvim_create_autocmd({ "CursorHold" }, {
-      desc = "LSP highlight symbol",
-      buffer = bufnr,
-      group = group,
-      callback = vim.lsp.buf.document_highlight,
-    })
-    vim.api.nvim_create_autocmd({ "CursorMoved" }, {
-      desc = "Clear LSP highlighting",
-      buffer = bufnr,
-      group = group,
-      callback = vim.lsp.buf.clear_references,
-    })
-  end
-  vim.api.nvim_create_autocmd({ "BufWritePre" }, {
-    desc = "LSP formatting on write",
-    callback = function()
-      vim.lsp.buf.format({ bufnr = bufnr })
-    end,
-    buffer = bufnr,
-  })
+  return on_attach
 end
 
 -- LSP servers
 
 require("lspconfig").pyright.setup({
-  capabilities = capabilities_no_format,
-  on_attach = on_attach,
+  capabilities = capabilities,
+  on_attach = create_on_attach(false),
 })
 
 require("lspconfig").lua_ls.setup({
-  capabilities = capabilities_no_format,
-  on_attach = on_attach,
+  capabilities = capabilities,
+  on_attach = create_on_attach(false),
   settings = {
     Lua = {
       runtime = {
@@ -116,8 +105,8 @@ require("lspconfig").lua_ls.setup({
 })
 
 require("lspconfig").nil_ls.setup({
-  capabilities = capabilities_no_format,
-  on_attach = on_attach,
+  capabilities = capabilities,
+  on_attach = create_on_attach(false),
   settings = {
     ["nil"] = {
       nix = {
@@ -132,30 +121,30 @@ require("lspconfig").nil_ls.setup({
 
 require("lspconfig").dockerls.setup({
   capabilities = capabilities,
-  on_attach = on_attach,
+  on_attach = create_on_attach(true),
 })
 
 require("lspconfig").jsonls.setup({
   capabilities = capabilities,
-  on_attach = on_attach,
+  on_attach = create_on_attach(true),
   init_options = {
     provideFormatter = true,
   },
 })
 
 require("lspconfig").yamlls.setup({
-  capabilities = capabilities_no_format,
-  on_attach = on_attach,
+  capabilities = capabilities,
+  on_attach = create_on_attach(false),
 })
 
 require("lspconfig").bashls.setup({
   capabilities = capabilities,
-  on_attach = on_attach,
+  on_attach = create_on_attach(true),
 })
 
 require("lspconfig").zls.setup({
-  on_attach = on_attach,
   capabilities = capabilities,
+  on_attach = create_on_attach(true),
 })
 
 local ts_api = require("typescript-tools.api")
@@ -210,12 +199,12 @@ require("typescript-tools").setup({
       ts_api.remove_unused_imports(true)
       ts_api.add_missing_imports(true)
       ts_api.organize_imports(true)
-      vim.lsp.buf.format({ async = false, bufnr = bufnr, timeout_ms = 10000 })
-    end, { desc = "Organize imports and format", buffer = bufnr })
+      vim.lsp.buf.format({ async = false, bufnr = bufnr, name = "eslint" })
+    end, { desc = "Organize imports with tsserver and format with eslint", buffer = bufnr })
 
-    on_attach(client, bufnr)
+    create_on_attach(false)(client, bufnr)
   end,
-  capabilities = capabilities_no_format,
+  capabilities = capabilities,
   settings = {
     separate_diagnostic_server = true,
     tsserver_file_preferences = {
@@ -232,7 +221,7 @@ require("typescript-tools").setup({
 })
 
 require("lspconfig").eslint.setup({
-  on_attach = on_attach,
+  on_attach = create_on_attach(true),
   settings = {
     workingDirectory = { mode = "auto" },
     format = {
@@ -243,7 +232,8 @@ require("lspconfig").eslint.setup({
 
 local null_ls = require("null-ls")
 null_ls.setup({
-  debug = true,
+  debug = false,
+  on_attach = create_on_attach(true),
   sources = {
     null_ls.builtins.diagnostics.flake8,
     null_ls.builtins.formatting.autopep8,
