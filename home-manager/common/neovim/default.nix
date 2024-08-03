@@ -45,7 +45,6 @@ in {
         vim-tmux-navigator
         nvim-tree-lua
         nvim-web-devicons
-        neoscroll-nvim
         # noice requires nui-nvim and nvim-notify
         nui-nvim
         nvim-notify
