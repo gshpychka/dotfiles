@@ -147,11 +147,6 @@ require("lspconfig").zls.setup({
   on_attach = create_on_attach(true),
 })
 
-require("lspconfig").sourcekit.setup({
-  capabilities = capabilities,
-  on_attach = create_on_attach(true),
-})
-
 local ts_api = require("typescript-tools.api")
 require("typescript-tools").setup({
   handlers = {
