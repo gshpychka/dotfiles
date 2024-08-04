@@ -19,8 +19,13 @@
 
   networking = {
     hostName = "reaper";
-    networkmanager.enable = true;
+    wireless.enable = false;
     usePredictableInterfaceNames = true;
+    interfaces = {
+      eno3 = {
+        wakeOnLan.enable = true;
+      };
+    };
   };
 
   time.timeZone = "Europe/Kyiv";
