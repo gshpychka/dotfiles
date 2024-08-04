@@ -126,6 +126,9 @@
     shellAliases = {
       # cd to the root of the git repo
       cdr = "cd $(git rev-parse --show-toplevel)";
+      docker-clean = "docker rmi -f $(docker images -aq) && docker volume prune -f";
+      # TODO: this is only relevant for eve
+      dns-flush = "sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder";
     };
 
     initExtra = ''
@@ -140,9 +143,11 @@
         ${pkgs.lsd}/bin/lsd
       }
 
+      # TODO: only add for eve
       function nf() {
         darwin-rebuild switch --flake ~/.nixpkgs
       }
+      # TODO: make this an option
       # if command -v tmux &> /dev/null && [ -n "$PS1" ] && [[ ! "$TERM" =~ screen ]] && [[ ! "$TERM" =~ tmux ]] && [ -z "$TMUX" ]; then
       #   exec tmux
       # fi
