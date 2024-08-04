@@ -9,7 +9,10 @@
   boot = {
     loader = {
       grub.enable = false;
-      systemd-boot.enable = true;
+      systemd-boot = {
+        enable = true;
+        configurationLimit = 3;
+      };
       efi.canTouchEfiVariables = true;
     };
   };
@@ -17,6 +20,7 @@
   networking = {
     hostName = "reaper";
     networkmanager.enable = true;
+    usePredictableInterfaceNames = true;
   };
 
   time.timeZone = "Europe/Kyiv";
