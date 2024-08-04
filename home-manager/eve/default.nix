@@ -44,10 +44,11 @@
           port = config.shared.harborSshPort;
           extraOptions = {ForwardAgent = "yes";};
         };
-        # local = {
-        #   host = "*.${config.shared.localDomain}";
-        #   extraOptions = {ForwardAgent = "yes";};
-        # };
+        reaper = {
+          host = "192.168.1.151";
+          extraOptions = {ForwardAgent = "yes";};
+          user = "gshpychka";
+        };
       };
     };
     direnv = {

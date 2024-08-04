@@ -73,6 +73,11 @@
         symbol = "󱄅 ";
       };
 
+      hostname = {
+        ssh_only = false;
+        format = "[$hostname]($style)";
+      };
+
       # this seems to be the only way to move "custom" to the top
       format = builtins.concatStringsSep "" [
         "$directory"
@@ -91,6 +96,9 @@
         "$env_var"
         "$sudo"
         "$character"
+      ];
+      right_format = builtins.concatStringsSep "" [
+        "$hostname"
       ];
     };
   };
