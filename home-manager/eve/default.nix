@@ -45,7 +45,7 @@
           extraOptions = {ForwardAgent = "yes";};
         };
         reaper = {
-          host = "192.168.1.151";
+          host = "reaper.${config.shared.localDomain}";
           extraOptions = {ForwardAgent = "yes";};
           user = "gshpychka";
         };
