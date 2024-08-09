@@ -175,6 +175,11 @@
               experimental-features = ["nix-command" "flakes"];
               accept-flake-config = true;
             };
+            gc = {
+              dates = "weekly";
+              automatic = true;
+              options = "--delete-older-than 7d";
+            };
           };
         })
         home-manager.nixosModules.home-manager
@@ -205,7 +210,13 @@
               allowed-users = ["gshpychka"];
               trusted-users = ["root" "gshpychka"];
               experimental-features = ["nix-command" "flakes"];
+              auto-optimise-store = true;
               accept-flake-config = true;
+            };
+            gc = {
+              dates = "weekly";
+              automatic = true;
+              options = "--delete-older-than 7d";
             };
           };
         })
