@@ -68,7 +68,8 @@ in {
             python
             regex
             rust
-            sql
+            # SQL grammar is broken. PR with fix: https://github.com/NixOS/nixpkgs/pull/332824
+            # sql
             toml
             typescript
             vim
