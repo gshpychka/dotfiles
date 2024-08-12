@@ -50,13 +50,6 @@
         };
       };
     };
-    direnv = {
-      enable = true;
-      nix-direnv.enable = true;
-      enableZshIntegration = true;
-      enableBashIntegration = false;
-      enableNushellIntegration = false;
-    };
   };
 
   modules.ghostty.enable = true;
