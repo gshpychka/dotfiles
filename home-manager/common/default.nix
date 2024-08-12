@@ -6,7 +6,7 @@
   system,
   ...
 }: {
-  imports = [./zsh.nix];
+  imports = [./zsh.nix ./git.nix];
 
   home = {
     packages = with pkgs; [

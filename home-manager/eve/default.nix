@@ -11,7 +11,6 @@
     ./finicky
     ./ghostty
     ./alacritty.nix
-    ./git.nix
     ./1password.nix
     ./npm.nix
     ../common/tmux
