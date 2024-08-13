@@ -153,7 +153,7 @@
 
       # TODO: only add for eve
       function nf() {
-        darwin-rebuild switch --flake ~/.nixpkgs
+        darwin-rebuild switch --flake ~/dotfiles
       }
       # TODO: make this an option
       # if command -v tmux &> /dev/null && [ -n "$PS1" ] && [[ ! "$TERM" =~ screen ]] && [[ ! "$TERM" =~ tmux ]] && [ -z "$TMUX" ]; then
