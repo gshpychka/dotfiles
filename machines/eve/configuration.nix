@@ -139,8 +139,9 @@
         ''
         else "")
       config.nix-homebrew.prefixes));
+      # https://github.com/LnL7/nix-darwin/issues/333#issuecomment-2049843403
       postActivation.text = ''
-        ${pkgs.skhd}/bin/skhd -r
+        su - $(logname) -c '${pkgs.skhd}/bin/skhd -r'
       '';
     };
   };
