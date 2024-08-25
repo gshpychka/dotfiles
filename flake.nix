@@ -201,7 +201,8 @@
         ({pkgs, ...}: {
           nixpkgs.config =
             {
-              permittedInsecurePackages = ["openssl-1.1.1w"];
+              cudaSupport = true;
+              enableParallelBuildingByDefault = true;
             }
             // nixpkgsConfig;
           nixpkgs.overlays = overlays;
@@ -212,6 +213,7 @@
               experimental-features = ["nix-command" "flakes"];
               auto-optimise-store = true;
               accept-flake-config = true;
+              http-connections = 0; # no limit
             };
             gc = {
               dates = "weekly";
@@ -225,6 +227,28 @@
           home-manager.users.gshpychka = {...}: {
             imports = [./home-manager/reaper];
             home.stateVersion = "24.05";
+            nixpkgs.config =
+              {
+                cudaSupport = true;
+                enableParallelBuildingByDefault = true;
+              }
+              // nixpkgsConfig;
+            nixpkgs.overlays = overlays;
+            nix = {
+              settings = {
+                allowed-users = ["gshpychka"];
+                trusted-users = ["root" "gshpychka"];
+                experimental-features = ["nix-command" "flakes"];
+                auto-optimise-store = true;
+                accept-flake-config = true;
+                http-connections = 0; # no limit
+              };
+              gc = {
+                frequency = "weekly";
+                automatic = true;
+                options = "--delete-older-than 7d";
+              };
+            };
           };
         }
       ];
