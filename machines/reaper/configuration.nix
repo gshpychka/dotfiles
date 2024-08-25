@@ -33,15 +33,19 @@
   hardware = {
     bluetooth.enable = true;
     gpgSmartcards.enable = true;
+    graphics.enable = true;
+    enableAllFirmware = true;
+    cpu.intel.updateMicrocode = true;
   };
 
   hardware.nvidia = {
     # Modesetting is required.
     modesetting.enable = true;
 
-    # Fine-grained power management. Turns off GPU when not in use.
-    # Experimental and only works on modern Nvidia GPUs (Turing or newer).
-    powerManagement.finegrained = true;
+    # ensure GPU is awake while headless
+    nvidiaPersistenced = true;
+
+    powerManagement.enable = true;
 
     # Use the NVidia open source kernel module (not to be confused with the
     # independent third-party "nouveau" open source driver).
@@ -54,10 +58,13 @@
 
     # Enable the Nvidia settings menu,
     # accessible via `nvidia-settings`.
-    nvidiaSettings = false;
+    nvidiaSettings = true;
 
-    # Optionally, you may need to select the appropriate driver version for your specific GPU.
-    package = config.boot.kernelPackages.nvidiaPackages.stable;
+    prime = {
+      nvidiaBusId = "PCI:1:0:0";
+    };
+
+    package = config.boot.kernelPackages.nvidiaPackages.beta;
   };
 
   users = {
@@ -110,6 +117,14 @@
         PermitRootLogin = "no";
       };
     };
+    ollama = {
+      enable = true;
+      acceleration = "cuda";
+    };
+    xserver = {
+      videoDrivers = ["nvidia"];
+    };
+    fstrim.enable = true;
   };
 
   programs = {
@@ -117,6 +132,11 @@
     gnupg.agent = {
       enable = true;
       enableSSHSupport = true;
+    };
+    atop = {
+      enable = true;
+      atopgpu.enable = true;
+      setuidWrapper.enable = true;
     };
   };
 
