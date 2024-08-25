@@ -109,6 +109,7 @@
 
               # needed for devenv to enable cachix
               accept-flake-config = true;
+              http-connections = 0; # no limit
             };
             gc = {
               automatic = true;
@@ -130,6 +131,26 @@
               imports = [shared ./home-manager/eve];
               home.file.".hushlogin".text = "";
               home.stateVersion = stateVersion;
+              nixpkgs.config = nixpkgsConfig;
+              nix = {
+                settings = {
+                  allowed-users = [user];
+                  trusted-users = ["root" user];
+                  experimental-features = ["nix-command" "flakes"];
+
+                  # https://github.com/NixOS/nix/issues/7273
+                  auto-optimise-store = false;
+
+                  # needed for devenv to enable cachix
+                  accept-flake-config = true;
+                  http-connections = 0; # no limit
+                };
+                gc = {
+                  automatic = true;
+                  frequency = "weekly";
+                  options = "--delete-old";
+                };
+              };
             };
           };
         }
@@ -202,7 +223,6 @@
           nixpkgs.config =
             {
               cudaSupport = true;
-              enableParallelBuildingByDefault = true;
             }
             // nixpkgsConfig;
           nixpkgs.overlays = overlays;
@@ -230,7 +250,6 @@
             nixpkgs.config =
               {
                 cudaSupport = true;
-                enableParallelBuildingByDefault = true;
               }
               // nixpkgsConfig;
             nixpkgs.overlays = overlays;
