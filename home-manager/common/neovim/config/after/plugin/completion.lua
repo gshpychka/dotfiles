@@ -4,16 +4,15 @@ local has_words_before = function()
   return col ~= 0 and vim.api.nvim_buf_get_lines(0, line - 1, line, true)[1]:sub(col, col):match("%s") == nil
 end
 
-require("copilot").setup({
-  suggestion = { enabled = false },
-  panel = { enabled = false },
-})
-require("copilot_cmp").setup()
-vim.api.nvim_set_hl(0, "CmpItemKindCopilot", { fg = "#6CC644" })
+vim.api.nvim_set_hl(0, "CmpItemKindSupermaven", { fg = "#6CC644" })
 
 local cmp = require("cmp")
 local lspkind = require("lspkind")
 local luasnip = require("luasnip")
+
+require("supermaven-nvim").setup({
+  disable_inline_completion = true, -- disables inline completion for use with cmp
+})
 
 cmp.setup({
   snippet = {
@@ -61,7 +60,7 @@ cmp.setup({
     end, { "i", "s" }),
   }),
   sources = cmp.config.sources({
-    { name = "copilot", group_index = 2 },
+    { name = "supermaven", group_index = 2 },
     { name = "nvim_lsp", group_index = 2 },
     -- { name = 'vsnip' }, -- For vsnip users.
     -- { name = 'luasnip' }, -- For luasnip users.
@@ -73,7 +72,7 @@ cmp.setup({
       mode = "symbol", -- show only symbol annotations
       maxwidth = 50, -- prevent the popup from showing more than provided characters (e.g 50 will not show more than 50 characters)
       ellipsis_char = "...", -- when popup menu exceed maxwidth, the truncated part would show ellipsis_char instead (must define maxwidth first)
-      symbol_map = { Copilot = "" },
+      symbol_map = { Supermaven = "" },
       -- The function below will be called before any actual modifications from lspkind
       -- so that you can provide more controls on popup customization. (See [#30](https://github.com/onsails/lspkind-nvim/pull/30))
       before = function(entry, vim_item)
@@ -90,6 +89,6 @@ cmp.setup.filetype("lua", {
   sources = cmp.config.sources({
     { name = "nvim_lua", group_index = 2 },
     { name = "nvim_lsp", group_index = 2 },
-    -- { name = "copilot", group_index = 2 },
+    { name = "supermaven", group_index = 2 },
   }),
 })

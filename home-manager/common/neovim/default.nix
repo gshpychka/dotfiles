@@ -82,8 +82,7 @@ in {
         neogen
         luasnip
         # nvim-lightbulb
-        copilot-lua
-        copilot-cmp
+        supermaven-nvim
         lspkind-nvim
         nvim-cmp
         cmp-nvim-lsp
