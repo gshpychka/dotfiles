@@ -88,7 +88,7 @@ require("lspconfig").lua_ls.setup({
         -- Get the language server to recognize the `vim` global
         globals = { "vim" },
       },
-      formate = {
+      format = {
         enable = false,
       },
       workspace = {

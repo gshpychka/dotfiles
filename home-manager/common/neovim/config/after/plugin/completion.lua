@@ -11,6 +11,8 @@ local lspkind = require("lspkind")
 local luasnip = require("luasnip")
 
 require("supermaven-nvim").setup({
+  log_level = "warn",
+  disable_keymaps = true,
   disable_inline_completion = true, -- disables inline completion for use with cmp
 })
 
@@ -62,10 +64,7 @@ cmp.setup({
   sources = cmp.config.sources({
     { name = "supermaven", group_index = 2 },
     { name = "nvim_lsp", group_index = 2 },
-    -- { name = 'vsnip' }, -- For vsnip users.
     -- { name = 'luasnip' }, -- For luasnip users.
-    -- { name = 'ultisnips' }, -- For ultisnips users.
-    -- { name = 'snippy' }, -- For snippy users.
   }),
   formatting = {
     format = lspkind.cmp_format({
@@ -73,11 +72,6 @@ cmp.setup({
       maxwidth = 50, -- prevent the popup from showing more than provided characters (e.g 50 will not show more than 50 characters)
       ellipsis_char = "...", -- when popup menu exceed maxwidth, the truncated part would show ellipsis_char instead (must define maxwidth first)
       symbol_map = { Supermaven = "" },
-      -- The function below will be called before any actual modifications from lspkind
-      -- so that you can provide more controls on popup customization. (See [#30](https://github.com/onsails/lspkind-nvim/pull/30))
-      before = function(entry, vim_item)
-        return vim_item
-      end,
     }),
   },
   experimental = {
