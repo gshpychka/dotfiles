@@ -117,11 +117,18 @@
     ollama = {
       enable = true;
       acceleration = "cuda";
+      openFirewall = true;
+      host = "${config.networking.hostName}.lan";
     };
     xserver = {
       videoDrivers = ["nvidia"];
     };
     fstrim.enable = true;
+  };
+  environment = {
+    variables = {
+      OLLAMA_HOST = "http://${config.services.ollama.host}:${toString config.services.ollama.port}";
+    };
   };
 
   programs = {
