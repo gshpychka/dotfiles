@@ -59,11 +59,7 @@
 
     # Enable the Nvidia settings menu,
     # accessible via `nvidia-settings`.
-    nvidiaSettings = true;
-
-    prime = {
-      nvidiaBusId = "PCI:1:0:0";
-    };
+    nvidiaSettings = false;
 
     package = config.boot.kernelPackages.nvidiaPackages.beta;
   };
