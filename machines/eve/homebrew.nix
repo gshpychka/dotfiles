@@ -22,7 +22,7 @@
       "vlc"
 
       # -- utilities --
-      "surfshark"
+      "mullvadvpn"
       "finicky" # choose browser on each link
       "vmware-fusion"
       "adobe-acrobat-reader"
@@ -32,7 +32,6 @@
       "todoist"
       "yubico-yubikey-manager"
       "trezor-suite"
-      "kindavim"
       "gimp"
       "chatgpt"
 
