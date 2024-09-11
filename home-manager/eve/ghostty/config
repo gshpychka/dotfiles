@@ -24,3 +24,5 @@ quit-after-last-window-closed = true
 shell-integration = zsh
 
 macos-option-as-alt = true
+
+auto-update = off
