@@ -209,8 +209,8 @@
           nix = {
             channel.enable = false;
             settings = {
-              allowed-users = ["gshpychka"];
-              trusted-users = ["root" "gshpychka"];
+              allowed-users = [user];
+              trusted-users = ["root" user];
               experimental-features = ["nix-command" "flakes"];
               auto-optimise-store = true;
               accept-flake-config = true;
@@ -226,7 +226,7 @@
         home-manager.nixosModules.home-manager
         {
           useGlobalPkgs = true;
-          home-manager.users.gshpychka = {...}: {
+          home-manager.users.${user} = {...}: {
             imports = [./home-manager/reaper];
             home.stateVersion = "24.05";
           };
