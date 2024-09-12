@@ -98,6 +98,7 @@
           };
 
           nix = {
+            channel.enable = false;
             settings = {
               allowed-users = [user];
               trusted-users = ["root" user];
@@ -167,6 +168,7 @@
             // nixpkgsConfig;
           nixpkgs.overlays = overlays;
           nix = {
+            channel.enable = false;
             settings = {
               allowed-users = ["pi"];
               trusted-users = ["root" "pi"];
@@ -205,6 +207,7 @@
             // nixpkgsConfig;
           nixpkgs.overlays = overlays;
           nix = {
+            channel.enable = false;
             settings = {
               allowed-users = ["gshpychka"];
               trusted-users = ["root" "gshpychka"];
