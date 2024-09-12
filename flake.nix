@@ -184,10 +184,12 @@
         })
         home-manager.nixosModules.home-manager
         {
-          useGlobalPkgs = true;
-          home-manager.users.${shared.harborUsername} = {...}: {
-            imports = [./home-manager/harbor];
-            home.stateVersion = stateVersion;
+          home-manager = {
+            useGlobalPkgs = true;
+            users.${shared.harborUsername} = {...}: {
+              imports = [./home-manager/harbor];
+              home.stateVersion = stateVersion;
+            };
           };
         }
       ];
@@ -225,10 +227,12 @@
         })
         home-manager.nixosModules.home-manager
         {
-          useGlobalPkgs = true;
-          home-manager.users.${user} = {...}: {
-            imports = [./home-manager/reaper];
-            home.stateVersion = "24.05";
+          home-manager = {
+            useGlobalPkgs = true;
+            users.${user} = {...}: {
+              imports = [./home-manager/reaper];
+              home.stateVersion = "24.05";
+            };
           };
         }
       ];
