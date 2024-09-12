@@ -109,6 +109,7 @@
         AppleShowAllFiles = true;
         ShowPathbar = true;
         CreateDesktop = false;
+        QuitMenuItem = true;
       };
       loginwindow = {
         GuestEnabled = false;
