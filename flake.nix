@@ -170,8 +170,8 @@
           nix = {
             channel.enable = false;
             settings = {
-              allowed-users = ["pi"];
-              trusted-users = ["root" "pi"];
+              allowed-users = [shared.harborUsername];
+              trusted-users = ["root" shared.harborUsername];
               experimental-features = ["nix-command" "flakes"];
               accept-flake-config = true;
             };
@@ -185,7 +185,7 @@
         home-manager.nixosModules.home-manager
         {
           useGlobalPkgs = true;
-          home-manager.users.pi = {...}: {
+          home-manager.users.${shared.harborUsername} = {...}: {
             imports = [./home-manager/harbor];
             home.stateVersion = stateVersion;
           };
