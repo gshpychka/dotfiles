@@ -66,7 +66,6 @@
     shared = import ./machines/harbor/variables.nix;
     nixpkgsConfig = {
       allowUnfree = true;
-      allowUnsupportedSystem = false;
     };
     overlays = with inputs; [
       # neovim-nightly-overlay.overlays.default
