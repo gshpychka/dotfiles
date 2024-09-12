@@ -125,32 +125,10 @@
           home-manager = {
             useGlobalPkgs = true;
             useUserPackages = true;
-            # makes all inputs available in imported files for hm
-            extraSpecialArgs = {inherit inputs;};
             users.${user} = {...}: {
               imports = [shared ./home-manager/eve];
               home.file.".hushlogin".text = "";
               home.stateVersion = stateVersion;
-              nixpkgs.config = nixpkgsConfig;
-              nix = {
-                settings = {
-                  allowed-users = [user];
-                  trusted-users = ["root" user];
-                  experimental-features = ["nix-command" "flakes"];
-
-                  # https://github.com/NixOS/nix/issues/7273
-                  auto-optimise-store = false;
-
-                  # needed for devenv to enable cachix
-                  accept-flake-config = true;
-                  http-connections = 0; # no limit
-                };
-                gc = {
-                  automatic = true;
-                  frequency = "weekly";
-                  options = "--delete-old";
-                };
-              };
             };
           };
         }
@@ -205,6 +183,7 @@
         })
         home-manager.nixosModules.home-manager
         {
+          useGlobalPkgs = true;
           home-manager.users.pi = {...}: {
             imports = [./home-manager/harbor];
             home.stateVersion = stateVersion;
@@ -244,30 +223,10 @@
         })
         home-manager.nixosModules.home-manager
         {
+          useGlobalPkgs = true;
           home-manager.users.gshpychka = {...}: {
             imports = [./home-manager/reaper];
             home.stateVersion = "24.05";
-            nixpkgs.config =
-              {
-                cudaSupport = true;
-              }
-              // nixpkgsConfig;
-            nixpkgs.overlays = overlays;
-            nix = {
-              settings = {
-                allowed-users = ["gshpychka"];
-                trusted-users = ["root" "gshpychka"];
-                experimental-features = ["nix-command" "flakes"];
-                auto-optimise-store = true;
-                accept-flake-config = true;
-                http-connections = 0; # no limit
-              };
-              gc = {
-                frequency = "weekly";
-                automatic = true;
-                options = "--delete-older-than 7d";
-              };
-            };
           };
         }
       ];
