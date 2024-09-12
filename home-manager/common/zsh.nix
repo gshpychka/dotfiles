@@ -160,6 +160,14 @@
       #   exec tmux
       # fi
 
+      nixp() {
+        local packages=()
+        for pkg in "$@"; do
+            packages+=("github:NixOS/nixpkgs#$pkg")
+        done
+        nix shell "''${packages[@]}"
+      }
+
     '';
 
     plugins = [
