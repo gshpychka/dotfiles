@@ -38,7 +38,7 @@ in {
     defaultGateway = routerIpAddress;
     domain = config.shared.localDomain;
     useDHCP = false;
-    nameservers = [machineIpAddress];
+    nameservers = ["127.0.0.1"];
     interfaces.${networkInterface}.ipv4 = {
       addresses = [
         {
@@ -47,6 +47,9 @@ in {
         }
       ];
     };
+    # prevent the local FQDN from being resolved to the loopback address
+    # otherwise, the DNS server will respond with the loopback address for the harbor fqdn
+    hosts = lib.mkForce {};
   };
 
   time.timeZone = "Europe/Kyiv";

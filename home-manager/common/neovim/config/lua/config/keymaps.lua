@@ -35,8 +35,6 @@ vim.keymap.set("n", "]d", function()
   vim.diagnostic.goto_next({ _highest = true })
 end, { desc = "Go to next highest diagnostic" })
 
-vim.keymap.set("n", "gd", vim.lsp.buf.definition, { desc = "Go to definition" })
-
 vim.keymap.set("n", "gr", vim.lsp.buf.references, { desc = "Go to references" })
 
 vim.keymap.set("n", "K", vim.lsp.buf.hover, { desc = "LSP hover" })
