@@ -269,6 +269,7 @@ in {
           room_lights = "c15a46c9c5ed4c9c370e1027cb23124b";
           kitchen_lights = "7fd4114f73ccae38ffe7eab9fce35274";
           reading_light = "75849e0f307bbb353c0a78c9c206f5ce";
+          bed_light = "068376822da7ebb5ec671613f607f089";
 
           party_light = "c086811938b0844e855bb43475c3c2fe";
 
@@ -363,6 +364,22 @@ in {
                 type = "toggle";
                 device_id = reading_light;
                 entity_id = "light.reading_light";
+                domain = "light";
+              }
+            ];
+          })
+          (let
+            pressTypeMapping = {"long_press" = bed_button;};
+          in {
+            alias = "bed light toggle";
+            trigger = builtins.concatMap (pressType:
+              generateTriggers pressType pressTypeMapping.${pressType})
+            (builtins.attrNames pressTypeMapping);
+            action = [
+              {
+                type = "toggle";
+                device_id = bed_light;
+                entity_id = "light.bed_light";
                 domain = "light";
               }
             ];
