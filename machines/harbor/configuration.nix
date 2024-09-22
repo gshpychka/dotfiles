@@ -38,7 +38,8 @@ in {
     defaultGateway = routerIpAddress;
     domain = config.shared.localDomain;
     useDHCP = false;
-    nameservers = ["127.0.0.1"];
+    # TODO: figure out how to make localhost work here
+    nameservers = [machineIpAddress];
     interfaces.${networkInterface}.ipv4 = {
       addresses = [
         {
@@ -369,7 +370,7 @@ in {
             ];
           })
           (let
-            pressTypeMapping = {"long_press" = bed_button;};
+            pressTypeMapping = {"long_press" = [bed_button];};
           in {
             alias = "bed light toggle";
             trigger = builtins.concatMap (pressType:
