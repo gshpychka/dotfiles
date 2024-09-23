@@ -21,7 +21,7 @@
         padding = 10;
       in {
         layout = "bsp";
-        focus_follows_mouse = "autoraise";
+        focus_follows_mouse = "autofocus";
         mouse_follows_focus = "off";
         window_placement = "second_child";
         top_padding = padding;
