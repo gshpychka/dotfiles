@@ -179,11 +179,13 @@ in {
       listeners = [
         {
           port = frontendServices.mqtt.port;
-          bind = "127.0.0.1";
-          protocol = "mqtt";
+          address = "127.0.0.1";
           users = {
             reaper = {
               acl = ["readwrite reaper/#"];
+            };
+            hass = {
+              acl = ["read #"];
             };
           };
           # TODO: fix
@@ -214,6 +216,7 @@ in {
         "samsungtv"
         "xbox"
         "zha"
+        "mqtt"
       ];
       config = {
         http = {
@@ -222,33 +225,24 @@ in {
           use_x_forwarded_for = true;
           trusted_proxies = ["127.0.0.1"];
         };
-        sensor = [
-          {
-            platform = "mqtt";
-            name = "reaper CPU temperature";
-            state_topic = "reaper/cpu/temperature";
-            device = {
-              name = "reaper";
-              identifiers = ["reaper"];
-            };
-            device_class = "temperature";
-            expire_after = 60;
-            icon = "mdi:temperature-celsius";
-            state_class = "measurement";
-            unique_id = "reaper_cpu_temperature";
-            unit_of_measurement = "°C";
-          }
-
-          {
-            platform = "systemmonitor";
-            resources = [
-              {type = "memory_use";}
-              {type = "disk_use_percent";}
-              {type = "processor_use";}
-              {type = "processor_temperature";}
-            ];
-          }
-        ];
+        mqtt = {
+          sensor = [
+            {
+              name = "reaper CPU temperature";
+              state_topic = "reaper/cpu/temperature";
+              device = {
+                name = "reaper";
+                identifiers = ["reaper"];
+              };
+              device_class = "temperature";
+              expire_after = 60;
+              icon = "mdi:temperature-celsius";
+              state_class = "measurement";
+              unique_id = "reaper_cpu_temperature";
+              unit_of_measurement = "°C";
+            }
+          ];
+        };
         yeelight = {
           devices = {
             ${partyLightIpAddress} = {
