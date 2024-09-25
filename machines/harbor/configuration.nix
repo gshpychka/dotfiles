@@ -100,6 +100,10 @@ in {
         subdomain = "deluge";
         port = 8112;
       };
+      mqtt = {
+        subdomain = "mqtt";
+        port = 1883;
+      };
     };
   in {
     # argononed fails to start
@@ -170,6 +174,22 @@ in {
       openFirewall = true;
       group = mediaGroup;
     };
+    mosquitto = {
+      enable = true;
+      listeners = [
+        {
+          port = frontendServices.mqtt.port;
+          bind = "127.0.0.1";
+          protocol = "mqtt";
+          users = {
+            reaper = {
+              acl = ["readwrite reaper/#"];
+            };
+          };
+        }
+      ];
+    };
+
     home-assistant = {
       enable = true;
       openFirewall = false;
@@ -201,6 +221,22 @@ in {
           trusted_proxies = ["127.0.0.1"];
         };
         sensor = [
+          {
+            platform = "mqtt";
+            name = "reaper CPU temperature";
+            state_topic = "reaper/cpu/temperature";
+            device = {
+              name = "reaper";
+              identifiers = ["reaper"];
+            };
+            device_class = "temperature";
+            expire_after = 60;
+            icon = "mdi:temperature-celsius";
+            state_class = "measurement";
+            unique_id = "reaper_cpu_temperature";
+            unit_of_measurement = "°C";
+          }
+
           {
             platform = "systemmonitor";
             resources = [
