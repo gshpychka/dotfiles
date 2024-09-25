@@ -186,6 +186,8 @@ in {
               acl = ["readwrite reaper/#"];
             };
           };
+          # TODO: fix
+          omitPasswordAuth = true;
         }
       ];
     };
