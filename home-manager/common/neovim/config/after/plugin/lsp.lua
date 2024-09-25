@@ -215,7 +215,7 @@ require("typescript-tools").setup({
       includeInlayPropertyDeclarationTypeHints = true,
       includeInlayFunctionLikeReturnTypeHints = true,
       includeInlayEnumMemberValueHints = true,
-      importModuleSpecifierPreference = "relative",
+      importModuleSpecifierPreference = "shortest",
     },
   },
 })
