@@ -94,7 +94,7 @@ in {
       };
       adguard = {
         subdomain = "adguard";
-        port = 2999;
+        port = 3000;
       };
       deluge = {
         subdomain = "deluge";
@@ -181,6 +181,8 @@ in {
           port = frontendServices.mqtt.port;
           address = "127.0.0.1";
           users = {
+            # TODO: need to set up secrets to use password auth
+            # this is not working as written
             reaper = {
               acl = ["readwrite reaper/#"];
             };
@@ -188,8 +190,6 @@ in {
               acl = ["read #"];
             };
           };
-          # TODO: fix
-          omitPasswordAuth = true;
         }
       ];
     };
@@ -209,7 +209,6 @@ in {
         "smartthings"
         "homekit"
         "hue"
-        "apple_tv"
         "cast"
         "androidtv"
         "androidtv_remote"
@@ -228,7 +227,7 @@ in {
         mqtt = {
           sensor = [
             {
-              name = "reaper CPU temperature";
+              name = "CPU temperature";
               state_topic = "reaper/cpu/temperature";
               device = {
                 name = "reaper";
