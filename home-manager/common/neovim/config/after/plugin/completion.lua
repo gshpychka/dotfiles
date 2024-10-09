@@ -62,8 +62,8 @@ cmp.setup({
     end, { "i", "s" }),
   }),
   sources = cmp.config.sources({
-    { name = "supermaven", group_index = 2 },
-    { name = "nvim_lsp", group_index = 2 },
+    { name = "supermaven" },
+    { name = "nvim_lsp" },
     -- { name = 'luasnip' }, -- For luasnip users.
   }),
   formatting = {
@@ -81,8 +81,8 @@ cmp.setup({
 
 cmp.setup.filetype("lua", {
   sources = cmp.config.sources({
-    { name = "nvim_lua", group_index = 2 },
-    { name = "nvim_lsp", group_index = 2 },
-    { name = "supermaven", group_index = 2 },
+    { name = "nvim_lua" },
+    { name = "nvim_lsp" },
+    { name = "supermaven" },
   }),
 })
