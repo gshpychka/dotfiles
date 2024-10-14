@@ -1,5 +1,4 @@
 {
-  config,
   pkgs,
   lib,
   ...
@@ -9,7 +8,7 @@
     mouse = true;
     baseIndex = 1;
     escapeTime = 0;
-    historyLimit = 10000;
+    historyLimit = 1000000;
     keyMode = "vi";
     disableConfirmationPrompt = true;
     # TODO: set up tmuxinator
@@ -22,9 +21,9 @@
     ];
     extraConfig = lib.concatStringsSep "\n" (
       map lib.fileContents [
-        ./tmux.conf
         ./gruvbox-dark.conf
         ./status.conf
+        ./tmux.conf
       ]
     );
   };
