@@ -19,10 +19,10 @@
       "1password"
       "google-chrome"
       "raycast"
-      "vlc"
 
       # -- utilities --
       "mullvadvpn"
+      "docker"
       "finicky" # choose browser on each link
       "vmware-fusion"
       "adobe-acrobat-reader"
@@ -33,7 +33,7 @@
       "yubico-yubikey-manager"
       "trezor-suite"
       "gimp"
-      "chatgpt"
+      "vlc"
 
       # -- 3d printing
       "bambu-studio"
@@ -50,10 +50,10 @@
       "firefox"
       "krisp"
       "leapp"
-      "slack"
-      "docker"
-      "microsoft-teams"
       "postman"
+      "slack"
+      "microsoft-teams"
+      "gather"
     ];
     masApps = {
       "1Password for Safari" = 1569813296;
