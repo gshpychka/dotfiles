@@ -1,9 +1,4 @@
-{
-  config,
-  pkgs,
-  lib,
-  ...
-}: {
+{...}: {
   programs = {
     lazygit = {
       enable = true;
@@ -27,19 +22,6 @@
         gr = "grep -in";
         re = "rebase -i";
       };
-      ignores = [
-        ".idea"
-        ".vs"
-        ".vsc"
-        ".vscode" # ide
-        ".DS_Store" # mac
-        "node_modules"
-        "npm-debug.log" # npm
-        "__pycache__"
-        "*.pyc" # python
-        ".ipynb_checkpoints" # jupyter
-        "__sapper__" # svelte
-      ];
       extraConfig = {
         commit.gpgsign = true;
         gpg.format = "ssh";
