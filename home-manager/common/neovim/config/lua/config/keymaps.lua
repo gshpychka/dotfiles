@@ -25,7 +25,12 @@ end, { desc = "Toggle absolute line numbers" })
 vim.keymap.set("n", "]q", ":cnext<CR>", { desc = "Go to the next item in the Quickfix list" })
 vim.keymap.set("n", "[q", ":cprevious<CR>", { desc = "Go to the previous item in the Quickfix list" })
 
-vim.keymap.set("n", "<leader>e", vim.diagnostic.open_float, { desc = "Open diagnostics float" })
+vim.keymap.set("n", "<leader>e", function()
+  vim.diagnostic.open_float({
+    focusable = true,
+    -- close_events = { "BufLeave", "CursorMoved", "InsertEnter", "FocusLost" },
+  })
+end, { desc = "Open diagnostics popup" })
 
 vim.keymap.set("n", "[d", function()
   vim.diagnostic.goto_prev({ _highest = true })

@@ -1,13 +1,13 @@
 local util = require("vim.lsp.util")
 
-vim.api.nvim_create_autocmd({ "CursorHold" }, {
-  callback = function()
-    vim.diagnostic.open_float({
-      focusable = false,
-      close_events = { "BufLeave", "CursorMoved", "InsertEnter", "FocusLost" },
-    })
-  end,
-})
+-- vim.api.nvim_create_autocmd({ "CursorHold" }, {
+--   callback = function()
+--     vim.diagnostic.open_float({
+--       focusable = false,
+--       close_events = { "BufLeave", "CursorMoved", "InsertEnter", "FocusLost" },
+--     })
+--   end,
+-- })
 
 vim.diagnostic.config({
   virtual_text = {
@@ -164,10 +164,10 @@ require("typescript-tools").setup({
 
       return vim.lsp.handlers["textDocument/references"](err, result, ctx, config)
     end,
-    ["textDocument/publishDiagnostics"] = ts_api.filter_diagnostics({
-      6196, -- unused vars
-      6133, -- also unused vars, even though the error code doesn't match the docs
-    }),
+    -- ["textDocument/publishDiagnostics"] = ts_api.filter_diagnostics({
+    --   6196, -- unused vars
+    --   6133, -- also unused vars, even though the error code doesn't match the docs
+    -- }),
   },
   on_attach = function(client, bufnr)
     vim.keymap.set("n", "md", function()
