@@ -10,7 +10,7 @@
   environment = {
     systemPackages = with pkgs; [
       # 1Password has to be installed system-wide
-      _1password
+      _1password-cli
     ];
   };
   services = {
@@ -142,7 +142,7 @@
       config.nix-homebrew.prefixes));
       # https://github.com/LnL7/nix-darwin/issues/333#issuecomment-2049843403
       postActivation.text = ''
-        su - $(logname) -c '${pkgs.skhd}/bin/skhd -r'
+        su - "$(logname)" -c '${pkgs.skhd}/bin/skhd -r'
       '';
     };
   };
