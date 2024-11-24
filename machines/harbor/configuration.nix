@@ -148,7 +148,6 @@ in {
           "00:17:88:A4:FF:6B,hue,${hueIpAddress}"
           "04:17:B6:4B:FC:F7,cam,${camIpAddress}"
           "7C:87:CE:9F:30:E0,p1s,${p1sIpAddress}"
-          "5C:E5:0C:AD:6A:7B,party-light,${partyLightIpAddress}"
         ];
       };
     };
@@ -248,14 +247,6 @@ in {
             }
           ];
         };
-        yeelight = {
-          devices = {
-            ${partyLightIpAddress} = {
-              name = "Party light";
-              model = "color";
-            };
-          };
-        };
         "automation ui" = "!include automations.yaml";
         "automation manual" = let
           typeSubtypeMapping = {
@@ -306,10 +297,8 @@ in {
 
           room_lights = "c15a46c9c5ed4c9c370e1027cb23124b";
           kitchen_lights = "7fd4114f73ccae38ffe7eab9fce35274";
-          reading_light = "75849e0f307bbb353c0a78c9c206f5ce";
+          kitchen_aux_light = "75849e0f307bbb353c0a78c9c206f5ce";
           bed_light = "068376822da7ebb5ec671613f607f089";
-
-          party_light = "c086811938b0844e855bb43475c3c2fe";
 
           room_buttons = [room_main_button bed_button couch_table_button];
           kitchen_buttons = [kitchen_main_button kitchen_table_button];
@@ -391,16 +380,17 @@ in {
             ];
           })
           (let
-            pressTypeMapping = {"triple_press" = room_buttons;};
+            pressTypeMapping = {"triple_press" = kitchen_buttons;};
           in {
-            alias = "reading light toggle";
+            alias = "kitchen aux light toggle";
             trigger = builtins.concatMap (pressType:
               generateTriggers pressType pressTypeMapping.${pressType})
             (builtins.attrNames pressTypeMapping);
             action = [
               {
                 type = "toggle";
-                device_id = reading_light;
+                device_id = kitchen_aux_light;
+                # TODO: rename entity
                 entity_id = "light.reading_light";
                 domain = "light";
               }
@@ -418,22 +408,6 @@ in {
                 type = "toggle";
                 device_id = bed_light;
                 entity_id = "light.bed_light";
-                domain = "light";
-              }
-            ];
-          })
-          (let
-            pressTypeMapping = {"triple_press" = kitchen_buttons;};
-          in {
-            alias = "party light toggle";
-            trigger = builtins.concatMap (pressType:
-              generateTriggers pressType pressTypeMapping.${pressType})
-            (builtins.attrNames pressTypeMapping);
-            action = [
-              {
-                type = "toggle";
-                device_id = party_light;
-                entity_id = "light.party_light";
                 domain = "light";
               }
             ];
