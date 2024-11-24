@@ -216,6 +216,12 @@ in {
         "xbox"
         "zha"
         "mqtt"
+        "openai"
+        "ollama"
+        "esphome"
+      ];
+      customComponents = with pkgs.home-assistant-custom-components; [
+        samsungtv-smart
       ];
       config = {
         http = {
