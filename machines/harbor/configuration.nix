@@ -215,7 +215,7 @@ in {
         "xbox"
         "zha"
         "mqtt"
-        "openai"
+        "openai_conversation"
         "ollama"
         "esphome"
       ];
