@@ -34,6 +34,7 @@
       "trezor-suite"
       "gimp"
       "vlc"
+      "raspberry-pi-imager"
 
       # -- 3d printing
       "bambu-studio"
@@ -54,7 +55,7 @@
       "slack"
       "microsoft-teams"
       "gather"
-      "datagrip"
+      "studio-3t"
     ];
     masApps = {
       "1Password for Safari" = 1569813296;
