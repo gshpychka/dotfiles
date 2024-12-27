@@ -7,6 +7,7 @@
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
+    nixos-stable.url = "github:nixos/nixpkgs/nixos-24.11";
     home-manager = {
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -40,10 +41,6 @@
       url = "github:homebrew/homebrew-bundle";
       flake = false;
     };
-    ghostty-bin = {
-      url = "git+ssh://git@github.com/gshpychka/ghostty-bin";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
     # neovim-nightly-overlay = {
     #   url = "github:nix-community/neovim-nightly-overlay";
     #   inputs.nixpkgs.follows = "nixpkgs";
@@ -53,6 +50,7 @@
   outputs = {
     self,
     nixpkgs,
+    nixos-stable,
     darwin,
     home-manager,
     nix-homebrew,
@@ -60,15 +58,23 @@
     homebrew-cask,
     homebrew-services,
     homebrew-bundle,
-    ghostty-bin,
     ...
   } @ inputs: let
     shared = import ./machines/harbor/variables.nix;
     nixpkgsConfig = {
       allowUnfree = true;
     };
-    overlays = with inputs; [
-      # neovim-nightly-overlay.overlays.default
+    overlays = [
+      (final: prev: let
+        nixosStablePkgs = import nixos-stable {system = final.system;};
+      in {
+        # https://github.com/NixOS/nixpkgs/issues/367876
+        awscli2 = nixosStablePkgs.awscli2;
+        # Until the fix is in unstable: https://github.com/NixOS/nixpkgs/pull/368248
+        lua-language-server = nixosStablePkgs.lua-language-server;
+        # https://github.com/NixOS/nixpkgs/issues/368421
+        openscad = nixosStablePkgs.openscad;
+      })
     ];
     stateVersion = "22.11";
     user = "gshpychka";
@@ -83,13 +89,7 @@
         ./machines/eve/homebrew.nix
         ({pkgs, ...}: {
           nixpkgs.config = nixpkgsConfig;
-          nixpkgs.overlays =
-            overlays
-            ++ [
-              (final: prev: {
-                ghostty = ghostty-bin.packages.${prev.system}.default;
-              })
-            ];
+          nixpkgs.overlays = overlays;
           system.stateVersion = 4;
 
           users.users.${user} = {

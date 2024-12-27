@@ -11,7 +11,7 @@ in {
   };
 
   config = lib.mkIf cfg.enable {
-    home.packages = [pkgs.ghostty];
+    # TODO: install via homebrew if enabled
     xdg.configFile = {
       "ghostty/config" = {
         source = ./config;

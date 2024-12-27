@@ -19,6 +19,7 @@
       "1password"
       "google-chrome"
       "raycast"
+      "ghostty"
 
       # -- utilities --
       "mullvadvpn"

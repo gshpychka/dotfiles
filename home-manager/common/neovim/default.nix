@@ -10,15 +10,6 @@ let
   #     hash = "sha256-1RI8I0V/QeS1cdXHtERGiZFqX6a9hwZp8L4JYayzWm0=";
   #   };
   # };
-  tsc-nvim = pkgs.vimUtils.buildVimPlugin {
-    name = "tsc-nvim";
-    src = pkgs.fetchFromGitHub {
-      owner = "dmmulroy";
-      repo = "tsc.nvim";
-      rev = "v2.3.0";
-      hash = "sha256-7TO4HoyyQErJwqB5F5MmuxegN7AyikHtPaxUnqDLDgM=";
-    };
-  };
 in {
   programs.neovim = {
     enable = true;
