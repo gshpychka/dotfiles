@@ -68,10 +68,6 @@
       (final: prev: let
         nixosStablePkgs = import nixos-stable {system = final.system;};
       in {
-        # https://github.com/NixOS/nixpkgs/issues/367876
-        awscli2 = nixosStablePkgs.awscli2;
-        # Until the fix is in unstable: https://github.com/NixOS/nixpkgs/pull/368248
-        lua-language-server = nixosStablePkgs.lua-language-server;
         # https://github.com/NixOS/nixpkgs/issues/368421
         openscad = nixosStablePkgs.openscad;
       })
