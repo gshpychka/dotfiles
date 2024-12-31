@@ -96,6 +96,7 @@
           nix = {
             channel.enable = false;
             settings = {
+              # originally motivated by https://github.com/NixOS/nixpkgs/pull/369588?new_mergebox=true#issuecomment-2566272567
               sandbox = "relaxed";
               allowed-users = [user];
               trusted-users = ["root" user];
