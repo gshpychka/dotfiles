@@ -96,6 +96,7 @@
           nix = {
             channel.enable = false;
             settings = {
+              sandbox = "relaxed";
               allowed-users = [user];
               trusted-users = ["root" user];
               experimental-features = ["nix-command" "flakes"];
