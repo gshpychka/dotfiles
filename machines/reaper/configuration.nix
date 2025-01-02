@@ -72,7 +72,10 @@
         extraGroups = ["wheel" "plugdev" "usb"];
         packages = with pkgs; [neovim git];
         openssh.authorizedKeys.keys = [
+          # eve
           "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIB737o9Ltm1K3w9XX9SBHNW1JT4NpCPP5qg9R+SB18dG"
+          # hass
+          "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJ97GzNQODCBpmtUoloIqos0/5ee+CE6CwRMyXIL4MAr"
         ];
         initialHashedPassword = "";
       };
