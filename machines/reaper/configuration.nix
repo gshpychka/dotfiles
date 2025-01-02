@@ -121,17 +121,20 @@
       enable = true;
       acceleration = "cuda";
       openFirewall = true;
-      host = "${config.networking.hostName}.lan";
+      loadModels = [
+        "phi3:14b-medium-128k-instruct-q8_0"
+        "llama3.1:8b-instruct-fp16"
+        "llama3.1:70b-instruct-q8_0"
+        "llama3.1:70b"
+        "gemma2:2b-instruct-q8_0"
+        "gemma2:27b-instruct-q6_K"
+        "nomic-embed-text:latest"
+      ];
     };
     xserver = {
       videoDrivers = ["nvidia"];
     };
     fstrim.enable = true;
-  };
-  environment = {
-    variables = {
-      OLLAMA_HOST = "http://${config.services.ollama.host}:${toString config.services.ollama.port}";
-    };
   };
 
   programs = {
