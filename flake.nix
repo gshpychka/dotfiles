@@ -68,8 +68,8 @@
       (final: prev: let
         nixosStablePkgs = import nixos-stable {system = final.system;};
       in {
-        # https://github.com/NixOS/nixpkgs/issues/368421
-        openscad = nixosStablePkgs.openscad;
+        # overrides from nixpkgs stable go here
+        # pkgname = nixosStablePkgs.pkgname;
       })
     ];
     stateVersion = "22.11";
