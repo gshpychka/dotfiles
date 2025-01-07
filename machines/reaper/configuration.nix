@@ -118,6 +118,11 @@
         PermitRootLogin = "no";
       };
     };
+    glances = {
+      # remote system monitoring
+      enable = true;
+      openFirewall = true;
+    };
     ollama = {
       enable = true;
       acceleration = "cuda";
