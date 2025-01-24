@@ -57,6 +57,7 @@
       "microsoft-teams"
       "gather"
       "studio-3t"
+      "mongodb-compass"
     ];
     masApps = {
       "1Password for Safari" = 1569813296;
