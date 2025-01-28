@@ -235,5 +235,43 @@
         }
       ];
     };
+
+    nixosConfigurations.hoard = nixpkgs.lib.nixosSystem {
+      system = "x86_64-linux";
+      specialArgs = {inherit inputs;};
+      modules = [
+        ./machines/hoard/configuration.nix
+        ({pkgs, ...}: {
+          nixpkgs.config = nixpkgsConfig;
+          nixpkgs.overlays = overlays;
+          nix = {
+            channel.enable = false;
+            settings = {
+              allowed-users = [user];
+              trusted-users = ["root" user];
+              experimental-features = ["nix-command" "flakes"];
+              auto-optimise-store = true;
+              accept-flake-config = true;
+              http-connections = 0; # no limit
+            };
+            gc = {
+              dates = "weekly";
+              automatic = true;
+              options = "--delete-older-than 7d";
+            };
+          };
+        })
+        home-manager.nixosModules.home-manager
+        {
+          home-manager = {
+            useGlobalPkgs = true;
+            users.${user} = {...}: {
+              imports = [./home-manager/hoard];
+              home.stateVersion = "24.11";
+            };
+          };
+        }
+      ];
+    };
   };
 }
