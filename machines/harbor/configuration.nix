@@ -132,6 +132,8 @@ in {
           "04:17:B6:4B:FC:F7,cam,${camIpAddress}"
           "7C:87:CE:9F:30:E0,p1s,${p1sIpAddress}"
         ];
+        # required for secure connections with Plex
+        rebind-domain-ok = "plex.direct";
       };
     };
     nginx = {

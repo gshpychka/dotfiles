@@ -23,7 +23,7 @@
     wireless.enable = false;
     usePredictableInterfaceNames = true;
     interfaces = {
-      eno3 = {
+      enp1s0 = {
         wakeOnLan.enable = true;
       };
     };
@@ -38,11 +38,12 @@
   };
 
   users = {
+    groups.media = {};
     users = {
       gshpychka = {
         shell = pkgs.zsh;
         isNormalUser = true;
-        extraGroups = ["wheel" "plugdev" "usb"];
+        extraGroups = ["wheel" "plugdev" "usb" "media"];
         packages = with pkgs; [neovim git];
         openssh.authorizedKeys.keys = [
           # eve
@@ -68,8 +69,6 @@
   };
 
   services = {
-    pcscd.enable = true;
-    udev.packages = [pkgs.yubikey-personalization];
     openssh = {
       enable = true;
       settings = {
@@ -84,6 +83,11 @@
       openFirewall = true;
     };
     fstrim.enable = true;
+    plex = {
+      enable = true;
+      openFirewall = true;
+      group = "media";
+    };
   };
 
   programs = {
