@@ -96,6 +96,7 @@
         incomplete-dir = "/mnt/hoard/torrents/.incomplete";
         rpc-bind-address = "0.0.0.0";
         rpc-whitelist-enabled = false;
+        rpc-host-whitelist-enabled = false;
       };
       # webHome = pkgs.flood-for-transmission;
       openRPCPort = true;
