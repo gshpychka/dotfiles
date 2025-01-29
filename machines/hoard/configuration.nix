@@ -93,7 +93,7 @@
       group = "media";
       settings = {
         download-dir = "/mnt/hoard/torrents";
-        incomplete-dir = "/mnt/hoard/torrents/.incomplete";
+        incomplete-dir-enabled = false;
         rpc-bind-address = "0.0.0.0";
         rpc-whitelist-enabled = false;
         rpc-host-whitelist-enabled = false;
