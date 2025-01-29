@@ -88,15 +88,17 @@
       openFirewall = true;
       group = "media";
     };
-    deluge = {
+    transmission = {
       enable = true;
-      declarative = false;
       group = "media";
-      web = {
-        enable = true;
-        openFirewall = true;
-        port = 8080;
+      settings = {
+        download-dir = "/mnt/hoard/torrents";
+        incomplete-dir = "/mnt/hoard/torrents/.incomplete";
+        rpc-bind-address = "0.0.0.0";
       };
+      webHome = pkgs.flood-for-transmission;
+      openRPCPort = true;
+      openPeerPorts = true;
     };
   };
 
