@@ -112,18 +112,6 @@
         max_active_seeding = 0;
       };
     };
-    avahi = {
-      enable = true;
-      nssmdns = true;
-      publish = {
-        enable = true;
-        addresses = true;
-        domain = true;
-        hinfo = true;
-        workstation = true;
-        userServices = true;
-      };
-    };
   };
 
   programs = {
