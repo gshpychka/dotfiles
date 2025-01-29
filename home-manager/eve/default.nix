@@ -48,6 +48,11 @@
           extraOptions = {ForwardAgent = "yes";};
           user = "gshpychka";
         };
+        hoard = {
+          host = "hoars.${config.shared.localDomain}";
+          extraOptions = {ForwardAgent = "yes";};
+          user = "gshpychka";
+        };
       };
     };
   };
