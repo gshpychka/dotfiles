@@ -38,7 +38,7 @@
   };
 
   users = {
-    groups.media = {};
+    groups.media = {members = ["transmission" "plex"];};
     users = {
       gshpychka = {
         shell = pkgs.zsh;
