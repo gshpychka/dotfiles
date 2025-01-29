@@ -90,26 +90,12 @@
     };
     deluge = {
       enable = true;
-      declarative = true;
+      declarative = false;
       group = "media";
-      openFirewall = true;
       web = {
         enable = true;
         openFirewall = true;
         port = 8080;
-      };
-      authFile = builtins.toFile "auth" "localclient:deluge:10\n";
-      config = {
-        listen_ports = [6881 6891];
-        allow_remote = true;
-        pre_allocate_storage = true;
-        download_location = "/mnt/hoard/torrents";
-        torrentfiles_location = "/mnt/hoard/torrents";
-        max_upload_speed = 0;
-        new_release_check = false;
-        max_active_limit = 50;
-        max_active_downloading = 10;
-        max_active_seeding = 0;
       };
     };
   };
