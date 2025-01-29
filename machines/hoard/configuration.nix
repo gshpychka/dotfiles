@@ -103,8 +103,8 @@
         listen_ports = [6881 6891];
         allow_remote = true;
         pre_allocate_storage = true;
-        download_location = "/mnt/torrents";
-        torrentfiles_location = "/mnt/torrents";
+        download_location = "/mnt/hoard/torrents";
+        torrentfiles_location = "/mnt/hoard/torrents";
         max_upload_speed = 0;
         new_release_check = false;
         max_active_limit = 50;
