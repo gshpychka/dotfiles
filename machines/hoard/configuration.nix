@@ -88,6 +88,28 @@
       openFirewall = true;
       group = "media";
     };
+    deluge = {
+      enable = true;
+      declarative = false;
+      group = "media";
+      web = {
+        enable = true;
+        openFirewall = true;
+        port = 8080;
+      };
+    };
+    avahi = {
+      enable = true;
+      nssmdns = true;
+      publish = {
+        enable = true;
+        addresses = true;
+        domain = true;
+        hinfo = true;
+        workstation = true;
+        userServices = true;
+      };
+    };
   };
 
   programs = {
