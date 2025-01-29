@@ -97,10 +97,12 @@
         rpc-bind-address = "0.0.0.0";
         rpc-whitelist-enabled = false;
         rpc-host-whitelist-enabled = false;
+        peer-port = 51413;
       };
       webHome = pkgs.flood-for-transmission;
       openRPCPort = true;
       openPeerPorts = true;
+      performanceNetParameters = true;
     };
   };
 
