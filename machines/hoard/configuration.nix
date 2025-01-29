@@ -98,7 +98,7 @@
         rpc-whitelist-enabled = false;
         rpc-host-whitelist-enabled = false;
       };
-      # webHome = pkgs.flood-for-transmission;
+      webHome = pkgs.flood-for-transmission;
       openRPCPort = true;
       openPeerPorts = true;
     };
