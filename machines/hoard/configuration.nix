@@ -101,10 +101,6 @@
       enable = true;
       enableSSHSupport = true;
     };
-    atop = {
-      enable = true;
-      setuidWrapper.enable = true;
-    };
   };
 
   system.stateVersion = "24.11";

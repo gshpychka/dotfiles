@@ -26,13 +26,12 @@
     # lazygit.enable = true; # git tui
     # nnn.enable = true; # file browser
 
-    htop = {
+    btop = {
       enable = true;
       settings = {
-        tree_view = true;
-        show_cpu_frequency = true;
-        show_cpu_usage = true;
-        show_program_path = false;
+        # TODO: not working?
+        color_theme = "${pkgs.btop}/share/btop/themes/gruvbox_dark.theme";
+        vim_keys = true;
       };
     };
 

@@ -149,11 +149,6 @@
       enable = true;
       enableSSHSupport = true;
     };
-    atop = {
-      enable = true;
-      atopgpu.enable = true;
-      setuidWrapper.enable = true;
-    };
   };
 
   system.stateVersion = "24.05";
