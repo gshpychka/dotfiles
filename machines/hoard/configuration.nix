@@ -93,6 +93,20 @@
       openFirewall = true;
       group = "media";
     };
+    prowlarr = {
+      enable = true;
+      openFirewall = true;
+    };
+    sonarr = {
+      enable = true;
+      openFirewall = true;
+      group = "media";
+    };
+    radarr = {
+      enable = true;
+      openFirewall = true;
+      group = "media";
+    };
   };
 
   programs = {
