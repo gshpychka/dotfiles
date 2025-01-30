@@ -4,7 +4,7 @@
   lib,
   ...
 }: {
-  imports = [./hardware-configuration.nix ../modules/qbittorrent.nix];
+  imports = [./hardware-configuration.nix ../../modules/qbittorrent.nix];
 
   boot = {
     loader = {
