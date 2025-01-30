@@ -4,7 +4,7 @@
   lib,
   ...
 }: {
-  imports = [./hardware-configuration.nix];
+  imports = [./hardware-configuration.nix ../modules/qbittorrent.nix];
 
   boot = {
     loader = {
@@ -38,7 +38,7 @@
   };
 
   users = {
-    groups.media = {members = ["transmission" "plex"];};
+    groups.media = {members = ["plex"];};
     users = {
       gshpychka = {
         shell = pkgs.zsh;
@@ -88,21 +88,10 @@
       openFirewall = true;
       group = "media";
     };
-    transmission = {
+    qbittorrent = {
       enable = true;
+      openFirewall = true;
       group = "media";
-      settings = {
-        download-dir = "/mnt/hoard/torrents";
-        incomplete-dir-enabled = false;
-        rpc-bind-address = "0.0.0.0";
-        rpc-whitelist-enabled = false;
-        rpc-host-whitelist-enabled = false;
-        peer-port = 51413;
-      };
-      webHome = pkgs.flood-for-transmission;
-      openRPCPort = true;
-      openPeerPorts = true;
-      performanceNetParameters = true;
     };
   };
 
