@@ -1,4 +1,5 @@
 local Hydra = require("hydra")
+local agitator = require("agitator")
 local gitsigns = require("gitsigns")
 local ts_builtin = require("telescope.builtin")
 
@@ -10,15 +11,16 @@ Hydra({
     hint = false,
     on_enter = function()
       gitsigns.toggle_numhl(true)
-      gitsigns.toggle_current_line_blame(true)
       gitsigns.toggle_linehl(true)
       gitsigns.toggle_deleted(true)
     end,
     on_exit = function()
       gitsigns.toggle_numhl(false)
-      gitsigns.toggle_current_line_blame(false)
       gitsigns.toggle_linehl(false)
       gitsigns.toggle_deleted(false)
+
+      -- wrapping in pcall to suppress the error if there is no blame window open
+      pcall(agitator.git_blame_close)
     end,
   },
   mode = { "n", "x", "v" },
@@ -70,11 +72,52 @@ Hydra({
     { "p", gitsigns.preview_hunk, { desc = "Preview hunk" } },
     { "d", gitsigns.diffthis, { nowait = true, desc = "Diff" } },
     {
+      "D",
+      function()
+        ts_builtin.git_branches({
+          prompt_title = "Choose a branch to diff against",
+          previewer = false,
+          hidden = true,
+          attach_mappings = function(prompt_bufnr, map)
+            map("i", "<CR>", function()
+              require("telescope.actions").close(prompt_bufnr) -- close the picker
+              local selection = require("telescope.actions.state").get_selected_entry()
+              -- Use gitsigns.diffthis with the chosen branch
+              vim.cmd("DiffviewOpen " .. selection.value)
+            end)
+            return true
+          end,
+        })
+      end,
+      { desc = "Choose a branch to diff against" },
+    },
+    {
+      "b",
+      function()
+        agitator.git_blame_toggle({
+          sidebar_width = 40,
+          formatter = function(commit)
+            return commit.date.day
+              .. "/"
+              .. commit.date.month
+              .. "/"
+              .. commit.date.year
+              .. " "
+              .. commit.author
+              .. " - "
+              .. commit.summary
+          end,
+        })
+      end,
+      { desc = "blame sidebar" },
+    },
+    {
       "B",
       function()
-        gitsigns.blame_line({ full = true })
+        local commit_sha = require("agitator").git_blame_commit_for_line()
+        vim.cmd("DiffviewOpen " .. commit_sha .. "^.." .. commit_sha)
       end,
-      { desc = "blame show full" },
+      { desc = "diff blame commit" },
     },
     {
       "<leader>fc",
@@ -97,11 +140,44 @@ Hydra({
       { desc = "Telescope Git branches" },
     },
     {
+      "<leader>fgb",
+      agitator.search_git_branch,
+      { desc = "grep in a specific git branch" },
+    },
+    {
+      "<leader>fgf",
+      agitator.open_file_git_branch,
+      { desc = "open a file in a specific git branch" },
+    },
+    {
       "<leader>fs",
       ts_builtin.git_status,
       { desc = "Telescope Git status" },
     },
-    { "/", gitsigns.show, { exit = true, desc = "show base file" } }, -- show the base of the file
+    {
+      "<leader>tm",
+      function()
+        agitator.git_time_machine({
+          use_current_win = true,
+          set_custom_shortcuts = function(bufnr)
+            vim.keymap.set("n", "J", function()
+              require("agitator").git_time_machine_previous()
+            end, { buffer = bufnr })
+            vim.keymap.set("n", "K", function()
+              require("agitator").git_time_machine_next()
+            end, { buffer = bufnr })
+            vim.keymap.set("n", "<c-h>", function()
+              require("agitator").git_time_machine_copy_sha()
+            end, { buffer = bufnr })
+            vim.keymap.set("n", "q", function()
+              require("agitator").git_time_machine_quit()
+            end, { buffer = bufnr })
+          end,
+        })
+      end,
+      { desc = "git time machine" },
+    },
+
     -- { "<Enter>", "<Cmd>Neogit<CR>", { exit = true, desc = "Neogit" } },
     {
       "<esc>",

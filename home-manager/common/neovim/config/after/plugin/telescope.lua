@@ -41,12 +41,11 @@ vim.keymap.set("n", "<leader>fgr", function()
   })
 end, { desc = "Telescope live grep relative to a directory" })
 
-vim.keymap.set("n", "<leader>fb", builtin.buffers, { desc = "Telescope buffers" })
+vim.keymap.set("n", "<leader>b", builtin.buffers, { desc = "Telescope buffers" })
 vim.keymap.set("n", "<leader>fr", function()
   builtin.lsp_references({ include_declaration = false, reuse_win = true })
 end, { desc = "Telescope LSP references" })
 vim.keymap.set("n", "gd", builtin.lsp_definitions, { desc = "Go to definition" })
-vim.keymap.set("n", "<leader>fht", builtin.help_tags, { desc = "Telescope help tags" })
 vim.keymap.set("n", "<leader>fts", builtin.treesitter, { desc = "Telescope Treesitter" })
 
 -- Neovim helpers
