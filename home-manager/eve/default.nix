@@ -24,7 +24,6 @@
       zstd
       pam-reattach
       awscli2
-      openscad
     ];
   };
   programs = {
