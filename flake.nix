@@ -108,6 +108,7 @@
               # needed for devenv to enable cachix
               accept-flake-config = true;
               http-connections = 0; # no limit
+              download-buffer-size = 500000000; # 500MB
             };
             gc = {
               automatic = true;
@@ -215,6 +216,7 @@
               auto-optimise-store = true;
               accept-flake-config = true;
               http-connections = 0; # no limit
+              download-buffer-size = 500000000; # 500MB
             };
             gc = {
               dates = "weekly";
