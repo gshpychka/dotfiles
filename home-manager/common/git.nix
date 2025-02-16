@@ -22,10 +22,13 @@
         gr = "grep -in";
         re = "rebase -i";
       };
+      signing = {
+        format = "ssh";
+        key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIB737o9Ltm1K3w9XX9SBHNW1JT4NpCPP5qg9R+SB18dG";
+        signByDefault = true;
+      };
+
       extraConfig = {
-        commit.gpgsign = true;
-        gpg.format = "ssh";
-        user.signingkey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIB737o9Ltm1K3w9XX9SBHNW1JT4NpCPP5qg9R+SB18dG";
         init.defaultBranch = "main";
         pull = {
           ff = false;
