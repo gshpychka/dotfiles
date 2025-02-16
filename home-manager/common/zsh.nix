@@ -140,7 +140,7 @@
     };
 
     initExtra = ''
-      bindkey '^l' autosuggest-accept
+      bindkey '^E' autosuggest-accept
 
       # delete past insert start in insert mode
       bindkey -M viins '^?' backward-delete-char # If Backspace sends DEL (127)
@@ -155,10 +155,6 @@
       function nf() {
         darwin-rebuild switch --flake ~/dotfiles
       }
-      # TODO: make this an option
-      # if command -v tmux &> /dev/null && [ -n "$PS1" ] && [[ ! "$TERM" =~ screen ]] && [[ ! "$TERM" =~ tmux ]] && [ -z "$TMUX" ]; then
-      #   exec tmux
-      # fi
 
       nixp() {
         local packages=()

@@ -54,6 +54,10 @@
         };
       };
     };
+    tmux = {
+      # different prefix for eve to avoid conflicts
+      shortcut = "n";
+    };
   };
 
   modules.ghostty.enable = true;

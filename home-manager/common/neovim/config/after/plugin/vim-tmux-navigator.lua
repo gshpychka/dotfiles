@@ -1,24 +1,24 @@
 vim.keymap.set(
   "n",
-  "<m-h>",
+  "<C-h>",
   ":<C-U>TmuxNavigateLeft<cr>",
   { noremap = true, silent = true, desc = "Move left with tmux-navigator" }
 )
 vim.keymap.set(
   "n",
-  "<m-j>",
+  "<C-j>",
   ":<C-U>TmuxNavigateDown<cr>",
   { noremap = true, silent = true, desc = "Move down with tmux-navigator" }
 )
 vim.keymap.set(
   "n",
-  "<m-k>",
+  "<C-k>",
   ":<C-U>TmuxNavigateUp<cr>",
   { noremap = true, silent = true, desc = "Move up with tmux-navigator" }
 )
 vim.keymap.set(
   "n",
-  "<m-l>",
+  "<C-l>",
   ":<C-U>TmuxNavigateRight<cr>",
   { noremap = true, silent = true, desc = "Move right with tmux-navigator" }
 )
