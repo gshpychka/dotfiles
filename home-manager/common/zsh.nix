@@ -131,13 +131,22 @@
       enable = true;
     };
 
-    shellAliases = {
-      # cd to the root of the git repo
-      cdr = "cd $(git rev-parse --show-toplevel)";
-      docker-clean = "docker rmi -f $(docker images -aq) && docker volume prune -f";
-      # TODO: this is only relevant for eve
-      dns-flush = "sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder";
-    };
+    shellAliases = lib.mkMerge [
+      {
+        # cd to the root of the git repo
+        cdr = "cd $(git rev-parse --show-toplevel)";
+        docker-clean = "docker rmi -f $(docker images -aq) && docker volume prune -f";
+      }
+      (lib.mkIf pkgs.stdenv.isDarwin {
+        dns-flush = lib.mkIf pkgs.stdenv.isDarwin "sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder";
+      })
+      (lib.mkIf pkgs.stdenv.isLinux {
+        ns = "sudo nixos-rebuild switch --flake ${toString ../..}";
+      })
+      (lib.mkIf pkgs.stdenv.isDarwin {
+        ns = "darwin-rebuild switch --flake ${toString ../..}";
+      })
+    ];
 
     initExtra = ''
       bindkey '^E' autosuggest-accept
@@ -149,11 +158,6 @@
       function cd() {
         builtin cd $*
         ${pkgs.lsd}/bin/lsd
-      }
-
-      # TODO: only add for eve
-      function nf() {
-        darwin-rebuild switch --flake ~/dotfiles
       }
 
       nixp() {
