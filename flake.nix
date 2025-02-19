@@ -119,8 +119,9 @@
             };
           };
         })
-        home-manager.darwinModule
+        home-manager.darwinModules.home-manager
         {
+          nixpkgs.config = nixpkgsConfig;
           home-manager = {
             useGlobalPkgs = true;
             useUserPackages = true;
