@@ -85,15 +85,24 @@
       enable = true;
       openFirewall = true;
       settings = {
+        # https://www.samba.org/samba/docs/current/man-html/vfs_fruit.8.html
+        global = {
+          "fruit:aapl" = "yes";
+          "fruit:nfs_aces" = "no";
+        };
         "time-machine" = {
+          "vfs objects" = "catia fruit streams_xattr";
+          "fruit:time machine" = "yes";
+          "fruit:metadata" = "stream";
+          "fruit:wipe_intentionally_left_blank_rfork" = "yes";
+          "fruit:delete_empty_adfiles" = "yes";
+          "fruit:veto_appledouble" = "no";
+          "fruit:nfs_aces" = "no";
           "path" = "/mnt/hoard/shares/time-machine";
           "valid users" = "time-machine";
           "public" = "no";
           "writeable" = "yes";
           "force user" = "time-machine";
-          "fruit:aapl" = "yes";
-          "fruit:time machine" = "yes";
-          "vfs objects" = "catia fruit streams_xattr";
         };
       };
     };
