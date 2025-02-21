@@ -77,6 +77,22 @@
         PermitRootLogin = "no";
       };
     };
+    samba = {
+      enable = true;
+      openFirewall = true;
+      settings = {
+        "time-machine" = {
+          "path" = "/mnt/hoard/shares/time-machine";
+          "valid users" = "gshpychka";
+          "public" = "no";
+          "writeable" = "yes";
+          "force user" = "gshpychka";
+          "fruit:aapl" = "yes";
+          "fruit:time machine" = "yes";
+          "vfs objects" = "catia fruit streams_xattr";
+        };
+      };
+    };
     glances = {
       # remote system monitoring
       enable = true;
