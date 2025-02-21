@@ -153,6 +153,10 @@ in {
               domain = "*.${config.networking.fqdn}";
               answer = machineIpAddress;
             }
+            {
+              domain = "router.${config.networking.domain}";
+              answer = routerIpAddress;
+            }
           ];
         };
         dhcp = {
