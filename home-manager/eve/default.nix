@@ -36,19 +36,18 @@
             TERM = "xterm-256color";
           };
         };
-        ${config.shared.harborHost} = {
-          host = "${config.shared.harborHost}.${config.shared.localDomain}";
+        harbor = {
+          host = "harbor.lan";
           user = config.shared.harborUsername;
-          port = config.shared.harborSshPort;
           extraOptions = {ForwardAgent = "yes";};
         };
         reaper = {
-          host = "reaper.${config.shared.localDomain}";
+          host = "reaper.lan";
           extraOptions = {ForwardAgent = "yes";};
           user = "gshpychka";
         };
         hoard = {
-          host = "hoard.${config.shared.localDomain}";
+          host = "hoard.lan";
           extraOptions = {ForwardAgent = "yes";};
           user = "gshpychka";
         };
