@@ -22,6 +22,7 @@
     hostName = "reaper";
     wireless.enable = false;
     usePredictableInterfaceNames = true;
+    enableIPv6 = false;
     interfaces = {
       eno3 = {
         wakeOnLan.enable = true;

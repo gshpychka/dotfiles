@@ -22,6 +22,7 @@
     hostName = "hoard";
     wireless.enable = false;
     usePredictableInterfaceNames = true;
+    enableIPv6 = false;
     interfaces = {
       enp1s0 = {
         wakeOnLan.enable = true;

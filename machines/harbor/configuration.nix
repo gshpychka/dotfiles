@@ -32,6 +32,7 @@ in {
     domain = "lan";
     useDHCP = false;
     nameservers = ["127.0.0.1"];
+    enableIPv6 = false;
     interfaces.${networkInterface}.ipv4 = {
       addresses = [
         {
@@ -85,34 +86,33 @@ in {
         PermitRootLogin = "no";
       };
     };
-    avahi = {
+    nginx = {
       enable = true;
-      ipv6 = false;
-      nssmdns4 = true;
-      publish = {
-        enable = true;
-        userServices = true;
-        hinfo = true;
-      };
-      extraServiceFiles = {
-        "adguard" = ''
-          <?xml version="1.0" standalone='no'?><!DOCTYPE service-group SYSTEM "avahi-service.dtd">
-          <service-group>
-            <name replace-wildcards="yes">AdGuard Web UI</name>
-            <service>
-              <type>_http._tcp</type>
-              <port>3000</port>
-              <host-name>adguard.${config.networking.hostName}.local</host-name>
-            </service>
-          </service-group>
-        '';
+      recommendedProxySettings = true;
+      virtualHosts = {
+        adguard = {
+          serverName = "adguard.${config.networking.fqdn}";
+          addSSL = false;
+          extraConfig = ''
+            proxy_buffering off;
+          '';
+          locations."/" = {
+            proxyPass = "http://127.0.0.1:${toString config.services.adguardhome.port}";
+          };
+        };
+        "block-root-domain" = {
+          serverName = config.networking.fqdn; # Explicitly block the base domain
+          default = true;
+          locations."/" = {
+            return = "444";
+          };
+        };
       };
     };
     adguardhome = {
       enable = true;
       mutableSettings = false;
-      # only affects the web interface port
-      openFirewall = true;
+      host = "127.0.0.1";
       settings = {
         schema_version = 29;
         users = [
@@ -147,6 +147,10 @@ in {
           rewrites = [
             {
               domain = config.networking.fqdn;
+              answer = machineIpAddress;
+            }
+            {
+              domain = "*.${config.networking.fqdn}";
               answer = machineIpAddress;
             }
           ];
