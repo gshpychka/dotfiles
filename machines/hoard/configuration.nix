@@ -51,6 +51,10 @@
         ];
         initialHashedPassword = "";
       };
+      "time-machine" = {
+        group = "media";
+        isSystemUser = true;
+      };
     };
   };
 
@@ -83,10 +87,10 @@
       settings = {
         "time-machine" = {
           "path" = "/mnt/hoard/shares/time-machine";
-          "valid users" = "gshpychka";
+          "valid users" = "time-machine";
           "public" = "no";
           "writeable" = "yes";
-          "force user" = "gshpychka";
+          "force user" = "time-machine";
           "fruit:aapl" = "yes";
           "fruit:time machine" = "yes";
           "vfs objects" = "catia fruit streams_xattr";
