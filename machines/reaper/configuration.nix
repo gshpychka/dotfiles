@@ -122,12 +122,13 @@
     };
     nginx = {
       enable = true;
-      recommendedProxySettings = false; # ollama does not work with this on
+      recommendedProxySettings = true;
       virtualHosts = {
         "default" = {
           serverName = config.networking.fqdn;
           locations."/ollama/" = {
             proxyPass = "http://${config.services.ollama.host}:${toString config.services.ollama.port}/";
+            recommendedProxySettings = false; # ollama does not work with this on
           };
           locations."/" = {
             return = "404";
