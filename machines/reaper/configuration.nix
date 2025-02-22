@@ -125,19 +125,6 @@
       enable = true;
       openFirewall = true;
     };
-    nginx = {
-      enable = true;
-      recommendedProxySettings = true;
-      virtualHosts = {
-        "whisper" = {
-          serverName = "whisper.${config.networking.fqdn}";
-          locations."/" = {
-            proxyPass = "http://127.0.0.1:10300";
-            proxyWebsockets = true;
-          };
-        };
-      };
-    };
     ollama = {
       enable = true;
       acceleration = "cuda";
@@ -145,21 +132,21 @@
       loadModels = [
         "phi3:14b-medium-128k-instruct-q8_0"
         "llama3.1:8b-instruct-fp16"
-        "llama3.1:70b-instruct-q8_0"
-        "llama3.1:70b"
         "gemma2:2b-instruct-q8_0"
         "gemma2:27b-instruct-q6_K"
         "nomic-embed-text:latest"
       ];
     };
     wyoming = {
-      faster-whisper.servers = {
-        large = {
-          enable = true;
-          uri = "tcp://127.0.0.1:10300";
-          model = "large-v3";
-          language = "en";
-          device = "cuda";
+      faster-whisper = {
+        servers = {
+          large = {
+            enable = true;
+            uri = "tcp://0.0.0.0:10300";
+            model = "large-v3";
+            language = "en";
+            device = "cuda";
+          };
         };
       };
     };
@@ -177,7 +164,7 @@
       enableSSHSupport = true;
     };
   };
-  networking.firewall.allowedTCPPorts = [80];
+  networking.firewall.allowedTCPPorts = [10300];
 
   system.stateVersion = "24.05";
 }

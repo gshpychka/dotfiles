@@ -227,6 +227,8 @@
                 accept-flake-config = true;
                 http-connections = 0; # no limit
                 download-buffer-size = 500000000; # 500MB
+                extra-substituters = ["https://cuda-maintaners.cachix.org"];
+                extra-trusted-public-keys = ["cuda-maintainers.cachix.org-1:0dq3bujKpuEPMCX6U4WylrUDZ9JyUG0VpVZa7CNfq5E="];
               }
               // nixConfig;
             gc = {
