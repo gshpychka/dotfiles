@@ -166,6 +166,13 @@
           device = "cuda";
         };
       };
+      piper = {
+        servers.hass = {
+          enable = true;
+          uri = "tcp://0.0.0.0:10200";
+          voice = "en-us-ryan-medium";
+        };
+      };
     };
 
     xserver = {
