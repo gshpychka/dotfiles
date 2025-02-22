@@ -1,7 +1,6 @@
 {
   config,
   pkgs,
-  lib,
   ...
 }: {
   imports = [./hardware-configuration.nix];
@@ -122,13 +121,12 @@
     };
     nginx = {
       enable = true;
-      recommendedProxySettings = true;
+      recommendedProxySettings = false; # ollama does not work with this on
       virtualHosts = {
         "default" = {
           serverName = config.networking.fqdn;
           locations."/ollama/" = {
             proxyPass = "http://${config.services.ollama.host}:${toString config.services.ollama.port}/";
-            recommendedProxySettings = false; # ollama does not work with this on
           };
           locations."/" = {
             return = "404";
@@ -144,7 +142,6 @@
     };
     ollama = {
       enable = true;
-      user = "ollama";
       acceleration = "cuda";
       openFirewall = false;
       loadModels = [
@@ -170,7 +167,11 @@
         servers.hass = {
           enable = true;
           uri = "tcp://0.0.0.0:10200";
-          voice = "en-us-ryan-medium";
+          voice = "en_US-libritts-high";
+          # https://github.com/NixOS/nixpkgs/pull/384315
+          lengthScale = 1;
+          noiseScale = 0.25;
+          speaker = 9;
         };
       };
     };
@@ -188,7 +189,7 @@
       enableSSHSupport = true;
     };
   };
-  networking.firewall.allowedTCPPorts = [10300 80];
+  networking.firewall.allowedTCPPorts = [10300 10200 80];
 
   system.stateVersion = "24.05";
 }
