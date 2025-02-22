@@ -120,6 +120,22 @@
         PermitRootLogin = "no";
       };
     };
+    nginx = {
+      enable = true;
+      recommendedProxySettings = false; # ollama does not work with this on
+      virtualHosts = {
+        "default" = {
+          serverName = config.networking.fqdn;
+          locations."/ollama/" = {
+            proxyPass = "http://${config.services.ollama.host}:${toString config.services.ollama.port}/";
+          };
+          locations."/" = {
+            return = "404";
+          };
+        };
+      };
+    };
+
     glances = {
       # remote system monitoring
       enable = true;
@@ -127,11 +143,13 @@
     };
     ollama = {
       enable = true;
+      user = "ollama";
       acceleration = "cuda";
-      openFirewall = true;
+      openFirewall = false;
       loadModels = [
         "phi3:14b-medium-128k-instruct-q8_0"
         "llama3.1:8b-instruct-fp16"
+        "llama3.2:3b-instruct-q8_0"
         "gemma2:2b-instruct-q8_0"
         "gemma2:27b-instruct-q6_K"
         "nomic-embed-text:latest"
@@ -164,7 +182,7 @@
       enableSSHSupport = true;
     };
   };
-  networking.firewall.allowedTCPPorts = [10300];
+  networking.firewall.allowedTCPPorts = [10300 80];
 
   system.stateVersion = "24.05";
 }
