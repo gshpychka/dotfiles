@@ -20,6 +20,7 @@
 
   networking = {
     hostName = "reaper";
+    domain = "lan";
     wireless.enable = false;
     usePredictableInterfaceNames = true;
     enableIPv6 = false;
@@ -124,6 +125,19 @@
       enable = true;
       openFirewall = true;
     };
+    nginx = {
+      enable = true;
+      recommendedProxySettings = true;
+      virtualHosts = {
+        "whisper" = {
+          serverName = "whisper.${config.networking.fqdn}";
+          locations."/" = {
+            proxyPass = "http://127.0.0.1:10300";
+            proxyWebsockets = true;
+          };
+        };
+      };
+    };
     ollama = {
       enable = true;
       acceleration = "cuda";
@@ -138,6 +152,18 @@
         "nomic-embed-text:latest"
       ];
     };
+    wyoming = {
+      faster-whisper.servers = {
+        large = {
+          enable = true;
+          uri = "tcp://127.0.0.1:10300";
+          model = "large-v3";
+          language = "en";
+          device = "cuda";
+        };
+      };
+    };
+
     xserver = {
       videoDrivers = ["nvidia"];
     };
@@ -151,6 +177,7 @@
       enableSSHSupport = true;
     };
   };
+  networking.firewall.allowedTCPPorts = [80];
 
   system.stateVersion = "24.05";
 }

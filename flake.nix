@@ -64,6 +64,10 @@
     nixpkgsConfig = {
       allowUnfree = true;
     };
+    nixConfig = {
+      extra-substituters = ["https://nix-community.cachix.org"];
+      extra-trusted-public-keys = ["nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="];
+    };
     overlays = [
       (final: prev: let
         nixosStablePkgs = import nixos-stable {system = final.system;};
@@ -95,21 +99,23 @@
 
           nix = {
             channel.enable = false;
-            settings = {
-              # originally motivated by https://github.com/NixOS/nixpkgs/pull/369588?new_mergebox=true#issuecomment-2566272567
-              sandbox = "relaxed";
-              allowed-users = [user];
-              trusted-users = ["root" user];
-              experimental-features = ["nix-command" "flakes"];
+            settings =
+              {
+                # originally motivated by https://github.com/NixOS/nixpkgs/pull/369588?new_mergebox=true#issuecomment-2566272567
+                sandbox = "relaxed";
+                allowed-users = [user];
+                trusted-users = ["root" user];
+                experimental-features = ["nix-command" "flakes"];
 
-              # https://github.com/NixOS/nix/issues/7273
-              auto-optimise-store = false;
+                # https://github.com/NixOS/nix/issues/7273
+                auto-optimise-store = false;
 
-              # needed for devenv to enable cachix
-              accept-flake-config = true;
-              http-connections = 0; # no limit
-              download-buffer-size = 500000000; # 500MB
-            };
+                # needed for devenv to enable cachix
+                accept-flake-config = true;
+                http-connections = 0; # no limit
+                download-buffer-size = 500000000; # 500MB
+              }
+              // nixConfig;
             gc = {
               automatic = true;
               interval = {
@@ -169,12 +175,14 @@
           nixpkgs.overlays = overlays;
           nix = {
             channel.enable = false;
-            settings = {
-              allowed-users = ["pi"];
-              trusted-users = ["root" "pi"];
-              experimental-features = ["nix-command" "flakes"];
-              accept-flake-config = true;
-            };
+            settings =
+              {
+                allowed-users = ["pi"];
+                trusted-users = ["root" "pi"];
+                experimental-features = ["nix-command" "flakes"];
+                accept-flake-config = true;
+              }
+              // nixConfig;
             gc = {
               dates = "weekly";
               automatic = true;
@@ -210,15 +218,17 @@
           nixpkgs.overlays = overlays;
           nix = {
             channel.enable = false;
-            settings = {
-              allowed-users = [user];
-              trusted-users = ["root" user];
-              experimental-features = ["nix-command" "flakes"];
-              auto-optimise-store = true;
-              accept-flake-config = true;
-              http-connections = 0; # no limit
-              download-buffer-size = 500000000; # 500MB
-            };
+            settings =
+              {
+                allowed-users = [user];
+                trusted-users = ["root" user];
+                experimental-features = ["nix-command" "flakes"];
+                auto-optimise-store = true;
+                accept-flake-config = true;
+                http-connections = 0; # no limit
+                download-buffer-size = 500000000; # 500MB
+              }
+              // nixConfig;
             gc = {
               dates = "weekly";
               automatic = true;
@@ -259,14 +269,16 @@
           nixpkgs.overlays = overlays;
           nix = {
             channel.enable = false;
-            settings = {
-              allowed-users = [user];
-              trusted-users = ["root" user];
-              experimental-features = ["nix-command" "flakes"];
-              auto-optimise-store = true;
-              accept-flake-config = true;
-              http-connections = 0; # no limit
-            };
+            settings =
+              {
+                allowed-users = [user];
+                trusted-users = ["root" user];
+                experimental-features = ["nix-command" "flakes"];
+                auto-optimise-store = true;
+                accept-flake-config = true;
+                http-connections = 0; # no limit
+              }
+              // nixConfig;
             gc = {
               dates = "weekly";
               automatic = true;
