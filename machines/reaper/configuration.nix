@@ -149,7 +149,7 @@
       openFirewall = false;
       loadModels = [
         "phi3:14b-medium-128k-instruct-q8_0"
-        "llama3.1:8b-instruct-fp16"
+        "llama3.1:8b-instruct-fp16" # home assistant
         "llama3.2:3b-instruct-q8_0"
         "gemma2:2b-instruct-q8_0"
         "gemma2:27b-instruct-q6_K"
@@ -158,14 +158,12 @@
     };
     wyoming = {
       faster-whisper = {
-        servers = {
-          large = {
-            enable = true;
-            uri = "tcp://0.0.0.0:10300";
-            model = "large-v3";
-            language = "en";
-            device = "cuda";
-          };
+        servers.hass = {
+          enable = true;
+          uri = "tcp://0.0.0.0:10300";
+          model = "large-v3";
+          language = "en";
+          device = "cuda";
         };
       };
     };
