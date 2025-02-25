@@ -27,6 +27,7 @@ module.exports = {
           "gitlab.com",
           "atlassian",
           "awsapps.com",
+          "learn.microsoft.com",
         ].some(
           targetHostName => {
             try {
