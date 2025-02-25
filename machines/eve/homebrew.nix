@@ -25,7 +25,6 @@
       "mullvadvpn"
       "docker"
       "finicky" # choose browser on each link
-      "vmware-fusion"
       "adobe-acrobat-reader"
       "dropbox"
       "google-drive"
@@ -35,7 +34,7 @@
       "trezor-suite"
       "gimp"
       "vlc"
-      "raspberry-pi-imager"
+      "balenaetcher"
 
       # -- 3d printing
       "bambu-studio"
@@ -51,11 +50,9 @@
       # -- work --
       "firefox"
       "krisp"
-      "leapp"
       "postman"
       "slack"
       "microsoft-teams"
-      "gather"
       "studio-3t"
       "mongodb-compass"
     ];
