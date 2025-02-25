@@ -20,7 +20,7 @@
         padding = 10;
       in {
         layout = "bsp";
-        focus_follows_mouse = "autofocus";
+        focus_follows_mouse = "off";
         mouse_follows_focus = "off";
         window_placement = "second_child";
         top_padding = padding;
@@ -30,9 +30,8 @@
         window_gap = padding;
       };
       extraConfig = ''
-        yabai -m rule --add app='System Settings' manage=off
+        yabai -m rule --add app='System Settings' manage=off layer=normal
         yabai -m rule --add app='krisp' manage=off
-        yabai -m rule --add app='Leapp' manage=off
         yabai -m config mouse_modifier cmd
         # Make non-resizable windows floating
         yabai -m signal --add event=window_created action='yabai -m query --windows --window $YABAI_WINDOW_ID |\
@@ -45,10 +44,10 @@
       enable = true;
       skhdConfig = "
         # Move focus between windows
-        ctrl + alt - h : yabai -m window --focus west
-        ctrl + alt - j : yabai -m window --focus south
-        ctrl + alt - k : yabai -m window --focus north
-        ctrl + alt - l : yabai -m window --focus east
+        alt - h : yabai -m window --focus west
+        alt - j : yabai -m window --focus south
+        alt - k : yabai -m window --focus north
+        alt - l : yabai -m window --focus east
 
         # Move windows around
         shift + alt - h : yabai -m window --swap west
