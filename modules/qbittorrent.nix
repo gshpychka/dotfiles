@@ -7,8 +7,6 @@
 }:
 with lib; let
   cfg = config.services.qbittorrent;
-  UID = 888;
-  GID = 888;
 in {
   options.services.qbittorrent = {
     enable = mkEnableOption (lib.mdDoc "qBittorrent headless");
@@ -113,12 +111,11 @@ in {
     users.users = mkIf (cfg.user == "qbittorrent") {
       qbittorrent = {
         group = cfg.group;
-        uid = UID;
       };
     };
 
     users.groups = mkIf (cfg.group == "qbittorrent") {
-      qbittorrent = {gid = GID;};
+      qbittorrent = {};
     };
   };
 }

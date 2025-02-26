@@ -39,12 +39,20 @@
   };
 
   users = {
-    groups.media = {};
+    groups.media = {
+      members = [
+        config.users.users.gshpychka.name
+        config.services.plex.user
+        config.services.qbittorrent.user
+        config.services.sonarr.user
+        config.services.radarr.user
+      ];
+    };
     users = {
       gshpychka = {
         shell = pkgs.zsh;
         isNormalUser = true;
-        extraGroups = ["wheel" "plugdev" "usb" config.users.groups.media.name];
+        extraGroups = ["wheel" "plugdev" "usb"];
         packages = with pkgs; [neovim git];
         openssh.authorizedKeys.keys = [
           # eve
@@ -140,22 +148,18 @@
     fstrim.enable = true;
     plex = {
       enable = true;
-      group = config.users.groups.media.name;
     };
     qbittorrent = {
       enable = true;
-      group = config.users.groups.media.name;
     };
     prowlarr = {
       enable = true;
     };
     sonarr = {
       enable = true;
-      group = config.users.groups.media.name;
     };
     radarr = {
       enable = true;
-      group = config.users.groups.media.name;
     };
   };
 
