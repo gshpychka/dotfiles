@@ -30,7 +30,7 @@
         window_gap = padding;
       };
       extraConfig = ''
-        yabai -m rule --add app='System Settings' manage=off layer=normal
+        yabai -m rule --add app='System Settings' manage=off
         yabai -m rule --add app='krisp' manage=off
         yabai -m config mouse_modifier cmd
         # Make non-resizable windows floating
