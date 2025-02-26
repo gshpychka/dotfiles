@@ -1,7 +1,6 @@
 {
   config,
   pkgs,
-  lib,
   ...
 }: {
   imports = [./hardware-configuration.nix ../../modules/qbittorrent.nix];
@@ -20,6 +19,7 @@
 
   networking = {
     hostName = "hoard";
+    domain = "lan";
     wireless.enable = false;
     usePredictableInterfaceNames = true;
     enableIPv6 = false;
@@ -39,12 +39,12 @@
   };
 
   users = {
-    groups.media = {members = ["plex"];};
+    groups.media = {};
     users = {
       gshpychka = {
         shell = pkgs.zsh;
         isNormalUser = true;
-        extraGroups = ["wheel" "plugdev" "usb" "media"];
+        extraGroups = ["wheel" "plugdev" "usb" config.users.groups.media.name];
         packages = with pkgs; [neovim git];
         openssh.authorizedKeys.keys = [
           # eve
@@ -53,7 +53,7 @@
         initialHashedPassword = "";
       };
       "time-machine" = {
-        group = "media";
+        group = config.users.groups.media.name;
         isSystemUser = true;
       };
     };
@@ -108,6 +108,30 @@
         };
       };
     };
+    nginx = {
+      enable = true;
+      recommendedProxySettings = true;
+      virtualHosts = {
+        default = {
+          serverName = config.networking.fqdn;
+          locations."/qbittorrent/" = {
+            proxyPass = "http://127.0.0.1:${toString config.services.qbittorrent.port}/";
+          };
+          locations."/prowlarr/" = {
+            proxyPass = "http://127.0.0.1:${toString config.services.prowlarr.port}/";
+          };
+          locations."/sonarr/" = {
+            proxyPass = "http://127.0.0.1:${toString config.services.sonarr.port}/";
+          };
+          locations."/radarr/" = {
+            proxyPass = "http://127.0.0.1:${toString config.services.radarr.port}/";
+          };
+          locations."/" = {
+            return = "404";
+          };
+        };
+      };
+    };
     glances = {
       # remote system monitoring
       enable = true;
@@ -116,27 +140,22 @@
     fstrim.enable = true;
     plex = {
       enable = true;
-      openFirewall = true;
-      group = "media";
+      group = config.users.groups.media.name;
     };
     qbittorrent = {
       enable = true;
-      openFirewall = true;
-      group = "media";
+      group = config.users.groups.media.name;
     };
     prowlarr = {
       enable = true;
-      openFirewall = true;
     };
     sonarr = {
       enable = true;
-      openFirewall = true;
-      group = "media";
+      group = config.users.groups.media.name;
     };
     radarr = {
       enable = true;
-      openFirewall = true;
-      group = "media";
+      group = config.users.groups.media.name;
     };
   };
 
