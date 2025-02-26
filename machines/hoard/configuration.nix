@@ -148,6 +148,7 @@
     fstrim.enable = true;
     plex = {
       enable = true;
+      openFirewall = true;
     };
     qbittorrent = {
       enable = true;
@@ -170,6 +171,8 @@
       enableSSHSupport = true;
     };
   };
+
+  networking.firewall.allowedTCPPorts = [80];
 
   system.stateVersion = "24.11";
 }
