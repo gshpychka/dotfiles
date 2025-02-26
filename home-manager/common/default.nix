@@ -1,11 +1,4 @@
-{
-  config,
-  pkgs,
-  lib,
-  inputs,
-  system,
-  ...
-}: {
+{pkgs, ...}: {
   imports = [./zsh.nix ./git.nix ./direnv.nix];
 
   home = {
@@ -23,8 +16,6 @@
     # shell integrations are enabled by default
     jq.enable = true; # json parser
     bat.enable = true; # pretty cat
-    # lazygit.enable = true; # git tui
-    # nnn.enable = true; # file browser
 
     btop = {
       enable = true;

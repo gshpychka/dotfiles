@@ -147,6 +147,7 @@ in {
           rewrites = [
             {
               domain = config.networking.fqdn;
+              # otherwise it resolves to 127.0.0.2
               answer = machineIpAddress;
             }
             {
