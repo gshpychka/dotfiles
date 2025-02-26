@@ -126,13 +126,13 @@
             proxyPass = "http://127.0.0.1:${toString config.services.qbittorrent.port}/";
           };
           locations."/prowlarr/" = {
-            proxyPass = "http://127.0.0.1:${toString config.services.prowlarr.port}/";
+            proxyPass = "http://127.0.0.1:9696/";
           };
           locations."/sonarr/" = {
-            proxyPass = "http://127.0.0.1:${toString config.services.sonarr.port}/";
+            proxyPass = "http://127.0.0.1:8989/";
           };
           locations."/radarr/" = {
-            proxyPass = "http://127.0.0.1:${toString config.services.radarr.port}/";
+            proxyPass = "http://127.0.0.1:7878/";
           };
           locations."/" = {
             return = "404";
