@@ -83,7 +83,6 @@
     nvidia-container-toolkit.enable = true;
     graphics = {
       enable = true;
-      enable32Bit = true;
     };
   };
 
@@ -91,7 +90,6 @@
     docker = {
       enable = true;
       storageDriver = "overlay2";
-      # enableNvidia = true;
       rootless = {
         enable = true;
         setSocketVariable = true;
