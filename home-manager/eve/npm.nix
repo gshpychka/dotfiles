@@ -1,6 +1,5 @@
 {
   config,
-  pkgs,
   lib,
   ...
 }: {
@@ -20,7 +19,7 @@
 
         npmrcConfig = {
           cache = "${config.xdg.cacheHome}/npm";
-          prefix = "${config.home.homeDirectory}/.npm-packages";
+          prefix = "${config.xdg.dataHome}/.npm-packages";
         };
 
         generatedNpmrc = npmrcGenerator npmrcConfig;

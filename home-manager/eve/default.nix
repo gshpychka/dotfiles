@@ -1,9 +1,6 @@
 {
   config,
   pkgs,
-  lib,
-  inputs,
-  system,
   ...
 }: {
   imports = [
@@ -21,9 +18,6 @@
   home = {
     packages = with pkgs; [
       yubikey-manager
-      zstd
-      pam-reattach
-      awscli2
     ];
   };
   programs = {
