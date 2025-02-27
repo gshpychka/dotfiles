@@ -16,7 +16,7 @@
     bat = {
       # pretty cat
       enable = true;
-      settings = {
+      config = {
         theme = "gruvbix-dark";
       };
     };
