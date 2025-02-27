@@ -2,6 +2,7 @@
   imports = [./zsh.nix ./git.nix ./direnv.nix];
 
   home = {
+    preferXdgDirectories = true;
     packages = with pkgs; [
       gh # github cli tool
       fd
