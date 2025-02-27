@@ -32,39 +32,6 @@
 
   time.timeZone = "Europe/Kyiv";
 
-  hardware = {
-    bluetooth.enable = true;
-    gpgSmartcards.enable = true;
-    graphics.enable = true;
-    enableAllFirmware = true;
-    cpu.intel.updateMicrocode = true;
-  };
-
-  hardware.nvidia = {
-    # Modesetting is required.
-    modesetting.enable = true;
-
-    # ensure GPU is awake while headless
-    nvidiaPersistenced = true;
-
-    powerManagement.enable = true;
-
-    # Use the NVidia open source kernel module (not to be confused with the
-    # independent third-party "nouveau" open source driver).
-    # Support is limited to the Turing and later architectures. Full list of
-    # supported GPUs is at:
-    # https://github.com/NVIDIA/open-gpu-kernel-modules#compatible-gpus
-    # Only available from driver 515.43.04+
-    # Currently alpha-quality/buggy, so false is currently the recommended setting.
-    open = false;
-
-    # Enable the Nvidia settings menu,
-    # accessible via `nvidia-settings`.
-    nvidiaSettings = false;
-
-    package = config.boot.kernelPackages.nvidiaPackages.beta;
-  };
-
   users = {
     users = {
       gshpychka = {
@@ -84,12 +51,65 @@
     };
   };
 
+  hardware = {
+    bluetooth.enable = true;
+    gpgSmartcards.enable = true;
+    enableAllFirmware = true;
+    cpu.intel.updateMicrocode = true;
+    nvidia = {
+      # Modesetting is required.
+      modesetting.enable = true;
+
+      # ensure GPU is awake while headless
+      nvidiaPersistenced = true;
+
+      powerManagement.enable = true;
+
+      # Use the NVidia open source kernel module (not to be confused with the
+      # independent third-party "nouveau" open source driver).
+      # Support is limited to the Turing and later architectures. Full list of
+      # supported GPUs is at:
+      # https://github.com/NVIDIA/open-gpu-kernel-modules#compatible-gpus
+      # Only available from driver 515.43.04+
+      # Currently alpha-quality/buggy, so false is currently the recommended setting.
+      open = false;
+
+      # Enable the Nvidia settings menu,
+      # accessible via `nvidia-settings`.
+      nvidiaSettings = false;
+
+      package = config.boot.kernelPackages.nvidiaPackages.beta;
+    };
+    nvidia-container-toolkit.enable = true;
+    graphics = {
+      enable = true;
+      enable32Bit = true;
+    };
+  };
+
   virtualisation = {
     docker = {
       enable = true;
+      storageDriver = "overlay2";
+      # enableNvidia = true;
       rootless = {
         enable = true;
         setSocketVariable = true;
+        daemon.settings = {
+          max-concurrent-downloads = 10;
+          features.cdi = true;
+        };
+      };
+      autoPrune.enable = true;
+    };
+    oci-containers = {
+      backend = "docker";
+      containers = {
+        kokoro-fastapi = {
+          image = "ghcr.io/remsky/kokoro-fastapi-gpu:v0.2.2";
+          ports = ["8000:8880"];
+          extraOptions = ["--device" "nvidia.com/gpu=all"];
+        };
       };
     };
   };
@@ -125,11 +145,17 @@
       virtualHosts = {
         "default" = {
           serverName = config.networking.fqdn;
-          locations."/ollama/" = {
-            proxyPass = "http://${config.services.ollama.host}:${toString config.services.ollama.port}/";
-          };
-          locations."/" = {
-            return = "404";
+          locations = {
+            "/ollama/" = {
+              proxyPass = "http://${config.services.ollama.host}:${toString config.services.ollama.port}/";
+            };
+            "/kokoro/" = {
+              proxyPass = "http://127.0.0.1:8000/";
+              recommendedProxySettings = true;
+            };
+            "/" = {
+              return = "404";
+            };
           };
         };
       };
