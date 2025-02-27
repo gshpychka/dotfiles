@@ -18,7 +18,7 @@
       # pretty cat
       enable = true;
       config = {
-        theme = "gruvbix-dark";
+        theme = "gruvbox-dark";
       };
     };
     btop = {
