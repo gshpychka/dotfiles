@@ -216,6 +216,7 @@ require("typescript-tools").setup({
       includeInlayFunctionLikeReturnTypeHints = true,
       includeInlayEnumMemberValueHints = true,
       importModuleSpecifierPreference = "shortest",
+      tsserver_max_memory = 8192,
     },
   },
 })
