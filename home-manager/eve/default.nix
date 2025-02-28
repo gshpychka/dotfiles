@@ -25,24 +25,25 @@
       enable = true;
       matchBlocks = {
         everything = {
-          host = "*";
+          host = "* !*.lan";
           setEnv = {
             TERM = "xterm-256color";
           };
         };
+        local = {
+          host = "*.lan";
+          extraOptions = {ForwardAgent = "yes";};
+        };
         harbor = {
           host = "harbor.lan";
           user = config.shared.harborUsername;
-          extraOptions = {ForwardAgent = "yes";};
         };
         reaper = {
           host = "reaper.lan";
-          extraOptions = {ForwardAgent = "yes";};
           user = "gshpychka";
         };
         hoard = {
           host = "hoard.lan";
-          extraOptions = {ForwardAgent = "yes";};
           user = "gshpychka";
         };
       };
