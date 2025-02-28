@@ -35,6 +35,7 @@
       "gimp"
       "vlc"
       "balenaetcher"
+      "chatgpt"
 
       # -- 3d printing
       "bambu-studio"
