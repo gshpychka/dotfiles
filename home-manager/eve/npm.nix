@@ -3,7 +3,7 @@
   lib,
   ...
 }: {
-  home.file.".npm-packages/.keep".source = builtins.toFile "keep" "";
+  xdg.dataFile.".npm-packages/.keep".source = builtins.toFile "keep" "";
   home.sessionVariables = {
     NPM_CONFIG_USERCONFIG = "${config.xdg.configHome}/npm";
   };
