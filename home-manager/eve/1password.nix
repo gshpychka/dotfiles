@@ -1,7 +1,10 @@
 {pkgs, ...}: {
   programs = {
-    ssh.matchBlocks.everything.extraOptions.IdentityAgent = ''
-      "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"'';
+    ssh.matchBlocks._1p-auth = {
+      host = "*";
+      extraOptions.IdentityAgent = ''
+        "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"'';
+    };
     git.signing.signer = "/Applications/1Password.app/Contents/MacOS/op-ssh-sign";
   };
 

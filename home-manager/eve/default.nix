@@ -24,9 +24,10 @@
     ssh = {
       enable = true;
       matchBlocks = {
-        everything = {
+        all-remote = {
           host = "* !*.lan";
           setEnv = {
+            # avoid compatibility issues
             TERM = "xterm-256color";
           };
         };
