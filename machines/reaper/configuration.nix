@@ -13,8 +13,20 @@
         configurationLimit = 3;
       };
       efi.canTouchEfiVariables = true;
+      timeout = 3;
     };
     kernelPackages = pkgs.linuxPackages_latest;
+    plymouth = {
+      enable = true;
+    };
+    kernelParams = [
+      "quiet"
+      "splash"
+      "rd.systemd.show_status=false"
+      "rd.udev.log_level=3"
+      "udev.log_priority=3"
+    ];
+    initrd.verbose = false;
   };
 
   networking = {
