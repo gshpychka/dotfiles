@@ -183,7 +183,7 @@
       loadModels = [
         "phi3:14b-medium-128k-instruct-q8_0"
         "llama3.1:8b-instruct-fp16" # home assistant
-        "llama3.2:3b-instruct-q8_0"
+        "qwen2.5:14b-instruct-q8_0"
         "gemma2:2b-instruct-q8_0"
         "gemma2:27b-instruct-q6_K"
         "nomic-embed-text:latest"
@@ -197,17 +197,6 @@
           model = "large-v3";
           language = "en";
           device = "cuda";
-        };
-      };
-      piper = {
-        servers.hass = {
-          enable = true;
-          uri = "tcp://0.0.0.0:10200";
-          voice = "en_US-libritts-high";
-          # https://github.com/NixOS/nixpkgs/pull/384315
-          lengthScale = 1;
-          noiseScale = 0.25;
-          speaker = 9;
         };
       };
     };
