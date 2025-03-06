@@ -163,7 +163,8 @@
         for pkg in "$@"; do
             packages+=("github:NixOS/nixpkgs#$pkg")
         done
-        nix shell "''${packages[@]}"
+        # needed because it doesn't respect the system-wide config
+        NIXPKGS_ALLOW_UNFREE=1 nix shell --impure "''${packages[@]}"
       }
 
     '';
