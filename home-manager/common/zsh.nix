@@ -64,8 +64,8 @@
         };
         AWS_PROFILE = {
           variable = "AWS_PROFILE";
-          format = "[$env_value]($style) ";
-          symbol = "";
+          format = "[$env_value $symbol]($style) ";
+          symbol = " ";
           style = "#FF9900"; # AWS orange
         };
       };
@@ -97,12 +97,12 @@
         "$python"
         "$terraform"
         "$nix_shell"
-        "$env_var.NODE_ENV"
+        "$\{env_var.NODE_ENV}"
         "$sudo"
         "$character"
       ];
       right_format = builtins.concatStringsSep "" [
-        "$env_var.AWS_PROFILE"
+        "$\{env_var.AWS_PROFILE}"
         "$hostname"
       ];
     };
