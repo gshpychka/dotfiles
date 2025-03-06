@@ -1,5 +1,7 @@
 {...}: {
   programs.ghostty = {
+    # installed via homebrew
+    package = null;
     enable = true;
     clearDefaultKeybinds = true;
     enableZshIntegration = true;
