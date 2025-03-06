@@ -154,8 +154,7 @@
       bindkey -M viins '^H' backward-delete-char # If Backspace sends Ctrl-H
 
       function cd() {
-        builtin cd $*
-        ${pkgs.lsd}/bin/lsd
+        builtin cd "$@" && ${pkgs.lsd}/bin/lsd
       }
 
       nixp() {
