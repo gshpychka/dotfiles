@@ -138,11 +138,12 @@
       (lib.mkIf pkgs.stdenv.isDarwin {
         dns-flush = lib.mkIf pkgs.stdenv.isDarwin "sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder";
       })
+      # TODO: make these work from any directory
       (lib.mkIf pkgs.stdenv.isLinux {
-        ns = "sudo nixos-rebuild switch --flake ${toString ../..}";
+        ns = "sudo nixos-rebuild switch --flake ~/dotfiles";
       })
       (lib.mkIf pkgs.stdenv.isDarwin {
-        ns = "darwin-rebuild switch --flake ${toString ../..}";
+        ns = "darwin-rebuild switch --flake ~/dotfiles";
       })
     ];
 
