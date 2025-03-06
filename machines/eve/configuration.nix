@@ -69,6 +69,7 @@
   programs = {
     zsh = {
       enable = true;
+      # managed by HM
       enableCompletion = false;
       enableBashCompletion = false;
     };
@@ -120,13 +121,6 @@
       enableKeyMapping = true;
       remapCapsLockToEscape = true;
     };
-    # build.applications = pkgs.lib.mkForce (pkgs.buildEnv {
-    #   name = "applications";
-    #   # link home-manager apps into /Applications instead of ~/Applications
-    #   # fix from https://github.com/LnL7/nix-darwin/issues/139#issuecomment-663117229
-    #   paths = config.environment.systemPackages ++ config.home-manager.users.${config.user}.home.packages;
-    #   pathsToLink = "/Applications";
-    # });
 
     # https://github.com/zhaofengli/nix-homebrew/issues/3#issuecomment-1622240992
     activationScripts = {

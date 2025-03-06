@@ -4,9 +4,8 @@
   ...
 }: {
   imports = [
-    # ./linkapps.nix
     ./finicky
-    ./ghostty
+    ./ghostty.nix
     ./alacritty.nix
     ./1password.nix
     ./npm.nix
