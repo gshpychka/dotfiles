@@ -24,7 +24,7 @@
     btop = {
       enable = true;
       settings = {
-        color_theme = "${pkgs.btop}/share/btop/themes/gruvbox_dark.theme";
+        color_theme = "gruvbox_dark_v2";
         vim_keys = true;
         update_ms = 100;
         proc_tree = true;
@@ -32,6 +32,7 @@
         io_mode = true;
         net_download = 1000;
         net_upload = 1000;
+        net_auto = false;
       };
     };
 
