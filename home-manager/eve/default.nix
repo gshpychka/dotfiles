@@ -53,6 +53,4 @@
       shortcut = "n";
     };
   };
-
-  modules.ghostty.enable = true;
 }
