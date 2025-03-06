@@ -3,7 +3,7 @@
     # installed via homebrew
     package = null;
     enable = true;
-    clearDefaultKeybinds = true;
+    clearDefaultKeybinds = false;
     enableZshIntegration = true;
     settings = {
       theme = "GruvboxDark";
