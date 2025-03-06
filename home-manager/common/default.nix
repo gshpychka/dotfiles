@@ -26,6 +26,12 @@
       settings = {
         color_theme = "${pkgs.btop}/share/btop/themes/gruvbox_dark.theme";
         vim_keys = true;
+        update_ms = 100;
+        proc_tree = true;
+        disks_filter = "exclude=/boot";
+        io_mode = true;
+        net_download = 1000;
+        net_upload = 1000;
       };
     };
 
