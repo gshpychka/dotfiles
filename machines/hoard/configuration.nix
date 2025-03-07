@@ -120,22 +120,34 @@
       enable = true;
       recommendedProxySettings = true;
       virtualHosts = {
-        default = {
-          serverName = config.networking.fqdn;
-          locations."/qbittorrent/" = {
+        qbittorrent = {
+          serverName = "qbittorrent.${config.networking.fqdn}";
+          locations."/" = {
             proxyPass = "http://127.0.0.1:${toString config.services.qbittorrent.port}/";
           };
-          locations."/prowlarr/" = {
+        };
+        prowlarr = {
+          serverName = "prowlarr.${config.networking.fqdn}";
+          locations."/" = {
             proxyPass = "http://127.0.0.1:9696/";
           };
-          locations."/sonarr/" = {
+        };
+        sonarr = {
+          serverName = "sonarr.${config.networking.fqdn}";
+          locations."/" = {
             proxyPass = "http://127.0.0.1:8989/";
           };
-          locations."/radarr/" = {
+        };
+        radarr = {
+          serverName = "radarr.${config.networking.fqdn}";
+          locations."/" = {
             proxyPass = "http://127.0.0.1:7878/";
           };
+        };
+        overseerr = {
+          serverName = "overseerr.${config.networking.fqdn}";
           locations."/" = {
-            return = "404";
+            proxyPass = "http://127.0.0.1:5055/";
           };
         };
       };
@@ -165,7 +177,6 @@
   };
 
   programs = {
-    ssh.startAgent = false;
     gnupg.agent = {
       enable = true;
       enableSSHSupport = true;
