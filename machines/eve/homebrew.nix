@@ -16,46 +16,132 @@
     caskArgs = {no_quarantine = true;};
     casks = [
       # -- essentials --
-      "1password"
-      "google-chrome"
-      "raycast"
-      "ghostty"
+      {
+        name = "1password";
+        greedy = true;
+      }
+      {
+        name = "google-chrome";
+        greedy = true;
+      }
+      {
+        name = "raycast";
+        greedy = true;
+      }
+      {
+        name = "ghostty";
+        greedy = true;
+      }
 
       # -- utilities --
-      "mullvadvpn"
-      "docker"
-      "finicky" # choose browser on each link
-      "adobe-acrobat-reader"
-      "dropbox"
-      "google-drive"
-      "teamviewer"
-      "todoist"
-      "yubico-yubikey-manager"
-      "trezor-suite"
-      "gimp"
-      "vlc"
-      "balenaetcher"
-      "chatgpt"
+      {
+        name = "mullvadvpn";
+        greedy = true;
+      }
+      {
+        name = "docker";
+        greedy = true;
+      }
+      {
+        name = "finicky";
+        greedy = true;
+      } # choose browser on each link
+      {
+        name = "adobe-acrobat-reader";
+        greedy = true;
+      }
+      {
+        name = "dropbox";
+        greedy = true;
+      }
+      {
+        name = "google-drive";
+        greedy = true;
+      }
+      {
+        name = "teamviewer";
+        greedy = true;
+      }
+      {
+        name = "yubico-yubikey-manager";
+        greedy = true;
+      }
+      {
+        name = "trezor-suite";
+        greedy = true;
+      }
+      {
+        name = "gimp";
+        greedy = true;
+      }
+      {
+        name = "vlc";
+        greedy = true;
+      }
+      {
+        name = "balenaetcher";
+        greedy = true;
+      }
+      {
+        name = "chatgpt";
+        greedy = true;
+      }
+      "caldigit-thunderbolt-charging"
 
       # -- 3d printing
-      "bambu-studio"
-      "orcaslicer"
+      {
+        name = "bambu-studio";
+        greedy = true;
+      }
+      {
+        name = "orcaslicer";
+        greedy = true;
+      }
 
       # -- communication --
-      "telegram"
-      "signal"
+      {
+        name = "telegram";
+        greedy = true;
+      }
+      {
+        name = "signal";
+        greedy = true;
+      }
       "discord"
-      "whatsapp"
-      "element"
+      {
+        name = "whatsapp";
+        greedy = true;
+      }
+      {
+        name = "element";
+        greedy = true;
+      }
 
       # -- work --
-      "firefox"
-      "krisp"
-      "postman"
-      "slack"
-      "microsoft-teams"
-      "studio-3t"
-      "mongodb-compass"
+      {
+        name = "firefox";
+        greedy = true;
+      }
+      {
+        name = "postman";
+        greedy = true;
+      }
+      {
+        name = "slack";
+        greedy = true;
+      }
+      {
+        name = "microsoft-teams";
+        greedy = true;
+      }
+      {
+        name = "studio-3t";
+        greedy = true;
+      }
+      {
+        name = "mongodb-compass";
+        greedy = true;
+      }
     ];
     masApps = {
       "1Password for Safari" = 1569813296;
