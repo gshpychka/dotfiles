@@ -1,7 +1,6 @@
 {
   config,
   pkgs,
-  lib,
   ...
 }: let
   machineIpAddress = "192.168.1.2";
@@ -153,6 +152,13 @@ in {
             {
               domain = "*.${config.networking.fqdn}";
               answer = machineIpAddress;
+            }
+            {
+              # TODO: need to set up a real DNS server on harbor to handle
+              # local queries instead of using rewrites like this
+              domain = "*.hoard.lan";
+              # this is currently a static DHCP lease for hoard
+              answer = "192.168.1.31";
             }
             {
               domain = "router.${config.networking.domain}";
