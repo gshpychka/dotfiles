@@ -58,12 +58,48 @@
         openssh.authorizedKeys.keys = [
           # eve
           "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIB737o9Ltm1K3w9XX9SBHNW1JT4NpCPP5qg9R+SB18dG"
-          # hass
-          "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJ97GzNQODCBpmtUoloIqos0/5ee+CE6CwRMyXIL4MAr"
-          "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEFXKhaC9pIMFMeULE7P5pX0GqortRjW9YCKk9EJLRM1"
         ];
+        linger = true;
         initialHashedPassword = "";
       };
+      hass = {
+        group = "homeassistant";
+        isSystemUser = true;
+        openssh.authorizedKeys.keys = [
+          # homeassistant.local
+          "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAC9nquQBUuHWrWJvuUJLuR2zfupJp+QtQlpck0n5J0J"
+        ];
+      };
+    };
+    groups.homeassistant = {};
+  };
+
+  security = {
+    pam = {
+      sshAgentAuth.enable = true;
+      services.sudo.sshAgentAuth = true;
+    };
+    sudo = {
+      enable = true;
+      extraRules = [
+        {
+          users = ["hass"];
+          commands = [
+            {
+              command = "${pkgs.systemd}/bin/bootctl";
+              options = ["NOPASSWD"];
+            }
+            {
+              command = "/run/current-system/sw/bin/reboot";
+              options = ["NOPASSWD"];
+            }
+            {
+              command = "/run/current-system/sw/bin/shutdown";
+              options = ["NOPASSWD"];
+            }
+          ];
+        }
+      ];
     };
   };
 
@@ -132,14 +168,6 @@
     enable = true;
     enableCompletion = false;
     enableBashCompletion = false;
-  };
-
-  security = {
-    sudo.enable = true;
-    pam = {
-      sshAgentAuth.enable = true;
-      services.sudo.sshAgentAuth = true;
-    };
   };
 
   services = {
