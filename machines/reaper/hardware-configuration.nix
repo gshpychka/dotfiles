@@ -22,12 +22,6 @@
     fsType = "ext4";
   };
 
-  fileSystems."/tmp" = {
-    device = "tmpfs";
-    fsType = "tmpfs";
-    options = ["size=16G" "nosuid" "nodev" "mode=1777"];
-  };
-
   # Shared boot partition
   fileSystems."/boot" = {
     device = "/dev/disk/by-uuid/063D-73D8";
