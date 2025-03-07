@@ -31,7 +31,7 @@
           };
         };
         local = {
-          host = "*.lan";
+          host = "*.lan,*.local";
           extraOptions = {ForwardAgent = "yes";};
         };
         harbor = {
