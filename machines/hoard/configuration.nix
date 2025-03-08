@@ -42,11 +42,6 @@
     groups.media = {
       members = [
         config.users.users.gshpychka.name
-        config.services.plex.user
-        config.services.qbittorrent.user
-        config.services.sonarr.user
-        config.services.radarr.user
-        config.services.lidarr.user
       ];
     };
     users = {
@@ -168,21 +163,26 @@
     plex = {
       enable = true;
       openFirewall = true;
+      group = "media";
     };
     qbittorrent = {
       enable = true;
+      group = "media";
     };
     prowlarr = {
       enable = true;
     };
     sonarr = {
       enable = true;
+      group = "media";
     };
     radarr = {
       enable = true;
+      group = "media";
     };
     lidarr = {
       enable = true;
+      group = "media";
     };
   };
 
