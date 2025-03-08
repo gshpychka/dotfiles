@@ -46,6 +46,7 @@
         config.services.qbittorrent.user
         config.services.sonarr.user
         config.services.radarr.user
+        config.services.lidarr.user
       ];
     };
     users = {
@@ -144,6 +145,12 @@
             proxyPass = "http://127.0.0.1:7878/";
           };
         };
+        lidarr = {
+          serverName = "lidarr.${config.networking.fqdn}";
+          locations."/" = {
+            proxyPass = "http://127.0.0.1:8686/";
+          };
+        };
         overseerr = {
           serverName = "overseerr.${config.networking.fqdn}";
           locations."/" = {
@@ -172,6 +179,9 @@
       enable = true;
     };
     radarr = {
+      enable = true;
+    };
+    lidarr = {
       enable = true;
     };
   };
