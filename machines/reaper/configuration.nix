@@ -213,12 +213,8 @@
       acceleration = "cuda";
       openFirewall = false;
       loadModels = [
-        "phi3:14b-medium-128k-instruct-q8_0"
-        "llama3.1:8b-instruct-fp16" # home assistant
-        "qwen2.5:14b-instruct-q8_0"
-        "gemma2:2b-instruct-q8_0"
-        "gemma2:27b-instruct-q6_K"
-        "nomic-embed-text:latest"
+        "llama3.1:8b-instruct-fp16"
+        "qwen2.5:14b-instruct-q8_0" # home assistant
       ];
     };
     wyoming = {
