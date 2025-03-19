@@ -167,6 +167,11 @@
       openFirewall = true;
     };
     fstrim.enable = true;
+    plex = {
+      enable = true;
+      openFirewall = true;
+      group = "media";
+    };
     qbittorrent = {
       enable = true;
       group = "media";
@@ -188,17 +193,25 @@
     };
   };
 
-  services = {
-    plex = {
-      enable = true;
-      openFirewall = true;
-      group = "media";
-    };
-  };
-
   systemd.services.plex.serviceConfig = {
-    IOSchedulingClass = "realtime";
+    IOSchedulingClass = "best-effort";
+    IOSchedulingPriority = 0;
+  };
+  systemd.services.qbittorrent.serviceConfig = {
+    IOSchedulingClass = "best-effort";
     IOSchedulingPriority = 1;
+  };
+  systemd.services.radarr.serviceConfig = {
+    IOSchedulingClass = "best-effort";
+    IOSchedulingPriority = 2;
+  };
+  systemd.services.sonarr.serviceConfig = {
+    IOSchedulingClass = "best-effort";
+    IOSchedulingPriority = 2;
+  };
+  systemd.services.lidarr.serviceConfig = {
+    IOSchedulingClass = "best-effort";
+    IOSchedulingPriority = 2;
   };
 
   programs = {
