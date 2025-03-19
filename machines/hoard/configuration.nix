@@ -193,25 +193,37 @@
     };
   };
 
-  systemd.services.plex.serviceConfig = {
-    IOSchedulingClass = "best-effort";
-    IOSchedulingPriority = 0;
-  };
-  systemd.services.qbittorrent.serviceConfig = {
-    IOSchedulingClass = "best-effort";
-    IOSchedulingPriority = 3;
-  };
-  systemd.services.radarr.serviceConfig = {
-    IOSchedulingClass = "best-effort";
-    IOSchedulingPriority = 6;
-  };
-  systemd.services.sonarr.serviceConfig = {
-    IOSchedulingClass = "best-effort";
-    IOSchedulingPriority = 6;
-  };
-  systemd.services.lidarr.serviceConfig = {
-    IOSchedulingClass = "best-effort";
-    IOSchedulingPriority = 6;
+  systemd = {
+    slices."media.slice" = {
+      sliceConfig = {
+        IOSchedulingClass = "idle";
+        IOSchedulingPriority = 3;
+        IOReadBandwidthMax = "/mnt/hoard/torrents 20M";
+        IOWriteBandwidthMax = "/mnt/hoard/torrents 10M";
+        IOReadIOPSMax = "/mnt/hoard/torrents 50";
+        IOWriteIOPSMax = "/mnt/hoard/torrents 30";
+      };
+    };
+    services = {
+      plex.serviceConfig = {
+        IOSchedulingClass = "best-effort";
+        IOSchedulingPriority = 0;
+      };
+      qbittorrent.serviceConfig = {
+        Slice = "media.slice";
+        IOSchedulingClass = "best-effort";
+        IOSchedulingPriority = 5;
+      };
+      radarr.serviceConfig = {
+        Slice = "media.slice";
+      };
+      sonarr.serviceConfig = {
+        Slice = "media.slice";
+      };
+      lidarr.serviceConfig = {
+        Slice = "media.slice";
+      };
+    };
   };
 
   programs = {
