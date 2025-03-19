@@ -15,6 +15,10 @@
       efi.canTouchEfiVariables = true;
     };
     kernelPackages = pkgs.linuxPackages_latest;
+    kernelParams = [
+      "scsi_mod.use_blk_mq=1"
+      "dm_mod.use_blk_mq=1"
+    ];
     tmp = {
       useTmpfs = true;
     };
@@ -187,11 +191,6 @@
       enable = true;
       group = "media";
     };
-
-    # experimental: disable I/O scheduler for HDD
-    udev.extraRules = ''
-      ACTION="add|change", KERNEL=="sdb", ATTR{queue/scheduler}="none"
-    '';
   };
 
   programs = {
