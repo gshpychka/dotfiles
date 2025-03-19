@@ -199,19 +199,19 @@
   };
   systemd.services.qbittorrent.serviceConfig = {
     IOSchedulingClass = "best-effort";
-    IOSchedulingPriority = 1;
+    IOSchedulingPriority = 3;
   };
   systemd.services.radarr.serviceConfig = {
     IOSchedulingClass = "best-effort";
-    IOSchedulingPriority = 2;
+    IOSchedulingPriority = 6;
   };
   systemd.services.sonarr.serviceConfig = {
     IOSchedulingClass = "best-effort";
-    IOSchedulingPriority = 2;
+    IOSchedulingPriority = 6;
   };
   systemd.services.lidarr.serviceConfig = {
     IOSchedulingClass = "best-effort";
-    IOSchedulingPriority = 2;
+    IOSchedulingPriority = 6;
   };
 
   programs = {
