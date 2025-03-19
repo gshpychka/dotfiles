@@ -167,11 +167,6 @@
       openFirewall = true;
     };
     fstrim.enable = true;
-    plex = {
-      enable = true;
-      openFirewall = true;
-      group = "media";
-    };
     qbittorrent = {
       enable = true;
       group = "media";
@@ -191,6 +186,19 @@
       enable = true;
       group = "media";
     };
+  };
+
+  services = {
+    plex = {
+      enable = true;
+      openFirewall = true;
+      group = "media";
+    };
+  };
+
+  systemd.services.plex.serviceConfig = {
+    IOSchedulingClass = "realtime";
+    IOSchedulingPriority = 1;
   };
 
   programs = {
