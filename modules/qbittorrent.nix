@@ -97,7 +97,8 @@ in {
 
         ExecStart = "${cfg.package}/bin/qbittorrent-nox";
         Restart = "always";
-        #UMask = "0002";
+        # makes sure that qbittorrent creates folders and files with 775 and 664
+        UMask = "002";
         #LimitNOFILE = cfg.openFilesLimit;
       };
 
