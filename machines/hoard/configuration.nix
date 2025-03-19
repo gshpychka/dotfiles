@@ -15,6 +15,9 @@
       efi.canTouchEfiVariables = true;
     };
     kernelPackages = pkgs.linuxPackages_latest;
+    tmp = {
+      useTmpfs = true;
+    };
   };
 
   networking = {
@@ -184,6 +187,11 @@
       enable = true;
       group = "media";
     };
+
+    # experimental: disable I/O scheduler for HDD
+    udev.extraRules = ''
+      ACTION="add|change", KERNEL=="sdb", ATTR{queue/scheduler}="none"
+    '';
   };
 
   programs = {

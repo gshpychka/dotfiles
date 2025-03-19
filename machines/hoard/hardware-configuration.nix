@@ -32,6 +32,7 @@
   fileSystems."/mnt/hoard" = {
     device = "/dev/disk/by-label/hoard";
     fsType = "ext4";
+    options = ["noatime" "nodiratime"];
   };
 
   swapDevices = [{device = "/dev/disk/by-label/swap";}];
