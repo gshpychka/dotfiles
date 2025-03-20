@@ -87,6 +87,10 @@
         greedy = true;
       }
       "caldigit-thunderbolt-charging"
+      {
+        name = "plexamp";
+        greedy = true;
+      }
 
       # -- 3d printing
       {
