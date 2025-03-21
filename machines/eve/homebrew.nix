@@ -91,6 +91,10 @@
         name = "plexamp";
         greedy = true;
       }
+      {
+        name = "dash";
+        greedy = true;
+      }
 
       # -- 3d printing
       {
