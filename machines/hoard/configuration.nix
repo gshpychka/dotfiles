@@ -14,11 +14,14 @@
       };
       efi.canTouchEfiVariables = true;
     };
-    kernelPackages = pkgs.linuxPackages_latest;
+    kernelPackages = pkgs.linuxPackages;
     kernelParams = [
       "scsi_mod.use_blk_mq=1"
       "dm_mod.use_blk_mq=1"
     ];
+    kernel.sysctl = {
+      "kernel.task_delayacct" = "1"; # Enables task delay accounting at runtime
+    };
     tmp = {
       useTmpfs = true;
     };
