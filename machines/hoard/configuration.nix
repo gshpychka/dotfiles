@@ -205,8 +205,8 @@
         IOWeight = 25;
         # IOReadBandwidthMax = "/mnt/hoard/torrents 20M";
         # IOWriteBandwidthMax = "/mnt/hoard/torrents 10M";
-        # IOReadIOPSMax = "/mnt/hoard/torrents 50";
-        # IOWriteIOPSMax = "/mnt/hoard/torrents 30";
+        IOReadIOPSMax = "/mnt/hoard 10";
+        IOWriteIOPSMax = "/mnt/hoard 10";
       };
     };
     services = {
@@ -222,6 +222,8 @@
         IOWeight = 50;
         CPUSchedulingPolicy = "idle";
         IOSchedulingPriority = 1;
+        IOReadIOPSMax = "/mnt/hoard/torrents 30";
+        IOWriteIOPSMax = "/mnt/hoard/torrents 30";
       };
       radarr.serviceConfig = {
         Slice = "media.slice";
