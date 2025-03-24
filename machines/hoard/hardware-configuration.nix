@@ -16,6 +16,7 @@
   fileSystems."/" = {
     device = "/dev/disk/by-label/nixos";
     fsType = "ext4";
+    options = ["noatime"];
   };
 
   fileSystems."/boot" = {
@@ -27,7 +28,7 @@
   fileSystems."/mnt/hoard" = {
     device = "/dev/disk/by-label/hoard";
     fsType = "ext4";
-    options = ["noatime" "nodiratime"];
+    options = ["noatime"];
   };
 
   swapDevices = [{device = "/dev/disk/by-label/swap";}];

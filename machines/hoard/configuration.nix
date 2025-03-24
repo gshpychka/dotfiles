@@ -198,21 +198,26 @@
       sliceConfig = {
         IOSchedulingClass = "idle";
         IOSchedulingPriority = 3;
-        IOReadBandwidthMax = "/mnt/hoard/torrents 20M";
-        IOWriteBandwidthMax = "/mnt/hoard/torrents 10M";
-        IOReadIOPSMax = "/mnt/hoard/torrents 50";
-        IOWriteIOPSMax = "/mnt/hoard/torrents 30";
+        IOWeight = 25;
+        # IOReadBandwidthMax = "/mnt/hoard/torrents 20M";
+        # IOWriteBandwidthMax = "/mnt/hoard/torrents 10M";
+        # IOReadIOPSMax = "/mnt/hoard/torrents 50";
+        # IOWriteIOPSMax = "/mnt/hoard/torrents 30";
       };
     };
     services = {
       plex.serviceConfig = {
         IOSchedulingClass = "best-effort";
         IOSchedulingPriority = 0;
+        IOWeight = 5000;
       };
       qbittorrent.serviceConfig = {
+        # don't want qbittorrent to interfere with Plex
         Slice = "media.slice";
-        IOSchedulingClass = "best-effort";
-        IOSchedulingPriority = 5;
+        Nice = 10;
+        IOWeight = 50;
+        CPUSchedulingPolicy = "idle";
+        IOSchedulingPriority = 1;
       };
       radarr.serviceConfig = {
         Slice = "media.slice";
