@@ -226,13 +226,25 @@
         IOWriteIOPSMax = "/mnt/hoard/torrents 30";
       };
       radarr.serviceConfig = {
-        Slice = "media.slice";
+        IOSchedulingClass = "idle";
+        IOSchedulingPriority = 3;
+        IOWeight = 25;
+        IOReadIOPSMax = "/mnt/hoard 10";
+        IOWriteIOPSMax = "/mnt/hoard 10";
       };
       sonarr.serviceConfig = {
-        Slice = "media.slice";
+        IOSchedulingClass = "idle";
+        IOSchedulingPriority = 3;
+        IOWeight = 25;
+        IOReadIOPSMax = "/mnt/hoard 10";
+        IOWriteIOPSMax = "/mnt/hoard 10";
       };
       lidarr.serviceConfig = {
-        Slice = "media.slice";
+        IOSchedulingClass = "idle";
+        IOSchedulingPriority = 3;
+        IOWeight = 25;
+        IOReadIOPSMax = "/mnt/hoard 10";
+        IOWriteIOPSMax = "/mnt/hoard 10";
       };
     };
   };
