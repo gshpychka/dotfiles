@@ -46,7 +46,11 @@
     };
   };
 
-  time.timeZone = "Europe/Kyiv";
+  time = {
+    timeZone = "Europe/Kyiv";
+    # this mimicks Windows behavior. Otherwise, time may be off when booting into Windows.
+    hardwareClockInLocalTime = true;
+  };
 
   users = {
     defaultUserShell = pkgs.zsh;
