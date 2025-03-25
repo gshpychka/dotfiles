@@ -219,8 +219,10 @@
         # don't want qbittorrent to interfere with Plex
         IOWeight = 50;
         CPUSchedulingPolicy = "idle";
-        # IOReadIOPSMax = "/mnt/hoard/torrents 30";
-        # IOWriteIOPSMax = "/mnt/hoard/torrents 30";
+        IOSchedulingClass = "idle";
+        # IOReadIOPSMax = "/mnt/hoard/torrents 5";
+        # IOWriteIOPSMax = "/mnt/hoard/torrents 5";
+        # IOWriteBandwidthMax = "/mnt/hoard 5M";
       };
       radarr.serviceConfig = {
         IOSchedulingClass = "idle";
