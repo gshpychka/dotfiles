@@ -21,6 +21,8 @@
     ];
     kernel.sysctl = {
       "kernel.task_delayacct" = "1"; # Enables task delay accounting at runtime
+      "vm.dirty_background_bytes" = "134217728"; # 128MB
+      "vm.dirty_bytes" = "268435456"; # 256MB
     };
     tmp = {
       useTmpfs = true;
@@ -220,40 +222,50 @@
         IOWeight = 50;
         CPUSchedulingPolicy = "idle";
         IOSchedulingClass = "idle";
-        IOReadIOPSMax = "/mnt/hoard/torrents 5";
-        IOWriteIOPSMax = "/mnt/hoard/torrents 5";
-        IOWriteBandwidthMax = "/mnt/hoard 5M";
+        IOReadIOPSMax = "/dev/sdb 5";
+        IOWriteIOPSMax = "/dev/sdb 5";
+        IOWriteBandwidthMax = "/dev/sdb 5M";
+        IOReadBandwidthMax = "/dev/sdb 5M";
       };
       radarr.serviceConfig = {
         IOSchedulingClass = "idle";
         IOWeight = 25;
-        IOReadIOPSMax = "/mnt/hoard 10";
-        IOWriteIOPSMax = "/mnt/hoard 10";
+        IOReadIOPSMax = "/dev/sdb 5";
+        IOWriteIOPSMax = "/dev/sdb 5";
       };
       sonarr.serviceConfig = {
         IOSchedulingClass = "idle";
         IOWeight = 25;
-        IOReadIOPSMax = "/mnt/hoard 10";
-        IOWriteIOPSMax = "/mnt/hoard 10";
+        IOReadIOPSMax = "/dev/sdb 5";
+        IOWriteIOPSMax = "/dev/sdb 5";
       };
       lidarr.serviceConfig = {
         IOSchedulingClass = "idle";
         IOWeight = 25;
-        IOReadIOPSMax = "/mnt/hoard 10";
-        IOWriteIOPSMax = "/mnt/hoard 10";
+        IOReadIOPSMax = "/dev/sdb 5";
+        IOWriteIOPSMax = "/dev/sdb 5";
       };
       prowlarr.serviceConfig = {
         IOSchedulingClass = "idle";
         IOWeight = 25;
-        IOReadIOPSMax = "/mnt/hoard 10";
-        IOWriteIOPSMax = "/mnt/hoard 10";
+        IOReadIOPSMax = "/dev/sdb 5";
+        IOWriteIOPSMax = "/dev/sdb 5";
       };
       samba-smbd.serviceConfig = {
         IOSchedulingClass = "idle";
         IOWeight = 25;
-        IOReadIOPSMax = "/mnt/hoard 10";
-        IOWriteIOPSMax = "/mnt/hoard 10";
-        IOWriteBandwidthMax = "/mnt/hoard 5M";
+        IOReadIOPSMax = "/dev/sdb 5";
+        IOWriteIOPSMax = "/dev/sdb 5";
+        IOWriteBandwidthMax = "/dev/sdb 5M";
+        IOReadBandwidthMax = "/dev/sdb 5M";
+      };
+    };
+    slices = {
+      system-samba.sliceConfig = {
+        IOWeight = 25;
+        IOReadIOPSMax = "/dev/sdb 5";
+        IOWriteIOPSMax = "/dev/sdb 5";
+        IOWriteBandwidthMax = "/dev/sdb 5M";
       };
     };
   };
