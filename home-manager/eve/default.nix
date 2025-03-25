@@ -48,9 +48,5 @@
         };
       };
     };
-    tmux = {
-      # different prefix for eve to avoid conflicts
-      shortcut = "n";
-    };
   };
 }
