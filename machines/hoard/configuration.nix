@@ -240,6 +240,12 @@
         IOReadIOPSMax = "/mnt/hoard 10";
         IOWriteIOPSMax = "/mnt/hoard 10";
       };
+      prowlarr.serviceConfig = {
+        IOSchedulingClass = "idle";
+        IOWeight = 25;
+        IOReadIOPSMax = "/mnt/hoard 10";
+        IOWriteIOPSMax = "/mnt/hoard 10";
+      };
       samba-smbd.serviceConfig = {
         IOSchedulingClass = "idle";
         IOWeight = 25;
