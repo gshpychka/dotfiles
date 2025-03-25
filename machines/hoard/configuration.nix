@@ -62,7 +62,7 @@
         shell = pkgs.zsh;
         isNormalUser = true;
         extraGroups = ["wheel" "plugdev" "usb"];
-        packages = with pkgs; [neovim git];
+        packages = with pkgs; [neovim git sysstat iotop];
         openssh.authorizedKeys.keys = [
           # eve
           "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIB737o9Ltm1K3w9XX9SBHNW1JT4NpCPP5qg9R+SB18dG"
