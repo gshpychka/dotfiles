@@ -215,6 +215,7 @@
               cudaSupport = true;
               # https://en.wikipedia.org/wiki/CUDA#GPUs_supported
               cudaCapabilities = ["8.9"];
+              cudaForwardCompat = true;
             }
             // nixpkgsConfig;
           nixpkgs.overlays = overlays;
