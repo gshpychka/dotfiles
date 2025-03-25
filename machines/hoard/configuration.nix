@@ -218,14 +218,11 @@
         IOWeight = 5000;
       };
       qbittorrent.serviceConfig = {
-        # don't want qbittorrent to interfere with Plex
         IOWeight = 50;
         CPUSchedulingPolicy = "idle";
         IOSchedulingClass = "idle";
         IOReadIOPSMax = "/dev/sdb 5";
         IOWriteIOPSMax = "/dev/sdb 5";
-        IOWriteBandwidthMax = "/dev/sdb 5M";
-        IOReadBandwidthMax = "/dev/sdb 5M";
       };
       radarr.serviceConfig = {
         IOSchedulingClass = "idle";
@@ -256,8 +253,6 @@
         IOWeight = 25;
         IOReadIOPSMax = "/dev/sdb 5";
         IOWriteIOPSMax = "/dev/sdb 5";
-        IOWriteBandwidthMax = "/dev/sdb 5M";
-        IOReadBandwidthMax = "/dev/sdb 5M";
       };
     };
     slices = {
@@ -265,7 +260,6 @@
         IOWeight = 25;
         IOReadIOPSMax = "/dev/sdb 5";
         IOWriteIOPSMax = "/dev/sdb 5";
-        IOWriteBandwidthMax = "/dev/sdb 5M";
       };
     };
   };
