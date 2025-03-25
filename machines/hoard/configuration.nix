@@ -221,8 +221,6 @@
         IOWeight = 50;
         CPUSchedulingPolicy = "idle";
         IOSchedulingClass = "idle";
-        IOReadIOPSMax = "/dev/sdb 10";
-        IOWriteIOPSMax = "/dev/sdb 10";
       };
       radarr.serviceConfig = {
         IOSchedulingClass = "idle";
