@@ -217,7 +217,7 @@
       };
       qbittorrent.serviceConfig = {
         # don't want qbittorrent to interfere with Plex
-        Slice = "media.slice";
+        # Slice = "media.slice";
         # Nice = 10;
         IOWeight = 50;
         # CPUSchedulingPolicy = "idle";
