@@ -29,7 +29,7 @@
     initrd.verbose = false;
     tmp = {
       useTmpfs = true;
-      tmpfsSize = "16G";
+      tmpfsSize = "32G";
     };
   };
 
