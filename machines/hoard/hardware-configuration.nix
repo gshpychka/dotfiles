@@ -28,7 +28,12 @@
   fileSystems."/mnt/hoard" = {
     device = "/dev/disk/by-label/hoard";
     fsType = "ext4";
-    options = ["noatime"];
+    options = [
+      "noatime" # don't update atime on read
+      "data=writeback" # skip data journaling
+      "barrier=0" # disable write barriers
+      "journal_async_commit" # lower latency journal commits
+    ];
   };
 
   swapDevices = [{device = "/dev/disk/by-label/swap";}];
