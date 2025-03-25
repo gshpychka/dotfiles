@@ -220,9 +220,9 @@
         IOWeight = 50;
         CPUSchedulingPolicy = "idle";
         IOSchedulingClass = "idle";
-        # IOReadIOPSMax = "/mnt/hoard/torrents 5";
-        # IOWriteIOPSMax = "/mnt/hoard/torrents 5";
-        # IOWriteBandwidthMax = "/mnt/hoard 5M";
+        IOReadIOPSMax = "/mnt/hoard/torrents 5";
+        IOWriteIOPSMax = "/mnt/hoard/torrents 5";
+        IOWriteBandwidthMax = "/mnt/hoard 5M";
       };
       radarr.serviceConfig = {
         IOSchedulingClass = "idle";
@@ -253,7 +253,7 @@
         IOWeight = 25;
         IOReadIOPSMax = "/mnt/hoard 10";
         IOWriteIOPSMax = "/mnt/hoard 10";
-        IOWriteBandwidthMax = "/mnt/hoard 10M";
+        IOWriteBandwidthMax = "/mnt/hoard 5M";
       };
     };
   };
