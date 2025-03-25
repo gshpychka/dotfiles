@@ -218,12 +218,12 @@
       qbittorrent.serviceConfig = {
         # don't want qbittorrent to interfere with Plex
         Slice = "media.slice";
-        Nice = 10;
+        # Nice = 10;
         IOWeight = 50;
-        CPUSchedulingPolicy = "idle";
-        IOSchedulingPriority = 1;
-        IOReadIOPSMax = "/mnt/hoard/torrents 30";
-        IOWriteIOPSMax = "/mnt/hoard/torrents 30";
+        # CPUSchedulingPolicy = "idle";
+        IOSchedulingPriority = 2;
+        # IOReadIOPSMax = "/mnt/hoard/torrents 30";
+        # IOWriteIOPSMax = "/mnt/hoard/torrents 30";
       };
       radarr.serviceConfig = {
         IOSchedulingClass = "idle";
