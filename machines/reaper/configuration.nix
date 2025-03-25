@@ -246,7 +246,7 @@
       enableSSHSupport = true;
     };
   };
-  networking.firewall.allowedTCPPorts = [10300 10200 80];
+  networking.firewall.allowedTCPPorts = [10300 80];
 
   system.stateVersion = "24.05";
 }
