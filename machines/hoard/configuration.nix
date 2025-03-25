@@ -198,50 +198,44 @@
   };
 
   systemd = {
-    slices."media.slice" = {
-      sliceConfig = {
-        IOSchedulingClass = "idle";
-        IOSchedulingPriority = 3;
-        IOWeight = 25;
-        # IOReadBandwidthMax = "/mnt/hoard/torrents 20M";
-        # IOWriteBandwidthMax = "/mnt/hoard/torrents 10M";
-        IOReadIOPSMax = "/mnt/hoard 10";
-        IOWriteIOPSMax = "/mnt/hoard 10";
-      };
-    };
+    # slices."media.slice" = {
+    #   sliceConfig = {
+    #     IOSchedulingClass = "idle";
+    #     IOSchedulingPriority = 3;
+    #     IOWeight = 25;
+    #     # IOReadBandwidthMax = "/mnt/hoard/torrents 20M";
+    #     # IOWriteBandwidthMax = "/mnt/hoard/torrents 10M";
+    #     IOReadIOPSMax = "/mnt/hoard 10";
+    #     IOWriteIOPSMax = "/mnt/hoard 10";
+    #   };
+    # };
     services = {
       plex.serviceConfig = {
         IOSchedulingClass = "best-effort";
         IOSchedulingPriority = 0;
         IOWeight = 5000;
       };
-      # qbittorrent.serviceConfig = {
-      #   # don't want qbittorrent to interfere with Plex
-      #   Slice = "media.slice";
-      #   Nice = 10;
-      #   IOWeight = 50;
-      #   CPUSchedulingPolicy = "idle";
-      #   IOSchedulingPriority = 2;
-      #   IOReadIOPSMax = "/mnt/hoard/torrents 30";
-      #   IOWriteIOPSMax = "/mnt/hoard/torrents 30";
-      # };
+      qbittorrent.serviceConfig = {
+        # don't want qbittorrent to interfere with Plex
+        IOWeight = 50;
+        CPUSchedulingPolicy = "idle";
+        # IOReadIOPSMax = "/mnt/hoard/torrents 30";
+        # IOWriteIOPSMax = "/mnt/hoard/torrents 30";
+      };
       radarr.serviceConfig = {
         IOSchedulingClass = "idle";
-        IOSchedulingPriority = 3;
         IOWeight = 25;
         IOReadIOPSMax = "/mnt/hoard 10";
         IOWriteIOPSMax = "/mnt/hoard 10";
       };
       sonarr.serviceConfig = {
         IOSchedulingClass = "idle";
-        IOSchedulingPriority = 3;
         IOWeight = 25;
         IOReadIOPSMax = "/mnt/hoard 10";
         IOWriteIOPSMax = "/mnt/hoard 10";
       };
       lidarr.serviceConfig = {
         IOSchedulingClass = "idle";
-        IOSchedulingPriority = 3;
         IOWeight = 25;
         IOReadIOPSMax = "/mnt/hoard 10";
         IOWriteIOPSMax = "/mnt/hoard 10";
