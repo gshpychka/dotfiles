@@ -213,6 +213,8 @@
           nixpkgs.config =
             {
               cudaSupport = true;
+              # https://en.wikipedia.org/wiki/CUDA#GPUs_supported
+              cudaCapabilities = ["8.9"];
             }
             // nixpkgsConfig;
           nixpkgs.overlays = overlays;
