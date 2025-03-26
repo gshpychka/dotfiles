@@ -221,45 +221,45 @@
         IOWeight = 50;
         CPUSchedulingPolicy = "idle";
         IOSchedulingClass = "idle";
-        IOReadIOPSMax = "/dev/sdb 10";
-        IOWriteIOPSMax = "/dev/sdb 10";
+        # IOReadIOPSMax = "/mnt/hoard 10";
+        # IOWriteIOPSMax = "/mnt/hoard 10";
       };
       radarr.serviceConfig = {
         IOSchedulingClass = "idle";
         IOWeight = 25;
-        IOReadIOPSMax = "/dev/sdb 10";
-        IOWriteIOPSMax = "/dev/sdb 10";
+        IOReadIOPSMax = "/mnt/hoard 10";
+        IOWriteIOPSMax = "/mnt/hoard 10";
       };
       sonarr.serviceConfig = {
         IOSchedulingClass = "idle";
         IOWeight = 25;
-        IOReadIOPSMax = "/dev/sdb 10";
-        IOWriteIOPSMax = "/dev/sdb 10";
+        IOReadIOPSMax = "/mnt/hoard 10";
+        IOWriteIOPSMax = "/mnt/hoard 10";
       };
       lidarr.serviceConfig = {
         IOSchedulingClass = "idle";
         IOWeight = 25;
-        IOReadIOPSMax = "/dev/sdb 10";
-        IOWriteIOPSMax = "/dev/sdb 10";
+        IOReadIOPSMax = "/mnt/hoard 10";
+        IOWriteIOPSMax = "/mnt/hoard 10";
       };
       prowlarr.serviceConfig = {
         IOSchedulingClass = "idle";
         IOWeight = 25;
-        IOReadIOPSMax = "/dev/sdb 10";
-        IOWriteIOPSMax = "/dev/sdb 10";
+        IOReadIOPSMax = "/mnt/hoard 10";
+        IOWriteIOPSMax = "/mnt/hoard 10";
       };
       samba-smbd.serviceConfig = {
         IOSchedulingClass = "idle";
         IOWeight = 25;
-        IOReadIOPSMax = "/dev/sdb 10";
-        IOWriteIOPSMax = "/dev/sdb 5";
+        IOReadIOPSMax = "/mnt/hoard 10";
+        IOWriteIOPSMax = "/mnt/hoard 5";
       };
     };
     slices = {
       system-samba.sliceConfig = {
         IOWeight = 25;
-        IOReadIOPSMax = "/dev/sdb 10";
-        IOWriteIOPSMax = "/dev/sdb 5";
+        IOReadIOPSMax = "/mnt/hoard 10";
+        IOWriteIOPSMax = "/mnt/hoard 5";
       };
     };
   };
