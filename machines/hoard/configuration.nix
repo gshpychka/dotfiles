@@ -272,7 +272,10 @@
     };
   };
 
-  networking.firewall.allowedTCPPorts = [80];
+  networking.firewall.allowedTCPPorts = [
+    80 # nginx
+    54545 # qbittorrent
+  ];
 
   system.stateVersion = "24.11";
 }
