@@ -230,25 +230,3 @@ require("lspconfig").eslint.setup({
     },
   },
 })
-
-local null_ls = require("null-ls")
-null_ls.setup({
-  debug = false,
-  on_attach = create_on_attach(true),
-  sources = {
-    null_ls.builtins.diagnostics.flake8,
-    null_ls.builtins.formatting.autopep8,
-    null_ls.builtins.formatting.isort,
-    null_ls.builtins.formatting.black,
-    null_ls.builtins.formatting.alejandra,
-    null_ls.builtins.formatting.stylua,
-    null_ls.builtins.formatting.yamlfmt.with({
-      extra_args = {
-        "-formatter",
-        "retain_line_breaks_single=true,max_line_length=120",
-        "-continue_on_error",
-        "true",
-      },
-    }),
-  },
-})

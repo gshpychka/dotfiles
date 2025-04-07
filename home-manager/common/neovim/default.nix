@@ -47,7 +47,6 @@ in {
       indent-blankline-nvim
       text-case-nvim
       nvim-lspconfig
-      null-ls-nvim
       flash-nvim
       (nvim-treesitter.withPlugins (p:
         with p; [
