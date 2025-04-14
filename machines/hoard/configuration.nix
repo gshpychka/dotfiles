@@ -165,6 +165,12 @@
             proxyPass = "http://127.0.0.1:5055/";
           };
         };
+        sabnzbd = {
+          serverName = "sabnzbd.${config.networking.fqdn}";
+          locations."/" = {
+            proxyPass = "http://127.0.0.1:8080/";
+          };
+        };
       };
     };
     glances = {
@@ -194,6 +200,10 @@
       group = "media";
     };
     lidarr = {
+      enable = true;
+      group = "media";
+    };
+    sabnzbd = {
       enable = true;
       group = "media";
     };
