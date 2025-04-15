@@ -1,15 +1,14 @@
 {pkgs, ...}:
-# gitlab-nvim builds its own binary, which is not supported with nix
 let
-  # gitlab-nvim = pkgs.vimUtils.buildVimPlugin {
-  #   name = "gitlab-nvim";
-  #   src = pkgs.fetchFromGitHub {
-  #     owner = "harrisoncramer";
-  #     repo = "gitlab.nvim";
-  #     rev = "v2.6.4";
-  #     hash = "sha256-1RI8I0V/QeS1cdXHtERGiZFqX6a9hwZp8L4JYayzWm0=";
-  #   };
-  # };
+  nui-nvim-latest = pkgs.vimUtils.buildVimPlugin {
+    name = "nui-nvim";
+    src = pkgs.fetchFromGitHub {
+      owner = "MunifTanjim";
+      repo = "nui.nvim";
+      rev = "8d3bce9";
+      hash = "sha256-BYTY2ezYuxsneAl/yQbwL1aQvVWKSsN3IVqzTlrBSEU=";
+    };
+  };
 in {
   programs.neovim = {
     enable = true;
@@ -40,7 +39,7 @@ in {
       nvim-tree-lua
       nvim-web-devicons
       # noice requires nui-nvim and nvim-notify
-      nui-nvim
+      nui-nvim-latest
       nvim-notify
       noice-nvim
       inc-rename-nvim
@@ -98,19 +97,8 @@ in {
       vscode-langservers-extracted # eslint, json
       nodePackages_latest.dockerfile-language-server-nodejs
 
-      # Linters and formatters
-      yamlfmt
-      python311Packages.autopep8
-      python311Packages.flake8
-      black
-      isort
-      alejandra
-      stylua
-      shfmt
-
       ripgrep
     ];
-    #extraPython3Packages = pyPkgs: with pyPkgs; [ ];
   };
   xdg.configFile.nvim = {
     source = ./config;

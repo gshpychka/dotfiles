@@ -72,12 +72,12 @@ end
 
 require("lspconfig").pyright.setup({
   capabilities = capabilities,
-  on_attach = create_on_attach(false),
+  on_attach = create_on_attach(true),
 })
 
 require("lspconfig").lua_ls.setup({
   capabilities = capabilities,
-  on_attach = create_on_attach(false),
+  on_attach = create_on_attach(true),
   settings = {
     Lua = {
       runtime = {
@@ -89,7 +89,7 @@ require("lspconfig").lua_ls.setup({
         globals = { "vim" },
       },
       format = {
-        enable = false,
+        enable = true,
       },
       workspace = {
         -- Make the server aware of Neovim runtime files
@@ -106,7 +106,7 @@ require("lspconfig").lua_ls.setup({
 
 require("lspconfig").nil_ls.setup({
   capabilities = capabilities,
-  on_attach = create_on_attach(false),
+  on_attach = create_on_attach(true),
   settings = {
     ["nil"] = {
       nix = {
@@ -134,7 +134,7 @@ require("lspconfig").jsonls.setup({
 
 require("lspconfig").yamlls.setup({
   capabilities = capabilities,
-  on_attach = create_on_attach(false),
+  on_attach = create_on_attach(true),
 })
 
 require("lspconfig").bashls.setup({
