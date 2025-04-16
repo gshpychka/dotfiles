@@ -10,7 +10,7 @@
       grub.enable = false;
       systemd-boot = {
         enable = true;
-        configurationLimit = 3;
+        configurationLimit = 10;
       };
       efi.canTouchEfiVariables = true;
     };
@@ -28,6 +28,9 @@
       useTmpfs = true;
     };
   };
+  environment.systemPackages = with pkgs; [
+    cryptsetup
+  ];
 
   networking = {
     hostName = "hoard";
@@ -203,10 +206,10 @@
       enable = true;
       group = "media";
     };
-    sabnzbd = {
-      enable = true;
-      group = "media";
-    };
+    # sabnzbd = {
+    #   enable = true;
+    #   # group = "media";
+    # };
   };
 
   programs = {
