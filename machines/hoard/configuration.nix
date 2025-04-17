@@ -206,10 +206,10 @@
       enable = true;
       group = "media";
     };
-    # sabnzbd = {
-    #   enable = true;
-    #   # group = "media";
-    # };
+    sabnzbd = {
+      enable = true;
+      group = "media";
+    };
   };
 
   programs = {
