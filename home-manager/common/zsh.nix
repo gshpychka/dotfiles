@@ -155,7 +155,7 @@
       })
     ];
 
-    initExtra = ''
+    initContent = ''
       bindkey '^E' autosuggest-accept
 
       # delete past insert start in insert mode
