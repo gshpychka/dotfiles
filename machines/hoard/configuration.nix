@@ -3,7 +3,8 @@
   pkgs,
   ...
 }: {
-  imports = [./hardware-configuration.nix ../../modules/qbittorrent.nix];
+  imports = [./hardware-configuration.nix ../../modules/qbittorrent.nix ../../modules/sabnzbd.nix];
+  disabledModules = [ "services/networking/sabnzbd.nix" ];
 
   boot = {
     loader = {
@@ -171,7 +172,8 @@
         sabnzbd = {
           serverName = "sabnzbd.${config.networking.fqdn}";
           locations."/" = {
-            proxyPass = "http://127.0.0.1:8080/";
+            # TODO: reference port from module
+            proxyPass = "http://127.0.0.1:8085/";
           };
         };
       };
@@ -206,10 +208,10 @@
       enable = true;
       group = "media";
     };
-    # sabnzbd = {
-    #   enable = true;
-    #   # group = "media";
-    # };
+    sabnzbd = {
+      enable = true;
+      group = "media";
+    };
   };
 
   programs = {
