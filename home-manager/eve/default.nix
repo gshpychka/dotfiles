@@ -17,6 +17,9 @@
   home = {
     packages = with pkgs; [
       yubikey-manager
+      gnupg
+      pinentry_mac
+      sops
     ];
   };
   programs = {

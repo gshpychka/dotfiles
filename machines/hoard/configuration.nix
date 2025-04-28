@@ -15,6 +15,7 @@
       };
       efi.canTouchEfiVariables = true;
     };
+
     kernelPackages = pkgs.linuxPackages;
     kernelParams = [
       "scsi_mod.use_blk_mq=1"
@@ -53,6 +54,14 @@
     enableAllFirmware = true;
     cpu.intel.updateMicrocode = true;
     usbStorage.manageShutdown = true;
+  };
+
+  sops = {
+    defaultSopsFile = ./secrets/hoard/secrets.yaml;
+    age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
+    secrets = {
+      radarr-api-key = {};
+    };
   };
 
   users = {
@@ -212,7 +221,21 @@
       enable = true;
       group = "media";
     };
+    recyclarr = {
+      enable = true;
+      group = "media";
+      configuration = {
+        radarr.main = {
+          api_key = {
+            _secret = "/run/credentials/recyclarr.service/radarr-api-key";
+          };
+          base_url = "http://localhost:${toString config.services.radarr.port}";
+        };
+      };
+    };
   };
+
+  systemd.services.recyclarr.serviceConfig.LoadCredential = "radarr-api-key:${config.sops.secrets.radarr-api-key.path}";
 
   programs = {
     gnupg.agent = {

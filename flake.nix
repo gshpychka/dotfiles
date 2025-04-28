@@ -41,6 +41,7 @@
       url = "github:homebrew/homebrew-bundle";
       flake = false;
     };
+    sops-nix.url = "github:Mic92/sops-nix";
     # neovim-nightly-overlay = {
     #   url = "github:nix-community/neovim-nightly-overlay";
     #   inputs.nixpkgs.follows = "nixpkgs";
@@ -85,6 +86,7 @@
       # makes all inputs availble in imported files
       specialArgs = {inherit inputs;};
       modules = [
+        inputs.sops-nix.darwinModules.sops
         ./machines/eve/configuration.nix
         ./machines/eve/homebrew.nix
         ({pkgs, ...}: {
@@ -165,6 +167,7 @@
       specialArgs = {inherit inputs;};
       modules = [
         shared
+        inputs.sops-nix.nixosModules.sops
         ./machines/harbor/configuration.nix
         ({pkgs, ...}: {
           nixpkgs.config =
@@ -208,6 +211,7 @@
       system = "x86_64-linux";
       specialArgs = {inherit inputs;};
       modules = [
+        inputs.sops-nix.nixosModules.sops
         ./machines/reaper/configuration.nix
         ({pkgs, ...}: {
           nixpkgs.config =
@@ -258,6 +262,7 @@
       system = "x86_64-linux";
       specialArgs = {inherit inputs;};
       modules = [
+        inputs.sops-nix.nixosModules.sops
         ./machines/hoard/configuration.nix
         ({pkgs, ...}: {
           nixpkgs.config =

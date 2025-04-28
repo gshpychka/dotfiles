@@ -1,0 +1,18 @@
+keys:
+  - &yubikey_alpha 7A5FB73E81C9215C692D994349E1D3136F71FED7
+  - &reaper_host age1d3hhj0tzjrqt7w5nzqx86fha5cemmgdn99n5v2aw76ut7ucp8vyqspxyhn
+  - &hoard_host age1ae5trkyduadhc45d90svq9yem62fhj676m4jyapplcsrjq78tf2qtk2yuw
+creation_rules:
+  - path_regex: secrets/reaper/.*\.yaml$
+    key_groups:
+      - age:
+          - *reaper_host
+        pgp:
+          - *yubikey_alpha
+
+  - path_regex: secrets/hoard/.*\.yaml$
+    key_groups:
+      - age:
+          - *hoard_host
+        pgp:
+          - *yubikey_alpha
