@@ -226,11 +226,11 @@
       enable = true;
       group = "media";
       configuration = {
-        radarr.main = {
+        radarr.radarr = {
           api_key._secret = "/run/credentials/recyclarr.service/radarr-api-key";
           base_url = "http://localhost:7878";
         };
-        sonarr.main = {
+        sonarr.sonarr = {
           api_key._secret = "/run/credentials/recyclarr.service/sonarr-api-key";
           base_url = "http://localhost:8989";
         };
