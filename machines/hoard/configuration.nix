@@ -179,11 +179,11 @@
             proxyPass = "http://127.0.0.1:5055/";
           };
         };
-        sabnzbd = {
-          serverName = "sabnzbd.${config.networking.fqdn}";
+        nzbget = {
+          serverName = "nzbget.${config.networking.fqdn}";
           locations."/" = {
             # TODO: reference port from module
-            proxyPass = "http://127.0.0.1:8085/";
+            proxyPass = "http://127.0.0.1:6789/";
           };
         };
       };
@@ -218,7 +218,7 @@
       enable = true;
       group = "media";
     };
-    sabnzbd = {
+    nzbget = {
       enable = true;
       group = "media";
     };
