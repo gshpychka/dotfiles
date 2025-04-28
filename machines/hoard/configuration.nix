@@ -57,10 +57,11 @@
   };
 
   sops = {
-    defaultSopsFile = ./secrets/hoard/secrets.yaml;
+    defaultSopsFile = ../../secrets/hoard/secrets.yaml;
     age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
     secrets = {
       radarr-api-key = {};
+      sonarr-api-key = {};
     };
   };
 
@@ -226,16 +227,21 @@
       group = "media";
       configuration = {
         radarr.main = {
-          api_key = {
-            _secret = "/run/credentials/recyclarr.service/radarr-api-key";
-          };
-          base_url = "http://localhost:${toString config.services.radarr.port}";
+          api_key._secret = "/run/credentials/recyclarr.service/radarr-api-key";
+          base_url = "http://localhost:7878";
+        };
+        sonarr.main = {
+          api_key._secret = "/run/credentials/recyclarr.service/sonarr-api-key";
+          base_url = "http://localhost:8989";
         };
       };
     };
   };
 
-  systemd.services.recyclarr.serviceConfig.LoadCredential = "radarr-api-key:${config.sops.secrets.radarr-api-key.path}";
+  systemd.services.recyclarr.serviceConfig.LoadCredential = [
+    "radarr-api-key:${config.sops.secrets.radarr-api-key.path}"
+    "sonarr-api-key:${config.sops.secrets.sonarr-api-key.path}"
+  ];
 
   programs = {
     gnupg.agent = {
