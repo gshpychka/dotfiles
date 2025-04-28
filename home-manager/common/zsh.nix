@@ -112,7 +112,7 @@
   # pretty ls
   programs.lsd = {
     enable = true;
-    enableAliases = true;
+    enableZshIntegration = true;
   };
 
   programs.zsh = {
