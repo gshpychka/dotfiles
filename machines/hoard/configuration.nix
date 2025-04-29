@@ -5,6 +5,7 @@
 }: {
   imports = [./hardware-configuration.nix ../../modules/qbittorrent.nix ../../modules/sabnzbd.nix];
   disabledModules = [ "services/networking/sabnzbd.nix" ];
+  nixpkgs.overlays = [ (import ../../overlays/nzbget.nix) ];
 
   boot = {
     loader = {
@@ -220,6 +221,7 @@
     };
     nzbget = {
       enable = true;
+      package = pkgs.nzbget;
       group = "media";
     };
     recyclarr = {
