@@ -215,6 +215,7 @@
       loadModels = [
         "llama3.1:8b-instruct-fp16"
         "qwen2.5:14b-instruct-q8_0" # home assistant
+        "qwen3:14b-q8_0"
       ];
     };
     wyoming = {
