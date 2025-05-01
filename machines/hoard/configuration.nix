@@ -3,6 +3,19 @@
   pkgs,
   ...
 }:
+let
+  ports = {
+    glances = toString config.services.glances.port;
+    qbittorrent = toString config.services.qbittorrent.port;
+    homepage = toString config.services.homepage-dashboard.listenPort;
+    nzbget = "6789";
+    sonarr = "8989";
+    radarr = "7878";
+    lidarr = "8686";
+    prowlarr = "9696";
+    plex = "32400";
+  };
+in
 {
   imports = [
     ./hardware-configuration.nix
@@ -79,6 +92,23 @@
       nzbget-username = { };
       nzbget-password = { };
       plex-token = { };
+    };
+    templates = {
+      "homepage-dashboard.env" = {
+        content = ''
+          HOMEPAGE_VAR_RADARR_API_KEY=${config.sops.placeholder.radarr-api-key}
+          HOMEPAGE_VAR_SONARR_API_KEY=${config.sops.placeholder.sonarr-api-key}
+          HOMEPAGE_VAR_LIDARR_API_KEY=${config.sops.placeholder.lidarr-api-key}
+          HOMEPAGE_VAR_PROWLARR_API_KEY=${config.sops.placeholder.prowlarr-api-key}
+          HOMEPAGE_VAR_QBITTORRENT_USERNAME=${config.sops.placeholder.qbittorrent-username}
+          HOMEPAGE_VAR_QBITTORRENT_PASSWORD=${config.sops.placeholder.qbittorrent-password}
+          HOMEPAGE_VAR_NZBGET_USERNAME=${config.sops.placeholder.nzbget-username}
+          HOMEPAGE_VAR_NZBGET_PASSWORD=${config.sops.placeholder.nzbget-password}
+          HOMEPAGE_VAR_PLEX_TOKEN=${config.sops.placeholder.plex-token}
+        '';
+        restartUnits = [ config.systemd.services.homepage-dashboard.name ];
+        mode = "0400";
+      };
     };
   };
 
@@ -173,63 +203,64 @@
         qbittorrent = {
           serverName = "qbittorrent.${config.networking.fqdn}";
           locations."/" = {
-            proxyPass = "http://127.0.0.1:${toString config.services.qbittorrent.port}/";
+            proxyPass = "http://127.0.0.1:${ports.qbittorrent}/";
           };
         };
         prowlarr = {
           serverName = "prowlarr.${config.networking.fqdn}";
           locations."/" = {
-            proxyPass = "http://127.0.0.1:9696/";
+            proxyPass = "http://127.0.0.1:${ports.prowlarr}/";
           };
         };
         sonarr = {
           serverName = "sonarr.${config.networking.fqdn}";
           locations."/" = {
-            proxyPass = "http://127.0.0.1:8989/";
+            proxyPass = "http://127.0.0.1:${ports.sonarr}/";
           };
         };
         radarr = {
           serverName = "radarr.${config.networking.fqdn}";
           locations."/" = {
-            proxyPass = "http://127.0.0.1:7878/";
+            proxyPass = "http://127.0.0.1:${ports.radarr}/";
           };
         };
         lidarr = {
           serverName = "lidarr.${config.networking.fqdn}";
           locations."/" = {
-            proxyPass = "http://127.0.0.1:8686/";
-          };
-        };
-        overseerr = {
-          serverName = "overseerr.${config.networking.fqdn}";
-          locations."/" = {
-            proxyPass = "http://127.0.0.1:5055/";
+            proxyPass = "http://127.0.0.1:${ports.lidarr}/";
           };
         };
         nzbget = {
           serverName = "nzbget.${config.networking.fqdn}";
           locations."/" = {
-            # TODO: reference port from module
-            proxyPass = "http://127.0.0.1:6789/";
+            proxyPass = "http://127.0.0.1:${ports.nzbget}/";
           };
         };
         homepage = {
           serverName = "home.${config.networking.fqdn}";
           locations."/" = {
-            proxyPass = "http://127.0.0.1:${toString config.services.homepage-dashboard.listenPort}/";
+            proxyPass = "http://127.0.0.1:${ports.homepage}/";
+          };
+        };
+        glances = {
+          serverName = "glances.${config.networking.fqdn}";
+          locations."/" = {
+            proxyPass = "http://127.0.0.1:${ports.glances}/";
           };
         };
       };
     };
     homepage-dashboard = {
       enable = true;
-      title = "hoard";
+      settings = {
+        title = config.networking.hostName;
+      };
+      allowedHosts = config.services.nginx.virtualHosts.homepage.serverName;
+      environmentFile = config.sops.templates."homepage-dashboard.env".path;
       widgets = [
         {
           glances = {
-            url = "http://127.0.0.1:${toString config.services.glances.port}";
-            username = config.sops.secrets.glances-username.path;
-            password = config.sops.secrets.glances-password.path;
+            url = "http://127.0.0.1:${ports.glances}";
             version = 4;
             cputemp = true;
             uptime = true;
@@ -245,13 +276,13 @@
           "Streaming" = [
             {
               "Plex" = {
-                icon = "plex.png";
+                icon = "plex";
                 href = "https://app.plex.tv";
                 widgets = [
                   {
                     type = "plex";
-                    url = "http://127.0.0.1:32400";
-                    key = config.sops.secrets.plex-token.path;
+                    url = "http://127.0.0.1:${ports.plex}";
+                    key = "{{HOMEPAGE_VAR_PLEX_TOKEN}}";
                   }
                 ];
               };
@@ -262,28 +293,28 @@
           "Downloaders" = [
             {
               "qBittorrent" = {
-                icon = "qbittorrent.png";
+                icon = "qbittorrent";
                 href = "http://qbittorrent.${config.networking.fqdn}";
                 widgets = [
                   {
                     type = "qbittorrent";
-                    url = "http://127.0.0.1:${toString config.services.qbittorrent.port}";
-                    username = config.sops.secrets.qbittorrent-username.path;
-                    password = config.sops.secrets.qbittorrent-password.path;
+                    url = "http://127.0.0.1:${ports.qbittorrent}";
+                    username = "{{HOMEPAGE_VAR_QBITTORRENT_USERNAME}}";
+                    password = "{{HOMEPAGE_VAR_QBITTORRENT_PASSWORD}}";
                   }
                 ];
               };
             }
             {
               "nzbget" = {
-                icon = "nzbget.png";
+                icon = "nzbget";
                 href = "http://nzbget.${config.networking.fqdn}";
                 widgets = [
                   {
                     type = "nzbget";
-                    url = "http://127.0.0.1:6789";
-                    username = config.sops.secrets.nzbget-username.path;
-                    password = config.sops.secrets.nzbget-password.path;
+                    url = "http://127.0.0.1:${ports.nzbget}";
+                    username = "{{HOMEPAGE_VAR_NZBGET_USERNAME}}";
+                    password = "{{HOMEPAGE_VAR_NZBGET_PASSWORD}}";
                   }
                 ];
               };
@@ -294,65 +325,52 @@
           "Arr stack" = [
             {
               "Sonarr" = {
-                icon = "sonarr.png";
+                icon = "sonarr";
                 href = "http://sonarr.${config.networking.fqdn}";
                 widgets = [
                   {
                     type = "sonarr";
-                    url = "http://127.0.0.1:8989";
-                    key = config.sops.secrets.sonarr-api-key.path;
+                    url = "http://127.0.0.1:${ports.sonarr}";
+                    key = "{{HOMEPAGE_VAR_SONARR_API_KEY}}";
                   }
                 ];
               };
             }
             {
               "Radarr" = {
-                icon = "radarr.png";
+                icon = "radarr";
                 href = "http://radarr.${config.networking.fqdn}";
                 widgets = [
                   {
                     type = "radarr";
-                    url = "http://127.0.0.1:7878";
-                    key = config.sops.secrets.radarr-api-key.path;
+                    url = "http://127.0.0.1:${ports.radarr}";
+                    key = "{{HOMEPAGE_VAR_RADARR_API_KEY}}";
                   }
                 ];
               };
             }
             {
               "Lidarr" = {
-                icon = "lidarr.png";
+                icon = "lidarr";
                 href = "http://lidarr.${config.networking.fqdn}";
                 widgets = [
                   {
                     type = "lidarr";
-                    url = "http://127.0.0.1:8686";
-                    key = config.sops.secrets.lidarr-api-key.path;
-                  }
-                ];
-              };
-            }
-            {
-              "Sonarr" = {
-                icon = "sonarr.png";
-                href = "http://sonarr.${config.networking.fqdn}";
-                widgets = [
-                  {
-                    type = "sonarr";
-                    url = "http://127.0.0.1:8989";
-                    key = config.sops.secrets.sonarr-api-key.path;
+                    url = "http://127.0.0.1:${ports.lidarr}";
+                    key = "{{HOMEPAGE_VAR_LIDARR_API_KEY}}";
                   }
                 ];
               };
             }
             {
               "Prowlarr" = {
-                icon = "prowlarr.png";
+                icon = "prowlarr";
                 href = "http://prowlarr.${config.networking.fqdn}";
                 widgets = [
                   {
                     type = "prowlarr";
-                    url = "http://127.0.0.1:9696";
-                    key = config.sops.secrets.prowlarr-api-key.path;
+                    url = "http://127.0.0.1:${ports.prowlarr}";
+                    key = "{{HOMEPAGE_VAR_PROWLARR_API_KEY}}";
                   }
                 ];
               };
@@ -365,12 +383,13 @@
     glances = {
       # remote system monitoring
       enable = true;
-      openFirewall = true;
       extraArgs = [
-        "--username"
-        config.sops.secrets.glances-username.path
-        "--password"
-        config.sops.secrets.glances-password.path
+        "--webserver"
+        "--disable-webui"
+        "--disable-check-update"
+        "--diskio-iops"
+        "--hide-kernel-threads"
+        "--fs-free-space"
       ];
     };
     fstrim.enable = true;
@@ -409,11 +428,11 @@
       configuration = {
         radarr.radarr = {
           api_key._secret = "/run/credentials/recyclarr.service/radarr-api-key";
-          base_url = "http://localhost:7878";
+          base_url = "http://localhost:${ports.radarr}";
         };
         sonarr.sonarr = {
           api_key._secret = "/run/credentials/recyclarr.service/sonarr-api-key";
-          base_url = "http://localhost:8989";
+          base_url = "http://localhost:${ports.sonarr}";
           delete_old_custom_formats = true;
           replace_existing_custom_formats = true;
           quality_profiles = [
@@ -504,10 +523,36 @@
     };
   };
 
-  systemd.services.recyclarr.serviceConfig.LoadCredential = [
-    "radarr-api-key:${config.sops.secrets.radarr-api-key.path}"
-    "sonarr-api-key:${config.sops.secrets.sonarr-api-key.path}"
-  ];
+  systemd.services = {
+    recyclarr = {
+      after = [
+        config.systemd.services.radarr.name
+        config.systemd.services.sonarr.name
+      ];
+      serviceConfig.LoadCredential = [
+        "radarr-api-key:${config.sops.secrets.radarr-api-key.path}"
+        "sonarr-api-key:${config.sops.secrets.sonarr-api-key.path}"
+      ];
+    };
+    # glances = {
+    #   serviceConfig = {
+    #     EnvironmentFile = config.sops.templates."glances.env".path;
+    #     ExecStart = lib.mkForce (
+    #       # figure out how to set the password (not via CLI)
+    #       toString (
+    #         pkgs.writeShellScript "glances-start" ''
+    #           exec ${config.services.glances.package}/bin/glances \
+    #             --port ${toString config.services.glances.port} \
+    #             --username \
+    #             -u "$GLANCES_USERNAME" \
+    #             --password "$GLANCES_PASSWORD" \
+    #             ${utils.escapeSystemdExecArgs config.services.glances.extraArgs}
+    #         ''
+    #       )
+    #     );
+    #   };
+    # };
+  };
 
   programs = {
     gnupg.agent = {
@@ -517,7 +562,7 @@
   };
 
   networking.firewall.allowedTCPPorts = [
-    80 # nginx
+    config.services.nginx.defaultHTTPListenPort
     54545 # qbittorrent
   ];
 
