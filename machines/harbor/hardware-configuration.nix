@@ -10,12 +10,6 @@
     fsType = "ext4";
   };
 
-  # SSD
-  fileSystems."/mnt" = {
-    device = "/dev/disk/by-uuid/5e27abfa-d291-406f-bf3d-e29211c1c50f";
-    fsType = "ext4";
-  };
-
   swapDevices = [];
 
   networking.useDHCP = lib.mkDefault true;
