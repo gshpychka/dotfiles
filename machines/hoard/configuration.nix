@@ -449,6 +449,10 @@ in
           custom_formats = [
             {
               trash_ids = [
+                "1bef6c151fa35093015b0bfef18279e5" # 2160p
+                "290078c8b266272a5cc8e251b5e2eb0b" # 1080p
+                "c99279ee27a154c2f20d1d505cc99e25" # 720p
+
                 "2b239ed870daba8126a53bd5dc8dc1c8" # DV HDR10+
                 "7878c33f1963fefb3d6c8657d46c2f0a" # DV HDR10
                 "6d0d8de7b57e35518ac0308b0ddf404e" # DV HDR
@@ -462,29 +466,31 @@ in
                 "17e889ce13117940092308f48b48b45b" # HLG
                 "0dad0a507451acddd754fe6dc3a7f5e7" # HDR10+ Boost
                 "385e9e8581d33133c3961bdcdeffb7b4" # DV HDR10+ Boost
+                "ef4963043b0987f8485bc9106f16db38" # DV (Disk)
 
-                "496f355514737f7d83bf7aa4d24f8169" # TrueHD ATMOS
-                "2f22d89048b01681dde8afe203bf2e95" # DTS X
-                "417804f7f2c4308c1f4c5d380d4c4475" # ATMOS (undefined)
-                "1af239278386be2919e1bcee0bde047e" # DD+ ATMOS
-                "3cafb66171b47f226146a0770576870f" # TrueHD
-                "dcf3ec6938fa32445f590a4da84256cd" # DTS-HD MA
-                "a570d4a0e56a2874b64e5bfa55202a1b" # FLAC
-                "e7c2fcae07cbada050a0af3357491d7b" # PCM
-                "8e109e50e0a0b83a5098b056e13bf6db" # DTS-HD HRA
-                "185f1dd7264c4562b9022d963ac37424" # DD+
-                "f9f847ac70a0af62ea4a08280b859636" # DTS-ES
-                "1c1a4c5e823891c75bc50380a6866f73" # DTS
-                "240770601cc226190c367ef59aba7463" # AAC
-                "c2998bd0d90ed5621d8df281e839436e" # DD
+                "0d7824bb924701997f874e7ff7d4844a" # TrueHD ATMOS
+                "9d00418ba386a083fbf4d58235fc37ef" # DTS X
+                "b6fbafa7942952a13e17e2b1152b539a" # ATMOS (undefined)
+                "4232a509ce60c4e208d13825b7c06264" # DD+ ATMOS
+                "1808e4b9cee74e064dfae3f1db99dbfe" # TrueHD
+                "c429417a57ea8c41d57e6990a8b0033f" # DTS-HD MA
+                "851bd64e04c9374c51102be3dd9ae4cc" # FLAC
+                "30f70576671ca933adbdcfc736a69718" # PCM
+                "cfa5fbd8f02a86fc55d8d223d06a5e1f" # DTS-HD HRA
+                "63487786a8b01b7f20dd2bc90dd4a477" # DD+
+                "c1a25cd67b5d2e08287c957b1eb903ec" # DTS-ES
+                "5964f2a8b3be407d083498e4459d05d0" # DTS
+                "a50b8a0c62274a7c38b09a9619ba9d86" # AAC
+                "dbe00161b08a25ac6154c55f95e6318d" # DD
+                "3e8b714263b26f486972ee1e0fe7606c" # MP3
+                "28f6ef16d61e2d1adfce3156ed8257e3" # Opus
 
-                "85c61753df5da1fb2aab6f2a47426b09" # BR-DISK
-                "9c11cd3f07101cdba90a2d81cf0e56b4" # LQ
-                "e2315f990da2e2cbfc9fa5b7a6fcfe48" # LQ (Release Title)
-
+                "3a4127d8aa781b44120d907f2cd62627" # Hybrid
+                "b735f09d3c025cbb7d75a5d38325b73b" # Remaster
                 "ec8fa7296b64e8cd390a1600981f3923" # Repack/Proper
                 "eb3d5cc0a2be0db205fb823640db6a3c" # Repack v2
                 "44e7c4de10ae50265753082e5dc76047" # Repack v3
+                "3bc5f395426614e155e585a2f056cdf1" # Season Pack
 
                 "d660701077794679fd59e8bdf4ce3a29" # AMZN
                 "f67c9ca88f463a48346062e8ad07713f" # ATVP
@@ -509,9 +515,18 @@ in
                 "58790d4e2fdcd9733aa7ae68ba2bb503" # WEB Tier 02
                 "d84935abd3f8556dcd51d4f27e22d0a6" # WEB Tier 03
                 "d0c516558625b04b363fa6c5c2c7cfd4" # WEB Scene
-                "3a3ff47579026e76d6504ebea39390de" # Remux Tier 01
-                "9f98181fe5a3fbeb0cc29340da2a468a" # Remux Tier 02
-                "8baaf0b3142bf4d94c42a724f034e27a" # Remux Tier 03
+                "9965a052eb87b0d10313b1cea89eb451" # Remux Tier 01
+                "8a1d0c3d7497e741736761a1da866a2e" # Remux Tier 02
+                "d6819cba26b1a6508138d25fb5e32293" # HD Bluray Tier 01
+                "c2216b7b8aa545dc1ce8388c618f8d57" # HD Bluray Tier 02
+
+                # unwanted
+                "85c61753df5da1fb2aab6f2a47426b09" # BR-DISK
+                "9c11cd3f07101cdba90a2d81cf0e56b4" # LQ
+                "e2315f990da2e2cbfc9fa5b7a6fcfe48" # LQ (Release Title)
+                "23297a736ca77c0fc8e70f8edd7ee56c" # Upscaled
+                "9b27ab6498ec0f31a3353992e19434ca" # DV (WEBDL)
+                "83304f261cf516bb208c18c54c0adf97" # SDR (no WEBDL)
               ];
               assign_scores_to = [
                 { name = "Any"; }
