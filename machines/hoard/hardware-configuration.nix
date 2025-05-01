@@ -20,9 +20,10 @@
     kernelModules = [ "kvm-intel" ];
     extraModulePackages = [ ];
   };
-  # environment.etc."crypttab".text = ''
-  #   trove /dev/disk/by-label/trove - tpm2
-  # '';
+  environment.etc."crypttab".text = ''
+    oasis /dev/disk/by-label/oasis - tpm2
+  '';
+  # trove /dev/disk/by-label/trove - tpm2
 
   fileSystems = {
     "/" = {
@@ -46,6 +47,14 @@
       options = [
         "noatime" # don't update atime on read
         "nofail" # don't fail if the mount fails
+      ];
+    };
+
+    "/mnt/oasis" = {
+      device = "/dev/mapper/oasis";
+      fsType = "ext4";
+      options = [
+        "noatime"
       ];
     };
 
