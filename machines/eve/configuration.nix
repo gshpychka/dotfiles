@@ -3,7 +3,8 @@
   pkgs,
   lib,
   ...
-}: {
+}:
+{
   imports = [
     ./touch-id.nix
   ];
@@ -16,19 +17,21 @@
   services = {
     yabai = {
       enable = true;
-      config = let
-        padding = 10;
-      in {
-        layout = "bsp";
-        focus_follows_mouse = "off";
-        mouse_follows_focus = "off";
-        window_placement = "second_child";
-        top_padding = padding;
-        bottom_padding = padding;
-        left_padding = padding;
-        right_padding = padding;
-        window_gap = padding;
-      };
+      config =
+        let
+          padding = 10;
+        in
+        {
+          layout = "bsp";
+          focus_follows_mouse = "off";
+          mouse_follows_focus = "off";
+          window_placement = "second_child";
+          top_padding = padding;
+          bottom_padding = padding;
+          left_padding = padding;
+          right_padding = padding;
+          window_gap = padding;
+        };
       extraConfig = ''
         yabai -m rule --add app='System Settings' manage=off
         yabai -m config mouse_modifier cmd
@@ -75,7 +78,7 @@
   };
 
   fonts = {
-    packages = with pkgs.nerd-fonts; [jetbrains-mono];
+    packages = with pkgs.nerd-fonts; [ jetbrains-mono ];
   };
 
   system = {
@@ -118,14 +121,20 @@
 
     # https://github.com/zhaofengli/nix-homebrew/issues/3#issuecomment-1622240992
     activationScripts = {
-      extraUserActivation.text = lib.mkOrder 1501 (lib.concatStringsSep "\n" (lib.mapAttrsToList (prefix: d:
-        if d.enable
-        then ''
-          sudo chown -R ${config.nix-homebrew.user} ${prefix}/bin
-          sudo chgrp -R ${config.nix-homebrew.group} ${prefix}/bin
-        ''
-        else "")
-      config.nix-homebrew.prefixes));
+      extraUserActivation.text = lib.mkOrder 1501 (
+        lib.concatStringsSep "\n" (
+          lib.mapAttrsToList (
+            prefix: d:
+            if d.enable then
+              ''
+                sudo chown -R ${config.nix-homebrew.user} ${prefix}/bin
+                sudo chgrp -R ${config.nix-homebrew.group} ${prefix}/bin
+              ''
+            else
+              ""
+          ) config.nix-homebrew.prefixes
+        )
+      );
     };
   };
 

@@ -48,265 +48,309 @@
     # };
   };
 
-  outputs = {
-    self,
-    nixpkgs,
-    nixos-stable,
-    darwin,
-    home-manager,
-    nix-homebrew,
-    homebrew-core,
-    homebrew-cask,
-    homebrew-services,
-    homebrew-bundle,
-    ...
-  } @ inputs: let
-    shared = import ./machines/harbor/variables.nix;
-    nixpkgsConfig = {
-      allowUnfree = true;
-    };
-    nixConfig = {
-      extra-substituters = ["https://nix-community.cachix.org"];
-      extra-trusted-public-keys = ["nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="];
-    };
-    overlays = [
-      (final: prev: let
-        nixosStablePkgs = import nixos-stable {system = final.system;};
-      in {
-        # overrides from nixpkgs stable go here
-        # pkgname = nixosStablePkgs.pkgname;
-      })
-    ];
-    stateVersion = "22.11";
-    user = "gshpychka";
-  in {
-    # nix-darwin with home-manager for macOS
-    darwinConfigurations.eve = darwin.lib.darwinSystem {
-      system = "aarch64-darwin";
-      # makes all inputs availble in imported files
-      specialArgs = {inherit inputs;};
-      modules = [
-        inputs.sops-nix.darwinModules.sops
-        ./machines/eve/configuration.nix
-        ./machines/eve/homebrew.nix
-        ({pkgs, ...}: {
-          nixpkgs.config = nixpkgsConfig;
-          nixpkgs.overlays = overlays;
-          system.stateVersion = 4;
+  outputs =
+    {
+      self,
+      nixpkgs,
+      nixos-stable,
+      darwin,
+      home-manager,
+      nix-homebrew,
+      homebrew-core,
+      homebrew-cask,
+      homebrew-services,
+      homebrew-bundle,
+      ...
+    }@inputs:
+    let
+      shared = import ./machines/harbor/variables.nix;
+      nixpkgsConfig = {
+        allowUnfree = true;
+      };
+      nixConfig = {
+        extra-substituters = [ "https://nix-community.cachix.org" ];
+        extra-trusted-public-keys = [
+          "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
+        ];
+      };
+      overlays = [
+        (
+          final: prev:
+          let
+            nixosStablePkgs = import nixos-stable { system = final.system; };
+          in
+          {
+            # overrides from nixpkgs stable go here
+            # pkgname = nixosStablePkgs.pkgname;
+          }
+        )
+      ];
+      stateVersion = "22.11";
+      user = "gshpychka";
+    in
+    {
+      # nix-darwin with home-manager for macOS
+      darwinConfigurations.eve = darwin.lib.darwinSystem {
+        system = "aarch64-darwin";
+        # makes all inputs availble in imported files
+        specialArgs = { inherit inputs; };
+        modules = [
+          inputs.sops-nix.darwinModules.sops
+          ./machines/eve/configuration.nix
+          ./machines/eve/homebrew.nix
+          (
+            { pkgs, ... }:
+            {
+              nixpkgs.config = nixpkgsConfig;
+              nixpkgs.overlays = overlays;
+              system.stateVersion = 4;
 
-          users.users.${user} = {
-            home = "/Users/${user}";
-            shell = pkgs.zsh;
-          };
-
-          nix = {
-            channel.enable = false;
-            settings =
-              {
-                # originally motivated by https://github.com/NixOS/nixpkgs/pull/369588?new_mergebox=true#issuecomment-2566272567
-                sandbox = "relaxed";
-                allowed-users = [user];
-                trusted-users = ["root" user];
-                experimental-features = ["nix-command" "flakes"];
-
-                # https://github.com/NixOS/nix/issues/7273
-                auto-optimise-store = false;
-
-                # needed for devenv to enable cachix
-                accept-flake-config = true;
-                http-connections = 0; # no limit
-                download-buffer-size = 500000000; # 500MB
-              }
-              // nixConfig;
-            gc = {
-              automatic = true;
-              interval = {
-                Hour = 12;
+              users.users.${user} = {
+                home = "/Users/${user}";
+                shell = pkgs.zsh;
               };
-              options = "--delete-old";
-            };
-          };
-        })
-        home-manager.darwinModules.home-manager
-        {
-          nixpkgs.config = nixpkgsConfig;
-          home-manager = {
-            useGlobalPkgs = true;
-            useUserPackages = true;
-            users.${user} = {...}: {
-              imports = [shared ./home-manager/eve];
-              home.file.".hushlogin".text = "";
-              home.stateVersion = stateVersion;
-            };
-          };
-        }
-        nix-homebrew.darwinModules.nix-homebrew
-        {
-          nix-homebrew = {
-            # Install Homebrew under the default prefix
-            enable = true;
-            enableRosetta = false;
-            # User owning the Homebrew prefix
-            user = user;
-            taps = {
-              "homebrew/homebrew-core" = homebrew-core;
-              "homebrew/homebrew-cask" = homebrew-cask;
-              "homebrew/homebrew-services" = homebrew-services;
-              "homebrew/homebrew-bundle" = homebrew-bundle;
-            };
-            mutableTaps = false;
-          };
-        }
-      ];
-    };
 
-    # NixOS configuration for my Raspberry Pi
-    nixosConfigurations.harbor = nixpkgs.lib.nixosSystem {
-      system = "aarch64-linux";
-      # makes all inputs availble in imported files
-      specialArgs = {inherit inputs;};
-      modules = [
-        shared
-        inputs.sops-nix.nixosModules.sops
-        ./machines/harbor/configuration.nix
-        ({pkgs, ...}: {
-          nixpkgs.config =
-            {
-              permittedInsecurePackages = ["openssl-1.1.1w"];
-            }
-            // nixpkgsConfig;
-          nixpkgs.overlays = overlays;
-          nix = {
-            channel.enable = false;
-            settings =
-              {
-                allowed-users = ["pi"];
-                trusted-users = ["root" "pi"];
-                experimental-features = ["nix-command" "flakes"];
-                accept-flake-config = true;
-              }
-              // nixConfig;
-            gc = {
-              dates = "weekly";
-              automatic = true;
-              options = "--delete-older-than 7d";
-            };
-          };
-        })
-        home-manager.nixosModules.home-manager
-        {
-          home-manager = {
-            useGlobalPkgs = true;
-            users.pi = {...}: {
-              imports = [./home-manager/harbor];
-              home.stateVersion = stateVersion;
-            };
-          };
-        }
-      ];
-    };
+              nix = {
+                channel.enable = false;
+                settings = {
+                  # originally motivated by https://github.com/NixOS/nixpkgs/pull/369588?new_mergebox=true#issuecomment-2566272567
+                  sandbox = "relaxed";
+                  allowed-users = [ user ];
+                  trusted-users = [
+                    "root"
+                    user
+                  ];
+                  experimental-features = [
+                    "nix-command"
+                    "flakes"
+                  ];
 
-    # NixOS configuration for reaper
-    nixosConfigurations.reaper = nixpkgs.lib.nixosSystem {
-      system = "x86_64-linux";
-      specialArgs = {inherit inputs;};
-      modules = [
-        inputs.sops-nix.nixosModules.sops
-        ./machines/reaper/configuration.nix
-        ({pkgs, ...}: {
-          nixpkgs.config =
-            {
-              cudaSupport = true;
-              # https://en.wikipedia.org/wiki/CUDA#GPUs_supported
-              cudaCapabilities = ["8.9"];
-              cudaForwardCompat = true;
-            }
-            // nixpkgsConfig;
-          nixpkgs.overlays = overlays;
-          nix = {
-            channel.enable = false;
-            settings =
-              {
-                allowed-users = [user];
-                trusted-users = ["root" user];
-                experimental-features = ["nix-command" "flakes"];
-                auto-optimise-store = true;
-                accept-flake-config = true;
-                http-connections = 0; # no limit
-                download-buffer-size = 500000000; # 500MB
-                extra-substituters = ["https://cuda-maintaners.cachix.org"];
-                extra-trusted-public-keys = ["cuda-maintainers.cachix.org-1:0dq3bujKpuEPMCX6U4WylrUDZ9JyUG0VpVZa7CNfq5E="];
-              }
-              // nixConfig;
-            gc = {
-              dates = "weekly";
-              automatic = true;
-              options = "--delete-older-than 7d";
-            };
-          };
-        })
-        home-manager.nixosModules.home-manager
-        {
-          home-manager = {
-            useGlobalPkgs = true;
-            users.${user} = {...}: {
-              imports = [./home-manager/reaper];
-              home.stateVersion = "24.05";
-            };
-          };
-        }
-      ];
-    };
+                  # https://github.com/NixOS/nix/issues/7273
+                  auto-optimise-store = false;
 
-    nixosConfigurations.hoard = nixpkgs.lib.nixosSystem {
-      system = "x86_64-linux";
-      specialArgs = {inherit inputs;};
-      modules = [
-        inputs.sops-nix.nixosModules.sops
-        ./machines/hoard/configuration.nix
-        ({pkgs, ...}: {
-          nixpkgs.config =
-            {
-              permittedInsecurePackages = [
-                # required for sonarr
-                "aspnetcore-runtime-6.0.36"
-                "aspnetcore-runtime-wrapped-6.0.36"
-                "dotnet-sdk-6.0.428"
-                "dotnet-sdk-wrapped-6.0.428"
-              ];
+                  # needed for devenv to enable cachix
+                  accept-flake-config = true;
+                  http-connections = 0; # no limit
+                  download-buffer-size = 500000000; # 500MB
+                } // nixConfig;
+                gc = {
+                  automatic = true;
+                  interval = {
+                    Hour = 12;
+                  };
+                  options = "--delete-old";
+                };
+              };
             }
-            // nixpkgsConfig;
-          nixpkgs.overlays = overlays;
-          nix = {
-            channel.enable = false;
-            settings =
-              {
-                allowed-users = [user];
-                trusted-users = ["root" user];
-                experimental-features = ["nix-command" "flakes"];
-                auto-optimise-store = true;
-                accept-flake-config = true;
-                http-connections = 0; # no limit
-              }
-              // nixConfig;
-            gc = {
-              dates = "weekly";
-              automatic = true;
-              options = "--delete-older-than 7d";
+          )
+          home-manager.darwinModules.home-manager
+          {
+            nixpkgs.config = nixpkgsConfig;
+            home-manager = {
+              useGlobalPkgs = true;
+              useUserPackages = true;
+              users.${user} =
+                { ... }:
+                {
+                  imports = [
+                    shared
+                    ./home-manager/eve
+                  ];
+                  home.file.".hushlogin".text = "";
+                  home.stateVersion = stateVersion;
+                };
             };
-          };
-        })
-        home-manager.nixosModules.home-manager
-        {
-          home-manager = {
-            useGlobalPkgs = true;
-            users.${user} = {...}: {
-              imports = [./home-manager/hoard];
-              home.stateVersion = "24.11";
+          }
+          nix-homebrew.darwinModules.nix-homebrew
+          {
+            nix-homebrew = {
+              # Install Homebrew under the default prefix
+              enable = true;
+              enableRosetta = false;
+              # User owning the Homebrew prefix
+              user = user;
+              taps = {
+                "homebrew/homebrew-core" = homebrew-core;
+                "homebrew/homebrew-cask" = homebrew-cask;
+                "homebrew/homebrew-services" = homebrew-services;
+                "homebrew/homebrew-bundle" = homebrew-bundle;
+              };
+              mutableTaps = false;
             };
-          };
-        }
-      ];
+          }
+        ];
+      };
+
+      # NixOS configuration for my Raspberry Pi
+      nixosConfigurations.harbor = nixpkgs.lib.nixosSystem {
+        system = "aarch64-linux";
+        # makes all inputs availble in imported files
+        specialArgs = { inherit inputs; };
+        modules = [
+          shared
+          inputs.sops-nix.nixosModules.sops
+          ./machines/harbor/configuration.nix
+          (
+            { pkgs, ... }:
+            {
+              nixpkgs.config = {
+                permittedInsecurePackages = [ "openssl-1.1.1w" ];
+              } // nixpkgsConfig;
+              nixpkgs.overlays = overlays;
+              nix = {
+                channel.enable = false;
+                settings = {
+                  allowed-users = [ "pi" ];
+                  trusted-users = [
+                    "root"
+                    "pi"
+                  ];
+                  experimental-features = [
+                    "nix-command"
+                    "flakes"
+                  ];
+                  accept-flake-config = true;
+                } // nixConfig;
+                gc = {
+                  dates = "weekly";
+                  automatic = true;
+                  options = "--delete-older-than 7d";
+                };
+              };
+            }
+          )
+          home-manager.nixosModules.home-manager
+          {
+            home-manager = {
+              useGlobalPkgs = true;
+              users.pi =
+                { ... }:
+                {
+                  imports = [ ./home-manager/harbor ];
+                  home.stateVersion = stateVersion;
+                };
+            };
+          }
+        ];
+      };
+
+      # NixOS configuration for reaper
+      nixosConfigurations.reaper = nixpkgs.lib.nixosSystem {
+        system = "x86_64-linux";
+        specialArgs = { inherit inputs; };
+        modules = [
+          inputs.sops-nix.nixosModules.sops
+          ./machines/reaper/configuration.nix
+          (
+            { pkgs, ... }:
+            {
+              nixpkgs.config = {
+                cudaSupport = true;
+                # https://en.wikipedia.org/wiki/CUDA#GPUs_supported
+                cudaCapabilities = [ "8.9" ];
+                cudaForwardCompat = true;
+              } // nixpkgsConfig;
+              nixpkgs.overlays = overlays;
+              nix = {
+                channel.enable = false;
+                settings = {
+                  allowed-users = [ user ];
+                  trusted-users = [
+                    "root"
+                    user
+                  ];
+                  experimental-features = [
+                    "nix-command"
+                    "flakes"
+                  ];
+                  auto-optimise-store = true;
+                  accept-flake-config = true;
+                  http-connections = 0; # no limit
+                  download-buffer-size = 500000000; # 500MB
+                  extra-substituters = [ "https://cuda-maintaners.cachix.org" ];
+                  extra-trusted-public-keys = [
+                    "cuda-maintainers.cachix.org-1:0dq3bujKpuEPMCX6U4WylrUDZ9JyUG0VpVZa7CNfq5E="
+                  ];
+                } // nixConfig;
+                gc = {
+                  dates = "weekly";
+                  automatic = true;
+                  options = "--delete-older-than 7d";
+                };
+              };
+            }
+          )
+          home-manager.nixosModules.home-manager
+          {
+            home-manager = {
+              useGlobalPkgs = true;
+              users.${user} =
+                { ... }:
+                {
+                  imports = [ ./home-manager/reaper ];
+                  home.stateVersion = "24.05";
+                };
+            };
+          }
+        ];
+      };
+
+      nixosConfigurations.hoard = nixpkgs.lib.nixosSystem {
+        system = "x86_64-linux";
+        specialArgs = { inherit inputs; };
+        modules = [
+          inputs.sops-nix.nixosModules.sops
+          ./machines/hoard/configuration.nix
+          (
+            { pkgs, ... }:
+            {
+              nixpkgs.config = {
+                permittedInsecurePackages = [
+                  # required for sonarr
+                  "aspnetcore-runtime-6.0.36"
+                  "aspnetcore-runtime-wrapped-6.0.36"
+                  "dotnet-sdk-6.0.428"
+                  "dotnet-sdk-wrapped-6.0.428"
+                ];
+              } // nixpkgsConfig;
+              nixpkgs.overlays = overlays;
+              nix = {
+                channel.enable = false;
+                settings = {
+                  allowed-users = [ user ];
+                  trusted-users = [
+                    "root"
+                    user
+                  ];
+                  experimental-features = [
+                    "nix-command"
+                    "flakes"
+                  ];
+                  auto-optimise-store = true;
+                  accept-flake-config = true;
+                  http-connections = 0; # no limit
+                } // nixConfig;
+                gc = {
+                  dates = "weekly";
+                  automatic = true;
+                  options = "--delete-older-than 7d";
+                };
+              };
+            }
+          )
+          home-manager.nixosModules.home-manager
+          {
+            home-manager = {
+              useGlobalPkgs = true;
+              users.${user} =
+                { ... }:
+                {
+                  imports = [ ./home-manager/hoard ];
+                  home.stateVersion = "24.11";
+                };
+            };
+          }
+        ];
+      };
     };
-  };
 }

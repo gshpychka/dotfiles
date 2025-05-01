@@ -1,5 +1,6 @@
-{...}: {
-  imports = [../common];
+{ ... }:
+{
+  imports = [ ../common ];
 
-  programs = {};
+  programs = { };
 }

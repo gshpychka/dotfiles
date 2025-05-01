@@ -1,6 +1,8 @@
-{config, ...}: let
+{ config, ... }:
+let
   filePath = "finicky/config.js";
-in {
+in
+{
   xdg.configFile.${filePath} = {
     source = ./config.js;
     # finicky does not support symlinks

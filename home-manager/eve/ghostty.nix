@@ -1,4 +1,5 @@
-{...}: {
+{ ... }:
+{
   programs.ghostty = {
     # installed via homebrew
     package = null;

@@ -1,4 +1,5 @@
-{lib, ...}: {
+{ lib, ... }:
+{
   options = {
     shared.harborUsername = lib.mkOption {
       type = lib.types.str;
@@ -7,5 +8,5 @@
     };
   };
 
-  config = {};
+  config = { };
 }

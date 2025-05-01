@@ -3,7 +3,8 @@
   config,
   lib,
   ...
-}: {
+}:
+{
   programs.starship = {
     enable = true;
     enableZshIntegration = true;
@@ -21,40 +22,41 @@
         repo_root_format = "";
       };
 
-      custom = let
-        # display a host-specific icon for git repos
-        generateGitHostIconModule = host: symbol: color: {
-          when = "${pkgs.git}/bin/git config --get remote.origin.url | grep -q ${host}";
-          require_repo = true;
-          command = "";
-          style = color;
-          symbol = symbol;
-          description = "Custom icon for ${host}";
+      custom =
+        let
+          # display a host-specific icon for git repos
+          generateGitHostIconModule = host: symbol: color: {
+            when = "${pkgs.git}/bin/git config --get remote.origin.url | grep -q ${host}";
+            require_repo = true;
+            command = "";
+            style = color;
+            symbol = symbol;
+            description = "Custom icon for ${host}";
+          };
+        in
+        {
+          github = generateGitHostIconModule "github" " " "#4078c0";
+          gitlab = generateGitHostIconModule "gitlab" " " "#fc6d26";
+          repo_name = {
+            description = "Name of the current git repository";
+            command =
+              "basename \"$(${pkgs.git}/bin/git config --get remote.origin.url)\"" + "| sed 's/\.git$//'";
+            # no space after
+            format = "[$symbol($output)]($style)";
+            when = true;
+            require_repo = true;
+          };
+          git_directory = {
+            description = "directory relative to the root of the git repo";
+            # strip the last slash
+            command = "${pkgs.git}/bin/git rev-parse --show-prefix | sed 's:/*$::'";
+            when = true;
+            require_repo = true;
+            format = "[$symbol($output) ]($style)";
+            symbol = "/";
+            style = "bold cyan";
+          };
         };
-      in {
-        github = generateGitHostIconModule "github" " " "#4078c0";
-        gitlab = generateGitHostIconModule "gitlab" " " "#fc6d26";
-        repo_name = {
-          description = "Name of the current git repository";
-          command =
-            "basename \"$(${pkgs.git}/bin/git config --get remote.origin.url)\""
-            + "| sed 's/\.git$//'";
-          # no space after
-          format = "[$symbol($output)]($style)";
-          when = true;
-          require_repo = true;
-        };
-        git_directory = {
-          description = "directory relative to the root of the git repo";
-          # strip the last slash
-          command = "${pkgs.git}/bin/git rev-parse --show-prefix | sed 's:/*$::'";
-          when = true;
-          require_repo = true;
-          format = "[$symbol($output) ]($style)";
-          symbol = "/";
-          style = "bold cyan";
-        };
-      };
 
       env_var = {
         NODE_ENV = {

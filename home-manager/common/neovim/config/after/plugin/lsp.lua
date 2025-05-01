@@ -109,6 +109,9 @@ require("lspconfig").nil_ls.setup({
   on_attach = create_on_attach(true),
   settings = {
     ["nil"] = {
+      formatting = {
+        command = { "nixfmt" },
+      },
       nix = {
         flake = {
           autoEvalInputs = false,

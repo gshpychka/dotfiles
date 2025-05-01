@@ -1,4 +1,5 @@
-{lib, ...}: {
+{ lib, ... }:
+{
   programs.tmux = {
     enable = true;
     mouse = true;

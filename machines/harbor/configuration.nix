@@ -2,16 +2,22 @@
   config,
   pkgs,
   ...
-}: let
+}:
+let
   machineIpAddress = "192.168.1.2";
   networkInterface = "eth0";
   routerIpAddress = "192.168.1.1";
-in {
-  imports = [./hardware-configuration.nix];
+in
+{
+  imports = [ ./hardware-configuration.nix ];
 
   boot = {
     initrd = {
-      availableKernelModules = ["xhci_pci" "usbhid" "usb_storage"];
+      availableKernelModules = [
+        "xhci_pci"
+        "usbhid"
+        "usb_storage"
+      ];
       # kernelModules = [];
     };
     kernelPackages = pkgs.linuxKernel.packages.linux_rpi4;
@@ -30,7 +36,7 @@ in {
     defaultGateway = routerIpAddress;
     domain = "lan";
     useDHCP = false;
-    nameservers = ["127.0.0.1"];
+    nameservers = [ "127.0.0.1" ];
     enableIPv6 = false;
     interfaces.${networkInterface}.ipv4 = {
       addresses = [
@@ -44,15 +50,20 @@ in {
 
   time.timeZone = "Europe/Kyiv";
 
-  hardware = {bluetooth.enable = true;};
+  hardware = {
+    bluetooth.enable = true;
+  };
 
   users = {
     users = {
       ${config.shared.harborUsername} = {
         shell = pkgs.zsh;
         isNormalUser = true;
-        extraGroups = ["wheel"];
-        packages = with pkgs; [neovim git];
+        extraGroups = [ "wheel" ];
+        packages = with pkgs; [
+          neovim
+          git
+        ];
         openssh.authorizedKeys.keys = [
           "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIB737o9Ltm1K3w9XX9SBHNW1JT4NpCPP5qg9R+SB18dG"
         ];
@@ -124,13 +135,22 @@ in {
         auth_attempts = 5;
         block_auth_min = 15;
         dns = {
-          bind_hosts = [machineIpAddress "127.0.0.1"];
+          bind_hosts = [
+            machineIpAddress
+            "127.0.0.1"
+          ];
           ratelimit = 0;
           upstream_dns = [
             "tls://1dot1dot1dot1.cloudflare-dns.com"
           ];
-          allowed_clients = ["${routerIpAddress}/24" "127.0.0.1/32"];
-          bootstrap_dns = ["1.1.1.1" "1.0.0.1"];
+          allowed_clients = [
+            "${routerIpAddress}/24"
+            "127.0.0.1/32"
+          ];
+          bootstrap_dns = [
+            "1.1.1.1"
+            "1.0.0.1"
+          ];
           aaaa_disabled = true;
           upstream_timeout = "1s";
           use_http3_upstreams = true;
@@ -142,7 +162,9 @@ in {
         filtering = {
           filtering_enabled = true;
           blocked_response_ttl = 60 * 60 * 24;
-          safe_search = {enabled = false;};
+          safe_search = {
+            enabled = false;
+          };
           rewrites = [
             {
               domain = config.networking.fqdn;
@@ -181,8 +203,11 @@ in {
   };
 
   # Open ports in the firewall.
-  networking.firewall.allowedTCPPorts = [80];
-  networking.firewall.allowedUDPPorts = [53 67];
+  networking.firewall.allowedTCPPorts = [ 80 ];
+  networking.firewall.allowedUDPPorts = [
+    53
+    67
+  ];
 
   system.stateVersion = "22.11";
 }

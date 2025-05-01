@@ -2,31 +2,42 @@
   lib,
   modulesPath,
   ...
-}: {
-  imports = [(modulesPath + "/installer/scan/not-detected.nix")];
+}:
+{
+  imports = [ (modulesPath + "/installer/scan/not-detected.nix") ];
 
   boot = {
     initrd = {
-      availableKernelModules = ["xhci_pci" "ahci" "nvme" "usbhid" "usb_storage" "sd_mod"];
+      availableKernelModules = [
+        "xhci_pci"
+        "ahci"
+        "nvme"
+        "usbhid"
+        "usb_storage"
+        "sd_mod"
+      ];
     };
-    kernelModules = ["kvm-intel"];
-    extraModulePackages = [];
+    kernelModules = [ "kvm-intel" ];
+    extraModulePackages = [ ];
   };
   environment.etc."crypttab".text = ''
     trove /dev/disk/by-label/trove - tpm2
   '';
 
-  fileSystems =  {
+  fileSystems = {
     "/" = {
       device = "/dev/disk/by-label/nixos";
       fsType = "ext4";
-      options = ["noatime"];
+      options = [ "noatime" ];
     };
 
     "/boot" = {
       device = "/dev/disk/by-label/boot";
       fsType = "vfat";
-      options = ["fmask=0077" "dmask=0077"];
+      options = [
+        "fmask=0077"
+        "dmask=0077"
+      ];
     };
 
     "/mnt/hoard" = {
@@ -54,7 +65,7 @@
     };
   };
 
-  swapDevices = [{device = "/dev/disk/by-label/swap";}];
+  swapDevices = [ { device = "/dev/disk/by-label/swap"; } ];
 
   hardware.block.defaultScheduler = "kyber";
   hardware.block.defaultSchedulerRotational = "bfq";

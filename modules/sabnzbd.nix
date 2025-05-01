@@ -76,7 +76,7 @@ in
         User = cfg.user;
         Group = cfg.group;
         StateDirectory = "sabnzbd";
-        ExecStart   = "${pkgs.sabnzbd}/bin/sabnzbd -f ${cfg.configFile}";
+        ExecStart = "${pkgs.sabnzbd}/bin/sabnzbd -f ${cfg.configFile}";
         Restart = "on-failure";
         RequiresMountsFor = [ "/mnt/hoard" ];
         UMask = "002";

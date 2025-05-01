@@ -1,5 +1,10 @@
-{pkgs, ...}: {
-  imports = [./zsh.nix ./git.nix ./direnv.nix];
+{ pkgs, ... }:
+{
+  imports = [
+    ./zsh.nix
+    ./git.nix
+    ./direnv.nix
+  ];
 
   home = {
     preferXdgDirectories = true;

@@ -2,8 +2,9 @@
   config,
   pkgs,
   ...
-}: {
-  imports = [./hardware-configuration.nix];
+}:
+{
+  imports = [ ./hardware-configuration.nix ];
 
   boot = {
     loader = {
@@ -53,7 +54,11 @@
     users = {
       gshpychka = {
         isNormalUser = true;
-        extraGroups = ["wheel" "plugdev" "usb"];
+        extraGroups = [
+          "wheel"
+          "plugdev"
+          "usb"
+        ];
         openssh.authorizedKeys.keys = [
           # eve
           "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIB737o9Ltm1K3w9XX9SBHNW1JT4NpCPP5qg9R+SB18dG"
@@ -71,7 +76,7 @@
         ];
       };
     };
-    groups.homeassistant = {};
+    groups.homeassistant = { };
   };
 
   security = {
@@ -83,19 +88,19 @@
       enable = true;
       extraRules = [
         {
-          users = ["hass"];
+          users = [ "hass" ];
           commands = [
             {
               command = "${pkgs.systemd}/bin/bootctl";
-              options = ["NOPASSWD"];
+              options = [ "NOPASSWD" ];
             }
             {
               command = "/run/current-system/sw/bin/reboot";
-              options = ["NOPASSWD"];
+              options = [ "NOPASSWD" ];
             }
             {
               command = "/run/current-system/sw/bin/shutdown";
-              options = ["NOPASSWD"];
+              options = [ "NOPASSWD" ];
             }
           ];
         }
@@ -157,8 +162,11 @@
       containers = {
         kokoro-fastapi = {
           image = "ghcr.io/remsky/kokoro-fastapi-gpu:v0.2.2";
-          ports = ["8000:8880"];
-          extraOptions = ["--device" "nvidia.com/gpu=all"];
+          ports = [ "8000:8880" ];
+          extraOptions = [
+            "--device"
+            "nvidia.com/gpu=all"
+          ];
         };
       };
     };
@@ -172,7 +180,7 @@
 
   services = {
     pcscd.enable = true;
-    udev.packages = [pkgs.yubikey-personalization];
+    udev.packages = [ pkgs.yubikey-personalization ];
     openssh = {
       enable = true;
       settings = {
@@ -231,7 +239,7 @@
     };
 
     xserver = {
-      videoDrivers = ["nvidia"];
+      videoDrivers = [ "nvidia" ];
     };
     fstrim.enable = true;
   };
@@ -243,7 +251,10 @@
       enableSSHSupport = true;
     };
   };
-  networking.firewall.allowedTCPPorts = [10300 80];
+  networking.firewall.allowedTCPPorts = [
+    10300
+    80
+  ];
 
   system.stateVersion = "24.05";
 }

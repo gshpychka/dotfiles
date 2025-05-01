@@ -2,8 +2,13 @@
   config,
   pkgs,
   ...
-}: {
-  imports = [./hardware-configuration.nix ../../modules/qbittorrent.nix ../../modules/sabnzbd.nix];
+}:
+{
+  imports = [
+    ./hardware-configuration.nix
+    ../../modules/qbittorrent.nix
+    ../../modules/sabnzbd.nix
+  ];
   disabledModules = [ "services/networking/sabnzbd.nix" ];
   nixpkgs.overlays = [ (import ../../overlays/nzbget.nix) ];
 
@@ -61,8 +66,8 @@
     defaultSopsFile = ../../secrets/hoard/secrets.yaml;
     age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
     secrets = {
-      radarr-api-key = {};
-      sonarr-api-key = {};
+      radarr-api-key = { };
+      sonarr-api-key = { };
     };
   };
 
@@ -76,8 +81,18 @@
       gshpychka = {
         shell = pkgs.zsh;
         isNormalUser = true;
-        extraGroups = ["wheel" "plugdev" "usb"];
-        packages = with pkgs; [neovim git sysstat iotop unrar];
+        extraGroups = [
+          "wheel"
+          "plugdev"
+          "usb"
+        ];
+        packages = with pkgs; [
+          neovim
+          git
+          sysstat
+          iotop
+          unrar
+        ];
         openssh.authorizedKeys.keys = [
           # eve
           "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIB737o9Ltm1K3w9XX9SBHNW1JT4NpCPP5qg9R+SB18dG"
@@ -249,7 +264,7 @@
             }
           ];
           custom_formats = [
-            { 
+            {
               trash_ids = [
                 "2b239ed870daba8126a53bd5dc8dc1c8" # DV HDR10+
                 "7878c33f1963fefb3d6c8657d46c2f0a" # DV HDR10
@@ -283,12 +298,12 @@
                 "85c61753df5da1fb2aab6f2a47426b09" # BR-DISK
                 "9c11cd3f07101cdba90a2d81cf0e56b4" # LQ
                 "e2315f990da2e2cbfc9fa5b7a6fcfe48" # LQ (Release Title)
-                
+
                 "ec8fa7296b64e8cd390a1600981f3923" # Repack/Proper
                 "eb3d5cc0a2be0db205fb823640db6a3c" # Repack v2
                 "44e7c4de10ae50265753082e5dc76047" # Repack v3
 
-                "d660701077794679fd59e8bdf4ce3a29" # AMZN  
+                "d660701077794679fd59e8bdf4ce3a29" # AMZN
                 "f67c9ca88f463a48346062e8ad07713f" # ATVP
                 "77a7b25585c18af08f60b1547bb9b4fb" # CC
                 "36b72f59f4ea20aad9316f475f2d9fbb" # DCU

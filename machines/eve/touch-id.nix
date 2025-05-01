@@ -4,9 +4,11 @@
   pkgs,
   ...
 }:
-with lib; let
+with lib;
+let
   cfg = config.security.pam;
-in {
+in
+{
   options = {
     security.pam.enableSudoTouchId = mkEnableOption ''
       Enable sudo authentication with Touch ID

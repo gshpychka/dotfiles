@@ -2,7 +2,8 @@
   config,
   pkgs,
   ...
-}: {
+}:
+{
   imports = [
     ./finicky
     ./ghostty.nix
@@ -35,7 +36,9 @@
         };
         local = {
           host = "*.lan";
-          extraOptions = {ForwardAgent = "yes";};
+          extraOptions = {
+            ForwardAgent = "yes";
+          };
         };
         harbor = {
           host = "harbor.lan";

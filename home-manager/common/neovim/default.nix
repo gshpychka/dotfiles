@@ -1,4 +1,4 @@
-{pkgs, ...}:
+{ pkgs, ... }:
 let
   nui-nvim-latest = pkgs.vimUtils.buildVimPlugin {
     name = "nui-nvim";
@@ -9,7 +9,8 @@ let
       hash = "sha256-BYTY2ezYuxsneAl/yQbwL1aQvVWKSsN3IVqzTlrBSEU=";
     };
   };
-in {
+in
+{
   programs.neovim = {
     enable = true;
     defaultEditor = true;
@@ -47,8 +48,8 @@ in {
       text-case-nvim
       nvim-lspconfig
       flash-nvim
-      (nvim-treesitter.withPlugins (p:
-        with p; [
+      (nvim-treesitter.withPlugins (
+        p: with p; [
           bash
           comment
           dockerfile
@@ -69,7 +70,8 @@ in {
           wing
           markdown
           markdown_inline
-        ]))
+        ]
+      ))
       neogen
       luasnip
       # nvim-lightbulb
@@ -98,6 +100,7 @@ in {
       nodePackages_latest.dockerfile-language-server-nodejs
 
       ripgrep
+      nixfmt-rfc-style
     ];
   };
   xdg.configFile.nvim = {

@@ -1,4 +1,5 @@
-{config, ...}: {
+{ config, ... }:
+{
   homebrew = {
     enable = true;
     taps = builtins.attrNames config.nix-homebrew.taps;
@@ -13,7 +14,9 @@
       autoUpdate = false;
       upgrade = true;
     };
-    caskArgs = {no_quarantine = true;};
+    caskArgs = {
+      no_quarantine = true;
+    };
     casks = [
       # -- essentials --
       {
