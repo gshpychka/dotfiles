@@ -20,9 +20,9 @@
     kernelModules = [ "kvm-intel" ];
     extraModulePackages = [ ];
   };
-  environment.etc."crypttab".text = ''
-    trove /dev/disk/by-label/trove - tpm2
-  '';
+  # environment.etc."crypttab".text = ''
+  #   trove /dev/disk/by-label/trove - tpm2
+  # '';
 
   fileSystems = {
     "/" = {
@@ -52,17 +52,14 @@
       ];
     };
 
-    "/mnt/trove" = {
-      device = "/dev/mapper/trove";
-      fsType = "ext4";
-      options = [
-        "noatime" # don't update atime on read
-        "data=writeback" # skip data journaling
-        "barrier=0" # disable write barriers
-        "journal_async_commit" # lower latency journal commits
-        "nofail" # don't fail if the mount fails
-      ];
-    };
+    # "/mnt/trove" = {
+    #   device = "/dev/mapper/trove";
+    #   fsType = "ext4";
+    #   options = [
+    #     "noatime" # don't update atime on read
+    #     "nofail" # don't fail if the mount fails
+    #   ];
+    # };
   };
 
   swapDevices = [ { device = "/dev/disk/by-label/swap"; } ];
