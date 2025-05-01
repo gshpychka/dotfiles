@@ -16,14 +16,18 @@
         "usb_storage"
         "sd_mod"
       ];
+      luks.devices = {
+        oasis = {
+          device = "/dev/disk/by-label/oasis";
+        };
+      };
     };
     kernelModules = [ "kvm-intel" ];
     extraModulePackages = [ ];
   };
-  environment.etc."crypttab".text = ''
-    oasis /dev/disk/by-label/oasis - tpm2
-  '';
-  # trove /dev/disk/by-label/trove - tpm2
+  # environment.etc.crypttab.text = ''
+  #   trove /dev/disk/by-label/trove - tpm2
+  # '';
 
   fileSystems = {
     "/" = {
