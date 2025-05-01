@@ -68,6 +68,13 @@
     secrets = {
       radarr-api-key = { };
       sonarr-api-key = { };
+      lidarr-api-key = { };
+      prowlarr-api-key = { };
+      qbittorrent-username = { };
+      qbittorrent-password = { };
+      nzbget-username = { };
+      nzbget-password = { };
+      plex-token = { };
     };
   };
 
@@ -202,12 +209,165 @@
             proxyPass = "http://127.0.0.1:6789/";
           };
         };
+        homepage = {
+          serverName = "home.${config.networking.fqdn}";
+          locations."/" = {
+            proxyPass = "http://127.0.0.1:${toString config.services.homepage-dashboard.listenPort}/";
+          };
+        };
       };
     };
+    homepage-dashboard = {
+      enable = true;
+      title = "hoard";
+      widgets = [
+        {
+          glances = {
+            url = "http://127.0.0.1:${toString config.services.glances.port}";
+            username = config.sops.secrets.glances-username.path;
+            password = config.sops.secrets.glances-password.path;
+            version = 4;
+            cputemp = true;
+            uptime = true;
+            disk = [
+              "/mnt/hoard"
+              "/"
+            ];
+          };
+        }
+      ];
+      services = [
+        {
+          "Streaming" = [
+            {
+              "Plex" = {
+                icon = "plex.png";
+                href = "https://app.plex.tv";
+                widgets = [
+                  {
+                    type = "plex";
+                    url = "http://127.0.0.1:32400";
+                    key = config.sops.secrets.plex-token.path;
+                  }
+                ];
+              };
+            }
+          ];
+        }
+        {
+          "Downloaders" = [
+            {
+              "qBittorrent" = {
+                icon = "qbittorrent.png";
+                href = "http://qbittorrent.${config.networking.fqdn}";
+                widgets = [
+                  {
+                    type = "qbittorrent";
+                    url = "http://127.0.0.1:${toString config.services.qbittorrent.port}";
+                    username = config.sops.secrets.qbittorrent-username.path;
+                    password = config.sops.secrets.qbittorrent-password.path;
+                  }
+                ];
+              };
+            }
+            {
+              "nzbget" = {
+                icon = "nzbget.png";
+                href = "http://nzbget.${config.networking.fqdn}";
+                widgets = [
+                  {
+                    type = "nzbget";
+                    url = "http://127.0.0.1:6789";
+                    username = config.sops.secrets.nzbget-username.path;
+                    password = config.sops.secrets.nzbget-password.path;
+                  }
+                ];
+              };
+            }
+          ];
+        }
+        {
+          "Arr stack" = [
+            {
+              "Sonarr" = {
+                icon = "sonarr.png";
+                href = "http://sonarr.${config.networking.fqdn}";
+                widgets = [
+                  {
+                    type = "sonarr";
+                    url = "http://127.0.0.1:8989";
+                    key = config.sops.secrets.sonarr-api-key.path;
+                  }
+                ];
+              };
+            }
+            {
+              "Radarr" = {
+                icon = "radarr.png";
+                href = "http://radarr.${config.networking.fqdn}";
+                widgets = [
+                  {
+                    type = "radarr";
+                    url = "http://127.0.0.1:7878";
+                    key = config.sops.secrets.radarr-api-key.path;
+                  }
+                ];
+              };
+            }
+            {
+              "Lidarr" = {
+                icon = "lidarr.png";
+                href = "http://lidarr.${config.networking.fqdn}";
+                widgets = [
+                  {
+                    type = "lidarr";
+                    url = "http://127.0.0.1:8686";
+                    key = config.sops.secrets.lidarr-api-key.path;
+                  }
+                ];
+              };
+            }
+            {
+              "Sonarr" = {
+                icon = "sonarr.png";
+                href = "http://sonarr.${config.networking.fqdn}";
+                widgets = [
+                  {
+                    type = "sonarr";
+                    url = "http://127.0.0.1:8989";
+                    key = config.sops.secrets.sonarr-api-key.path;
+                  }
+                ];
+              };
+            }
+            {
+              "Prowlarr" = {
+                icon = "prowlarr.png";
+                href = "http://prowlarr.${config.networking.fqdn}";
+                widgets = [
+                  {
+                    type = "prowlarr";
+                    url = "http://127.0.0.1:9696";
+                    key = config.sops.secrets.prowlarr-api-key.path;
+                  }
+                ];
+              };
+            }
+          ];
+        }
+      ];
+    };
+
     glances = {
       # remote system monitoring
       enable = true;
       openFirewall = true;
+      extraArgs = [
+        "--username"
+        config.sops.secrets.glances-username.path
+        "--password"
+        config.sops.secrets.glances-password.path
+      ];
     };
     fstrim.enable = true;
     plex = {
