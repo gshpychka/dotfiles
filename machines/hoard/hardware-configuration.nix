@@ -45,9 +45,6 @@
       fsType = "ext4";
       options = [
         "noatime" # don't update atime on read
-        "data=writeback" # skip data journaling
-        "barrier=0" # disable write barriers
-        "journal_async_commit" # lower latency journal commits
         "nofail" # don't fail if the mount fails
       ];
     };
@@ -64,7 +61,7 @@
 
   swapDevices = [ { device = "/dev/disk/by-label/swap"; } ];
 
-  hardware.block.defaultScheduler = "kyber";
+  hardware.block.defaultScheduler = "mq-deadline";
   hardware.block.defaultSchedulerRotational = "bfq";
 
   networking.useDHCP = lib.mkDefault true;

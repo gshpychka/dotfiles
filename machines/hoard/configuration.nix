@@ -29,8 +29,12 @@
     ];
     kernel.sysctl = {
       "kernel.task_delayacct" = "1"; # Enables task delay accounting at runtime
-      "vm.dirty_background_bytes" = "134217728"; # 128MB
-      "vm.dirty_bytes" = "268435456"; # 256MB
+      "vm.dirty_background_bytes" = "268435456"; # 256 MB
+      "vm.dirty_bytes" = "805306368"; # 768 MB
+
+      # Spread out flushing more evenly over time
+      "vm.dirty_writeback_centisecs" = "100"; # 1 second interval
+      "vm.dirty_expire_centisecs" = "3000"; # 30s max cache age
     };
     tmp = {
       useTmpfs = true;
