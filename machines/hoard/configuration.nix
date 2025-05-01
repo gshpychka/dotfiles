@@ -266,6 +266,7 @@ in
             uptime = true;
             disk = [
               "/mnt/hoard"
+              "/mnt/oasis"
               "/"
             ];
           };
