@@ -446,9 +446,9 @@ in
           custom_formats = [
             {
               trash_ids = [
-                "fb392fb0d61a010ae38e49ceaa24a1ef" # 2160p
-                "820b09bb9acbfde9c35c71e0e565dad8" # 1080p
-                "b2be17d608fc88818940cd1833b0b24c" # 720p
+                # "fb392fb0d61a010ae38e49ceaa24a1ef" # 2160p
+                # "820b09bb9acbfde9c35c71e0e565dad8" # 1080p
+                # "b2be17d608fc88818940cd1833b0b24c" # 720p
 
                 "c53085ddbd027d9624b320627748612f" # DV HDR10+
                 "e23edd2482476e595fb990b12e7c609c" # DV HDR10
@@ -537,7 +537,7 @@ in
                 # "f537cf427b64c38c8e36298f657e4828" # Scene
                 # "9c38ebb7384dada637be8899efa68e6f" # SDR
                 "25c12f78430a3a23413652cbd1d48d77" # SDR (no WEBDL)
-                "839bea857ed2c0a8e084f3cbdbd65ecb" # x265 (no HDR/DV)
+                # "839bea857ed2c0a8e084f3cbdbd65ecb" # x265 (no HDR/DV)
               ];
               assign_scores_to = [
                 { name = "Any"; }
@@ -564,9 +564,9 @@ in
           custom_formats = [
             {
               trash_ids = [
-                "1bef6c151fa35093015b0bfef18279e5" # 2160p
-                "290078c8b266272a5cc8e251b5e2eb0b" # 1080p
-                "c99279ee27a154c2f20d1d505cc99e25" # 720p
+                # "1bef6c151fa35093015b0bfef18279e5" # 2160p
+                # "290078c8b266272a5cc8e251b5e2eb0b" # 1080p
+                # "c99279ee27a154c2f20d1d505cc99e25" # 720p
 
                 "2b239ed870daba8126a53bd5dc8dc1c8" # DV HDR10+
                 "7878c33f1963fefb3d6c8657d46c2f0a" # DV HDR10
