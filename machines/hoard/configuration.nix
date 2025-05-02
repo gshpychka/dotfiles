@@ -537,7 +537,7 @@ in
                 # "f537cf427b64c38c8e36298f657e4828" # Scene
                 # "9c38ebb7384dada637be8899efa68e6f" # SDR
                 "25c12f78430a3a23413652cbd1d48d77" # SDR (no WEBDL)
-                # "839bea857ed2c0a8e084f3cbdbd65ecb" # x265 (no HDR/DV)
+                "839bea857ed2c0a8e084f3cbdbd65ecb" # x265 (no HDR/DV)
               ];
               assign_scores_to = [
                 { name = "Any"; }
