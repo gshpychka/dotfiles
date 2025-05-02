@@ -9,6 +9,7 @@ self: super: {
             super.lib.makeBinPath [
               super.unrar
               super.p7zip
+              super.python3
             ]
           }
       '';
