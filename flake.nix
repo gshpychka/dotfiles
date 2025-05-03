@@ -130,7 +130,6 @@
                 sandbox = "relaxed";
                 allowed-users = [ user ];
                 trusted-users = [
-                  "root"
                   user
                 ];
                 # https://github.com/NixOS/nix/issues/7273
@@ -201,7 +200,6 @@
               nix.settings = {
                 allowed-users = [ "pi" ];
                 trusted-users = [
-                  "root"
                   "pi"
                 ];
                 auto-optimise-store = true;
@@ -253,14 +251,13 @@
               nix.settings = {
                 allowed-users = [ user ];
                 trusted-users = [
-                  "root"
                   user
                 ];
                 auto-optimise-store = true;
                 accept-flake-config = true;
                 http-connections = 0;
                 download-buffer-size = 500000000;
-                extra-substituters = [ "https://cuda-maintaners.cachix.org" ];
+                extra-substituters = [ "https://cuda-maintainers.cachix.org" ];
                 extra-trusted-public-keys = [
                   "cuda-maintainers.cachix.org-1:0dq3bujKpuEPMCX6U4WylrUDZ9JyUG0VpVZa7CNfq5E="
                 ];
@@ -315,7 +312,6 @@
               nix.settings = {
                 allowed-users = [ user ];
                 trusted-users = [
-                  "root"
                   user
                 ];
                 auto-optimise-store = true;
