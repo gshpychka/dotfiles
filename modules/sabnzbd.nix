@@ -15,6 +15,7 @@ let
 in
 
 {
+  disabledModules = [ "services/networking/sabnzbd.nix" ];
 
   ###### interface
 
@@ -66,7 +67,6 @@ in
     users.groups = mkIf (cfg.group == "sabnzbd") {
       sabnzbd.gid = config.ids.gids.sabnzbd;
     };
-    disabledModules = [ "services/networking/sabnzbd.nix" ];
 
     systemd.services.sabnzbd = {
       description = "sabnzbd server";
