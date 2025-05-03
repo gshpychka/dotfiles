@@ -56,7 +56,7 @@ in
 
   users = {
     users = {
-      ${config.shared.harborUsername} = {
+      pi = {
         shell = pkgs.zsh;
         isNormalUser = true;
         extraGroups = [ "wheel" ];

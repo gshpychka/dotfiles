@@ -4,6 +4,7 @@
     ./zsh.nix
     ./git.nix
     ./direnv.nix
+    ./ssh.nix
   ];
 
   home = {

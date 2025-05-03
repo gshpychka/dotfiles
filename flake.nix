@@ -63,7 +63,6 @@
       ...
     }@inputs:
     let
-      shared = import ./machines/harbor/variables.nix;
       nixpkgsConfig = {
         allowUnfree = true;
       };
@@ -156,7 +155,6 @@
                 { ... }:
                 {
                   imports = [
-                    shared
                     ./home-manager/eve
                   ];
                   home.file.".hushlogin".text = "";
@@ -190,7 +188,6 @@
         # makes all inputs availble in imported files
         specialArgs = { inherit inputs; };
         modules = [
-          shared
           inputs.sops-nix.nixosModules.sops
           ./machines/harbor/configuration.nix
           (
