@@ -29,7 +29,7 @@
       nvim-tree-lua
       nvim-web-devicons
       # noice requires nui-nvim and nvim-notify
-      # nui-nvim
+      nui-nvim
       nvim-notify
       noice-nvim
       inc-rename-nvim
