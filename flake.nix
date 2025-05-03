@@ -63,22 +63,27 @@
       ...
     }@inputs:
     let
+      # allow unfree packages across all builds
       nixpkgsConfig = {
         allowUnfree = true;
       };
-      nixConfig = {
-        settings = {
-          extra-substituters = [ "https://nix-community.cachix.org" ];
-          extra-trusted-public-keys = [
-            "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
-          ];
-          experimental-features = [
-            "nix-command"
-            "flakes"
-          ];
+
+      globalNixModule = {
+        nix = {
+          channel.enable = false;
+          settings = {
+            extra-substituters = [ "https://nix-community.cachix.org" ];
+            extra-trusted-public-keys = [
+              "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
+            ];
+            experimental-features = [
+              "nix-command"
+              "flakes"
+            ];
+          };
         };
-        channel.enable = false;
       };
+
       overlays = [
         (
           final: prev:
@@ -86,26 +91,28 @@
             nixosStablePkgs = import nixos-stable { system = final.system; };
           in
           {
-            # overrides from nixpkgs stable go here
+            # overrides from stable pkgs
             # pkgname = nixosStablePkgs.pkgname;
           }
         )
         (import ./overlays/nui-nvim.nix)
         (import ./overlays/nzbget.nix)
       ];
+
       stateVersion = "22.11";
       user = "gshpychka";
     in
     {
-      # nix-darwin with home-manager for macOS
       darwinConfigurations.eve = darwin.lib.darwinSystem {
         system = "aarch64-darwin";
-        # makes all inputs availble in imported files
         specialArgs = { inherit inputs; };
         modules = [
           inputs.sops-nix.darwinModules.sops
           ./machines/eve/configuration.nix
           ./machines/eve/homebrew.nix
+
+          globalNixModule
+
           (
             { pkgs, ... }:
             {
@@ -118,34 +125,29 @@
                 shell = pkgs.zsh;
               };
 
-              nix = {
-                settings = {
-                  # originally motivated by https://github.com/NixOS/nixpkgs/pull/369588?new_mergebox=true#issuecomment-2566272567
-                  sandbox = "relaxed";
-                  allowed-users = [ user ];
-                  trusted-users = [
-                    "root"
-                    user
-                  ];
-
-                  # https://github.com/NixOS/nix/issues/7273
-                  auto-optimise-store = false;
-
-                  # needed for devenv to enable cachix
-                  accept-flake-config = true;
-                  http-connections = 0; # no limit
-                  download-buffer-size = 500000000; # 500MB
+              nix.settings = {
+                # originally motivated by https://github.com/NixOS/nixpkgs/pull/369588?new_mergebox=true#issuecomment-2566272567
+                sandbox = "relaxed";
+                allowed-users = [ user ];
+                trusted-users = [
+                  "root"
+                  user
+                ];
+                # https://github.com/NixOS/nix/issues/7273
+                auto-optimise-store = false;
+                accept-flake-config = true;
+                http-connections = 0;
+                download-buffer-size = 500000000;
+              };
+              nix.gc = {
+                automatic = true;
+                interval = {
+                  Hour = 12;
                 };
-                gc = {
-                  automatic = true;
-                  interval = {
-                    Hour = 12;
-                  };
-                  options = "--delete-old";
-                };
-              } // nixConfig;
+              };
             }
           )
+
           home-manager.darwinModules.home-manager
           {
             home-manager = {
@@ -154,21 +156,18 @@
               users.${user} =
                 { ... }:
                 {
-                  imports = [
-                    ./home-manager/eve
-                  ];
+                  imports = [ ./home-manager/eve ];
                   home.file.".hushlogin".text = "";
                   home.stateVersion = stateVersion;
                 };
             };
           }
+
           nix-homebrew.darwinModules.nix-homebrew
           {
             nix-homebrew = {
-              # Install Homebrew under the default prefix
               enable = true;
               enableRosetta = false;
-              # User owning the Homebrew prefix
               user = user;
               taps = {
                 "homebrew/homebrew-core" = homebrew-core;
@@ -182,14 +181,15 @@
         ];
       };
 
-      # NixOS configuration for my Raspberry Pi
       nixosConfigurations.harbor = nixpkgs.lib.nixosSystem {
         system = "aarch64-linux";
-        # makes all inputs availble in imported files
         specialArgs = { inherit inputs; };
         modules = [
           inputs.sops-nix.nixosModules.sops
           ./machines/harbor/configuration.nix
+
+          globalNixModule
+
           (
             { pkgs, ... }:
             {
@@ -197,22 +197,23 @@
                 permittedInsecurePackages = [ "openssl-1.1.1w" ];
               } // nixpkgsConfig;
               nixpkgs.overlays = overlays;
-              nix = {
-                settings = {
-                  allowed-users = [ "pi" ];
-                  trusted-users = [
-                    "root"
-                    "pi"
-                  ];
-                };
-                gc = {
-                  dates = "weekly";
-                  automatic = true;
-                  options = "--delete-older-than 7d";
-                };
-              } // nixConfig;
+
+              nix.settings = {
+                allowed-users = [ "pi" ];
+                trusted-users = [
+                  "root"
+                  "pi"
+                ];
+                auto-optimise-store = true;
+              };
+              nix.gc = {
+                dates = "weekly";
+                automatic = true;
+                options = "--delete-older-than 7d";
+              };
             }
           )
+
           home-manager.nixosModules.home-manager
           {
             home-manager = {
@@ -229,13 +230,15 @@
         ];
       };
 
-      # NixOS configuration for reaper
       nixosConfigurations.reaper = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
         specialArgs = { inherit inputs; };
         modules = [
           inputs.sops-nix.nixosModules.sops
           ./machines/reaper/configuration.nix
+
+          globalNixModule
+
           (
             { pkgs, ... }:
             {
@@ -246,30 +249,30 @@
                 cudaForwardCompat = true;
               } // nixpkgsConfig;
               nixpkgs.overlays = overlays;
-              nix = {
-                settings = {
-                  allowed-users = [ user ];
-                  trusted-users = [
-                    "root"
-                    user
-                  ];
-                  auto-optimise-store = true;
-                  accept-flake-config = true;
-                  http-connections = 0; # no limit
-                  download-buffer-size = 500000000; # 500MB
-                  extra-substituters = [ "https://cuda-maintaners.cachix.org" ];
-                  extra-trusted-public-keys = [
-                    "cuda-maintainers.cachix.org-1:0dq3bujKpuEPMCX6U4WylrUDZ9JyUG0VpVZa7CNfq5E="
-                  ];
-                };
-                gc = {
-                  dates = "weekly";
-                  automatic = true;
-                  options = "--delete-older-than 7d";
-                };
-              } // nixConfig;
+
+              nix.settings = {
+                allowed-users = [ user ];
+                trusted-users = [
+                  "root"
+                  user
+                ];
+                auto-optimise-store = true;
+                accept-flake-config = true;
+                http-connections = 0;
+                download-buffer-size = 500000000;
+                extra-substituters = [ "https://cuda-maintaners.cachix.org" ];
+                extra-trusted-public-keys = [
+                  "cuda-maintainers.cachix.org-1:0dq3bujKpuEPMCX6U4WylrUDZ9JyUG0VpVZa7CNfq5E="
+                ];
+              };
+              nix.gc = {
+                dates = "weekly";
+                automatic = true;
+                options = "--delete-older-than 7d";
+              };
             }
           )
+
           home-manager.nixosModules.home-manager
           {
             home-manager = {
@@ -292,12 +295,15 @@
         modules = [
           inputs.sops-nix.nixosModules.sops
           ./machines/hoard/configuration.nix
+
+          globalNixModule
+
           (
             { pkgs, ... }:
             {
               nixpkgs.config = {
                 permittedInsecurePackages = [
-                  # required for sonarr
+                  # required for Sonarr
                   "aspnetcore-runtime-6.0.36"
                   "aspnetcore-runtime-wrapped-6.0.36"
                   "dotnet-sdk-6.0.428"
@@ -305,25 +311,25 @@
                 ];
               } // nixpkgsConfig;
               nixpkgs.overlays = overlays;
-              nix = {
-                settings = {
-                  allowed-users = [ user ];
-                  trusted-users = [
-                    "root"
-                    user
-                  ];
-                  auto-optimise-store = true;
-                  accept-flake-config = true;
-                  http-connections = 0; # no limit
-                };
-                gc = {
-                  dates = "weekly";
-                  automatic = true;
-                  options = "--delete-older-than 7d";
-                };
-              } // nixConfig;
+
+              nix.settings = {
+                allowed-users = [ user ];
+                trusted-users = [
+                  "root"
+                  user
+                ];
+                auto-optimise-store = true;
+                accept-flake-config = true;
+                http-connections = 0;
+              };
+              nix.gc = {
+                dates = "weekly";
+                automatic = true;
+                options = "--delete-older-than 7d";
+              };
             }
           )
+
           home-manager.nixosModules.home-manager
           {
             home-manager = {
