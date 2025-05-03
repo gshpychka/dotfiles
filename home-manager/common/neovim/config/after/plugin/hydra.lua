@@ -1,7 +1,6 @@
 local Hydra = require("hydra")
 local agitator = require("agitator")
 local gitsigns = require("gitsigns")
-local ts_builtin = require("telescope.builtin")
 
 Hydra({
   name = "Git",
@@ -57,7 +56,7 @@ Hydra({
       gitsigns.stage_hunk,
       { silent = true, desc = "Stage hunk" },
     },
-    { "S", gitsigns.stage_buffer, { desc = "Stage buffer" } },
+    { "S", gitsigns.stage_buffer,    { desc = "Stage buffer" } },
     {
       "r",
       gitsigns.reset_hunk,
@@ -69,28 +68,6 @@ Hydra({
       { silent = true, desc = "Reset buffer" },
     },
     { "u", gitsigns.undo_stage_hunk, { desc = "Unstage hunk" } },
-    { "p", gitsigns.preview_hunk, { desc = "Preview hunk" } },
-    { "d", gitsigns.diffthis, { nowait = true, desc = "Diff" } },
-    {
-      "D",
-      function()
-        ts_builtin.git_branches({
-          prompt_title = "Choose a branch to diff against",
-          previewer = false,
-          hidden = true,
-          attach_mappings = function(prompt_bufnr, map)
-            map("i", "<CR>", function()
-              require("telescope.actions").close(prompt_bufnr) -- close the picker
-              local selection = require("telescope.actions.state").get_selected_entry()
-              -- Use gitsigns.diffthis with the chosen branch
-              vim.cmd("DiffviewOpen " .. selection.value)
-            end)
-            return true
-          end,
-        })
-      end,
-      { desc = "Choose a branch to diff against" },
-    },
     {
       "b",
       function()
@@ -98,84 +75,18 @@ Hydra({
           sidebar_width = 40,
           formatter = function(commit)
             return commit.date.day
-              .. "/"
-              .. commit.date.month
-              .. "/"
-              .. commit.date.year
-              .. " "
-              .. commit.author
-              .. " - "
-              .. commit.summary
+                .. "/"
+                .. commit.date.month
+                .. "/"
+                .. commit.date.year
+                .. " "
+                .. commit.author
+                .. " - "
+                .. commit.summary
           end,
         })
       end,
       { desc = "blame sidebar" },
-    },
-    {
-      "B",
-      function()
-        local commit_sha = require("agitator").git_blame_commit_for_line()
-        vim.cmd("DiffviewOpen " .. commit_sha .. "^.." .. commit_sha)
-      end,
-      { desc = "diff blame commit" },
-    },
-    {
-      "<leader>fc",
-      ts_builtin.git_commits,
-      { desc = "Telescope Git commits" },
-    },
-    {
-      "<leader>fbc",
-      ts_builtin.git_bcommits,
-      { desc = "Telescope Git buffer commits" },
-    },
-    {
-      "<leader>fbc",
-      ts_builtin.git_bcommits_range,
-      { mode = "v", desc = "Telescope Git commits for range" },
-    },
-    {
-      "<leader>fbr",
-      ts_builtin.git_branches,
-      { desc = "Telescope Git branches" },
-    },
-    {
-      "<leader>fgb",
-      agitator.search_git_branch,
-      { desc = "grep in a specific git branch" },
-    },
-    {
-      "<leader>fgf",
-      agitator.open_file_git_branch,
-      { desc = "open a file in a specific git branch" },
-    },
-    {
-      "<leader>fs",
-      ts_builtin.git_status,
-      { desc = "Telescope Git status" },
-    },
-    {
-      "<leader>tm",
-      function()
-        agitator.git_time_machine({
-          use_current_win = true,
-          set_custom_shortcuts = function(bufnr)
-            vim.keymap.set("n", "J", function()
-              require("agitator").git_time_machine_previous()
-            end, { buffer = bufnr })
-            vim.keymap.set("n", "K", function()
-              require("agitator").git_time_machine_next()
-            end, { buffer = bufnr })
-            vim.keymap.set("n", "<c-h>", function()
-              require("agitator").git_time_machine_copy_sha()
-            end, { buffer = bufnr })
-            vim.keymap.set("n", "q", function()
-              require("agitator").git_time_machine_quit()
-            end, { buffer = bufnr })
-          end,
-        })
-      end,
-      { desc = "git time machine" },
     },
 
     -- { "<Enter>", "<Cmd>Neogit<CR>", { exit = true, desc = "Neogit" } },

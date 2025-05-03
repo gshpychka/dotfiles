@@ -33,14 +33,12 @@ vim.keymap.set("n", "<leader>e", function()
 end, { desc = "Open diagnostics popup" })
 
 vim.keymap.set("n", "[d", function()
-  vim.diagnostic.goto_prev({ _highest = true })
+  vim.diagnostic.jump({ count = -1, _highest = true })
 end, { desc = "Go to previous highest diagnostic" })
 
 vim.keymap.set("n", "]d", function()
-  vim.diagnostic.goto_next({ _highest = true })
+  vim.diagnostic.jump({ count = 1, _highest = true })
 end, { desc = "Go to next highest diagnostic" })
-
-vim.keymap.set("n", "gr", vim.lsp.buf.references, { desc = "Go to references" })
 
 vim.keymap.set("n", "K", vim.lsp.buf.hover, { desc = "LSP hover" })
 
