@@ -22,8 +22,6 @@ in
     ../../modules/qbittorrent.nix
     ../../modules/sabnzbd.nix
   ];
-  disabledModules = [ "services/networking/sabnzbd.nix" ];
-  nixpkgs.overlays = [ (import ../../overlays/nzbget.nix) ];
 
   boot = {
     loader = {

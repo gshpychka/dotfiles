@@ -1,15 +1,4 @@
 { pkgs, ... }:
-let
-  nui-nvim-latest = pkgs.vimUtils.buildVimPlugin {
-    name = "nui-nvim";
-    src = pkgs.fetchFromGitHub {
-      owner = "MunifTanjim";
-      repo = "nui.nvim";
-      rev = "8d3bce9";
-      hash = "sha256-BYTY2ezYuxsneAl/yQbwL1aQvVWKSsN3IVqzTlrBSEU=";
-    };
-  };
-in
 {
   programs.neovim = {
     enable = true;
@@ -40,7 +29,7 @@ in
       nvim-tree-lua
       nvim-web-devicons
       # noice requires nui-nvim and nvim-notify
-      nui-nvim-latest
+      # nui-nvim
       nvim-notify
       noice-nvim
       inc-rename-nvim
