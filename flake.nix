@@ -13,11 +13,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     darwin = {
-      url = "github:lnl7/nix-darwin";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-    mkAlias = {
-      url = "github:reckenrode/mkalias";
+      url = "github:nix-darwin/nix-darwin";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     nix-homebrew = {
@@ -35,10 +31,6 @@
     };
     homebrew-services = {
       url = "github:homebrew/homebrew-services";
-      flake = false;
-    };
-    homebrew-bundle = {
-      url = "github:homebrew/homebrew-bundle";
       flake = false;
     };
     sops-nix.url = "github:Mic92/sops-nix";
@@ -59,7 +51,6 @@
       homebrew-core,
       homebrew-cask,
       homebrew-services,
-      homebrew-bundle,
       ...
     }@inputs:
     let
@@ -170,7 +161,6 @@
                 "homebrew/homebrew-core" = homebrew-core;
                 "homebrew/homebrew-cask" = homebrew-cask;
                 "homebrew/homebrew-services" = homebrew-services;
-                "homebrew/homebrew-bundle" = homebrew-bundle;
               };
               mutableTaps = false;
             };
