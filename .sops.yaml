@@ -3,6 +3,14 @@ keys:
   - &reaper_host age1d3hhj0tzjrqt7w5nzqx86fha5cemmgdn99n5v2aw76ut7ucp8vyqspxyhn
   - &hoard_host age1ae5trkyduadhc45d90svq9yem62fhj676m4jyapplcsrjq78tf2qtk2yuw
 creation_rules:
+  - path_regex: secrets/common/.*\.yaml$
+    key_groups:
+      - age:
+          - *reaper_host
+          - *hoard_host
+        pgp:
+          - *yubikey_alpha
+
   - path_regex: secrets/reaper/.*\.yaml$
     key_groups:
       - age:

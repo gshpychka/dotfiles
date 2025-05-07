@@ -55,28 +55,6 @@ in
     cryptsetup
   ];
 
-  networking = {
-    hostName = "hoard";
-    domain = "lan";
-    wireless.enable = false;
-    usePredictableInterfaceNames = true;
-    enableIPv6 = false;
-    interfaces = {
-      enp1s0 = {
-        wakeOnLan.enable = true;
-      };
-    };
-  };
-
-  time.timeZone = "Europe/Kyiv";
-
-  hardware = {
-    gpgSmartcards.enable = true;
-    enableAllFirmware = true;
-    cpu.intel.updateMicrocode = true;
-    usbStorage.manageShutdown = true;
-  };
-
   sops = {
     defaultSopsFile = ../../secrets/hoard/secrets.yaml;
     age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
@@ -90,6 +68,10 @@ in
       nzbget-username = { };
       nzbget-password = { };
       plex-token = { };
+      wifi-psk = {
+        sopsFile = ../../secrets/common/network.yaml;
+        key = "main-wifi-psk";
+      };
     };
     templates = {
       "homepage-dashboard.env" = {
@@ -107,7 +89,43 @@ in
         restartUnits = [ config.systemd.services.homepage-dashboard.name ];
         mode = "0400";
       };
+      "wireless.conf" = {
+        content = ''
+          psk=${config.sops.placeholder.wifi-psk}
+        '';
+        mode = "0400";
+      };
     };
+  };
+
+  networking = {
+    hostName = "hoard";
+    domain = "lan";
+    wireless = {
+      enable = true;
+      secretsFile = config.sops.templates."wireless.conf".path;
+      networks = {
+        "YourNewNeighbor" = {
+          pskRaw = "ext:psk";
+        };
+      };
+    };
+    usePredictableInterfaceNames = true;
+    enableIPv6 = false;
+    interfaces = {
+      enp1s0 = {
+        wakeOnLan.enable = true;
+      };
+    };
+  };
+
+  time.timeZone = "Europe/Kyiv";
+
+  hardware = {
+    gpgSmartcards.enable = true;
+    enableAllFirmware = true;
+    cpu.intel.updateMicrocode = true;
+    usbStorage.manageShutdown = true;
   };
 
   users = {
