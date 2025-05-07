@@ -16,28 +16,44 @@
         "usb_storage"
         "sd_mod"
       ];
+      kernelModules = [
+        "r8169" # ethernet driver
+      ];
+      systemd = {
+        enable = true;
+        tpm2.enable = true;
+      };
       luks.devices = {
         oasis = {
           device = "/dev/disk/by-label/oasis";
+          crypttabExtraOpts = [ "tpm2-device=auto" ];
+          allowDiscards = true;
+          bypassWorkqueues = true;
+        };
+        trove = {
+          device = "/dev/disk/by-label/trove";
+          crypttabExtraOpts = [
+            "tpm2-device=auto"
+            "nofail"
+          ];
         };
       };
     };
-    kernelModules = [ "kvm-intel" ];
+    kernelModules = [
+      "kvm-intel"
+    ];
     extraModulePackages = [ ];
   };
-  # environment.etc.crypttab.text = ''
-  #   trove /dev/disk/by-label/trove - tpm2
-  # '';
 
   fileSystems = {
     "/" = {
-      device = "/dev/disk/by-label/nixos";
+      label = "nixos";
       fsType = "ext4";
       options = [ "noatime" ];
     };
 
     "/boot" = {
-      device = "/dev/disk/by-label/boot";
+      label = "boot";
       fsType = "vfat";
       options = [
         "fmask=0077"
@@ -46,11 +62,13 @@
     };
 
     "/mnt/hoard" = {
-      device = "/dev/disk/by-label/hoard";
+      label = "hoard";
       fsType = "ext4";
       options = [
         "noatime" # don't update atime on read
         "nofail" # don't fail if the mount fails
+        "commit=120"
+        "lazytime"
       ];
     };
 
@@ -62,20 +80,28 @@
       ];
     };
 
-    # "/mnt/trove" = {
-    #   device = "/dev/mapper/trove";
-    #   fsType = "ext4";
-    #   options = [
-    #     "noatime" # don't update atime on read
-    #     "nofail" # don't fail if the mount fails
-    #   ];
-    # };
+    "/mnt/trove" = {
+      device = "/dev/mapper/trove";
+      fsType = "ext4";
+      options = [
+        "noatime" # don't update atime on read
+        "nofail" # don't fail if the mount fails
+      ];
+    };
   };
 
   swapDevices = [ { device = "/dev/disk/by-label/swap"; } ];
 
-  hardware.block.defaultScheduler = "mq-deadline";
-  hardware.block.defaultSchedulerRotational = "bfq";
+  hardware = {
+    gpgSmartcards.enable = true;
+    enableAllFirmware = true;
+    cpu.intel.updateMicrocode = true;
+    usbStorage.manageShutdown = true;
+    block = {
+      defaultScheduler = "mq-deadline";
+      # defaultSchedulerRotational = "bfq";
+    };
+  };
 
   networking.useDHCP = lib.mkDefault true;
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";

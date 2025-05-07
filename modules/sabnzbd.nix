@@ -10,7 +10,6 @@ with lib;
 let
 
   cfg = config.services.sabnzbd;
-  inherit (pkgs) sabnzbd;
 
 in
 
@@ -79,7 +78,6 @@ in
         StateDirectory = "sabnzbd";
         ExecStart = "${pkgs.sabnzbd}/bin/sabnzbd -f ${cfg.configFile}";
         Restart = "on-failure";
-        RequiresMountsFor = [ "/mnt/hoard" ];
         UMask = "002";
       };
     };

@@ -9,6 +9,7 @@ let
     qbittorrent = toString config.services.qbittorrent.port;
     homepage = toString config.services.homepage-dashboard.listenPort;
     nzbget = "6789";
+    sabnzbd = "8085";
     sonarr = "8989";
     radarr = "7878";
     lidarr = "8686";
@@ -32,20 +33,35 @@ in
       };
       efi.canTouchEfiVariables = true;
     };
+    initrd = {
+      network = {
+        enable = true;
+        ssh = {
+          enable = true;
+          hostKeys = [
+            "/etc/secrets/initrd/ssh_host_ed25519_key"
+            "/etc/secrets/initrd/ssh_host_rsa_key"
+          ];
+          port = 22;
+          authorizedKeys = config.users.users.gshpychka.openssh.authorizedKeys.keys;
+          authorizedKeyFiles = config.users.users.gshpychka.openssh.authorizedKeys.keyFiles;
+        };
+      };
+    };
 
     kernelPackages = pkgs.linuxPackages;
     kernelParams = [
       "scsi_mod.use_blk_mq=1"
       "dm_mod.use_blk_mq=1"
+      "usb-storage.quirks=0bc2:2032:"
     ];
     kernel.sysctl = {
       "kernel.task_delayacct" = "1"; # Enables task delay accounting at runtime
-      "vm.dirty_background_bytes" = "268435456"; # 256 MB
-      "vm.dirty_bytes" = "805306368"; # 768 MB
-
-      # Spread out flushing more evenly over time
-      "vm.dirty_writeback_centisecs" = "100"; # 1 second interval
-      "vm.dirty_expire_centisecs" = "3000"; # 30s max cache age
+      "vm.dirty_background_ratio" = "10";
+      "vm.dirty_ratio" = "80";
+      "vm.vfs_cache_pressure" = "10";
+      "vm.dirty_writeback_centisecs" = "500";
+      "vm.dirty_expire_centisecs" = "500";
     };
     tmp = {
       useTmpfs = true;
@@ -144,11 +160,14 @@ in
           "usb"
         ];
         packages = with pkgs; [
-          neovim
           git
           sysstat
           iotop
           unrar
+          bcc
+          ffmpeg-headless
+          fio
+          smartmontools
         ];
         openssh.authorizedKeys.keys = [
           # eve
@@ -250,6 +269,12 @@ in
           serverName = "nzbget.${config.networking.fqdn}";
           locations."/" = {
             proxyPass = "http://127.0.0.1:${ports.nzbget}/";
+          };
+        };
+        sabnzbd = {
+          serverName = "sabnzbd.${config.networking.fqdn}";
+          locations."/" = {
+            proxyPass = "http://127.0.0.1:${ports.sabnzbd}/";
           };
         };
         homepage = {
@@ -436,7 +461,10 @@ in
     };
     nzbget = {
       enable = true;
-      package = pkgs.nzbget;
+      group = "media";
+    };
+    sabnzbd = {
+      enable = true;
       group = "media";
     };
     recyclarr = {
@@ -668,35 +696,118 @@ in
     };
   };
 
-  systemd.services = {
-    recyclarr = {
-      after = [
-        config.systemd.services.radarr.name
-        config.systemd.services.sonarr.name
-      ];
-      serviceConfig.LoadCredential = [
-        "radarr-api-key:${config.sops.secrets.radarr-api-key.path}"
-        "sonarr-api-key:${config.sops.secrets.sonarr-api-key.path}"
-      ];
+  systemd = {
+    slices = {
+      # systemd slice for media services
+      downloaders = {
+        sliceConfig = {
+          IOAccounting = "yes";
+          IODeviceWeight = "/mnt/hoard 10";
+          # IOWriteBandwidthMax = "/mnt/hoard 50M";
+          # IOWriteIOPSMax = "/mnt/hoard 50";
+          # IOReadBandwidthMax = "/mnt/hoard 50M";
+          # IOReadIOPSMax = "/mnt/hoard 100";
+        };
+        unitConfig = {
+          RequiresMountsFor = [
+            "/mnt/oasis"
+            "/mnt/hoard"
+          ];
+        };
+      };
+      system-samba = {
+        unitConfig = {
+          RequiresMountsFor = [
+            "/mnt/hoard"
+          ];
+        };
+        sliceConfig = {
+          IOAccounting = "yes";
+          IODeviceWeight = "/mnt/hoard 10";
+          # IOWriteIOPSMax = "/mnt/hoard 10";
+          # IOReadIOPSMax = "/mnt/hoard 10";
+        };
+      };
     };
-    # glances = {
-    #   serviceConfig = {
-    #     EnvironmentFile = config.sops.templates."glances.env".path;
-    #     ExecStart = lib.mkForce (
-    #       # figure out how to set the password (not via CLI)
-    #       toString (
-    #         pkgs.writeShellScript "glances-start" ''
-    #           exec ${config.services.glances.package}/bin/glances \
-    #             --port ${toString config.services.glances.port} \
-    #             --username \
-    #             -u "$GLANCES_USERNAME" \
-    #             --password "$GLANCES_PASSWORD" \
-    #             ${utils.escapeSystemdExecArgs config.services.glances.extraArgs}
-    #         ''
-    #       )
-    #     );
-    #   };
-    # };
+    services = {
+      recyclarr = {
+        after = [
+          config.systemd.services.radarr.name
+          config.systemd.services.sonarr.name
+        ];
+        serviceConfig.LoadCredential = [
+          "radarr-api-key:${config.sops.secrets.radarr-api-key.path}"
+          "sonarr-api-key:${config.sops.secrets.sonarr-api-key.path}"
+        ];
+      };
+      nzbget = {
+        serviceConfig = {
+          Slice = "downloaders.slice";
+          IOSchedulingClass = "idle";
+          # TimeoutStopSec = "600s";
+        };
+      };
+      sabnzbd = {
+        serviceConfig = {
+          Slice = "downloaders.slice";
+          IOSchedulingClass = "idle";
+          # TimeoutStopSec = "600s";
+        };
+      };
+      qbittorrent = {
+        serviceConfig = {
+          Slice = "downloaders.slice";
+          IOSchedulingClass = "idle";
+          # TimeoutStopSec = "600s";
+        };
+      };
+      plex = {
+        unitConfig = {
+          RequiresMountsFor = [ "/mnt/hoard" ];
+        };
+        serviceConfig = {
+          IODeviceWeight = "/mnt/hoard 1200";
+          IOSchedulingClass = "best-effort";
+          IOSchedulingPriority = "2";
+          # TimeoutStopSec = "600s";
+        };
+      };
+      radarr.serviceConfig = {
+        Slice = "downloaders.slice";
+        IOSchedulingClass = "idle";
+      };
+      sonarr.serviceConfig = {
+        Slice = "downloaders.slice";
+        IOSchedulingClass = "idle";
+      };
+      lidarr.serviceConfig = {
+        Slice = "downloaders.slice";
+        IOSchedulingClass = "idle";
+      };
+      prowlarr.serviceConfig = {
+        Slice = "downloaders.slice";
+        IOSchedulingClass = "idle";
+      };
+
+      # glances = {
+      #   serviceConfig = {
+      #     EnvironmentFile = config.sops.templates."glances.env".path;
+      #     ExecStart = lib.mkForce (
+      #       # figure out how to set the password (not via CLI)
+      #       toString (
+      #         pkgs.writeShellScript "glances-start" ''
+      #           exec ${config.services.glances.package}/bin/glances \
+      #             --port ${toString config.services.glances.port} \
+      #             --username \
+      #             -u "$GLANCES_USERNAME" \
+      #             --password "$GLANCES_PASSWORD" \
+      #             ${utils.escapeSystemdExecArgs config.services.glances.extraArgs}
+      #         ''
+      #       )
+      #     );
+      #   };
+      # };
+    };
   };
 
   programs = {
