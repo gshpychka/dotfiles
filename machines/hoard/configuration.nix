@@ -65,6 +65,7 @@ in
     };
     tmp = {
       useTmpfs = true;
+      tmpfsSize = "80%";
     };
   };
   environment.systemPackages = with pkgs; [
