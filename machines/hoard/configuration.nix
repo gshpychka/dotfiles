@@ -140,6 +140,7 @@ in
           pskRaw = "ext:psk";
         };
       };
+      scanOnLowSignal = false;
     };
     usePredictableInterfaceNames = true;
     enableIPv6 = false;
@@ -715,7 +716,7 @@ in
 
   systemd = {
     slices = {
-      media-services = {
+      media = {
         sliceConfig = {
           IOAccounting = "yes";
           IODeviceWeight = "/mnt/hoard 10";
@@ -753,21 +754,21 @@ in
       };
       nzbget = {
         serviceConfig = {
-          Slice = "media-services.slice";
+          Slice = "media.slice";
           IOSchedulingClass = "best-effort";
           IOSchedulingPriority = "6";
         };
       };
       sabnzbd = {
         serviceConfig = {
-          Slice = "media-services.slice";
+          Slice = "media.slice";
           IOSchedulingClass = "best-effort";
           IOSchedulingPriority = "6";
         };
       };
       qbittorrent = {
         serviceConfig = {
-          Slice = "media-services.slice";
+          Slice = "media.slice";
           IOSchedulingClass = "idle";
         };
       };
@@ -782,19 +783,19 @@ in
         };
       };
       radarr.serviceConfig = {
-        Slice = "media-services.slice";
+        Slice = "media.slice";
         IOSchedulingClass = "idle";
       };
       sonarr.serviceConfig = {
-        Slice = "media-services.slice";
+        Slice = "media.slice";
         IOSchedulingClass = "idle";
       };
       lidarr.serviceConfig = {
-        Slice = "media-services.slice";
+        Slice = "media.slice";
         IOSchedulingClass = "idle";
       };
       prowlarr.serviceConfig = {
-        Slice = "media-services.slice";
+        Slice = "media.slice";
         IOSchedulingClass = "idle";
       };
 
