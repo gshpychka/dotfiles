@@ -8,7 +8,7 @@ let
     glances = toString config.services.glances.port;
     qbittorrent = toString config.services.qbittorrent.port;
     homepage = toString config.services.homepage-dashboard.listenPort;
-    nzbget = "6789";
+    # nzbget = "6789";
     sabnzbd = "8085";
     sonarr = "8989";
     radarr = "7878";
@@ -96,13 +96,7 @@ in
       prowlarr-api-key = { };
       qbittorrent-username = { };
       qbittorrent-password = { };
-      nzbget-username = { };
-      nzbget-password = { };
       plex-token = { };
-      wifi-psk = {
-        sopsFile = ../../secrets/common/network.yaml;
-        key = "main-wifi-psk";
-      };
     };
     templates = {
       "homepage-dashboard.env" = {
@@ -113,35 +107,39 @@ in
           HOMEPAGE_VAR_PROWLARR_API_KEY=${config.sops.placeholder.prowlarr-api-key}
           HOMEPAGE_VAR_QBITTORRENT_USERNAME=${config.sops.placeholder.qbittorrent-username}
           HOMEPAGE_VAR_QBITTORRENT_PASSWORD=${config.sops.placeholder.qbittorrent-password}
-          HOMEPAGE_VAR_NZBGET_USERNAME=${config.sops.placeholder.nzbget-username}
-          HOMEPAGE_VAR_NZBGET_PASSWORD=${config.sops.placeholder.nzbget-password}
           HOMEPAGE_VAR_PLEX_TOKEN=${config.sops.placeholder.plex-token}
         '';
         restartUnits = [ config.systemd.services.homepage-dashboard.name ];
         mode = "0400";
       };
-      "wireless.conf" = {
-        content = ''
-          psk=${config.sops.placeholder.wifi-psk}
-        '';
-        mode = "0400";
-      };
     };
   };
+
+  # Wi-Fi
+  # sops.secrets.wifi-psk = {
+  #   sopsFile = ../../secrets/common/network.yaml;
+  #   key = "main-wifi-psk";
+  # };
+  # sops.templates."wireless.conf" = {
+  #   content = ''
+  #     psk=${config.sops.placeholder.wifi-psk}
+  #   '';
+  #   mode = "0400";
+  # };
+  # networking.wireless = {
+  #   enable = true;
+  #   secretsFile = config.sops.templates."wireless.conf".path;
+  #   networks = {
+  #     "YourNewNeighbor" = {
+  #       pskRaw = "ext:psk";
+  #     };
+  #   };
+  #   scanOnLowSignal = false;
+  # };
 
   networking = {
     hostName = "hoard";
     domain = "lan";
-    wireless = {
-      enable = true;
-      secretsFile = config.sops.templates."wireless.conf".path;
-      networks = {
-        "YourNewNeighbor" = {
-          pskRaw = "ext:psk";
-        };
-      };
-      scanOnLowSignal = false;
-    };
     usePredictableInterfaceNames = true;
     enableIPv6 = false;
     interfaces = {
@@ -283,12 +281,12 @@ in
             proxyPass = "http://127.0.0.1:${ports.lidarr}/";
           };
         };
-        nzbget = {
-          serverName = "nzbget.${config.networking.fqdn}";
-          locations."/" = {
-            proxyPass = "http://127.0.0.1:${ports.nzbget}/";
-          };
-        };
+        # nzbget = {
+        #   serverName = "nzbget.${config.networking.fqdn}";
+        #   locations."/" = {
+        #     proxyPass = "http://127.0.0.1:${ports.nzbget}/";
+        #   };
+        # };
         sabnzbd = {
           serverName = "sabnzbd.${config.networking.fqdn}";
           locations."/" = {
@@ -365,20 +363,20 @@ in
                 ];
               };
             }
-            {
-              "nzbget" = {
-                icon = "nzbget";
-                href = "http://nzbget.${config.networking.fqdn}";
-                widgets = [
-                  {
-                    type = "nzbget";
-                    url = "http://127.0.0.1:${ports.nzbget}";
-                    username = "{{HOMEPAGE_VAR_NZBGET_USERNAME}}";
-                    password = "{{HOMEPAGE_VAR_NZBGET_PASSWORD}}";
-                  }
-                ];
-              };
-            }
+            # {
+            #   "nzbget" = {
+            #     icon = "nzbget";
+            #     href = "http://nzbget.${config.networking.fqdn}";
+            #     widgets = [
+            #       {
+            #         type = "nzbget";
+            #         url = "http://127.0.0.1:${ports.nzbget}";
+            #         username = "{{HOMEPAGE_VAR_NZBGET_USERNAME}}";
+            #         password = "{{HOMEPAGE_VAR_NZBGET_PASSWORD}}";
+            #       }
+            #     ];
+            #   };
+            # }
           ];
         }
         {
@@ -477,10 +475,10 @@ in
       enable = true;
       group = "media";
     };
-    nzbget = {
-      enable = true;
-      group = "media";
-    };
+    # nzbget = {
+    #   enable = true;
+    #   group = "media";
+    # };
     sabnzbd = {
       enable = true;
       group = "media";
@@ -752,13 +750,13 @@ in
           "sonarr-api-key:${config.sops.secrets.sonarr-api-key.path}"
         ];
       };
-      nzbget = {
-        serviceConfig = {
-          Slice = "media.slice";
-          IOSchedulingClass = "best-effort";
-          IOSchedulingPriority = "6";
-        };
-      };
+      # nzbget = {
+      #   serviceConfig = {
+      #     Slice = "media.slice";
+      #     IOSchedulingClass = "best-effort";
+      #     IOSchedulingPriority = "6";
+      #   };
+      # };
       sabnzbd = {
         serviceConfig = {
           Slice = "media.slice";
