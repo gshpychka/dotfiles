@@ -34,12 +34,23 @@ in
       efi.canTouchEfiVariables = true;
     };
     initrd = {
+      # SSH in initrd for LUKS unlocking
       network = {
         enable = true;
         ssh = {
           enable = true;
           hostKeys = [
+            # These keys were generated imperatively, they are no the regular host keys.
+            # Justification from the docs:
+
+            # Unless your bootloader supports initrd secrets,
+            # these keys are stored insecurely in the global Nix store.
+            # Do NOT use your regular SSH host private keys for this purpose or you’ll expose them to regular users!
+
+            # ssh-keygen -t ed25519 -N "" -f /etc/secrets/initrd/ssh_host_ed25519_key
             "/etc/secrets/initrd/ssh_host_ed25519_key"
+
+            # ssh-keygen -t rsa -N "" -f /etc/secrets/initrd/ssh_host_rsa_key
             "/etc/secrets/initrd/ssh_host_rsa_key"
           ];
           port = 22;
@@ -51,21 +62,24 @@ in
 
     kernelPackages = pkgs.linuxPackages;
     kernelParams = [
+      # enable mq io schedulers
       "scsi_mod.use_blk_mq=1"
       "dm_mod.use_blk_mq=1"
+      # force-enable SAT mode with UAS driver for Seagate enclosure
+      # https://www.smartmontools.org/wiki/SAT-with-UAS-Linux#workaround-unset-t
       "usb-storage.quirks=0bc2:2032:"
     ];
     kernel.sysctl = {
-      "kernel.task_delayacct" = "1"; # Enables task delay accounting at runtime
-      "vm.dirty_background_ratio" = "10";
-      "vm.dirty_ratio" = "80";
-      "vm.vfs_cache_pressure" = "10";
-      "vm.dirty_writeback_centisecs" = "500";
-      "vm.dirty_expire_centisecs" = "500";
+      "kernel.task_delayacct" = "1"; # Enables task delay accounting at runtime (additional stats in e.g. iotop)
+      "vm.dirty_background_ratio" = "10"; # Start flushing dirty pages when 10% of memory is dirty
+      "vm.dirty_ratio" = "80"; # Force flushing dirty pages when 80% of memory is dirty
+      "vm.vfs_cache_pressure" = "10"; # Something to do with storing fs metadata in memory
+      "vm.dirty_writeback_centisecs" = "500"; # Writeback every 5s
+      "vm.dirty_expire_centisecs" = "500"; # Expire dirty pages every 5s
     };
     tmp = {
-      useTmpfs = true;
-      tmpfsSize = "80%";
+      useTmpfs = true; # /tmp is stored in RAM
+      tmpfsSize = "80%"; # /tmp can take up to 80% of RAM
     };
   };
   environment.systemPackages = with pkgs; [
@@ -174,6 +188,7 @@ in
           # eve
           "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIB737o9Ltm1K3w9XX9SBHNW1JT4NpCPP5qg9R+SB18dG"
         ];
+        # TODO: sops-nix
         initialHashedPassword = "";
       };
       "time-machine" = {
