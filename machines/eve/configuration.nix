@@ -69,7 +69,6 @@
       # managed by HM
       enableCompletion = false;
       enableBashCompletion = false;
-      enableLsColors = false;
     };
   };
 
