@@ -75,6 +75,8 @@ in
   programs.zsh = {
     enable = true;
     enableCompletion = false;
+    enableGlobalCompInit = false;
+    enableLsColors = false;
   };
 
   security = {

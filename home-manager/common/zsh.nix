@@ -114,6 +114,16 @@
   programs.lsd = {
     enable = true;
     enableZshIntegration = true;
+    settings = {
+      total-size = true;
+    };
+  };
+
+  programs.dircolors = {
+    enable = true;
+    settings = {
+      OTHER_WRITABLE = "30";
+    };
   };
 
   programs.zsh = {
@@ -164,7 +174,7 @@
       bindkey -M viins '^H' backward-delete-char # If Backspace sends Ctrl-H
 
       function cd() {
-        builtin cd "$@" && ${pkgs.lsd}/bin/lsd
+        builtin cd "$@" && ls
       }
 
       nixp() {

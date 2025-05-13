@@ -202,6 +202,7 @@ in
     enable = true;
     enableCompletion = false;
     enableBashCompletion = false;
+    enableLsColors = false;
   };
 
   security = {
