@@ -714,15 +714,10 @@ in
 
   systemd = {
     slices = {
-      # systemd slice for media services
-      downloaders = {
+      media-services = {
         sliceConfig = {
           IOAccounting = "yes";
           IODeviceWeight = "/mnt/hoard 10";
-          # IOWriteBandwidthMax = "/mnt/hoard 50M";
-          # IOWriteIOPSMax = "/mnt/hoard 50";
-          # IOReadBandwidthMax = "/mnt/hoard 50M";
-          # IOReadIOPSMax = "/mnt/hoard 100";
         };
         unitConfig = {
           RequiresMountsFor = [
@@ -732,6 +727,7 @@ in
         };
       };
       system-samba = {
+        # extend existing slice
         unitConfig = {
           RequiresMountsFor = [
             "/mnt/hoard"
@@ -740,8 +736,6 @@ in
         sliceConfig = {
           IOAccounting = "yes";
           IODeviceWeight = "/mnt/hoard 10";
-          # IOWriteIOPSMax = "/mnt/hoard 10";
-          # IOReadIOPSMax = "/mnt/hoard 10";
         };
       };
     };
@@ -758,23 +752,22 @@ in
       };
       nzbget = {
         serviceConfig = {
-          Slice = "downloaders.slice";
-          IOSchedulingClass = "idle";
-          # TimeoutStopSec = "600s";
+          Slice = "media-services.slice";
+          IOSchedulingClass = "best-effort";
+          IOSchedulingPriority = "6";
         };
       };
       sabnzbd = {
         serviceConfig = {
-          Slice = "downloaders.slice";
-          IOSchedulingClass = "idle";
-          # TimeoutStopSec = "600s";
+          Slice = "media-services.slice";
+          IOSchedulingClass = "best-effort";
+          IOSchedulingPriority = "6";
         };
       };
       qbittorrent = {
         serviceConfig = {
-          Slice = "downloaders.slice";
+          Slice = "media-services.slice";
           IOSchedulingClass = "idle";
-          # TimeoutStopSec = "600s";
         };
       };
       plex = {
@@ -785,23 +778,22 @@ in
           IODeviceWeight = "/mnt/hoard 1200";
           IOSchedulingClass = "best-effort";
           IOSchedulingPriority = "2";
-          # TimeoutStopSec = "600s";
         };
       };
       radarr.serviceConfig = {
-        Slice = "downloaders.slice";
+        Slice = "media-services.slice";
         IOSchedulingClass = "idle";
       };
       sonarr.serviceConfig = {
-        Slice = "downloaders.slice";
+        Slice = "media-services.slice";
         IOSchedulingClass = "idle";
       };
       lidarr.serviceConfig = {
-        Slice = "downloaders.slice";
+        Slice = "media-services.slice";
         IOSchedulingClass = "idle";
       };
       prowlarr.serviceConfig = {
-        Slice = "downloaders.slice";
+        Slice = "media-services.slice";
         IOSchedulingClass = "idle";
       };
 
