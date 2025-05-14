@@ -19,14 +19,8 @@
     };
     casks = [
       # -- essentials --
-      {
-        name = "1password";
-        greedy = true;
-      }
-      {
-        name = "google-chrome";
-        greedy = true;
-      }
+      "1password"
+      "google-chrome"
       {
         name = "raycast";
         greedy = true;
@@ -35,7 +29,6 @@
         name = "ghostty";
         greedy = true;
       }
-
       # -- utilities --
       {
         name = "mullvadvpn";
@@ -59,6 +52,10 @@
       }
       {
         name = "google-drive";
+        greedy = true;
+      }
+      {
+        name = "cyberduck";
         greedy = true;
       }
       {
@@ -110,10 +107,7 @@
       }
 
       # -- communication --
-      {
-        name = "telegram";
-        greedy = true;
-      }
+      "telegram"
       {
         name = "signal";
         greedy = true;
