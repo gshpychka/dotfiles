@@ -194,6 +194,10 @@ in
         group = config.users.groups.media.name;
         isSystemUser = true;
       };
+      "kodi" = {
+        group = config.users.groups.media.name;
+        isSystemUser = true;
+      };
     };
   };
 
@@ -243,7 +247,12 @@ in
           "valid users" = "time-machine";
           "public" = "no";
           "writeable" = "yes";
-          "force user" = "time-machine";
+        };
+        "kodi" = {
+          "path" = "/mnt/hoard/plex";
+          "valid users" = "kodi";
+          "public" = "no";
+          "writable" = "yes";
         };
       };
     };
@@ -735,7 +744,7 @@ in
         };
         sliceConfig = {
           IOAccounting = "yes";
-          IODeviceWeight = "/mnt/hoard 10";
+          IODeviceWeight = "/mnt/hoard 100";
         };
       };
     };
