@@ -82,6 +82,7 @@
   };
 
   system = {
+    primaryUser = "gshpychka";
     defaults = {
       NSGlobalDomain = {
         AppleFontSmoothing = 2;
@@ -121,14 +122,14 @@
 
     # https://github.com/zhaofengli/nix-homebrew/issues/3#issuecomment-1622240992
     activationScripts = {
-      extraUserActivation.text = lib.mkOrder 1501 (
+      fixHomebrewPermissions.text = lib.mkOrder 1501 (
         lib.concatStringsSep "\n" (
           lib.mapAttrsToList (
             prefix: d:
             if d.enable then
               ''
-                sudo chown -R ${config.nix-homebrew.user} ${prefix}/bin
-                sudo chgrp -R ${config.nix-homebrew.group} ${prefix}/bin
+                chown -R ${config.nix-homebrew.user} ${prefix}/bin
+                chgrp -R ${config.nix-homebrew.group} ${prefix}/bin
               ''
             else
               ""
