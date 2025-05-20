@@ -96,6 +96,7 @@ in
       prowlarr-api-key = { };
       qbittorrent-username = { };
       qbittorrent-password = { };
+      sabnzbd-api-key = { };
       plex-token = { };
     };
     templates = {
@@ -107,6 +108,7 @@ in
           HOMEPAGE_VAR_PROWLARR_API_KEY=${config.sops.placeholder.prowlarr-api-key}
           HOMEPAGE_VAR_QBITTORRENT_USERNAME=${config.sops.placeholder.qbittorrent-username}
           HOMEPAGE_VAR_QBITTORRENT_PASSWORD=${config.sops.placeholder.qbittorrent-password}
+          HOMEPAGE_VAR_SABNZBD_API_KEY=${config.sops.placeholder.sabnzbd-api-key}
           HOMEPAGE_VAR_PLEX_TOKEN=${config.sops.placeholder.plex-token}
         '';
         restartUnits = [ config.systemd.services.homepage-dashboard.name ];
@@ -368,6 +370,17 @@ in
                     url = "http://127.0.0.1:${ports.qbittorrent}";
                     username = "{{HOMEPAGE_VAR_QBITTORRENT_USERNAME}}";
                     password = "{{HOMEPAGE_VAR_QBITTORRENT_PASSWORD}}";
+                  }
+                ];
+              };
+              "sabnzbd" = {
+                icon = "sabnzbd";
+                href = "http://sabnzbd.${config.networking.fqdn}";
+                widgets = [
+                  {
+                    type = "sabnzbd";
+                    url = "http://127.0.0.1:${ports.sabnzbd}";
+                    key = "{{HOMEPAGE_VAR_SABNZBD_API_KEY}}";
                   }
                 ];
               };
