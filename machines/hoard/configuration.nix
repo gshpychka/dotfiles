@@ -14,7 +14,7 @@ let
     lidarr = "8686";
     prowlarr = "9696";
     plex = "32400";
-    tautulli = config.services.tautulli.port;
+    tautulli = toString config.services.tautulli.port;
   };
 in
 {
