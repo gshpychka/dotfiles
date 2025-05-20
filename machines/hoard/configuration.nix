@@ -8,7 +8,6 @@ let
     glances = toString config.services.glances.port;
     qbittorrent = toString config.services.qbittorrent.port;
     homepage = toString config.services.homepage-dashboard.listenPort;
-    # nzbget = "6789";
     sabnzbd = "8085";
     sonarr = "8989";
     radarr = "7878";
@@ -290,12 +289,6 @@ in
             proxyPass = "http://127.0.0.1:${ports.lidarr}/";
           };
         };
-        # nzbget = {
-        #   serverName = "nzbget.${config.networking.fqdn}";
-        #   locations."/" = {
-        #     proxyPass = "http://127.0.0.1:${ports.nzbget}/";
-        #   };
-        # };
         sabnzbd = {
           serverName = "sabnzbd.${config.networking.fqdn}";
           locations."/" = {
@@ -372,20 +365,6 @@ in
                 ];
               };
             }
-            # {
-            #   "nzbget" = {
-            #     icon = "nzbget";
-            #     href = "http://nzbget.${config.networking.fqdn}";
-            #     widgets = [
-            #       {
-            #         type = "nzbget";
-            #         url = "http://127.0.0.1:${ports.nzbget}";
-            #         username = "{{HOMEPAGE_VAR_NZBGET_USERNAME}}";
-            #         password = "{{HOMEPAGE_VAR_NZBGET_PASSWORD}}";
-            #       }
-            #     ];
-            #   };
-            # }
           ];
         }
         {
@@ -484,10 +463,6 @@ in
       enable = true;
       group = "media";
     };
-    # nzbget = {
-    #   enable = true;
-    #   group = "media";
-    # };
     sabnzbd = {
       enable = true;
       group = "media";
@@ -759,13 +734,6 @@ in
           "sonarr-api-key:${config.sops.secrets.sonarr-api-key.path}"
         ];
       };
-      # nzbget = {
-      #   serviceConfig = {
-      #     Slice = "media.slice";
-      #     IOSchedulingClass = "best-effort";
-      #     IOSchedulingPriority = "6";
-      #   };
-      # };
       sabnzbd = {
         serviceConfig = {
           Slice = "media.slice";

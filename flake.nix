@@ -87,7 +87,6 @@
           }
         )
         (import ./overlays/nui-nvim.nix)
-        (import ./overlays/nzbget.nix)
       ];
 
       stateVersion = "22.11";
