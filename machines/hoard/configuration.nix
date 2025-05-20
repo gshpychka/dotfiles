@@ -14,6 +14,7 @@ let
     lidarr = "8686";
     prowlarr = "9696";
     plex = "32400";
+    tautulli = config.services.tautulli.port;
   };
 in
 {
@@ -307,6 +308,12 @@ in
             proxyPass = "http://127.0.0.1:${ports.glances}/";
           };
         };
+        tautulli = {
+          serverName = "tautulli.${config.networking.fqdn}";
+          locations."/" = {
+            proxyPass = "http://127.0.0.1:${ports.tautulli}/";
+          };
+        };
       };
     };
     homepage-dashboard = {
@@ -443,6 +450,10 @@ in
       enable = true;
       openFirewall = true;
       group = "media";
+    };
+    tautulli = {
+      enable = true;
+      user = "tautulli";
     };
     qbittorrent = {
       enable = true;
