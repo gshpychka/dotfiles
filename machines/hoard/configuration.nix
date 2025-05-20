@@ -571,7 +571,7 @@ in
                 "bfd8eb01832d646a0a89c4deb46f8564" # Upscaled
                 "0a3f082873eb454bde444150b70253cc" # Extras
                 "712d74cd88bceb883ee32f773656b1f5" # Sing-Along Versions
-                # "cae4ca30163749b891686f95532519bd" # AV1
+                "cae4ca30163749b891686f95532519bd" # AV1
                 "923b6abef9b17f937fab56cfcf89e1f1" # DV (WEBDL)
                 "b6832f586342ef70d9c128d40c07b872" # Bad Dual Groups
                 "cc444569854e9de0b084ab2b8b1532b2" # Black and White Editions
