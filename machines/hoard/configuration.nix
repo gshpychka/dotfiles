@@ -373,6 +373,8 @@ in
                   }
                 ];
               };
+            }
+            {
               "sabnzbd" = {
                 icon = "sabnzbd";
                 href = "http://sabnzbd.${config.networking.fqdn}";
@@ -466,7 +468,6 @@ in
     };
     tautulli = {
       enable = true;
-      user = "tautulli";
     };
     qbittorrent = {
       enable = true;
