@@ -7,7 +7,7 @@
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
-    nixos-stable.url = "github:nixos/nixpkgs/nixos-24.11";
+    nixos-stable.url = "github:nixos/nixpkgs/nixos-25.05";
     home-manager = {
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -18,8 +18,6 @@
     };
     nix-homebrew = {
       url = "github:zhaofengli/nix-homebrew";
-      inputs.nixpkgs.follows = "nixpkgs";
-      inputs.nix-darwin.follows = "darwin";
     };
     homebrew-core = {
       url = "github:homebrew/homebrew-core";
@@ -86,7 +84,6 @@
             # pkgname = nixosStablePkgs.pkgname;
           }
         )
-        (import ./overlays/nui-nvim.nix)
       ];
 
       stateVersion = "22.11";
