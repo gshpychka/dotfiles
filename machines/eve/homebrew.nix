@@ -21,10 +21,7 @@
       # -- essentials --
       "1password"
       "google-chrome"
-      {
-        name = "raycast";
-        greedy = true;
-      }
+      "raycast"
       {
         name = "ghostty";
         greedy = true;
@@ -63,7 +60,7 @@
         greedy = true;
       }
       {
-        name = "yubico-yubikey-manager";
+        name = "yubico-authenticator";
         greedy = true;
       }
       {
@@ -127,10 +124,7 @@
         name = "firefox";
         greedy = true;
       }
-      {
-        name = "postman";
-        greedy = true;
-      }
+      "postman"
       {
         name = "slack";
         greedy = true;
