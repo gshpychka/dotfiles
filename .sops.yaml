@@ -15,7 +15,6 @@ creation_rules:
           - *harbor_host
         pgp:
           - *yubikey_alpha
-
   - path_regex: secrets/reaper/.*\.yaml$
     key_groups:
       - age:
