@@ -155,8 +155,11 @@ in
             "127.0.0.1"
           ];
           ratelimit = 0;
+          upstream_mode = "parallel";
           upstream_dns = [
             "tls://1dot1dot1dot1.cloudflare-dns.com"
+            "tls://dns.google"
+            "tls://dns.quad9.net"
           ];
           allowed_clients = [
             "${routerIpAddress}/24"
@@ -164,7 +167,8 @@ in
           ];
           bootstrap_dns = [
             "1.1.1.1"
-            "1.0.0.1"
+            "8.8.8.8"
+            "9.9.9.9"
           ];
           aaaa_disabled = true;
           upstream_timeout = "1s";
