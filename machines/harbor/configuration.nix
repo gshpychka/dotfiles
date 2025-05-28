@@ -154,7 +154,7 @@ in
             machineIpAddress
             "127.0.0.1"
           ];
-          ratelimit = 0;
+          ratelimit = 100;
           upstream_mode = "parallel";
           upstream_dns = [
             "tls://1dot1dot1dot1.cloudflare-dns.com"
@@ -234,11 +234,9 @@ in
 
   networking.firewall.allowedTCPPorts = [
     config.services.nginx.defaultSSLListenPort
-    config.services.nginx.defaultHTTPListenPort
   ];
   networking.firewall.allowedUDPPorts = [
     53
-    67
   ];
 
   system.stateVersion = "22.11";
