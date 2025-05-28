@@ -190,11 +190,19 @@ in
               domain = "*.${config.networking.fqdn}";
               answer = machineIpAddress;
             }
+            # TODO: need to set up a real DNS server on harbor to handle
+            # local queries instead of using rewrites like this
             {
-              # TODO: need to set up a real DNS server on harbor to handle
-              # local queries instead of using rewrites like this
+              domain = "reaper.${config.networking.domain}";
+              answer = "192.168.1.20";
+            }
+            {
               domain = "*.reaper.${config.networking.domain}";
               answer = "192.168.1.20";
+            }
+            {
+              domain = "hoard.${config.networking.domain}";
+              answer = "192.168.1.59";
             }
             {
               domain = "*.hoard.${config.networking.domain}";
