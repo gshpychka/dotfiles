@@ -189,21 +189,20 @@ in
             }
           ];
         };
-        dhcp = {
-          enabled = true;
-          interface_name = networkInterface;
-          dhcpv4 = {
-            gateway_ip = routerIpAddress;
-            subnet_mask = "255.255.255.0";
-            range_start = "192.168.1.3";
-            range_end = "192.168.1.254";
-          };
-        };
+        # dhcp = {
+        #   enabled = true;
+        #   interface_name = networkInterface;
+        #   dhcpv4 = {
+        #     gateway_ip = routerIpAddress;
+        #     subnet_mask = "255.255.255.0";
+        #     range_start = "192.168.1.3";
+        #     range_end = "192.168.1.254";
+        #   };
+        # };
       };
     };
   };
 
-  # Open ports in the firewall.
   networking.firewall.allowedTCPPorts = [ 80 ];
   networking.firewall.allowedUDPPorts = [
     53
