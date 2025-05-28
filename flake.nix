@@ -224,7 +224,14 @@
             { pkgs, ... }:
             {
               nixpkgs.config = {
-                cudaSupport = true;
+                # We shouldn't set cudaSupport = true here, because it will lead to
+                # building e.g. pytorch from source
+                # Omitting it does NOT prevent CUDA support
+                # If a package requires this flag, use an override
+
+                # Keeping this here to be explicit
+                # cudaSupport = true;
+
                 # https://en.wikipedia.org/wiki/CUDA#GPUs_supported
                 cudaCapabilities = [ "8.9" ];
                 cudaForwardCompat = true;
