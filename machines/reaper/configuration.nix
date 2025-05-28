@@ -128,7 +128,7 @@
     templates = {
       "acme.env" = {
         content = ''
-          CF_DNS_API_TOKEN=${config.sops.placeholder.cloudflare-api-key}
+          CF_DNS_API_TOKEN=${config.sops.placeholder.cloudflare-api-token}
         '';
         mode = "0400";
       };
