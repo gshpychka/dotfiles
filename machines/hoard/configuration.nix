@@ -7,7 +7,7 @@ let
   ports = {
     glances = toString config.services.glances.port;
     qbittorrent = toString config.services.qbittorrent.port;
-    homepage = toString config.services.homepage-dashboard.listenPort;
+    home = toString config.services.homepage-dashboard.listenPort;
     sabnzbd = "8085";
     sonarr = "8989";
     radarr = "7878";
@@ -276,7 +276,7 @@ in
             "lidarr"
             "prowlarr"
             "sabnzbd"
-            "homepage"
+            "home"
             "glances"
             "tautulli"
           ];
@@ -302,7 +302,7 @@ in
       settings = {
         title = config.networking.hostName;
       };
-      allowedHosts = config.services.nginx.virtualHosts.homepage.serverName;
+      allowedHosts = config.services.nginx.virtualHosts.home.serverName;
       environmentFile = config.sops.templates."homepage-dashboard.env".path;
       widgets = [
         {
