@@ -12,18 +12,6 @@ in
   options.my.ollama = {
     enable = lib.mkEnableOption "Ollama server + model loader + nginx proxy";
 
-    host = lib.mkOption {
-      type = lib.types.str;
-      default = "127.0.0.1";
-      description = "Where Ollama listens and where nginx proxies to.";
-    };
-
-    port = lib.mkOption {
-      type = lib.types.port;
-      default = 11434;
-      description = "Ollama HTTP port.";
-    };
-
     loadModels = lib.mkOption {
       default = [ ];
       type = lib.types.listOf (
@@ -52,8 +40,6 @@ in
 
     services.ollama = {
       enable = true;
-      host = cfg.host;
-      port = cfg.port;
       acceleration = "cuda";
 
       loadModels = lib.mkBefore (map (m: m.name) cfg.loadModels);
@@ -64,7 +50,7 @@ in
       recommendedProxySettings = lib.mkForce false; # Ollama chokes otherwise
 
       virtualHosts."default".locations."/ollama/" = {
-        proxyPass = "http://${cfg.host}:${toString cfg.port}/";
+        proxyPass = "http://${config.services.ollama.host}:${toString config.services.ollama.port}/";
         proxyWebsockets = true;
       };
     };
@@ -82,7 +68,7 @@ in
         Type = "oneshot";
         ExecStart = pkgs.writeShellScript "ollama-preload" ''
           set -euo pipefail
-          api="http://${cfg.host}:${toString cfg.port}/api/generate"
+          api="http://${config.services.ollama.host}:${toString config.services.ollama.port}/api/generate"
           ${lib.concatMapStringsSep "\n" (
             m:
             lib.optionalString m.loadIntoVram ''
