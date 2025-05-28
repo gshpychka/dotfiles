@@ -19,7 +19,8 @@
       efi.canTouchEfiVariables = true;
       timeout = 3;
     };
-    kernelPackages = pkgs.linuxPackages_latest;
+    # https://forums.developer.nvidia.com/t/6-15-kernel-and-closed-module-compatibility-in-570-153-02/333711
+    kernelPackages = pkgs.linuxPackages_6_14;
     plymouth = {
       enable = true;
     };
