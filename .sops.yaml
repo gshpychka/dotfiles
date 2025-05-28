@@ -7,7 +7,7 @@ keys:
     # nix-shell -p ssh-to-age --run 'ssh-keyscan harbor.lan | ssh-to-age'
   - &harbor_host age142kp0x4azfwvmxe0drmpt0lug4upj22wahefsezrcv3nvmcgkeds74jeld
 creation_rules:
-  - path_regex: secrets/common/.*\.yaml$
+  - path_regex: secrets/common/.*
     key_groups:
       - age:
           - *reaper_host
@@ -15,20 +15,20 @@ creation_rules:
           - *harbor_host
         pgp:
           - *yubikey_alpha
-  - path_regex: secrets/reaper/.*\.yaml$
+  - path_regex: secrets/reaper/.*
     key_groups:
       - age:
           - *reaper_host
         pgp:
           - *yubikey_alpha
 
-  - path_regex: secrets/hoard/.*\.yaml$
+  - path_regex: secrets/hoard/.*
     key_groups:
       - age:
           - *hoard_host
         pgp:
           - *yubikey_alpha
-  - path_regex: secrets/harbor/.*\.yaml$
+  - path_regex: secrets/harbor/.*
     key_groups:
       - age:
           - *harbor_host
