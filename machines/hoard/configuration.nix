@@ -342,7 +342,7 @@ in
             {
               "qBittorrent" = {
                 icon = "qbittorrent";
-                href = "http://qbittorrent.${config.networking.fqdn}";
+                href = "https://${config.services.nginx.virtualHosts.qbittorrent.serverName}";
                 widgets = [
                   {
                     type = "qbittorrent";
@@ -356,7 +356,7 @@ in
             {
               "sabnzbd" = {
                 icon = "sabnzbd";
-                href = "http://sabnzbd.${config.networking.fqdn}";
+                href = "https://${config.services.nginx.virtualHosts.sabnzbd.serverName}";
                 widgets = [
                   {
                     type = "sabnzbd";
@@ -373,7 +373,7 @@ in
             {
               "Sonarr" = {
                 icon = "sonarr";
-                href = "http://sonarr.${config.networking.fqdn}";
+                href = "https://${config.services.nginx.virtualHosts.sonarr.serverName}";
                 widgets = [
                   {
                     type = "sonarr";
@@ -386,7 +386,7 @@ in
             {
               "Radarr" = {
                 icon = "radarr";
-                href = "http://radarr.${config.networking.fqdn}";
+                href = "https://${config.services.nginx.virtualHosts.radarr.serverName}";
                 widgets = [
                   {
                     type = "radarr";
@@ -399,7 +399,7 @@ in
             {
               "Lidarr" = {
                 icon = "lidarr";
-                href = "http://lidarr.${config.networking.fqdn}";
+                href = "https://${config.services.nginx.virtualHosts.lidarr.serverName}";
                 widgets = [
                   {
                     type = "lidarr";
@@ -412,7 +412,7 @@ in
             {
               "Prowlarr" = {
                 icon = "prowlarr";
-                href = "http://prowlarr.${config.networking.fqdn}";
+                href = "https://${config.services.nginx.virtualHosts.prowlarr.serverName}";
                 widgets = [
                   {
                     type = "prowlarr";
