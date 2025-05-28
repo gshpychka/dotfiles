@@ -105,6 +105,34 @@
         }
       ];
     };
+    acme = {
+      acceptTerms = true;
+      defaults = {
+        email = "acme@glib.sh";
+        server = "https://acme-staging-v02.api.letsencrypt.org/directory";
+        environmentFile = config.sops.templates."acme.env".path;
+        dnsProvider = "cloudflare";
+        reloadServices = [ "nginx" ];
+      };
+    };
+  };
+
+  sops = {
+    age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
+    secrets = {
+      cloudflare-api-token = {
+        sopsFile = ../../secrets/common/cloudflare.yaml;
+        key = "cloudflare-dns-api-token";
+      };
+    };
+    templates = {
+      "acme.env" = {
+        content = ''
+          CF_DNS_API_TOKEN=${config.sops.placeholder.cloudflare-api-key}
+        '';
+        mode = "0400";
+      };
+    };
   };
 
   hardware = {
