@@ -7,6 +7,7 @@
   imports = [
     ./hardware-configuration.nix
     ../../modules/acme.nix
+    ../../modules/ollama.nix
   ];
 
   boot = {
@@ -179,6 +180,23 @@
     enableLsColors = false;
   };
 
+  my.ollama = {
+    enable = true;
+    loadModels = [
+      {
+        # home assistant
+        name = "qwen2.5:14b-instruct-q8_0";
+        loadIntoVram = true;
+      }
+      {
+        name = "llama3.1:8b-instruct-fp16";
+      }
+      {
+        name = "qwen3:14b-q8_0";
+      }
+    ];
+  };
+
   services = {
     pcscd.enable = true;
     udev.packages = [ pkgs.yubikey-personalization ];
@@ -192,7 +210,17 @@
     };
     nginx = {
       enable = true;
-      recommendedProxySettings = true;
+      streamConfig = ''
+        upstream wyoming_whisper {
+          server 127.0.0.1:10300;
+        }
+
+        server {
+          listen 10299;
+          proxy_pass           wyoming_whisper;
+          proxy_socket_keepalive on;
+        }
+      '';
       recommendedTlsSettings = true;
       virtualHosts = {
         "default" = {
@@ -201,12 +229,9 @@
           onlySSL = true;
           default = true;
           locations = {
-            "/ollama/" = {
-              proxyPass = "http://${config.services.ollama.host}:${toString config.services.ollama.port}/";
-              recommendedProxySettings = false; # ollama does not work with this on
-            };
             "/kokoro/" = {
               proxyPass = "http://127.0.0.1:8000/";
+              recommendedProxySettings = true;
             };
             "/" = {
               return = "404";
@@ -221,28 +246,17 @@
       enable = true;
       openFirewall = true;
     };
-    ollama = {
-      enable = true;
-      acceleration = "cuda";
-      openFirewall = false;
-      loadModels = [
-        "llama3.1:8b-instruct-fp16"
-        "qwen2.5:14b-instruct-q8_0" # home assistant
-        "qwen3:14b-q8_0"
-      ];
-    };
     wyoming = {
       faster-whisper = {
         servers.hass = {
           enable = true;
-          uri = "tcp://0.0.0.0:10300";
+          uri = "tcp://127.0.0.1:10300";
           model = "large-v3";
           language = "en";
           device = "cuda";
         };
       };
     };
-
     xserver = {
       videoDrivers = [ "nvidia" ];
     };
@@ -258,8 +272,7 @@
   };
   networking.firewall.allowedTCPPorts = [
     config.services.nginx.defaultSSLListenPort
-    config.services.nginx.defaultHTTPListenPort
-    10300 # faster-whisper
+    10299 # faster-whisper
   ];
 
   system.stateVersion = "24.05";

@@ -1,0 +1,100 @@
+{
+  lib,
+  pkgs,
+  config,
+  ...
+}:
+
+let
+  cfg = config.my.ollama;
+in
+{
+  options.my.ollama = {
+    enable = lib.mkEnableOption "Ollama server + model loader + nginx proxy";
+
+    host = lib.mkOption {
+      type = lib.types.str;
+      default = "127.0.0.1";
+      description = "Where Ollama listens and where nginx proxies to.";
+    };
+
+    port = lib.mkOption {
+      type = lib.types.port;
+      default = 11434;
+      description = "Ollama HTTP port.";
+    };
+
+    loadModels = lib.mkOption {
+      default = [ ];
+      type = lib.types.listOf (
+        lib.types.submodule {
+          options = {
+            name = lib.mkOption {
+              type = lib.types.str;
+              description = "Model identifier – e.g. \"llama3\" or \"phi3:mini\".";
+            };
+            loadIntoVram = lib.mkOption {
+              type = lib.types.bool;
+              default = false;
+              description = "Keep the model resident with keep_alive = -1.";
+            };
+          };
+        }
+      );
+      description = ''
+        Models to download on every boot; those with
+        `loadIntoVram = true` are additionally pre-loaded into VRAM/CPU-RAM.
+      '';
+    };
+  };
+
+  config = lib.mkIf cfg.enable {
+
+    services.ollama = {
+      enable = true;
+      host = cfg.host;
+      port = cfg.port;
+      acceleration = "cuda";
+
+      loadModels = lib.mkBefore (map (m: m.name) cfg.loadModels);
+    };
+
+    services.nginx = {
+      enable = true;
+      recommendedProxySettings = lib.mkForce false; # Ollama chokes otherwise
+
+      virtualHosts."default".locations."/ollama/" = {
+        proxyPass = "http://${cfg.host}:${toString cfg.port}/";
+        proxyWebsockets = true;
+      };
+    };
+
+    systemd.services.ollama-preload = lib.mkIf (lib.any (m: m.loadIntoVram) cfg.loadModels) {
+      description = "Warm selected Ollama models into VRAM";
+      partOf = [ "ollama.service" ];
+      wantedBy = [ "ollama.service" ];
+      after = [
+        "ollama.service"
+        "ollama-model-loader.service"
+      ];
+
+      serviceConfig = {
+        Type = "oneshot";
+        ExecStart = pkgs.writeShellScript "ollama-preload" ''
+          set -euo pipefail
+          api="http://${cfg.host}:${toString cfg.port}/api/generate"
+          ${lib.concatMapStringsSep "\n" (
+            m:
+            lib.optionalString m.loadIntoVram ''
+              echo "Pre-loading ${m.name}"
+              ${pkgs.curl}/bin/curl --silent --show-error \
+                --header 'Content-Type: application/json' \
+                --data '{"model":"${m.name}","keep_alive":-1}' \
+                "$api" >/dev/null
+            ''
+          ) cfg.loadModels}
+        '';
+      };
+    };
+  };
+}
