@@ -235,8 +235,19 @@
                 # https://en.wikipedia.org/wiki/CUDA#GPUs_supported
                 cudaCapabilities = [ "8.9" ];
                 cudaForwardCompat = true;
+                nvidia.acceptLicense = true;
               } // nixpkgsConfig;
-              nixpkgs.overlays = overlays;
+              nixpkgs.overlays = [
+                # Since we don't set cudaSupport = true globally, we need to enable CUDA
+                # for each package that requires it
+                (self: super: {
+                  ctranslate2 = super.ctranslate2.override {
+                    withCUDA = true;
+                    withCuDNN = true;
+                  };
+                  btop = super.btop.override { cudaSupport = true; };
+                })
+              ] ++ overlays;
 
               nix.settings = {
                 allowed-users = [ user ];
