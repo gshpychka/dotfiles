@@ -4,7 +4,10 @@
   ...
 }:
 {
-  imports = [ ./hardware-configuration.nix ];
+  imports = [
+    ./hardware-configuration.nix
+    ../../modules/acme.nix
+  ];
 
   boot = {
     loader = {
@@ -35,7 +38,6 @@
 
   networking = {
     hostName = "reaper";
-    domain = "lan";
     wireless.enable = false;
     usePredictableInterfaceNames = true;
     enableIPv6 = false;
@@ -105,34 +107,13 @@
         }
       ];
     };
-    acme = {
-      acceptTerms = true;
-      defaults = {
-        email = "acme@glib.sh";
-        server = "https://acme-staging-v02.api.letsencrypt.org/directory";
-        environmentFile = config.sops.templates."acme.env".path;
-        dnsProvider = "cloudflare";
-        reloadServices = [ "nginx" ];
-      };
-    };
   };
 
-  sops = {
-    age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
-    secrets = {
-      cloudflare-api-token = {
-        sopsFile = ../../secrets/common/cloudflare.yaml;
-        key = "cloudflare-dns-api-token";
-      };
-    };
-    templates = {
-      "acme.env" = {
-        content = ''
-          CF_DNS_API_TOKEN=${config.sops.placeholder.cloudflare-api-token}
-        '';
-        mode = "0400";
-      };
-    };
+  sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
+
+  my.acme = {
+    enable = true;
+    extraDomainNames = [ "*.${config.networking.fqdn}" ];
   };
 
   hardware = {
@@ -210,17 +191,21 @@
     };
     nginx = {
       enable = true;
-      recommendedProxySettings = false; # ollama does not work with this on
+      recommendedProxySettings = true;
+      recommendedTlsSettings = true;
       virtualHosts = {
         "default" = {
           serverName = config.networking.fqdn;
+          useACMEHost = config.networking.fqdn;
+          onlySSL = true;
+          default = true;
           locations = {
             "/ollama/" = {
               proxyPass = "http://${config.services.ollama.host}:${toString config.services.ollama.port}/";
+              recommendedProxySettings = false; # ollama does not work with this on
             };
             "/kokoro/" = {
               proxyPass = "http://127.0.0.1:8000/";
-              recommendedProxySettings = true;
             };
             "/" = {
               return = "404";
@@ -271,8 +256,9 @@
     };
   };
   networking.firewall.allowedTCPPorts = [
-    10300
-    80
+    config.services.nginx.defaultSSLListenPort
+    config.services.nginx.defaultHTTPListenPort
+    10300 # faster-whisper
   ];
 
   system.stateVersion = "24.05";

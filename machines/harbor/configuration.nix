@@ -9,7 +9,10 @@ let
   routerIpAddress = "192.168.1.1";
 in
 {
-  imports = [ ./hardware-configuration.nix ];
+  imports = [
+    ./hardware-configuration.nix
+    ../../modules/acme.nix
+  ];
 
   boot = {
     initrd = {
@@ -34,7 +37,6 @@ in
   networking = {
     hostName = "harbor";
     defaultGateway = routerIpAddress;
-    domain = "lan";
     useDHCP = false;
     nameservers = [ "127.0.0.1" ];
     enableIPv6 = false;
@@ -87,6 +89,13 @@ in
     };
   };
 
+  sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
+
+  my.acme = {
+    enable = true;
+    extraDomainNames = [ "*.${config.networking.fqdn}" ];
+  };
+
   services = {
     # argononed fails to start
     # hardware.argonone.enable = true;
@@ -101,10 +110,12 @@ in
     nginx = {
       enable = true;
       recommendedProxySettings = true;
+      recommendedTlsSettings = true;
       virtualHosts = {
         adguard = {
           serverName = "adguard.${config.networking.fqdn}";
-          addSSL = false;
+          useACMEHost = config.networking.fqdn;
+          onlySSL = true;
           extraConfig = ''
             proxy_buffering off;
           '';
@@ -114,6 +125,8 @@ in
         };
         "block-root-domain" = {
           serverName = config.networking.fqdn; # Explicitly block the base domain
+          useACMEHost = config.networking.fqdn;
+          onlySSL = true;
           default = true;
           locations."/" = {
             return = "444";
@@ -180,8 +193,12 @@ in
             {
               # TODO: need to set up a real DNS server on harbor to handle
               # local queries instead of using rewrites like this
-              domain = "*.hoard.lan";
-              answer = "192.168.1.60";
+              domain = "*.reaper.${config.networking.domain}";
+              answer = "192.168.1.20";
+            }
+            {
+              domain = "*.hoard.${config.networking.domain}";
+              answer = "192.168.1.59";
             }
             {
               domain = "router.${config.networking.domain}";
@@ -203,7 +220,10 @@ in
     };
   };
 
-  networking.firewall.allowedTCPPorts = [ 80 ];
+  networking.firewall.allowedTCPPorts = [
+    config.services.nginx.defaultSSLListenPort
+    config.services.nginx.defaultHTTPListenPort
+  ];
   networking.firewall.allowedUDPPorts = [
     53
     67

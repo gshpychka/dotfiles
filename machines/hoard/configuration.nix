@@ -22,6 +22,7 @@ in
     ./hardware-configuration.nix
     ../../modules/qbittorrent.nix
     ../../modules/sabnzbd.nix
+    ../../modules/acme.nix
   ];
 
   boot = {
@@ -117,6 +118,11 @@ in
     };
   };
 
+  my.acme = {
+    enable = true;
+    extraDomainNames = [ "*.${config.networking.fqdn}" ];
+  };
+
   # Wi-Fi
   # sops.secrets.wifi-psk = {
   #   sopsFile = ../../secrets/common/network.yaml;
@@ -141,7 +147,6 @@ in
 
   networking = {
     hostName = "hoard";
-    domain = "lan";
     usePredictableInterfaceNames = true;
     enableIPv6 = false;
     interfaces = {
@@ -261,62 +266,36 @@ in
     nginx = {
       enable = true;
       recommendedProxySettings = true;
-      virtualHosts = {
-        qbittorrent = {
-          serverName = "qbittorrent.${config.networking.fqdn}";
-          locations."/" = {
-            proxyPass = "http://127.0.0.1:${ports.qbittorrent}/";
+      recommendedTlsSettings = true;
+      virtualHosts =
+        let
+          services = [
+            "qbittorrent"
+            "radarr"
+            "sonarr"
+            "lidarr"
+            "prowlarr"
+            "sabnzbd"
+            "homepage"
+            "glances"
+            "tautulli"
+          ];
+
+          serviceToVhost = name: {
+            name = name;
+            value = {
+              serverName = "${name}.${config.networking.fqdn}";
+              useACMEHost = config.networking.fqdn;
+              onlySSL = true;
+              locations."/" = {
+                proxyPass = "http://127.0.0.1:${ports.${name}}/";
+              };
+            };
           };
-        };
-        prowlarr = {
-          serverName = "prowlarr.${config.networking.fqdn}";
-          locations."/" = {
-            proxyPass = "http://127.0.0.1:${ports.prowlarr}/";
-          };
-        };
-        sonarr = {
-          serverName = "sonarr.${config.networking.fqdn}";
-          locations."/" = {
-            proxyPass = "http://127.0.0.1:${ports.sonarr}/";
-          };
-        };
-        radarr = {
-          serverName = "radarr.${config.networking.fqdn}";
-          locations."/" = {
-            proxyPass = "http://127.0.0.1:${ports.radarr}/";
-          };
-        };
-        lidarr = {
-          serverName = "lidarr.${config.networking.fqdn}";
-          locations."/" = {
-            proxyPass = "http://127.0.0.1:${ports.lidarr}/";
-          };
-        };
-        sabnzbd = {
-          serverName = "sabnzbd.${config.networking.fqdn}";
-          locations."/" = {
-            proxyPass = "http://127.0.0.1:${ports.sabnzbd}/";
-          };
-        };
-        homepage = {
-          serverName = "home.${config.networking.fqdn}";
-          locations."/" = {
-            proxyPass = "http://127.0.0.1:${ports.homepage}/";
-          };
-        };
-        glances = {
-          serverName = "glances.${config.networking.fqdn}";
-          locations."/" = {
-            proxyPass = "http://127.0.0.1:${ports.glances}/";
-          };
-        };
-        tautulli = {
-          serverName = "tautulli.${config.networking.fqdn}";
-          locations."/" = {
-            proxyPass = "http://127.0.0.1:${ports.tautulli}/";
-          };
-        };
-      };
+
+          vhosts = builtins.listToAttrs (map serviceToVhost services);
+        in
+        vhosts;
     };
     homepage-dashboard = {
       enable = true;
@@ -829,6 +808,7 @@ in
 
   networking.firewall.allowedTCPPorts = [
     config.services.nginx.defaultHTTPListenPort
+    config.services.nginx.defaultSSLListenPort
     54545 # qbittorrent
   ];
 
