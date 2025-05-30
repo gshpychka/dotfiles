@@ -40,12 +40,19 @@ in
     enableIPv6 = false;
     nameservers = [ "127.0.0.1" ];
     # Build /etc/hosts so expand‑hosts can append the domain and local look‑ups work offline
-    hosts = builtins.listToAttrs (
-      map (h: {
-        name = h.ip;
-        value = [ h.name ];
-      }) staticHosts
-    );
+    hosts =
+      builtins.listToAttrs (
+        map (h: {
+          name = h.ip;
+          value = [ h.name ];
+        }) staticHosts
+      )
+      // {
+        # override default /etc/hosts entry that maps our own domain to our LAN address
+        # otherwise, it will map to 127.0.0.2
+        # we insert our row at the bottom, so it will take precedence
+        "${machineAddress}" = [ config.networking.hostName ];
+      };
 
     firewall = {
       allowedTCPPorts = [
@@ -84,7 +91,7 @@ in
       block_auth_min = 15;
       dns = {
         bind_hosts = [
-          "127.0.0.1"
+          "127.0.0.1" # the DNS server itself
         ];
         port = 5353; # does not clash with dnsmasq
         filtering_enabled = true;
@@ -101,7 +108,7 @@ in
         ];
         bootstrap_dns = [
           "1.1.1.1"
-          "8.8.8.8"
+          # "8.8.8.8"
           "9.9.9.9"
         ];
         aaaa_disabled = true;
