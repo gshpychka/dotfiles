@@ -96,9 +96,9 @@ in
         port = 5353; # does not clash with dnsmasq
         filtering_enabled = true;
         ratelimit = 100; # qps
-        upstream_mode = "parallel";
+        upstream_mode = "load_balance";
         upstream_dns = [
-          # we can specify the IPs directly, so no need for bootstrap servers
+          # we can set the IPs directly and provide the hostname that will be used for TLS verification only
           "tls://1.1.1.1#cloudflare-dns.com"
           "tls://1.0.0.1#cloudflare-dns.com"
           "tls://8.8.8.8#dns.google"
@@ -106,6 +106,7 @@ in
           "tls://9.9.9.9#dns.quad9.net"
           "tls://149.112.112.112#dns.quad9.net"
         ];
+        bootstrap_dns = [ ];
         allowed_clients = [
           # kind of redundant given our bind_hosts and firewall, but doesn't hurt
           "127.0.0.1/32"
@@ -116,6 +117,7 @@ in
         enable_dnssec = true;
         cache_size = 1024 * 1024 * 50;
         blocked_response_ttl = 60 * 60 * 24;
+        use_private_ptr_resolvers = false; # avoid a loop where AdGuard forwards PTR requests to dnsmasq
 
         # we don't want to use /etc/hosts, local domains should have been resolved by dnsmasq
         hostsfile_enabled = false;
@@ -132,11 +134,14 @@ in
   services.dnsmasq = {
     enable = true;
     settings = {
-      interface = lanInterface;
+      "listen-address" = [
+        machineAddress
+        "127.0.0.1"
+      ];
       domain = config.networking.domain; # authoritative local domain
       "expand-hosts" = true; # add domain to /etc/hosts names (local domain can be omitted)
       "localise-queries" = true; # prefer same‑subnet answers
-      "bogus-priv" = true; # drop RFC1918 reverse look‑ups
+      "bogus-priv" = true; # drop RFC1918 reverse look‑ups that are not in DHCP leases
       "no-resolv" = true; # ignore /etc/resolv.conf
 
       # resolve these locally
