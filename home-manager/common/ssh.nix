@@ -7,7 +7,7 @@
       enable = true;
       matchBlocks = {
         all-remote = {
-          host = "* !*.lan !*.glib.sh";
+          host = "* !*.glib.sh";
           setEnv = {
             # avoid compatibility issues
             TERM = "xterm-256color";
