@@ -68,7 +68,7 @@ in
 
   services.resolved.enable = lib.mkForce false; # disable systemd‑resolved stub
 
-  # /etc/resolv.conf is not used, but we still set it just in case something uses it as a fallback
+  # used by processes on this machine to find out how to resolve DNS
   environment.etc."resolv.conf".text = ''
     nameserver 127.0.0.1 # libc resolver talks to dnsmasq
     search ${config.networking.domain} # bare hostnames auto‑expand
