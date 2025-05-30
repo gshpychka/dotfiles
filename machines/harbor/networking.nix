@@ -129,6 +129,16 @@ in
           enabled = false;
         };
       };
+      clients = {
+        # the only client is localhost anyway
+        runtime_sources = {
+          whois = false;
+          arp = false;
+          rdns = false;
+          dhcp = false; # only works if adguard is the DHCP server
+          hosts = true;
+        };
+      };
     };
   };
   services.dnsmasq = {
@@ -140,7 +150,7 @@ in
       ];
       domain = config.networking.domain; # authoritative local domain
       "expand-hosts" = true; # add domain to /etc/hosts names (local domain can be omitted)
-      "localise-queries" = true; # prefer same‑subnet answers
+      "localise-queries" = true; # prefer same‑subnet answers (if multiple are available)
       "bogus-priv" = true; # drop RFC1918 reverse look‑ups that are not in DHCP leases
       "no-resolv" = true; # ignore /etc/resolv.conf
 
@@ -153,7 +163,15 @@ in
         (map (h: "/" + h.name + "." + config.networking.domain + "/") staticHosts)
         ++ [
           # reverse zone kept local
-          "/1.168.192.in-addr.arpa/"
+          # Apple Bonjour service discovery queries
+          # like `b._dns-sd._udp.125.113.150.10.in-addr.arpa`
+          # are not caught by bogus-priv
+          # so we handle them more explicitly
+          # RFC 1918
+          "/10.in-addr.arpa/"
+          "/168.192.in-addr.arpa/"
+          # technically covers more than what the RFC does, but yolo
+          "/172.in-addr.arpa/"
 
           # suppress WPAD queries
           "/wpad.${config.networking.domain}/"
