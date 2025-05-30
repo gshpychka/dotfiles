@@ -98,18 +98,17 @@ in
         ratelimit = 100; # qps
         upstream_mode = "parallel";
         upstream_dns = [
-          "tls://1dot1dot1dot1.cloudflare-dns.com"
-          "tls://dns.google"
-          "tls://dns.quad9.net"
+          # we can specify the IPs directly, so no need for bootstrap servers
+          "tls://1.1.1.1#cloudflare-dns.com"
+          "tls://1.0.0.1#cloudflare-dns.com"
+          "tls://8.8.8.8#dns.google"
+          "tls://8.8.4.4#dns.google"
+          "tls://9.9.9.9#dns.quad9.net"
+          "tls://149.112.112.112#dns.quad9.net"
         ];
         allowed_clients = [
           # kind of redundant given our bind_hosts and firewall, but doesn't hurt
           "127.0.0.1/32"
-        ];
-        bootstrap_dns = [
-          "1.1.1.1"
-          # "8.8.8.8"
-          "9.9.9.9"
         ];
         aaaa_disabled = true;
         upstream_timeout = "1s";
