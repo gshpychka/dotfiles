@@ -40,6 +40,9 @@
         greedy = true;
       } # choose browser on each link
       {
+        name = "betterdisplay";
+      }
+      {
         name = "adobe-acrobat-reader";
         greedy = true;
       }
@@ -118,6 +121,7 @@
         name = "element";
         greedy = true;
       }
+      "zoom"
 
       # -- work --
       {
