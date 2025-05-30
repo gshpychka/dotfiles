@@ -61,6 +61,7 @@ in
 
   services.resolved.enable = lib.mkForce false; # disable systemd‑resolved stub
 
+  # /etc/resolv.conf is not used, but we still set it just in case something uses it as a fallback
   environment.etc."resolv.conf".text = ''
     nameserver 127.0.0.1 # libc resolver talks to dnsmasq
     search ${config.networking.domain} # bare hostnames auto‑expand
@@ -131,7 +132,6 @@ in
       "localise-queries" = true; # prefer same‑subnet answers
       "bogus-priv" = true; # drop RFC1918 reverse look‑ups
       "no-resolv" = true; # ignore /etc/resolv.conf
-      "resolv-file" = "/dev/null"; # removes the fallback path so only server= lines below are used
 
       # resolve these locally
       local = (
