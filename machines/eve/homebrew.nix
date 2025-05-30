@@ -95,7 +95,7 @@
         name = "dash";
         greedy = true;
       }
-
+      "tailscale"
       # -- 3d printing
       {
         name = "bambu-studio";
