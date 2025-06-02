@@ -171,6 +171,22 @@
         "type": "github"
       }
     },
+    "overseerr-nixpkgs": {
+      "locked": {
+        "lastModified": 1748446862,
+        "narHash": "sha256-MrHrMNecJ5wc2s3lvebMdpp2MLCo80js6Fu1sCJOF1Y=",
+        "owner": "jf-uu",
+        "repo": "nixpkgs",
+        "rev": "ee5f00c55c262aa2fdc87d3e573c6979b13cc135",
+        "type": "github"
+      },
+      "original": {
+        "owner": "jf-uu",
+        "ref": "overseerr",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
     "root": {
       "inputs": {
         "darwin": "darwin",
@@ -181,6 +197,7 @@
         "nix-homebrew": "nix-homebrew",
         "nixos-stable": "nixos-stable",
         "nixpkgs": "nixpkgs",
+        "overseerr-nixpkgs": "overseerr-nixpkgs",
         "sops-nix": "sops-nix"
       }
     },

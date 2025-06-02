@@ -476,7 +476,6 @@ in
     };
     overseerr = {
       enable = true;
-      group = "media";
     };
     recyclarr = {
       enable = true;

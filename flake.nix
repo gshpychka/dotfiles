@@ -310,13 +310,16 @@
                 ];
               } // nixpkgsConfig;
               nixpkgs.overlays = [
+                # https://github.com/NixOS/nixpkgs/pull/399266
                 (
                   final: prev:
                   let
-                    overseerr-nixpkgs = import overseerr-nixpkgs { system = final.system; };
+                    overseerrPkgs = import overseerr-nixpkgs {
+                      inherit (final) system config;
+                    };
                   in
                   {
-                    overseerr = overseerr-nixpkgs.overseerr;
+                    overseerr = overseerrPkgs.overseerr;
                   }
                 )
               ] ++ overlays;
