@@ -101,6 +101,17 @@ in
       qbittorrent-password = { };
       sabnzbd-api-key = { };
       plex-token = { };
+      cloudflare-tunnel = {
+        sopsFile = ../../secrets/hoard/cloudflare-tunnel.json;
+        mode = "0440";
+        format = "json";
+        key = ""; # we want the entire file
+      };
+      cloudflare-cert = {
+        sopsFile = ../../secrets/hoard/cloudflare-cert.pem;
+        mode = "0440";
+        format = "binary";
+      };
     };
     templates = {
       "homepage-dashboard.env" = {
@@ -262,6 +273,17 @@ in
           "valid users" = "kodi";
           "public" = "no";
           "writable" = "yes";
+        };
+      };
+    };
+    cloudflared = {
+      enable = true;
+      certificateFile = config.sops.secrets.cloudflare-cert.path;
+      tunnels.hoard-tunnel = {
+        default = "http_status:404";
+        credentialsFile = config.sops.secrets.cloudflare-tunnel.path;
+        ingress = {
+          "overseerr.${config.networking.domain}" = "http://localhost:${ports.overseerr}";
         };
       };
     };
