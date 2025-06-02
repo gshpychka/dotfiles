@@ -36,6 +36,7 @@
     #   url = "github:nix-community/neovim-nightly-overlay";
     #   inputs.nixpkgs.follows = "nixpkgs";
     # };
+    overseerr-nixpkgs.url = "github:jf-uu/nixpkgs/overseerr";
   };
 
   outputs =
@@ -43,6 +44,7 @@
       self,
       nixpkgs,
       nixos-stable,
+      overseerr-nixpkgs,
       darwin,
       home-manager,
       nix-homebrew,
@@ -307,7 +309,17 @@
                   "dotnet-sdk-wrapped-6.0.428"
                 ];
               } // nixpkgsConfig;
-              nixpkgs.overlays = overlays;
+              nixpkgs.overlays = [
+                (
+                  final: prev:
+                  let
+                    overseerr-nixpkgs = import overseerr-nixpkgs { system = final.system; };
+                  in
+                  {
+                    overseerr = overseerr-nixpkgs.overseerr;
+                  }
+                )
+              ] ++ overlays;
 
               nix.settings = {
                 allowed-users = [ user ];

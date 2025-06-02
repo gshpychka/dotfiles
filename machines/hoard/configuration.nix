@@ -14,6 +14,7 @@ let
     lidarr = "8686";
     prowlarr = "9696";
     plex = "32400";
+    overseerr = toString config.services.overseerr.port;
     tautulli = toString config.services.tautulli.port;
   };
 in
@@ -23,6 +24,7 @@ in
     ../../modules/qbittorrent.nix
     ../../modules/sabnzbd.nix
     ../../modules/acme.nix
+    ../../modules/overseerr.nix
   ];
 
   boot = {
@@ -279,6 +281,7 @@ in
             "home"
             "glances"
             "tautulli"
+            "overseerr"
           ];
 
           serviceToVhost = name: {
@@ -468,6 +471,10 @@ in
       group = "media";
     };
     sabnzbd = {
+      enable = true;
+      group = "media";
+    };
+    overseerr = {
       enable = true;
       group = "media";
     };
