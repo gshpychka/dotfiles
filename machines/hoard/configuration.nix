@@ -257,7 +257,7 @@ in
         "time-machine" = {
           "vfs objects" = "catia fruit streams_xattr";
           "fruit:time machine" = "yes";
-          "fruit: time machine max size" = "2T";
+          "fruit:time machine max size" = "2T";
           "fruit:metadata" = "stream";
           "fruit:wipe_intentionally_left_blank_rfork" = "yes";
           "fruit:delete_empty_adfiles" = "yes";
