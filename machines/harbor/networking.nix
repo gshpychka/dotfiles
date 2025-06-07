@@ -15,11 +15,19 @@ let
       name = "hoard";
       ip = "192.168.1.3";
       mac = "E8:FF:1E:D6:89:EB";
+      enableSubdomains = true;
     }
     {
       name = "reaper";
       ip = "192.168.1.4";
       mac = "C8:7F:54:0B:FB:8C";
+      enableSubdomains = true;
+    }
+    {
+      name = "air-conditioner";
+      ip = "192.168.1.51";
+      mac = "08:BC:20:04:48:5A";
+      enableSubdomains = false;
     }
   ];
 
@@ -184,7 +192,10 @@ in
       # dnsmasq cannot alias wildcard to another name, so we have to specify the IPs
       # this is why we use static leases at all
       address = (
-        (map (h: "/" + h.name + "." + config.networking.domain + "/" + h.ip) staticHosts)
+        (map (h: "/" + h.name + "." + config.networking.domain + "/" + h.ip) (
+          # Filter out hosts that don't need subdomain resolution
+          lib.filter (h: h ? enableSubdomains && h.enableSubdomains) staticHosts
+        ))
         ++ [ "/${config.networking.hostName}.${config.networking.domain}/${machineAddress}" ]
       );
 
