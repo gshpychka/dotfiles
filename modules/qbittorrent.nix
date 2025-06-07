@@ -51,7 +51,7 @@ in
       type = types.bool;
       default = false;
       description = lib.mdDoc ''
-        Open services.qBittorrent.port to the outside network.
+        Open services.qbittorrent.port to the outside network.
       '';
     };
 
