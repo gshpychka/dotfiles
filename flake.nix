@@ -354,5 +354,12 @@
           }
         ];
       };
+
+      checks = {
+        aarch64-darwin.eve = self.darwinConfigurations.eve.system;
+        aarch64-linux.harbor = self.nixosConfigurations.harbor.config.system.build.toplevel;
+        x86_64-linux.reaper = self.nixosConfigurations.reaper.config.system.build.toplevel;
+        x86_64-linux.hoard = self.nixosConfigurations.hoard.config.system.build.toplevel;
+      };
     };
 }
