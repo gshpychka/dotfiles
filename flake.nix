@@ -88,7 +88,6 @@
         )
       ];
 
-      stateVersion = "22.11";
       user = "gshpychka";
     in
     {
@@ -99,7 +98,7 @@
           inputs.sops-nix.darwinModules.sops
           ./machines/eve/configuration.nix
           ./machines/eve/homebrew.nix
-
+          ./modules/globals.nix
           globalNixModule
 
           (
@@ -144,7 +143,7 @@
                 {
                   imports = [ ./home-manager/eve ];
                   home.file.".hushlogin".text = "";
-                  home.stateVersion = stateVersion;
+                  home.stateVersion = "22.11";
                 };
             };
           }
@@ -172,6 +171,7 @@
         modules = [
           inputs.sops-nix.nixosModules.sops
           ./machines/harbor/configuration.nix
+          ./modules/globals.nix
 
           globalNixModule
 
@@ -206,7 +206,7 @@
                 { ... }:
                 {
                   imports = [ ./home-manager/harbor ];
-                  home.stateVersion = stateVersion;
+                  home.stateVersion = "22.11";
                 };
             };
           }
@@ -219,6 +219,7 @@
         modules = [
           inputs.sops-nix.nixosModules.sops
           ./machines/reaper/configuration.nix
+          ./modules/globals.nix
 
           globalNixModule
 
@@ -294,6 +295,7 @@
         modules = [
           inputs.sops-nix.nixosModules.sops
           ./machines/hoard/configuration.nix
+          ./modules/globals.nix
 
           globalNixModule
 

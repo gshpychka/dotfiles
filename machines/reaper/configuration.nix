@@ -115,6 +115,7 @@
 
   my.acme = {
     enable = true;
+    domain = config.my.domain;
     extraDomainNames = [ "*.${config.networking.fqdn}" ];
   };
 

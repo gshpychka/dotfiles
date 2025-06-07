@@ -2,7 +2,6 @@
 
 let
   cfg = config.my.acme;
-  domain = "glib.sh";
 in
 with lib;
 {
@@ -14,17 +13,22 @@ with lib;
       description = "Turn on Cloudflare-based ACME integration.";
     };
 
+    domain = mkOption {
+      type = types.str;
+      description = "Base domain used for ACME registration.";
+    };
+
     extraDomainNames = mkOption {
       type = types.listOf types.str;
       default = [ ];
       description = "Additional SANs to include on the same certificate.";
-      example = [ "alt.${domain}" ];
+      example = [ "alt.example.com" ];
     };
   };
 
   config = mkIf cfg.enable {
 
-    networking.domain = domain;
+    networking.domain = cfg.domain;
 
     sops.secrets.cloudflare-api-token = {
       sopsFile = ../secrets/common/cloudflare.yaml;
@@ -41,7 +45,7 @@ with lib;
     security.acme = {
       acceptTerms = true;
       defaults = {
-        email = "acme@${domain}";
+        email = "acme@${cfg.domain}";
         dnsProvider = "cloudflare";
         environmentFile = config.sops.templates."acme.env".path;
         reloadServices = [ "nginx" ];

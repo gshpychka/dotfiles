@@ -1,42 +1,46 @@
 {
+  config,
   ...
 }:
 {
+  imports = [
+    ../../modules/globals.nix
+  ];
   programs = {
     ssh = {
       enable = true;
       extraConfig = ''
         CanonicalizeHostname always
-        CanonicalDomains glib.sh
+        CanonicalDomains ${config.my.domain}
       '';
       matchBlocks = {
         all-remote = {
-          host = "* !*.glib.sh";
+          host = "* !*.${config.my.domain}";
           setEnv = {
             # avoid compatibility issues
             TERM = "xterm-256color";
           };
         };
         local = {
-          host = "*.glib.sh";
+          host = "*.${config.my.domain}";
           extraOptions = {
             ForwardAgent = "yes";
           };
         };
         harbor = {
-          host = "harbor.glib.sh";
+          host = "harbor.${config.my.domain}";
           user = "pi";
         };
         reaper = {
-          host = "reaper.glib.sh";
+          host = "reaper.${config.my.domain}";
           user = "gshpychka";
         };
         hoard = {
-          host = "hoard.glib.sh";
+          host = "hoard.${config.my.domain}";
           user = "gshpychka";
         };
         kodi = {
-          host = "kodi.glib.sh";
+          host = "kodi.${config.my.domain}";
           user = "root";
           setEnv = {
             TERM = "xterm-256color";
