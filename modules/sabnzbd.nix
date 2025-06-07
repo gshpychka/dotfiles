@@ -83,7 +83,7 @@ in
     };
 
     networking.firewall = mkIf cfg.openFirewall {
-      # TODO: decleratively configurable port
+      # TODO: declaratively configurable port
       allowedTCPPorts = [ 8085 ];
     };
   };
