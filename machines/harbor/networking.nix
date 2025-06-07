@@ -29,6 +29,12 @@ let
       mac = "08:BC:20:04:48:5A";
       enableSubdomains = false;
     }
+    {
+      name = "tv";
+      ip = "192.168.1.52";
+      mac = "1C:AF:4A:0C:6E:76";
+      enableSubdomains = false;
+    }
   ];
 
 in
