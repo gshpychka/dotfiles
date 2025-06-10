@@ -10,7 +10,6 @@
     ./1password.nix
     ./npm.nix
     ../common/tmux
-    ../common/neovim
     ../common
   ];
 
