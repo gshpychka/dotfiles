@@ -5,6 +5,7 @@
     ./git.nix
     ./direnv.nix
     ./ssh.nix
+    ../modules/neovim
   ];
 
   home = {
@@ -52,5 +53,20 @@
         "--bind ctrl-h:preview-down,ctrl-l:preview-up"
       ];
     };
+  };
+
+  my.neovim = {
+    enable = true;
+    languages = [
+      "bash"
+      "docker"
+      "json"
+      "lua"
+      "nix"
+      "python"
+      "typescript"
+      "yaml"
+      "zig"
+    ];
   };
 }
