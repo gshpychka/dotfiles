@@ -605,7 +605,7 @@ in
                 "0a3f082873eb454bde444150b70253cc" # Extras
                 "712d74cd88bceb883ee32f773656b1f5" # Sing-Along Versions
                 "cae4ca30163749b891686f95532519bd" # AV1
-                "923b6abef9b17f937fab56cfcf89e1f1" # DV (WEBDL)
+                # "923b6abef9b17f937fab56cfcf89e1f1" # DV (WEBDL)
                 "b6832f586342ef70d9c128d40c07b872" # Bad Dual Groups
                 "cc444569854e9de0b084ab2b8b1532b2" # Black and White Editions
                 # "ae9b7c9ebde1f3bd336a8cbd1ec4c5e5" # No-RlsGroup
@@ -613,7 +613,7 @@ in
                 "5c44f52a8714fdd79bb4d98e2673be1f" # Retags
                 # "f537cf427b64c38c8e36298f657e4828" # Scene
                 # "9c38ebb7384dada637be8899efa68e6f" # SDR
-                "25c12f78430a3a23413652cbd1d48d77" # SDR (no WEBDL)
+                # "25c12f78430a3a23413652cbd1d48d77" # SDR (no WEBDL)
                 "839bea857ed2c0a8e084f3cbdbd65ecb" # x265 (no HDR/DV)
               ];
               assign_scores_to = [
@@ -716,8 +716,8 @@ in
                 "9c11cd3f07101cdba90a2d81cf0e56b4" # LQ
                 "e2315f990da2e2cbfc9fa5b7a6fcfe48" # LQ (Release Title)
                 "23297a736ca77c0fc8e70f8edd7ee56c" # Upscaled
-                "9b27ab6498ec0f31a3353992e19434ca" # DV (WEBDL)
-                "83304f261cf516bb208c18c54c0adf97" # SDR (no WEBDL)
+                # "9b27ab6498ec0f31a3353992e19434ca" # DV (WEBDL)
+                # "83304f261cf516bb208c18c54c0adf97" # SDR (no WEBDL)
               ];
               assign_scores_to = [
                 { name = "Any"; }
