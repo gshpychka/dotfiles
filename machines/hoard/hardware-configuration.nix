@@ -14,6 +14,7 @@
         "nvme"
         "usbhid"
         "usb_storage"
+        "uas"
         "sd_mod"
       ];
       kernelModules = [
@@ -25,13 +26,27 @@
       };
       luks.devices = {
         oasis = {
-          device = "/dev/disk/by-label/oasis";
+          device = "/dev/disk/by-label/oasis-enc";
           crypttabExtraOpts = [ "tpm2-device=auto" ];
           allowDiscards = true;
           bypassWorkqueues = true;
         };
+        # hoard-alpha = {
+        #   device = "/dev/disk/by-label/hoard-alpha-enc";
+        #   crypttabExtraOpts = [
+        #     "tpm2-device=auto"
+        #     "nofail"
+        #   ];
+        # };
+        hoard-beta = {
+          device = "/dev/disk/by-label/hoard-beta-enc";
+          crypttabExtraOpts = [
+            "tpm2-device=auto"
+            "nofail"
+          ];
+        };
         trove = {
-          device = "/dev/disk/by-label/trove";
+          device = "/dev/disk/by-label/trove-enc";
           crypttabExtraOpts = [
             "tpm2-device=auto"
             "nofail"
@@ -62,12 +77,11 @@
     };
 
     "/mnt/hoard" = {
-      label = "hoard";
-      fsType = "ext4";
+      device = "/dev/mapper/hoard-beta";
+      fsType = "btrfs";
       options = [
-        "noatime" # don't update atime on read
-        "nofail" # don't fail if the mount fails
-        "commit=120"
+        "noatime"
+        "nofail"
         "lazytime"
       ];
     };
@@ -84,8 +98,8 @@
       device = "/dev/mapper/trove";
       fsType = "ext4";
       options = [
-        "noatime" # don't update atime on read
-        "nofail" # don't fail if the mount fails
+        "noatime"
+        "nofail"
       ];
     };
   };
