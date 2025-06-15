@@ -99,7 +99,7 @@
     usbStorage.manageShutdown = true;
     block = {
       defaultScheduler = "mq-deadline";
-      # defaultSchedulerRotational = "bfq";
+      defaultSchedulerRotational = "bfq";
     };
   };
 
