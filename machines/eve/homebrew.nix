@@ -28,7 +28,7 @@
       }
       # -- utilities --
       {
-        name = "mullvadvpn";
+        name = "mullvad-vpn";
         greedy = true;
       }
       {
