@@ -138,10 +138,6 @@
         greedy = true;
       }
       {
-        name = "studio-3t";
-        greedy = true;
-      }
-      {
         name = "mongodb-compass";
         greedy = true;
       }
