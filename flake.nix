@@ -160,6 +160,9 @@
                 "homebrew/homebrew-services" = homebrew-services;
               };
               mutableTaps = false;
+              extraEnv = {
+                HOMEBREW_NO_ANALYTICS = "1";
+              };
             };
           }
         ];
