@@ -1,13 +1,43 @@
 {
-  config,
   pkgs,
-  lib,
+  config,
   ...
 }:
 {
   imports = [
     ./touch-id.nix
   ];
+
+  networking = {
+    hostName = "eve";
+    computerName = "Eve";
+  };
+
+  users.users.${config.my.user} = {
+    home = "/Users/${config.my.user}";
+    shell = pkgs.zsh;
+  };
+
+  nix = {
+    settings = {
+      # originally motivated by https://github.com/NixOS/nixpkgs/pull/369588?new_mergebox=true#issuecomment-2566272567
+      sandbox = "relaxed";
+      allowed-users = [ config.system.primaryUser ];
+      trusted-users = [ config.system.primaryUser ];
+      # https://github.com/NixOS/nix/issues/7273
+      auto-optimise-store = false;
+      accept-flake-config = true;
+      http-connections = 0;
+      download-buffer-size = 500000000;
+    };
+    gc = {
+      automatic = true;
+      interval = {
+        Hour = 12;
+      };
+    };
+  };
+
   environment = {
     systemPackages = with pkgs; [
       # 1Password has to be installed system-wide
@@ -72,17 +102,12 @@
     };
   };
 
-  networking = {
-    hostName = "eve";
-    computerName = "Eve";
-  };
-
   fonts = {
     packages = with pkgs.nerd-fonts; [ jetbrains-mono ];
   };
 
   system = {
-    primaryUser = "gshpychka";
+    primaryUser = config.my.user;
     defaults = {
       NSGlobalDomain = {
         AppleFontSmoothing = 2;
@@ -120,24 +145,7 @@
       remapCapsLockToEscape = true;
     };
 
-    # https://github.com/zhaofengli/nix-homebrew/issues/3#issuecomment-1622240992
-    activationScripts = {
-      fixHomebrewPermissions.text = lib.mkOrder 1501 (
-        lib.concatStringsSep "\n" (
-          lib.mapAttrsToList (
-            prefix: d:
-            if d.enable then
-              ''
-                chown -R ${config.nix-homebrew.user} ${prefix}/bin
-                chgrp -R ${config.nix-homebrew.group} ${prefix}/bin
-              ''
-            else
-              ""
-          ) config.nix-homebrew.prefixes
-        )
-      );
-    };
   };
-
   security.pam.enableSudoTouchId = true;
+  system.stateVersion = 4;
 }

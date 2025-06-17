@@ -1,5 +1,23 @@
-{ config, ... }:
 {
+  config,
+  lib,
+  inputs,
+  ...
+}:
+{
+  nix-homebrew = {
+    enable = true;
+    enableRosetta = false;
+    user = config.system.primaryUser;
+    taps = {
+      "homebrew/homebrew-core" = inputs.homebrew-core;
+      "homebrew/homebrew-cask" = inputs.homebrew-cask;
+    };
+    mutableTaps = false;
+    extraEnv = {
+      HOMEBREW_NO_ANALYTICS = "1";
+    };
+  };
   homebrew = {
     enable = true;
     taps = builtins.attrNames config.nix-homebrew.taps;
@@ -149,4 +167,20 @@
       "Xcode" = 497799835;
     };
   };
+  # https://github.com/zhaofengli/nix-homebrew/issues/3#issuecomment-1622240992
+  system.activationScripts.fixHomebrewPermissions.text = lib.mkOrder 1501 (
+    lib.concatStringsSep "\n" (
+      lib.mapAttrsToList (
+        prefix: d:
+        if d.enable then
+          ''
+            chown -R ${config.nix-homebrew.user} ${prefix}/bin
+            chgrp -R ${config.nix-homebrew.group} ${prefix}/bin
+          ''
+        else
+          ""
+      ) config.nix-homebrew.prefixes
+    )
+  );
+
 }

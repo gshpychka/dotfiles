@@ -1,4 +1,5 @@
 {
+  inputs,
   config,
   pkgs,
   ...
@@ -57,8 +58,8 @@ in
             "/etc/secrets/initrd/ssh_host_rsa_key"
           ];
           port = 22;
-          authorizedKeys = config.users.users.gshpychka.openssh.authorizedKeys.keys;
-          authorizedKeyFiles = config.users.users.gshpychka.openssh.authorizedKeys.keyFiles;
+          authorizedKeys = config.users.users.${config.my.user}.openssh.authorizedKeys.keys;
+          authorizedKeyFiles = config.users.users.${config.my.user}.openssh.authorizedKeys.keyFiles;
         };
       };
     };
@@ -88,6 +89,28 @@ in
   environment.systemPackages = with pkgs; [
     cryptsetup
   ];
+  nixpkgs.config = {
+    permittedInsecurePackages = [
+      # required for Sonarr
+      "aspnetcore-runtime-6.0.36"
+      "aspnetcore-runtime-wrapped-6.0.36"
+      "dotnet-sdk-6.0.428"
+      "dotnet-sdk-wrapped-6.0.428"
+    ];
+  };
+
+  nix.settings = {
+    allowed-users = [ config.my.user ];
+    trusted-users = [ config.my.user ];
+    auto-optimise-store = true;
+    accept-flake-config = true;
+    http-connections = 0;
+  };
+  nix.gc = {
+    dates = "weekly";
+    automatic = true;
+    options = "--delete-older-than 7d";
+  };
 
   sops = {
     defaultSopsFile = ../../secrets/hoard/secrets.yaml;
@@ -170,8 +193,6 @@ in
     };
   };
 
-  time.timeZone = "Europe/Kyiv";
-
   hardware = {
     gpgSmartcards.enable = true;
     enableAllFirmware = true;
@@ -182,11 +203,11 @@ in
   users = {
     groups.media = {
       members = [
-        config.users.users.gshpychka.name
+        config.users.users.${config.my.user}.name
       ];
     };
     users = {
-      gshpychka = {
+      ${config.my.user} = {
         shell = pkgs.zsh;
         isNormalUser = true;
         extraGroups = [

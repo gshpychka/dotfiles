@@ -48,7 +48,7 @@ with lib;
         email = "acme@${cfg.domain}";
         dnsProvider = "cloudflare";
         environmentFile = config.sops.templates."acme.env".path;
-        reloadServices = [ "nginx" ];
+        reloadServices = lib.mkIf config.services.nginx.enable [ "nginx" ];
         group = "acme";
       };
 
@@ -58,6 +58,8 @@ with lib;
     };
 
     # Let nginx read the key
-    users.groups.acme.members = [ "nginx" ];
+    users.groups.${config.security.acme.defaults.group}.members =
+      lib.mkIf config.services.nginx.enable
+        [ "nginx" ];
   };
 }

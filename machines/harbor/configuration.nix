@@ -26,15 +26,15 @@
     };
   };
 
+  my.user = "pi";
+
   networking = {
     hostName = "harbor";
   };
 
-  time.timeZone = "Europe/Kyiv";
-
   users = {
     users = {
-      pi = {
+      ${config.my.user} = {
         shell = pkgs.zsh;
         isNormalUser = true;
         extraGroups = [ "wheel" ];
@@ -47,6 +47,19 @@
         initialHashedPassword = "";
       };
     };
+  };
+  nixpkgs.config.permittedInsecurePackages = [ "openssl-1.1.1w" ];
+
+  nix.settings = {
+    allowed-users = [ config.my.user ];
+    trusted-users = [ config.my.user ];
+
+    auto-optimise-store = true;
+  };
+  nix.gc = {
+    dates = "weekly";
+    automatic = true;
+    options = "--delete-older-than 7d";
   };
 
   programs.zsh = {

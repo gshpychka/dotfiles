@@ -1,18 +1,18 @@
 {
-  config,
+  osConfig,
   lib,
   ...
 }:
+let
+  domain = osConfig.my.domain;
+in
 {
-  imports = [
-    ../../modules/globals.nix
-  ];
   programs = {
     ssh = {
       enable = true;
       extraConfig = ''
         CanonicalizeHostname yes
-        CanonicalDomains ${config.my.domain}
+        CanonicalDomains ${domain}
 
         # only canonicalize hosts with no dots
         CanonicalizeMaxDots 0
@@ -31,22 +31,22 @@
         # because HM orders these as a DAG, so we need to specify the dependencies ourselves
 
         harbor = lib.hm.dag.entryBefore [ "local" ] {
-          match = "final host harbor.${config.my.domain}";
+          match = "final host harbor.${domain}";
           user = "pi";
         };
 
         reaper = lib.hm.dag.entryBefore [ "local" ] {
-          match = "final host reaper.${config.my.domain}";
+          match = "final host reaper.${domain}";
           user = "gshpychka";
         };
 
         hoard = lib.hm.dag.entryBefore [ "local" ] {
-          match = "final host hoard.${config.my.domain}";
+          match = "final host hoard.${domain}";
           user = "gshpychka";
         };
 
         kodi = lib.hm.dag.entryBefore [ "local" ] {
-          match = "final host kodi.${config.my.domain}";
+          match = "final host kodi.${domain}";
           user = "root";
           forwardAgent = false;
           setEnv = {
@@ -55,7 +55,7 @@
         };
 
         local = {
-          match = "final host *.${config.my.domain}";
+          match = "final host *.${domain}";
           forwardAgent = true;
         };
 
@@ -65,7 +65,7 @@
           # (i.e. before canonicalization)
           # N.B. we need to use `final` as opposed to `canonical`,
           # since the latter will not match if no canonicalization happens
-          match = "final host !*.${config.my.domain}";
+          match = "final host !*.${domain}";
           # restore the safe default
           forwardAgent = false;
           setEnv = {

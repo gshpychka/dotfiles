@@ -1,5 +1,6 @@
 # https://github.com/NixOS/nixpkgs/pull/399266
 {
+  inputs,
   config,
   pkgs,
   lib,
@@ -14,8 +15,6 @@ in
 
   options.services.overseerr = {
     enable = lib.mkEnableOption "Overseerr, a request management and media discovery tool for the Plex ecosystem";
-
-    package = lib.mkPackageOption pkgs "overseerr" { };
 
     openFirewall = lib.mkOption {
       type = lib.types.bool;
@@ -49,6 +48,20 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    nixpkgs.overlays = [
+      # https://github.com/NixOS/nixpkgs/pull/399266
+      (
+        final: prev:
+        let
+          overseerrPkgs = import inputs.overseerr-nixpkgs {
+            inherit (final) system config;
+          };
+        in
+        {
+          overseerr = overseerrPkgs.overseerr;
+        }
+      )
+    ];
     systemd.services.overseerr = {
       description = "Request management and media discovery tool for the Plex ecosystem";
       after = [ "network.target" ];
@@ -59,8 +72,8 @@ in
       };
       serviceConfig = {
         Type = "exec";
-        WorkingDirectory = "${cfg.package}/libexec/overseerr/deps/overseerr";
-        ExecStart = lib.getExe cfg.package;
+        WorkingDirectory = "${pkgs.overseerr}/libexec/overseerr/deps/overseerr";
+        ExecStart = lib.getExe pkgs.overseerr;
         Restart = "on-failure";
         ProtectHome = true;
         ProtectSystem = "strict";
