@@ -1,7 +1,5 @@
-{ pkgs, config, ... }:
+{ config, ... }:
 {
-  # https://forums.developer.nvidia.com/t/6-15-kernel-and-closed-module-compatibility-in-570-153-02/333711
-  boot.kernelPackages = pkgs.linuxPackages_6_14;
   nixpkgs = {
     config = {
       # We shouldn't set cudaSupport = true here, because it will lead to
@@ -9,8 +7,8 @@
       # Omitting it does NOT prevent CUDA support
       # If a package requires this flag, use an override
 
-      # Keeping this here to be explicit
-      # cudaSupport = true;
+      # Keeping this here as a reference
+      # cudaSupport = true; (do NOT uncomment)
 
       # https://en.wikipedia.org/wiki/CUDA#GPUs_supported
       cudaCapabilities = [ "8.9" ];
