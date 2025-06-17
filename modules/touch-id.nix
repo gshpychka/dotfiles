@@ -15,11 +15,16 @@ in
 
       pam_watchid has to be installed manually beforehand
       https://github.com/biscuitehh/pam-watchid
-
     '';
   };
 
   config = lib.mkIf (cfg.enableSudoTouchId) {
+    assertions = [
+      {
+        assertion = pkgs.stdenv.isDarwin;
+        message = "sudo with Touch ID is only supported on macOS";
+      }
+    ];
     environment.etc."pam.d/sudo_local" = {
       text = ''
         auth       optional       ${pkgs.pam-reattach}/lib/pam/pam_reattach.so

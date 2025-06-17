@@ -10,8 +10,8 @@
   home = {
     preferXdgDirectories = true;
     packages = with pkgs; [
-      gh # github cli tool
       fd
+      ripgrep
     ];
   };
 

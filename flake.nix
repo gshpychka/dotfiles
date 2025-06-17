@@ -57,10 +57,9 @@
           home-manager.darwinModules.home-manager
           nix-homebrew.darwinModules.nix-homebrew
 
-          ./home-manager/eve
-          ./machines/eve/configuration.nix
-          ./machines/eve/homebrew.nix
           ./modules/globals.nix
+          ./home-manager/eve
+          ./machines/eve
         ];
       };
 
