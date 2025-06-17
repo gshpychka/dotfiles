@@ -28,10 +28,6 @@
       flake = false;
     };
     sops-nix.url = "github:Mic92/sops-nix";
-    # neovim-nightly-overlay = {
-    #   url = "github:nix-community/neovim-nightly-overlay";
-    #   inputs.nixpkgs.follows = "nixpkgs";
-    # };
     overseerr-nixpkgs.url = "github:jf-uu/nixpkgs/overseerr";
   };
 
@@ -103,7 +99,7 @@
       };
 
       checks = {
-        aarch64-darwin.eve = self.darwinConfigurations.eve.system;
+        aarch64-darwin.eve = self.darwinConfigurations.eve.config.system.build.toplevel;
         aarch64-linux.harbor = self.nixosConfigurations.harbor.config.system.build.toplevel;
         x86_64-linux.reaper = self.nixosConfigurations.reaper.config.system.build.toplevel;
         x86_64-linux.hoard = self.nixosConfigurations.hoard.config.system.build.toplevel;
