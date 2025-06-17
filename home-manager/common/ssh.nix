@@ -37,12 +37,10 @@ in
 
         reaper = lib.hm.dag.entryBefore [ "local" ] {
           match = "final host reaper.${domain}";
-          user = "gshpychka";
         };
 
         hoard = lib.hm.dag.entryBefore [ "local" ] {
           match = "final host hoard.${domain}";
-          user = "gshpychka";
         };
 
         kodi = lib.hm.dag.entryBefore [ "local" ] {
@@ -56,6 +54,7 @@ in
 
         local = {
           match = "final host *.${domain}";
+          user = osConfig.my.user;
           forwardAgent = true;
         };
 

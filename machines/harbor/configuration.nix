@@ -51,9 +51,6 @@
   nixpkgs.config.permittedInsecurePackages = [ "openssl-1.1.1w" ];
 
   nix.settings = {
-    allowed-users = [ config.my.user ];
-    trusted-users = [ config.my.user ];
-
     auto-optimise-store = true;
   };
   nix.gc = {

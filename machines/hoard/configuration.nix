@@ -100,8 +100,6 @@ in
   };
 
   nix.settings = {
-    allowed-users = [ config.my.user ];
-    trusted-users = [ config.my.user ];
     auto-optimise-store = true;
     accept-flake-config = true;
     http-connections = 0;
