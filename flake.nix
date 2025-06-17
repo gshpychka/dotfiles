@@ -1,10 +1,5 @@
 {
   description = "My Machines";
-  # printf 'run\tprivate/var/run\n' | sudo tee -a /etc/synthetic.conf
-  # /System/Library/Filesystems/apfs.fs/Contents/Resources/apfs.util -t
-  # nix --experimental-features "nix-command flakes" build ".#darwinConfigurations.eve.system"
-  # ./result/sw/bin/darwin-rebuild switch --flake ".#eve"
-
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     nixos-stable.url = "github:nixos/nixpkgs/nixos-25.05";
@@ -54,8 +49,8 @@
           nix-homebrew.darwinModules.nix-homebrew
 
           ./modules/globals.nix
-          ./home-manager/eve
           ./machines/eve
+          ./home-manager/eve
         ];
       };
 
@@ -66,9 +61,9 @@
           inputs.sops-nix.nixosModules.sops
           home-manager.nixosModules.home-manager
 
+          ./modules/globals.nix
           ./machines/harbor/configuration.nix
           ./home-manager/harbor
-          ./modules/globals.nix
         ];
       };
 
@@ -79,9 +74,9 @@
           inputs.sops-nix.nixosModules.sops
           home-manager.nixosModules.home-manager
 
-          ./machines/reaper/configuration.nix
-          ./home-manager/reaper
           ./modules/globals.nix
+          ./machines/reaper
+          ./home-manager/reaper
         ];
       };
 
