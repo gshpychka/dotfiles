@@ -27,10 +27,6 @@
       url = "github:homebrew/homebrew-cask";
       flake = false;
     };
-    homebrew-services = {
-      url = "github:homebrew/homebrew-services";
-      flake = false;
-    };
     sops-nix.url = "github:Mic92/sops-nix";
     # neovim-nightly-overlay = {
     #   url = "github:nix-community/neovim-nightly-overlay";
@@ -50,7 +46,6 @@
       nix-homebrew,
       homebrew-core,
       homebrew-cask,
-      homebrew-services,
       ...
     }@inputs:
     let
@@ -157,7 +152,6 @@
               taps = {
                 "homebrew/homebrew-core" = homebrew-core;
                 "homebrew/homebrew-cask" = homebrew-cask;
-                "homebrew/homebrew-services" = homebrew-services;
               };
               mutableTaps = false;
               extraEnv = {
