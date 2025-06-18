@@ -24,6 +24,12 @@ let
       enableSubdomains = true;
     }
     {
+      name = "switch-alpha";
+      ip = "192.168.1.5";
+      mac = "98:BA:5F:46:87:00";
+      enableSubdomains = false;
+    }
+    {
       name = "air-conditioner";
       ip = "192.168.1.51";
       mac = "08:BC:20:04:48:5A";
