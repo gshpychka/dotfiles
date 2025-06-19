@@ -254,6 +254,5 @@ in
   systemd.services.adguardhome = {
     requires = [ config.systemd.services.dnsmasq.name ]; # hard dependency on dnsmasq for local resolution
     after = [ config.systemd.services.dnsmasq.name ]; # start order - dnsmasq first
-    serviceConfig.Restart = "on-failure";
   };
 }
