@@ -76,12 +76,12 @@ in
 
     firewall = {
       allowedTCPPorts = [
-        53 # large DNS replies and DNSSEC
+        53 # TCP fallback for large DNS responses (rare but needed for spec compliance)
+        853 # DNS over TLS (DoT)
       ];
       allowedUDPPorts = [
-        53 # normal DNS
-        67 # DHCP server→client
-        68 # DHCP client→server
+        53 # DNS queries from clients
+        67 # DHCP server→client (offers, acks)
       ];
     };
   };
@@ -90,7 +90,7 @@ in
 
   # used by processes on this machine to find out how to resolve DNS
   environment.etc."resolv.conf".text = ''
-    nameserver 127.0.0.1 # libc resolver talks to dnsmasq
+    nameserver 127.0.0.1 # libc resolver talks to AdGuard Home
     search ${config.networking.domain} # bare hostnames auto‑expand
   '';
 
@@ -111,36 +111,43 @@ in
       block_auth_min = 15;
       dns = {
         bind_hosts = [
-          "127.0.0.1" # the DNS server itself
+          "127.0.0.1" # for local processes
+          machineAddress # serve clients directly
         ];
-        port = 5353; # does not clash with dnsmasq
+        port = 53; # standard DNS port
         filtering_enabled = true;
         ratelimit = 100; # qps
-        upstream_mode = "load_balance";
+        upstream_mode = "fastest_addr"; # single upstream, but keep for consistency
         upstream_dns = [
-          # we can set the IPs directly and provide the hostname that will be used for TLS verification only
-          "tls://1.1.1.1#cloudflare-dns.com"
-          "tls://1.0.0.1#cloudflare-dns.com"
-          "tls://8.8.8.8#dns.google"
-          "tls://8.8.4.4#dns.google"
-          "tls://9.9.9.9#dns.quad9.net"
-          "tls://149.112.112.112#dns.quad9.net"
+          # Forward all queries to dnsmasq
+          "127.0.0.1#${toString config.services.dnsmasq.settings.port}"
+        ];
+        use_private_ptr_resolvers = true;
+        local_ptr_upstreams = [
+          "127.0.0.1#${toString config.services.dnsmasq.settings.port}"
         ];
         bootstrap_dns = [ ];
         allowed_clients = [
-          # kind of redundant given our bind_hosts and firewall, but doesn't hurt
-          "127.0.0.1/32"
+          "127.0.0.1/32" # localhost
+          "192.168.1.0/24" # LAN clients
         ];
         aaaa_disabled = true;
         upstream_timeout = "1s";
-        use_http3_upstreams = true;
-        enable_dnssec = true;
+        use_http3_upstreams = false; # not relevant for single local upstream
+        enable_dnssec = false; # dnsmasq handles DNSSEC validation
         cache_size = 1024 * 1024 * 50;
         blocked_response_ttl = 60 * 60 * 24;
-        use_private_ptr_resolvers = false; # avoid a loop where AdGuard forwards PTR requests to dnsmasq
 
         # we don't want to use /etc/hosts, local domains should have been resolved by dnsmasq
         hostsfile_enabled = false;
+      };
+      tls = {
+        enabled = true; # Enable DoT only
+        server_name = "dns.${config.networking.fqdn}"; # Required for DDR and client validation
+        port_dns_over_tls = 853;
+        port_https = 0; # DoH disabled
+        certificate_chain = "/var/lib/acme/${config.networking.fqdn}/fullchain.pem";
+        private_key = "/var/lib/acme/${config.networking.fqdn}/key.pem";
       };
       filtering = {
         filtering_enabled = true;
@@ -165,12 +172,13 @@ in
     enable = true;
     settings = {
       "listen-address" = [
-        machineAddress
-        "127.0.0.1"
+        "127.0.0.1" # only listen locally for AdGuard Home forwarding
       ];
+      port = 5353; # use non-standard port to avoid conflict with AdGuard Home
       domain = config.networking.domain; # authoritative local domain
       "expand-hosts" = true; # add domain to /etc/hosts names (local domain can be omitted)
       "localise-queries" = true; # prefer same‑subnet answers (if multiple are available)
+      "stop-dns-rebind" = true; # Reject addresses from upstream nameservers which are in the private IP ranges
       "bogus-priv" = true; # drop RFC1918 reverse look‑ups that are not in DHCP leases
       "no-resolv" = true; # ignore /etc/resolv.conf
 
@@ -211,8 +219,24 @@ in
         ++ [ "/${config.networking.hostName}.${config.networking.domain}/${machineAddress}" ]
       );
 
-      # upstream
-      server = [ "127.0.0.1#${toString config.services.adguardhome.settings.dns.port}" ];
+      # upstream DNS with DoT and DNSSEC
+      server = [
+        # Cloudflare DNS over TLS
+        "tls://1.1.1.1#cloudflare-dns.com"
+        "tls://1.0.0.1#cloudflare-dns.com"
+        # Google DNS over TLS
+        "tls://8.8.8.8#dns.google"
+        "tls://8.8.4.4#dns.google"
+        # Quad9 DNS over TLS
+        "tls://9.9.9.9#dns.quad9.net"
+        "tls://149.112.112.112#dns.quad9.net"
+      ];
+      "all-servers" = true; # query all servers, use fastest response
+      "dnssec" = true;
+      "trust-anchor" = [
+        # Root zone DNSSEC trust anchor (KSK-2017)
+        ". IN DS 20326 8 2 E06D44B80B8F1D39A95C0B0D7C65D08458E880409BBC683457104237C7F8EC8D"
+      ];
 
       "dhcp-authoritative" = true; # tell clients we are the the only DHCP server
       "dhcp-range" = "192.168.1.100,192.168.1.254,24h";
@@ -227,9 +251,9 @@ in
     };
   };
 
-  systemd.services.dnsmasq = {
-    requires = [ config.systemd.services.adguardhome.name ]; # hard dependency
-    after = [ config.systemd.services.adguardhome.name ]; # start order
+  systemd.services.adguardhome = {
+    requires = [ config.systemd.services.dnsmasq.name ]; # hard dependency on dnsmasq for local resolution
+    after = [ config.systemd.services.dnsmasq.name ]; # start order - dnsmasq first
     serviceConfig.Restart = "on-failure";
   };
 }
