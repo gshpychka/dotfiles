@@ -81,7 +81,6 @@ in
       allowedUDPPorts = [
         53 # normal DNS
         67 # DHCP server→client
-        68 # DHCP client→server
       ];
     };
   };
@@ -173,6 +172,7 @@ in
       "localise-queries" = true; # prefer same‑subnet answers (if multiple are available)
       "bogus-priv" = true; # drop RFC1918 reverse look‑ups that are not in DHCP leases
       "no-resolv" = true; # ignore /etc/resolv.conf
+      "stop-dns-rebind" = true; # Reject addresses from upstream nameservers which are in the private IP ranges.
 
       # resolve these locally
       local = (
