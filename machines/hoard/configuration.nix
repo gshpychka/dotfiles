@@ -304,6 +304,7 @@ in
         credentialsFile = config.sops.secrets.cloudflare-tunnel.path;
         ingress = {
           "overseerr.${config.networking.domain}" = "http://localhost:${ports.overseerr}";
+          "tautulli.${config.networking.domain}" = "http://localhost:${ports.tautulli}";
         };
       };
     };
