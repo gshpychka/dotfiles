@@ -21,7 +21,7 @@ in
   config = lib.mkIf (cfg.enableSudoTouchId) {
     assertions = [
       {
-        assertion = pkgs.stdenv.isDarwin;
+        assertion = pkgs.stdenv.hostPlatform.isDarwin;
         message = "sudo with Touch ID is only supported on macOS";
       }
     ];

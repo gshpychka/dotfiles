@@ -23,7 +23,7 @@
 
       custom =
         let
-          # display a host-specific icon for git repos
+          # display a vendor-specific icon for git repos
           generateGitHostIconModule = host: symbol: color: {
             when = "${pkgs.git}/bin/git config --get remote.origin.url | grep -q ${host}";
             require_repo = true;
@@ -155,12 +155,12 @@
         docker-clean = "docker rmi -f $(docker images -aq) && docker volume prune -f";
       }
       (lib.mkIf pkgs.stdenv.isDarwin {
-        dns-flush = lib.mkIf pkgs.stdenv.isDarwin "sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder";
+        dns-flush = "sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder";
       })
-      (lib.mkIf pkgs.stdenv.isLinux {
+      (lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
         ns = "sudo nixos-rebuild switch --flake ~/dotfiles";
       })
-      (lib.mkIf pkgs.stdenv.isDarwin {
+      (lib.mkIf pkgs.stdenv.hostPlatform.isDarwin {
         ns = "sudo darwin-rebuild switch --flake ~/dotfiles";
       })
     ];
