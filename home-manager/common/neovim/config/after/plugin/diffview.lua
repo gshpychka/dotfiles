@@ -1,7 +1,35 @@
 local actions = require("diffview.actions")
 
+-- Returns the name of the remote's default branch.
+--
+-- 1. Ask git for the symbolic ref that 'origin/HEAD' points to. This should
+--    yield something like 'refs/remotes/origin/main'.
+-- 2. If the command fails or returns nothing, fall back to 'master'. This
+--    mirrors git's historic default and ensures the mapping still works when
+--    'origin/HEAD' isn't configured.
+-- 3. Strip the common prefix from the reference so we're left with just the
+--    branch name ("main" in the example above).
+local function get_default_branch()
+  local head = vim.fn.systemlist(
+    "git symbolic-ref --quiet refs/remotes/origin/HEAD"
+  )[1]
+  if head == nil or head == "" then
+    return "master"
+  end
+  return head:gsub("refs/remotes/origin/", "")
+end
+
 vim.keymap.set("n", "<leader>dfo", ":DiffviewOpen<CR>", { desc = "Open Diffview" })
 vim.keymap.set("n", "<leader>dfc", ":DiffviewClose<CR>", { desc = "Close Diffview" })
+vim.keymap.set(
+  "n",
+  "<leader>dfm",
+  function()
+    local branch = get_default_branch()
+    vim.cmd(("DiffviewOpen origin/%s...HEAD"):format(branch))
+  end,
+  { desc = "Diff against default branch" }
+)
 require("diffview").setup({
   diff_binaries = false, -- Show diffs for binaries
   enhanced_diff_hl = false, -- See ':h diffview-config-enhanced_diff_hl'
