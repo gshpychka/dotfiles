@@ -299,10 +299,12 @@ in
     cloudflared = {
       enable = true;
       certificateFile = config.sops.secrets.cloudflare-cert.path;
+      # cloudflared tunnel create hoard-tunnel
       tunnels.hoard-tunnel = {
         default = "http_status:404";
         credentialsFile = config.sops.secrets.cloudflare-tunnel.path;
         ingress = {
+          # cloudflared tunnel route dns hoard-tunnel <hostname>
           "overseerr.${config.networking.domain}" = "http://localhost:${ports.overseerr}";
           "tautulli.${config.networking.domain}" = "http://localhost:${ports.tautulli}";
         };
