@@ -7,7 +7,7 @@ in
     backend = "docker";
     containers = {
       kokoro-fastapi = {
-        image = "ghcr.io/remsky/kokoro-fastapi-gpu:v0.2.3";
+        image = "ghcr.io/remsky/kokoro-fastapi-gpu:v0.2.4";
         ports = [ "${toString localPort}:8880" ];
         extraOptions = [
           "--device"
