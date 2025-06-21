@@ -15,6 +15,7 @@
       interval = {
         Hour = 12;
       };
+      options = "--delete-old";
     };
   };
 }
