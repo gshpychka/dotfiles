@@ -7,6 +7,7 @@
   imports = [
     ./hardware-configuration.nix
     ../../modules/acme.nix
+    ../../modules/tailscale.nix
     ./networking.nix
   ];
 
@@ -30,6 +31,13 @@
 
   networking = {
     hostName = "harbor";
+  };
+
+  my.tailscale = {
+    enable = true;
+    ssh = true;
+    magicDns = false;
+    exitNode = true;
   };
 
   users = {
