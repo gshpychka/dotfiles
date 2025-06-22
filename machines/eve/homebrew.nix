@@ -53,15 +53,12 @@
         greedy = true;
       }
       {
+        # choose browser on each link
         name = "finicky";
         greedy = true;
-      } # choose browser on each link
-      {
-        name = "betterdisplay";
       }
       {
-        name = "adobe-acrobat-reader";
-        greedy = true;
+        name = "betterdisplay";
       }
       {
         name = "dropbox";
