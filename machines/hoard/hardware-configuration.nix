@@ -94,6 +94,7 @@
       label = "hoard";
       fsType = "btrfs";
       options = [
+        "compress=zstd:1"
         "noatime"
         "nofail"
         "lazytime"
