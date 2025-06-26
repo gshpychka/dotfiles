@@ -1,5 +1,4 @@
 {
-  inputs,
   config,
   pkgs,
   ...
@@ -22,10 +21,6 @@ in
 {
   imports = [
     ./hardware-configuration.nix
-    ../../modules/qbittorrent.nix
-    ../../modules/sabnzbd.nix
-    ../../modules/acme.nix
-    ../../modules/overseerr.nix
   ];
 
   boot = {

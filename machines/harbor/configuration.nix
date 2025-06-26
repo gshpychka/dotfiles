@@ -6,8 +6,6 @@
 {
   imports = [
     ./hardware-configuration.nix
-    ../../modules/acme.nix
-    ../../modules/tailscale.nix
     ./networking.nix
   ];
 

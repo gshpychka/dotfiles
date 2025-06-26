@@ -1,6 +1,7 @@
 {
   lib,
   modulesPath,
+  config,
   ...
 }:
 {
@@ -130,6 +131,25 @@
       defaultScheduler = "mq-deadline";
       defaultSchedulerRotational = "bfq";
     };
+  };
+
+  my.disk-spindown = {
+    enable = true;
+    devices = [
+      config.boot.initrd.luks.devices.hoard-alpha.device
+      config.boot.initrd.luks.devices.hoard-beta.device
+    ];
+    timeoutMinutes = 5;
+  };
+
+  # Weekly btrfs scrubbing to detect and repair corruption
+  services.btrfs.autoScrub = {
+    enable = true;
+    fileSystems = [
+      # this is just "/mnt/hoard", but doing it this way to be a bit safer
+      config.fileSystems."/mnt/hoard".mountPoint
+    ];
+    interval = "weekly";
   };
 
   networking.useDHCP = lib.mkDefault true;

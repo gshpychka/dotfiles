@@ -11,9 +11,6 @@
     ./hardware.nix
     ./kokoro.nix
     ./whisper.nix
-    ../../modules/acme.nix
-    ../../modules/ollama.nix
-    ../../modules/tailscale.nix
   ];
   networking.hostName = "reaper";
   nixpkgs.hostPlatform = "x86_64-linux";

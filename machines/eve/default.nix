@@ -11,7 +11,6 @@
     ./homebrew.nix
     ./nix.nix
     ./1password.nix
-    ../../modules/touch-id.nix
   ];
 
   networking = {
