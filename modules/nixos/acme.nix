@@ -31,7 +31,7 @@ with lib;
     networking.domain = cfg.domain;
 
     sops.secrets.cloudflare-api-token = {
-      sopsFile = ../secrets/common/cloudflare.yaml;
+      sopsFile = ../../secrets/common/cloudflare.yaml;
       key = "cloudflare-dns-api-token";
     };
 

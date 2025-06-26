@@ -1,4 +1,4 @@
-{ config, lib, ... }:
+{ config, lib, pkgs, ... }:
 
 let
   cfg = config.my.tailscale;
@@ -26,7 +26,7 @@ in
   config = lib.mkIf cfg.enable {
     # Secret containing an auth key for this machine
     sops.secrets."tailscale-auth-key" = {
-      sopsFile = ../secrets/common/tailscale.yaml;
+      sopsFile = ../../secrets/common/tailscale.yaml;
       key = "tailscale-auth-key";
       restartUnits = [ config.systemd.services.tailscaled-autoconnect.name ];
     };

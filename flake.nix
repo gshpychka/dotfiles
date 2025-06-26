@@ -48,7 +48,7 @@
           home-manager.darwinModules.home-manager
           nix-homebrew.darwinModules.nix-homebrew
 
-          ./modules
+          ./modules/darwin
           ./machines/eve
           ./home-manager/eve
         ];
@@ -61,7 +61,7 @@
           inputs.sops-nix.nixosModules.sops
           home-manager.nixosModules.home-manager
 
-          ./modules
+          ./modules/nixos
           ./machines/harbor/configuration.nix
           ./home-manager/harbor
         ];
@@ -74,7 +74,7 @@
           inputs.sops-nix.nixosModules.sops
           home-manager.nixosModules.home-manager
 
-          ./modules
+          ./modules/nixos
           ./machines/reaper
           ./home-manager/reaper
         ];
@@ -87,7 +87,7 @@
           inputs.sops-nix.nixosModules.sops
           home-manager.nixosModules.home-manager
 
-          ./modules
+          ./modules/nixos
           ./machines/hoard/configuration.nix
           ./home-manager/hoard
         ];
