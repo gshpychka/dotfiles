@@ -124,6 +124,7 @@ in
           "tls://8.8.4.4#dns.google"
           "tls://9.9.9.9#dns.quad9.net"
           "tls://149.112.112.112#dns.quad9.net"
+          "tls://194.242.2.2#dns.mullvad.net"
         ];
         bootstrap_dns = [ ];
         allowed_clients = [
