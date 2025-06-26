@@ -186,13 +186,6 @@ in
     };
   };
 
-  hardware = {
-    gpgSmartcards.enable = true;
-    enableAllFirmware = true;
-    cpu.intel.updateMicrocode = true;
-    usbStorage.manageShutdown = true;
-  };
-
   users = {
     groups.media = {
       members = [
