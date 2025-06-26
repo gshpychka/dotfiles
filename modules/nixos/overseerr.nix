@@ -27,24 +27,6 @@ in
       default = 5055;
       description = "The port which the Overseerr web UI should listen on.";
     };
-
-    dataDir = lib.mkOption {
-      type = lib.types.str;
-      default = "/var/lib/overseerr";
-      description = "The directory where Overseerr stores its data files.";
-    };
-
-    user = lib.mkOption {
-      type = lib.types.str;
-      default = "overseerr";
-      description = "User account under which Overseerr runs.";
-    };
-
-    group = lib.mkOption {
-      type = lib.types.str;
-      default = "overseerr";
-      description = "Group under which Overseerr runs.";
-    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -72,7 +54,6 @@ in
       };
       serviceConfig = {
         Type = "exec";
-        WorkingDirectory = "${pkgs.overseerr}/libexec/overseerr/deps/overseerr";
         ExecStart = lib.getExe pkgs.overseerr;
         Restart = "on-failure";
         ProtectHome = true;
@@ -90,12 +71,9 @@ in
         RestrictSUIDSGID = true;
         RemoveIPC = true;
         PrivateMounts = true;
-        ReadWritePaths = [ cfg.dataDir ];
-        StateDirectory = lib.mkIf (cfg.dataDir == "/var/lib/overseerr") "overseerr";
+        StateDirectory = "overseerr";
         StateDirectoryMode = "0700";
-        DynamicUser = cfg.user == "overseerr" && cfg.group == "overseerr";
-        User = cfg.user;
-        Group = cfg.group;
+        DynamicUser = true;
       };
     };
 
