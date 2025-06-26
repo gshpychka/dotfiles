@@ -57,5 +57,5 @@
     };
 
   };
-  security.pam.enableSudoTouchId = true;
+  my.sudoTouchId.enable = true;
 }

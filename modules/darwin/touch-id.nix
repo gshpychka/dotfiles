@@ -6,31 +6,26 @@
 }:
 with lib;
 let
-  cfg = config.security.pam;
+  cfg = config.my.sudoTouchId;
 in
 {
   options = {
-    security.pam.enableSudoTouchId = mkEnableOption ''
+    my.sudoTouchId.enable = mkEnableOption ''
       Enable sudo authentication with Touch ID
-
-      pam_watchid has to be installed manually beforehand
-      https://github.com/biscuitehh/pam-watchid
     '';
   };
 
-  config = lib.mkIf (cfg.enableSudoTouchId) {
+  config = lib.mkIf cfg.enable {
     assertions = [
       {
         assertion = pkgs.stdenv.hostPlatform.isDarwin;
-        message = "sudo with Touch ID is only supported on macOS";
+        message = "Touch ID is only supported on macOS";
       }
     ];
-    environment.etc."pam.d/sudo_local" = {
-      text = ''
-        auth       optional       ${pkgs.pam-reattach}/lib/pam/pam_reattach.so
-        auth       sufficient     pam_tid.so
-        auth       sufficient     pam_watchid.so
-      '';
+    security.pam.services.sudo_local = {
+      touchIdAuth = true;
+      watchIdAuth = true;
+      reattach = true;
     };
   };
 }
