@@ -48,14 +48,12 @@
           device = "/dev/disk/by-label/hoard-alpha-enc";
           crypttabExtraOpts = [
             "tpm2-device=auto"
-            "nofail"
           ];
         };
         hoard-beta = {
           device = "/dev/disk/by-label/hoard-beta-enc";
           crypttabExtraOpts = [
             "tpm2-device=auto"
-            "nofail"
           ];
         };
         trove = {
@@ -94,10 +92,10 @@
       # this will mount both drives
       label = "hoard";
       fsType = "btrfs";
+      neededForBoot = true;
       options = [
         "compress=zstd:1"
         "noatime"
-        "nofail"
         "lazytime"
       ];
     };
@@ -105,6 +103,7 @@
     "/mnt/oasis" = {
       device = "/dev/mapper/oasis";
       fsType = "ext4";
+      neededForBoot = true;
       options = [
         "noatime"
       ];
