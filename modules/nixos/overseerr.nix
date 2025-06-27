@@ -49,7 +49,7 @@ in
       after = [ "network.target" ];
       wantedBy = [ "multi-user.target" ];
       environment = {
-        CONFIG_DIRECTORY = cfg.dataDir;
+        CONFIG_DIRECTORY = "/var/lib/overseerr";
         PORT = toString cfg.port;
       };
       serviceConfig = {
