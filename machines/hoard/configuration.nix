@@ -62,7 +62,6 @@ in
     kernelPackages = pkgs.linuxPackages;
     kernelParams = [
       # enable mq io schedulers
-      "scsi_mod.use_blk_mq=1"
       "dm_mod.use_blk_mq=1"
       # force-enable SAT mode with UAS driver for Seagate enclosure
       # https://www.smartmontools.org/wiki/SAT-with-UAS-Linux#workaround-unset-t
