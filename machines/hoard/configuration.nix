@@ -38,6 +38,7 @@ in
         enable = true;
         ssh = {
           enable = true;
+          # Once connected, run `/systemd-ask-password` to unlock LUKS
           hostKeys = [
             # These keys were generated imperatively, they are no the regular host keys.
             # Justification from the docs:
@@ -83,15 +84,6 @@ in
   environment.systemPackages = with pkgs; [
     cryptsetup
   ];
-  nixpkgs.config = {
-    permittedInsecurePackages = [
-      # required for Sonarr
-      "aspnetcore-runtime-6.0.36"
-      "aspnetcore-runtime-wrapped-6.0.36"
-      "dotnet-sdk-6.0.428"
-      "dotnet-sdk-wrapped-6.0.428"
-    ];
-  };
 
   nix.settings = {
     auto-optimise-store = true;
@@ -204,9 +196,6 @@ in
           git
           sysstat
           iotop
-          unrar
-          bcc
-          ffmpeg-headless
           fio
           smartmontools
         ];
@@ -271,13 +260,13 @@ in
           "fruit:veto_appledouble" = "no";
           "fruit:nfs_aces" = "no";
           "path" = "/mnt/hoard/shares/time-machine";
-          "valid users" = "time-machine";
+          "valid users" = config.users.users.time-machine.name;
           "public" = "no";
           "writeable" = "yes";
         };
         "kodi" = {
           "path" = "/mnt/hoard/plex";
-          "valid users" = "kodi";
+          "valid users" = config.users.users.kodi.name;
           "public" = "no";
           "writable" = "yes";
         };

@@ -26,12 +26,6 @@
         tpm2.enable = true;
       };
       luks.devices = {
-        oasis = {
-          device = "/dev/disk/by-label/oasis-enc";
-          crypttabExtraOpts = [ "tpm2-device=auto" ];
-          allowDiscards = true;
-          bypassWorkqueues = true;
-        };
         # parted /dev/sdc --script mklabel gpt mkart primary 0% 100%
         # cryptsetup luksFormat --type luks2 --cipher aes-xts-plain64 --key-size 512 --sector-size 4096 /dev/sdc1
         # cryptsetup config --label="hoard-alpha-enc" /dev/sdc1
@@ -48,20 +42,37 @@
           device = "/dev/disk/by-label/hoard-alpha-enc";
           crypttabExtraOpts = [
             "tpm2-device=auto"
+            # make it wait for the USB enclosure to show up
+            "x-systemd.device-timeout=10s"
+            # continue with boot if it doesn't show up
+            "nofail"
           ];
         };
         hoard-beta = {
           device = "/dev/disk/by-label/hoard-beta-enc";
           crypttabExtraOpts = [
             "tpm2-device=auto"
+            "x-systemd.device-timeout=10s"
+            "nofail"
           ];
         };
         trove = {
           device = "/dev/disk/by-label/trove-enc";
           crypttabExtraOpts = [
             "tpm2-device=auto"
+            "x-systemd.device-timeout=10s"
             "nofail"
           ];
+        };
+        oasis = {
+          device = "/dev/disk/by-label/oasis-enc";
+          crypttabExtraOpts = [
+            "tpm2-device=auto"
+            "x-systemd.device-timeout=10s"
+            "nofail"
+          ];
+          allowDiscards = true;
+          bypassWorkqueues = true;
         };
       };
     };
@@ -92,20 +103,23 @@
       # this will mount both drives
       label = "hoard";
       fsType = "btrfs";
-      neededForBoot = true;
       options = [
         "compress=zstd:1"
         "noatime"
         "lazytime"
+        # give it ample time to unlock before continuing
+        "x-systemd.device-timeout=10s"
+        "nofail"
       ];
     };
 
     "/mnt/oasis" = {
       device = "/dev/mapper/oasis";
       fsType = "ext4";
-      neededForBoot = true;
       options = [
         "noatime"
+        "x-systemd.device-timeout=10s"
+        "nofail"
       ];
     };
 
@@ -114,6 +128,7 @@
       fsType = "ext4";
       options = [
         "noatime"
+        "x-systemd.device-timeout=10s"
         "nofail"
       ];
     };
