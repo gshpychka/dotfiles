@@ -141,14 +141,16 @@
     timeoutMinutes = 5;
   };
 
-  # Weekly btrfs scrubbing to detect and repair corruption
+  # Monthly btrfs scrubbing to detect corruption
+  # We can't repaid it since we're in RAID0,
+  # but I guess it would be nice to know
   services.btrfs.autoScrub = {
     enable = true;
     fileSystems = [
       # this is just "/mnt/hoard", but doing it this way to be a bit safer
       config.fileSystems."/mnt/hoard".mountPoint
     ];
-    interval = "weekly";
+    interval = "monthly";
   };
 
   networking.useDHCP = lib.mkDefault true;
