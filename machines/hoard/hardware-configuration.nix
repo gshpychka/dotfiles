@@ -39,11 +39,11 @@
         # cryptsetup luksOpen /dev/sdc1 hoard-alpha
 
         # On first device:
-        # mkfs.btrfs -d single -m dup -s 4096 -n 65536 --csum xxhash /dev/mapper/hoard-beta
+        # mkfs.btrfs -d raid0 -m raid1 -L hoard -s 4096 -n 65536 --csum xxhash /dev/mapper/hoard-beta
 
         # On second device:
         # btrfs device add /dev/mapper/hoard-alpha /mnt/hoard
-        # btrfs balance start -dconvert=raid0 -mconvert=raid1 /mnt/hoard
+        # btrfs balance start --full-balance --bg /mnt/hoard
         hoard-alpha = {
           device = "/dev/disk/by-label/hoard-alpha-enc";
           crypttabExtraOpts = [
