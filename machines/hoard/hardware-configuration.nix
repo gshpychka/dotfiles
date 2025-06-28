@@ -45,7 +45,9 @@
             # make it wait for the USB enclosure to show up
             "x-systemd.device-timeout=10s"
             # continue with boot if it doesn't show up
-            "nofail"
+            # nofail
+            # nofail breaks the setup - it will not wait for the USB device to show up
+            # https://github.com/systemd/systemd/issues/27321#issuecomment-1543226472
           ];
         };
         hoard-beta = {
@@ -53,7 +55,6 @@
           crypttabExtraOpts = [
             "tpm2-device=auto"
             "x-systemd.device-timeout=10s"
-            "nofail"
           ];
         };
         trove = {
@@ -69,7 +70,6 @@
           crypttabExtraOpts = [
             "tpm2-device=auto"
             "x-systemd.device-timeout=10s"
-            "nofail"
           ];
           allowDiscards = true;
           bypassWorkqueues = true;
