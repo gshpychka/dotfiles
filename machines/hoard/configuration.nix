@@ -177,6 +177,11 @@ in
     };
   };
 
+  my.tailscale = {
+    enable = true;
+    ssh = true;
+  };
+
   users = {
     groups.media = {
       members = [
