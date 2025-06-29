@@ -42,8 +42,7 @@
           "usb"
         ];
         openssh.authorizedKeys.keys = [
-          # eve
-          "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIB737o9Ltm1K3w9XX9SBHNW1JT4NpCPP5qg9R+SB18dG"
+          config.my.sshKeys.main
         ];
         linger = true;
         initialHashedPassword = "";
@@ -53,8 +52,7 @@
         isSystemUser = true;
         useDefaultShell = true;
         openssh.authorizedKeys.keys = [
-          # homeassistant.local
-          "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAC9nquQBUuHWrWJvuUJLuR2zfupJp+QtQlpck0n5J0J"
+          config.my.sshKeys.homeassistant
         ];
       };
     };

@@ -48,7 +48,7 @@
           neovim
         ];
         openssh.authorizedKeys.keys = [
-          "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIB737o9Ltm1K3w9XX9SBHNW1JT4NpCPP5qg9R+SB18dG"
+          config.my.sshKeys.main
         ];
         initialHashedPassword = "";
       };

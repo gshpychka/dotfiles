@@ -1,4 +1,4 @@
-{ ... }:
+{ osConfig, ... }:
 {
   programs = {
     lazygit = {
@@ -25,7 +25,7 @@
       };
       signing = {
         format = "ssh";
-        key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIB737o9Ltm1K3w9XX9SBHNW1JT4NpCPP5qg9R+SB18dG";
+        key = osConfig.my.sshKeys.main;
         signByDefault = true;
       };
 
@@ -44,7 +44,7 @@
         {
           condition = "hasconfig:remote.*.url:git@gitlab.com:*/**";
           contents = {
-            user.signingkey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIK0TQf0piikNdo54HRg/l6dBXRPM2BmlA4f7EmXJ9uvW";
+            user.signingkey = osConfig.my.sshKeys.gitlab;
             user.email = "20539359-gshpychka@users.noreply.gitlab.com";
             init.defaultBranch = "master";
           };

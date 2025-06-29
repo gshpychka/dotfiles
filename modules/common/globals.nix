@@ -12,8 +12,32 @@
       default = "gshpychka";
       description = "Main username";
     };
+    sshKeys = lib.mkOption {
+      type = lib.types.submodule {
+        options = {
+          main = lib.mkOption {
+            type = lib.types.str;
+            description = "Main SSH public key";
+          };
+          homeassistant = lib.mkOption {
+            type = lib.types.str;
+            description = "SSH public key for home assistant";
+          };
+          gitlab = lib.mkOption {
+            type = lib.types.str;
+            description = "SSH public key for GitLab";
+          };
+        };
+      };
+      description = "SSH public keys";
+    };
   };
   config = {
+    my.sshKeys = {
+      main = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIB737o9Ltm1K3w9XX9SBHNW1JT4NpCPP5qg9R+SB18dG";
+      homeassistant = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAC9nquQBUuHWrWJvuUJLuR2zfupJp+QtQlpck0n5J0J";
+      gitlab = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIK0TQf0piikNdo54HRg/l6dBXRPM2BmlA4f7EmXJ9uvW";
+    };
     time.timeZone = "Europe/Kyiv";
     nix = {
       channel.enable = false;
