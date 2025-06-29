@@ -49,7 +49,7 @@
         greedy = true;
       }
       {
-        name = "docker";
+        name = "docker-desktop";
         greedy = true;
       }
       {
@@ -109,7 +109,7 @@
         name = "dash";
         greedy = true;
       }
-      "tailscale"
+      "tailscale-app"
       # -- 3d printing
       {
         name = "bambu-studio";
