@@ -36,6 +36,7 @@
     ssh = true;
     magicDns = false;
     exitNode = true;
+    advertiseRoutes = [ "192.168.1.0/24" ];
   };
 
   users = {
