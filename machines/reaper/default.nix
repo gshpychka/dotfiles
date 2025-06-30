@@ -33,10 +33,14 @@
 
   my.buildServer = {
     enable = true;
-    hostName = "reaper";
-    maxJobs = 16; # Intel 14900k has 24 cores, but leave some for the host
-    speedFactor = 4; # Much faster than the other machines
-    supportedFeatures = [ "nixos-test" "benchmark" "big-parallel" "kvm" ];
+    maxJobs = 16;
+    speedFactor = 4;
+    supportedFeatures = [
+      "nixos-test"
+      "benchmark"
+      "big-parallel"
+      "kvm"
+    ];
     clientPublicKeys = [
       config.my.nixbuildKeys.eve
       config.my.nixbuildKeys.hoard
