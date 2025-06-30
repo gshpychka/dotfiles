@@ -5,7 +5,7 @@
       { ... }:
       {
         imports = [
-          ../../modules/home
+          ../../modules/home-manager
         ];
 
         my = {

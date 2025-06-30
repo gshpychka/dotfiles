@@ -1,7 +1,7 @@
 {
   imports = [
-    ../lib
-    ../system/common
+    ../../common
+    ../common
     ./acme.nix
     ./build-server.nix
     ./disk-spindown.nix

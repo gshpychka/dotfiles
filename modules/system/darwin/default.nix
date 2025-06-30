@@ -1,7 +1,7 @@
 {
   imports = [
-    ../lib
-    ../system/common
+    ../../common
+    ../common
     ./touch-id.nix
   ];
 }
