@@ -22,8 +22,15 @@
       url = "github:homebrew/homebrew-cask";
       flake = false;
     };
-    sops-nix.url = "github:Mic92/sops-nix";
+    sops-nix = {
+      url = "github:Mic92/sops-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     overseerr-nixpkgs.url = "github:jf-uu/nixpkgs/overseerr";
+    mcp-servers-nix = {
+      url = "github:natsukium/mcp-servers-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -37,6 +44,7 @@
       nix-homebrew,
       homebrew-core,
       homebrew-cask,
+      mcp-servers-nix,
       ...
     }@inputs:
     {
