@@ -10,7 +10,7 @@
     ./filesystems.nix
     ./hardware.nix
     ./kokoro.nix
-    ./whisper.nix
+    # ./whisper.nix # Disabled due to upstream assertions issue
   ];
   networking.hostName = "reaper";
   nixpkgs.hostPlatform = "x86_64-linux";
@@ -29,6 +29,17 @@
   my.tailscale = {
     enable = true;
     ssh = true;
+  };
+
+  my.buildServer = {
+    enable = true;
+    hostName = "reaper";
+    maxJobs = 16; # Intel 14900k has 24 cores, but leave some for the host
+    speedFactor = 4; # Much faster than the other machines
+    supportedFeatures = [ "nixos-test" "benchmark" "big-parallel" "kvm" ];
+    clientPublicKeys = [
+      config.my.nixbuildKeys.eve
+    ];
   };
 
   users = {
