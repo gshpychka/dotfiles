@@ -16,6 +16,7 @@
     ./homebrew.nix
     ./nix.nix
     ./1password.nix
+    ./home.nix
   ];
 
   networking = {

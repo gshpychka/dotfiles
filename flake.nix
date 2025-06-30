@@ -50,7 +50,6 @@
 
           ./modules/darwin
           ./machines/eve
-          ./home-manager/eve
         ];
       };
 
@@ -62,8 +61,7 @@
           home-manager.nixosModules.home-manager
 
           ./modules/nixos
-          ./machines/harbor/configuration.nix
-          ./home-manager/harbor
+          ./machines/harbor
         ];
       };
 
@@ -76,7 +74,6 @@
 
           ./modules/nixos
           ./machines/reaper
-          ./home-manager/reaper
         ];
       };
 
@@ -88,8 +85,7 @@
           home-manager.nixosModules.home-manager
 
           ./modules/nixos
-          ./machines/hoard/configuration.nix
-          ./home-manager/hoard
+          ./machines/hoard
         ];
       };
 

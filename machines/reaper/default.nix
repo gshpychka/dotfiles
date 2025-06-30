@@ -11,6 +11,7 @@
     ./hardware.nix
     ./kokoro.nix
     # ./whisper.nix # Disabled due to upstream assertions issue
+    ./home.nix
   ];
   networking.hostName = "reaper";
   nixpkgs.hostPlatform = "x86_64-linux";

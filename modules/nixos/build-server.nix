@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 let
   cfg = config.my.buildServer;
@@ -7,49 +12,61 @@ in
 {
   options.my.buildServer = {
     enable = lib.mkEnableOption "Nix build server for distributed builds";
-    
+
     hostName = lib.mkOption {
       type = lib.types.str;
       default = config.networking.hostName;
       description = "Hostname clients should use to connect to this build server";
       example = "reaper";
     };
-    
+
     maxJobs = lib.mkOption {
       type = lib.types.ints.positive;
       default = 4; # Conservative default, can be overridden
       description = "Maximum number of concurrent build jobs";
       example = 16;
     };
-    
+
     speedFactor = lib.mkOption {
       type = lib.types.ints.positive;
       default = 1;
       description = "Relative speed factor compared to other builders";
       example = 4;
     };
-    
+
     supportedFeatures = lib.mkOption {
       type = lib.types.listOf lib.types.str;
-      default = [ "nixos-test" "benchmark" "big-parallel" ];
+      default = [
+        "nixos-test"
+        "benchmark"
+        "big-parallel"
+      ];
       description = "List of features this build server supports";
-      example = [ "nixos-test" "benchmark" "big-parallel" "kvm" ];
+      example = [
+        "nixos-test"
+        "benchmark"
+        "big-parallel"
+        "kvm"
+      ];
     };
-    
+
     mandatoryFeatures = lib.mkOption {
       type = lib.types.listOf lib.types.str;
       default = [ ];
       description = "List of features that must be supported by clients";
       example = [ ];
     };
-    
+
     systems = lib.mkOption {
       type = lib.types.listOf lib.types.str;
       default = [ pkgs.system ];
       description = "List of systems this build server can build for";
-      example = [ "x86_64-linux" "aarch64-linux" ];
+      example = [
+        "x86_64-linux"
+        "aarch64-linux"
+      ];
     };
-    
+
     clientPublicKeys = lib.mkOption {
       type = lib.types.listOf lib.types.str;
       default = [ ];
@@ -72,9 +89,9 @@ in
       description = "Nix distributed build user";
       openssh.authorizedKeys.keys = cfg.clientPublicKeys;
     };
-    
+
     users.groups.${nixbuildUser} = { };
-    
+
     # Restrict SSH access for build user - only allow nix-store operations
     services.openssh.extraConfig = ''
       Match User ${nixbuildUser}
@@ -98,7 +115,8 @@ in
       speedFactor = cfg.speedFactor;
       supportedFeatures = cfg.supportedFeatures;
       mandatoryFeatures = cfg.mandatoryFeatures;
-      sshUser = nixbuildUser;
+      user = nixbuildUser;
     };
   };
 }
+
