@@ -182,13 +182,16 @@ in
     ssh = true;
   };
 
-  # my.distributedBuilds = {
-  #   enable = true;
-  #   servers = [ "reaper" ];
-  #   sshKeyPath = config.sops.secrets.nixbuild-ssh-key.path;
-  # };
-  # Follow imperative setup steps in modules/nixos/build-server.nix, then uncomment above and add:
-  # sops.secrets.nixbuild-ssh-key = { sopsFile = ../../secrets/hoard/nixbuild-ssh-key.pem; format = "binary"; };
+  my.distributedBuilds = {
+    enable = true;
+    servers = [ "reaper" ];
+    sshKeyPath = config.sops.secrets.nixbuild-ssh-key.path;
+  };
+
+  sops.secrets.nixbuild-ssh-key = {
+    sopsFile = ../../secrets/hoard/nixbuild-ssh-key.pem;
+    format = "binary";
+  };
 
   users = {
     groups.media = {

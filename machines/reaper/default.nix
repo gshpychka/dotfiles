@@ -39,6 +39,7 @@
     supportedFeatures = [ "nixos-test" "benchmark" "big-parallel" "kvm" ];
     clientPublicKeys = [
       config.my.nixbuildKeys.eve
+      config.my.nixbuildKeys.hoard
     ];
   };
 
