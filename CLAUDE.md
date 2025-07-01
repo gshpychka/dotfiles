@@ -4,9 +4,8 @@
 Personal dotfiles managed with Nix flakes for multiple machines (eve, harbor, reaper, hoard).
 
 ## Architecture
-- `machines/` - Machine-specific NixOS configurations
-- `modules/` - Shared modules (darwin/nixos/common)
-- `home-manager/` - User environment configs
+- `machines/` - Machine-specific configurations
+- `modules/` - Nix modules (darwin/nixos/home-manager/common)
 - `overlays/` - Package overlays
 - `secrets/` - SOPS encrypted secrets
 
