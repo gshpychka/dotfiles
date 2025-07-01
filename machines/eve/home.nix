@@ -35,6 +35,7 @@
             gnupg
             pinentry_mac
             sops
+            claude-code
           ];
         };
       };

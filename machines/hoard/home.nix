@@ -18,6 +18,10 @@
           zsh.enable = true;
         };
 
+        home.packages = with pkgs; [
+          claude-code
+        ];
+
         home.stateVersion = "24.11";
       };
   };
