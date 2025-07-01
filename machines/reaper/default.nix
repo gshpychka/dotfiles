@@ -10,7 +10,7 @@
     ./filesystems.nix
     ./hardware.nix
     ./kokoro.nix
-    # ./whisper.nix # Disabled due to upstream assertions issue
+    ./whisper.nix
     ./home.nix
   ];
   networking.hostName = "reaper";
