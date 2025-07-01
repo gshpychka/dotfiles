@@ -212,6 +212,67 @@ in
           NIXPKGS_ALLOW_UNFREE=1 nix shell --impure "''${packages[@]}"
         }
 
+        # fzf history search with prefix filtering
+        # when ctrl+r is pressed:
+        # - empty buffer: fuzzy search all history
+        # - with text: find only commands that start with the text, then fuzzy search among them
+        fzf-history-widget-custom() {
+          local selected
+          
+          if [[ -z "$BUFFER" ]]; then
+            # empty command line - default(-ish) behavior
+            selected=$(
+              fc -rl 1 |
+              ${pkgs.gawk}/bin/awk '
+                {
+                  # remove line number
+                  $1="";
+                  # print without leading space
+                  print substr($0,2)
+                }' |
+              ${pkgs.fzf}/bin/fzf --tac --no-sort
+            )
+          else
+            # command line has text - filter by prefix before fuzzy search
+            local prefix="$BUFFER"
+            
+            selected=$(
+              fc -rl 1 |
+              ${pkgs.gawk}/bin/awk -v prefix="$prefix" '
+                {
+                  # remove line number
+                  $1="";
+                  # get command without leading space
+                  line=substr($0,2);
+                  # print if starts with prefix
+                  if (substr(line,1,length(prefix))==prefix) 
+                    print line
+                }' |
+              ${pkgs.fzf}/bin/fzf \
+                  --tac \
+                  --no-sort \
+                  --query=''${prefix#* }
+            )
+          fi
+          
+          # update command line with selection, if any
+          if [[ -n "$selected" ]]; then
+            # replace command line
+            BUFFER="$selected"
+            # move cursor to end
+            CURSOR=$#BUFFER
+          fi
+          
+          # refresh the command line display
+          zle redisplay
+        }
+
+        # register the function
+        zle -N fzf-history-widget-custom
+
+        # bind ctrl+R (overrides default fzf binding)
+        bindkey '^R' fzf-history-widget-custom
+
       '';
 
       plugins = [
