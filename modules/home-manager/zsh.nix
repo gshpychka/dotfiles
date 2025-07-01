@@ -43,8 +43,8 @@ in
             };
           in
           {
-            github = generateGitHostIconModule "github" " " "#4078c0";
-            gitlab = generateGitHostIconModule "gitlab" " " "#fc6d26";
+            github = generateGitHostIconModule "github" " " "#4078c0"; # nf-dev-github
+            gitlab = generateGitHostIconModule "gitlab" " " "#fc6d26"; # nf-dev-gitlab
             repo_name = {
               description = "Name of the current git repository";
               command =
@@ -76,7 +76,7 @@ in
           AWS_PROFILE = {
             variable = "AWS_PROFILE";
             format = "[$env_value $symbol]($style) ";
-            symbol = " ";
+            symbol = " "; # nf-dev-aws
             style = "#FF9900"; # AWS orange
           };
         };
@@ -85,7 +85,7 @@ in
           # just the symbol
           format = "[$symbol ]($style)";
           style = "#7EBAE4";
-          symbol = "󱄅 ";
+          symbol = "󱄅 "; # nf-md-nix
         };
 
         hostname = {
@@ -229,4 +229,3 @@ in
     };
   };
 }
-
