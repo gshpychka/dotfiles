@@ -1,5 +1,4 @@
-{ config, ... }:
-# System-level Nix and nixpkgs configuration.
+{ config, inputs, ... }:
 {
   config = {
     nix = {
@@ -20,12 +19,11 @@
     nixpkgs.config = {
       allowUnfree = true;
     };
-    nixpkgs.overlays = [
-      (import ../../../overlays)
-    ];
+    nixpkgs.overlays = import ../../../overlays inputs;
     home-manager = {
       useGlobalPkgs = true;
       useUserPackages = true;
     };
   };
 }
+

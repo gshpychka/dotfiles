@@ -1,6 +1,7 @@
 { ... }:
 {
   imports = [
+    ./ai.nix
     ./alacritty.nix
     ./btop.nix
     ./common.nix

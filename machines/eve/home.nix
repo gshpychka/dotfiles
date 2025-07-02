@@ -13,6 +13,7 @@
         ];
 
         my = {
+          ai.enable = true;
           alacritty.enable = true;
           btop.enable = true;
           direnv.enable = true;
@@ -35,7 +36,6 @@
             gnupg
             pinentry_mac
             sops
-            claude-code
           ];
         };
       };

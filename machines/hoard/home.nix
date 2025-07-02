@@ -9,6 +9,7 @@
         ];
 
         my = {
+          ai.enable = true;
           tmux.enable = true;
           btop.enable = true;
           git.enable = true;
@@ -18,9 +19,7 @@
           zsh.enable = true;
         };
 
-        home.packages = with pkgs; [
-          claude-code
-        ];
+        home.packages = with pkgs; [ ];
 
         home.stateVersion = "24.11";
       };

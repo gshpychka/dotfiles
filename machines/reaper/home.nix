@@ -9,6 +9,7 @@
         ];
 
         my = {
+          ai.enable = true;
           btop.enable = true;
           direnv.enable = true;
           git.enable = true;
@@ -19,9 +20,7 @@
           zsh.enable = true;
         };
 
-        home.packages = with pkgs; [
-          claude-code
-        ];
+        home.packages = with pkgs; [ ];
 
         home.stateVersion = "24.05";
       };
