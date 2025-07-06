@@ -4,14 +4,6 @@
 }:
 {
   services = {
-    openssh = {
-      enable = true;
-      settings = {
-        PasswordAuthentication = false;
-        KbdInteractiveAuthentication = false;
-        PermitRootLogin = "no";
-      };
-    };
     nginx = {
       enable = true;
       recommendedProxySettings = true;
@@ -40,5 +32,7 @@
       };
     };
   };
+  networking.firewall.allowedTCPPorts = [
+    config.services.nginx.defaultSSLListenPort
+  ];
 }
-

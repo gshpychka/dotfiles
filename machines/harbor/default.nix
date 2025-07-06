@@ -10,7 +10,7 @@
     ./filesystems.nix
     ./networking.nix
     ./users.nix
-    ./services.nix
+    ./nginx.nix
     ./home.nix
   ];
 
@@ -52,8 +52,12 @@
       services.sudo.sshAgentAuth = true;
     };
   };
-
-  networking.firewall.allowedTCPPorts = [
-    config.services.nginx.defaultSSLListenPort
-  ];
+  services.openssh = {
+    enable = true;
+    settings = {
+      PasswordAuthentication = false;
+      KbdInteractiveAuthentication = false;
+      PermitRootLogin = "no";
+    };
+  };
 }
