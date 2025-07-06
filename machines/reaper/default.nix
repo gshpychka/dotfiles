@@ -34,6 +34,10 @@
 
   my.buildServer = {
     enable = true;
+    systems = [
+      "x86_64-linux"
+      "aarch64-linux"
+    ]; # Support both native and ARM builds
     maxJobs = 16;
     speedFactor = 4;
     supportedFeatures = [
@@ -45,8 +49,12 @@
     clientPublicKeys = [
       config.my.nixbuildKeys.eve
       config.my.nixbuildKeys.hoard
+      config.my.nixbuildKeys.harbor
     ];
   };
+
+  # Enable QEMU binfmt emulation for cross-compilation
+  boot.binfmt.emulatedSystems = [ "aarch64-linux" ];
 
   users = {
     defaultUserShell = pkgs.zsh;
