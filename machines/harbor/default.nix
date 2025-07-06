@@ -45,6 +45,8 @@
     advertiseRoutes = [ "192.168.1.0/24" ];
   };
 
+  my.duckdns.enable = true;
+
   security = {
     sudo.enable = true;
     pam = {
