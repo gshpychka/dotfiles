@@ -231,6 +231,13 @@ in
   systemd.services.dnsmasq = {
     requires = [ config.systemd.services.adguardhome.name ]; # hard dependency
     after = [ config.systemd.services.adguardhome.name ]; # start order
+    before = [ "nss-lookup.target" ]; # DNS must be ready before name resolution is considered available
+    wantedBy = [ "nss-lookup.target" ];
     serviceConfig.Restart = "on-failure";
+  };
+
+  systemd.services.adguardhome = {
+    before = [ "nss-lookup.target" ];
+    wantedBy = [ "nss-lookup.target" ];
   };
 }
