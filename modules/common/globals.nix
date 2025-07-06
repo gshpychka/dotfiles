@@ -84,6 +84,7 @@
     my.nixbuildKeys = {
       eve = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIP7jjV4iQfoCWZYWw2Q1bdsNg6PBc4U2SclLE2Wil0b9 nixbuild-eve@eve";
       hoard = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFy/oQXrAZW1aGN6w9RpXBREZ7jvZid2hO508mw8x0yT nixbuild-hoard@hoard";
+      harbor = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIABSB7E2A8KEVWo5u+fDHa74I16/1UcukAZps6902H3r nixbuild-harbor@harbor";
     };
     my.buildServers = {
       reaper = {
@@ -104,4 +105,3 @@
     time.timeZone = "Europe/Kyiv";
   };
 }
-
