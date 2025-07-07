@@ -57,8 +57,14 @@ in
 
     systemd.services.ollama-preload = lib.mkIf (lib.any (m: m.loadIntoVram) cfg.loadModels) {
       description = "Warm selected Ollama models into VRAM";
+
+      # when ollama.service is stopped/restarted, also stop/restart this service
       partOf = [ "ollama.service" ];
+
+      # when ollama.service starts, also start this service (does not dictate order)
       wantedBy = [ "ollama.service" ];
+
+      # this is what controls the order
       after = [
         "ollama.service"
         "ollama-model-loader.service"
@@ -66,6 +72,14 @@ in
 
       serviceConfig = {
         Type = "oneshot";
+        Restart = "on-failure";
+        # time between restarts
+        RestartSec = "2s";
+
+        # up to 6 restarts in the first 30 seconds
+        StartLimitBurst = 6;
+        StartLimitIntervalSec = 30;
+
         ExecStart = pkgs.writeShellScript "ollama-preload" ''
           set -euo pipefail
           api="http://${config.services.ollama.host}:${toString config.services.ollama.port}/api/generate"
