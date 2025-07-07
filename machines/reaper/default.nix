@@ -149,14 +149,12 @@
     loadModels = [
       {
         # home assistant
-        name = "qwen2.5:14b-instruct-q8_0";
+        # name = "qwen3:14b-q8_0";
+        name = "qwen3:14b-q4_K_M";
         loadIntoVram = true;
       }
       {
         name = "llama3.1:8b-instruct-fp16";
-      }
-      {
-        name = "qwen3:14b-q8_0";
       }
     ];
   };
