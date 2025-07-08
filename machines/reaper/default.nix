@@ -11,6 +11,7 @@
     ./hardware.nix
     ./kokoro.nix
     ./whisper.nix
+    ./monitoring.nix
     ./home.nix
   ];
   networking.hostName = "reaper";
@@ -188,11 +189,6 @@
       };
     };
 
-    glances = {
-      # remote system monitoring
-      enable = true;
-      openFirewall = true;
-    };
   };
 
   programs = {
