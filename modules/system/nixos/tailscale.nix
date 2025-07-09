@@ -38,13 +38,11 @@ in
 
     services.tailscale = {
       enable = true;
-      extraUpFlags = lib.optionals cfg.ssh [ "--ssh" ];
       extraSetFlags =
-        lib.optionals (!cfg.magicDns) [ "--accept-dns=false" ]
-        ++ lib.optionals cfg.exitNode [ "--advertise-exit-node" ]
-        ++ lib.optionals (cfg.advertiseRoutes != [ ]) [
-          "--advertise-routes=${lib.concatStringsSep "," cfg.advertiseRoutes}"
-        ];
+        [ (if cfg.ssh then "--ssh" else "--ssh=false") ]
+        ++ [ (if cfg.magicDns then "--accept-dns" else "--accept-dns=false") ]
+        ++ [ (if cfg.exitNode then "--advertise-exit-node" else "--advertise-exit-node=false") ]
+        ++ [ "--advertise-routes" "${lib.concatStringsSep "," cfg.advertiseRoutes}" ];
       authKeyFile = config.sops.secrets."tailscale-auth-key".path;
     };
 
