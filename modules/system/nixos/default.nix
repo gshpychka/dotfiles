@@ -6,6 +6,7 @@
     ./build-server.nix
     ./disk-spindown.nix
     ./duckdns.nix
+    ./cloudflare-ddns.nix
     ./glances.nix
     ./ollama.nix
     ./overseerr.nix
@@ -14,3 +15,4 @@
     ./tailscale.nix
   ];
 }
+
