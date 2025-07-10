@@ -20,9 +20,6 @@ with lib;
       enable = true;
       apiTokenFile = config.sops.secrets.cloudflare-dns-api-token.path;
       domains = [ "wan.${config.my.domain}" ];
-      proxied = true;
-      ipv4 = true;
-      ipv6 = false;
       frequency = "*:*:0/30"; # Every 30 seconds
     };
   };
