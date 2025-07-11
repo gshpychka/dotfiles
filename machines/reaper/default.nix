@@ -97,7 +97,7 @@
           users = [ "hass" ];
           commands = [
             {
-              command = "${pkgs.systemd}/bin/bootctl";
+              command = "/run/current-system/sw/bin/bootctl";
               options = [ "NOPASSWD" ];
             }
             {
