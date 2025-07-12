@@ -226,10 +226,24 @@ require("typescript-tools").setup({
 
 require("lspconfig").eslint.setup({
   on_attach = create_on_attach(true),
+  -- only use flat config files (eslint.config.*)
+  -- .eslintrc.* files are deprecated, see https://eslint.org/docs/latest/use/configure/migration-guide
+  root_dir = require("lspconfig.util").root_pattern(
+    "eslint.config.js",
+    "eslint.config.mjs", 
+    "eslint.config.cjs",
+    "eslint.config.ts",
+    "eslint.config.mts",
+    "eslint.config.cts"
+  ),
   settings = {
     workingDirectory = { mode = "auto" },
     format = {
       enable = true,
     },
   },
+})
+
+require("lspconfig").biome.setup({
+  on_attach = create_on_attach(true),
 })

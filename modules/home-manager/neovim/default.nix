@@ -95,6 +95,7 @@ in
         yaml-language-server
         vscode-langservers-extracted # eslint, json
         nodePackages_latest.dockerfile-language-server-nodejs
+        biome # formatter/linter
 
         ripgrep
         nixfmt-rfc-style
