@@ -3,18 +3,7 @@
   ...
 }:
 let
-  ports = {
-    glances = toString config.services.glances.port;
-    plex = "32400";
-    overseerr = toString config.services.overseerr.port;
-    tautulli = toString config.services.tautulli.port;
-    qbittorrent = toString config.services.qbittorrent.port;
-    sabnzbd = "8085";
-    sonarr = "8989";
-    radarr = "7878";
-    lidarr = "8686";
-    prowlarr = "9696";
-  };
+  inherit ((import ./ports.nix { inherit config; })) ports;
 in
 {
 
