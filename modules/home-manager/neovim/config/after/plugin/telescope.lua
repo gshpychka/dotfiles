@@ -4,7 +4,10 @@ local builtin = require("telescope.builtin")
 local utils = require("telescope.utils")
 
 vim.keymap.set("n", "<leader>ff", function()
-  builtin.git_files({ show_untracked = true })
+  local ok = pcall(builtin.git_files, { show_untracked = true })
+  if not ok then
+    builtin.find_files()
+  end
 end, { desc = "Telescope find files" })
 vim.keymap.set("n", "<leader>fgg", builtin.live_grep, { desc = "Telescope live grep" })
 vim.keymap.set("v", "<leader>fgg", builtin.grep_string, { desc = "Telescope grep selection" })
