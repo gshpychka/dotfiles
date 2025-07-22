@@ -73,6 +73,8 @@
     ssh = true;
   };
 
+  my.terminfo.enable = true;
+
   programs = {
     gnupg.agent = {
       enable = true;

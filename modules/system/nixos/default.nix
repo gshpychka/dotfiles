@@ -13,6 +13,7 @@
     ./qbittorrent.nix
     ./sabnzbd.nix
     ./tailscale.nix
+    ./terminfo.nix
   ];
 }
 

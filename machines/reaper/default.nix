@@ -160,6 +160,8 @@
     ];
   };
 
+  my.terminfo.enable = true;
+
   services = {
     pcscd.enable = true;
     udev.packages = [ pkgs.yubikey-personalization ];

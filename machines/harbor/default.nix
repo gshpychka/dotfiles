@@ -47,6 +47,8 @@
 
   my.cloudflare-ddns.enable = true;
 
+  my.terminfo.enable = true;
+
   security = {
     sudo.enable = true;
     pam = {
