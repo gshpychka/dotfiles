@@ -163,6 +163,7 @@
       "Dark Reader for Safari" = 1438243180;
       "WiFi Signal" = 525912054;
       "Xcode" = 497799835;
+      "Flow - Focus & Pomodoro Timer" = 1423210932;
     };
   };
   # https://github.com/zhaofengli/nix-homebrew/issues/3#issuecomment-1622240992
