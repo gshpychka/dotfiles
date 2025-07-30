@@ -61,6 +61,9 @@
         name = "betterdisplay";
       }
       {
+        name = "insta360-link-controller";
+      }
+      {
         name = "dropbox";
         greedy = true;
       }
