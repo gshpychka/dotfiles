@@ -184,12 +184,6 @@ in
         (lib.mkIf pkgs.stdenv.isDarwin {
           dns-flush = "sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder";
         })
-        (lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
-          ns = "sudo nixos-rebuild switch --flake ~/dotfiles";
-        })
-        (lib.mkIf pkgs.stdenv.hostPlatform.isDarwin {
-          ns = "sudo darwin-rebuild switch --flake ~/dotfiles";
-        })
       ];
 
       initContent = ''

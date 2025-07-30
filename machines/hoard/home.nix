@@ -14,6 +14,7 @@
           btop.enable = true;
           git.enable = true;
           neovim.enable = true;
+          nh.enable = true;
           ssh.enable = true;
           tools.enable = true;
           zsh.enable = true;

@@ -21,6 +21,7 @@
           ghostty.enable = true;
           git.enable = true;
           neovim.enable = true;
+          nh.enable = true;
           npm.enable = true;
           ssh.enable = true;
           tmux.enable = true;

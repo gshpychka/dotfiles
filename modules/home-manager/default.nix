@@ -10,6 +10,7 @@
     ./ghostty.nix
     ./git.nix
     ./neovim
+    ./nh.nix
     ./npm.nix
     ./ssh.nix
     ./tmux
