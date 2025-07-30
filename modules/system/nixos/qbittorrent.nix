@@ -12,6 +12,10 @@ let
   GID = 888;
 in
 {
+  # TODO: switch to upstream module
+  # https://github.com/nixos/nixpkgs/blob/master/nixos/modules/services/torrent/qbittorrent.nix
+  disabledModules = [ "services/torrent/qbittorrent.nix" ];
+
   options.services.qbittorrent = {
     enable = mkEnableOption (lib.mdDoc "qBittorrent headless");
 
