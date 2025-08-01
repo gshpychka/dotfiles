@@ -20,9 +20,8 @@
         enable = true;
         ssh = {
           enable = true;
-          # Once connected, run `/systemd-ask-password` to unlock LUKS
           hostKeys = [
-            # These keys were generated imperatively, they are no the regular host keys.
+            # These keys were generated imperatively, they are not the regular host keys.
             # Justification from the docs:
 
             # Unless your bootloader supports initrd secrets,
@@ -38,6 +37,9 @@
           port = 22;
           authorizedKeys = config.users.users.${config.my.user}.openssh.authorizedKeys.keys;
           authorizedKeyFiles = config.users.users.${config.my.user}.openssh.authorizedKeys.keyFiles;
+          # automatically present LUKS password prompt on SSH connection
+          # /bin/cryptsetup-askpass apparently only handles a single device at a time
+          shell = "/bin/systemd-tty-ask-password-agent";
         };
       };
       availableKernelModules = [
@@ -65,4 +67,3 @@
     kernelPackages = pkgs.linuxPackages;
   };
 }
-
