@@ -142,8 +142,8 @@
   services = {
     fstrim.enable = true;
     # Monthly btrfs scrubbing to detect corruption
-    # We can't repaid it since we're in RAID0,
-    # but I guess it would be nice to know
+    # We can't repair the data since it is RAID0,
+    # but we can repair the metadata that's in RAID1
     btrfs.autoScrub = {
       enable = true;
       fileSystems = [
@@ -154,4 +154,3 @@
     };
   };
 }
-
