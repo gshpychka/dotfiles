@@ -7,6 +7,9 @@
     auto-optimise-store = true;
     accept-flake-config = true;
     http-connections = 0;
+    # https://github.com/NixOS/nix/issues/11728#issuecomment-2725297584
+    # 1000MB
+    download-buffer-size = 1048576000;
   };
   nix.gc = {
     dates = "weekly";
@@ -25,3 +28,4 @@
     format = "binary";
   };
 }
+

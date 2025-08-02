@@ -5,6 +5,9 @@
 {
   nix.settings = {
     auto-optimise-store = true;
+    # https://github.com/NixOS/nix/issues/11728#issuecomment-2725297584
+    # 500MB
+    download-buffer-size = 524288000;
   };
   nix.gc = {
     dates = "weekly";
@@ -23,4 +26,3 @@
     format = "binary";
   };
 }
-

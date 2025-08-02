@@ -8,7 +8,9 @@
       auto-optimise-store = false;
       accept-flake-config = true;
       http-connections = 0;
-      download-buffer-size = 500000000;
+      # https://github.com/NixOS/nix/issues/11728#issuecomment-2725297584
+      # 2000MB
+      download-buffer-size = 2097152000;
     };
     gc = {
       automatic = true;
