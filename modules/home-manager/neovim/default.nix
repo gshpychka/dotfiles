@@ -93,6 +93,7 @@ in
         telescope-ui-select-nvim
         typescript-tools-nvim
         tsc-nvim
+        ts-error-translator-nvim
         snacks-nvim
       ];
       extraPackages = with pkgs; [

@@ -150,6 +150,11 @@ require("lspconfig").zls.setup({
   on_attach = create_on_attach(true),
 })
 
+-- Setup ts-error-translator
+require("ts-error-translator").setup({
+  auto_override_publish_diagnostics = false, -- We'll handle it manually
+})
+
 local ts_api = require("typescript-tools.api")
 require("typescript-tools").setup({
   handlers = {
@@ -167,10 +172,18 @@ require("typescript-tools").setup({
 
       return vim.lsp.handlers["textDocument/references"](err, result, ctx, config)
     end,
-    -- ["textDocument/publishDiagnostics"] = ts_api.filter_diagnostics({
-    --   6196, -- unused vars
-    --   6133, -- also unused vars, even though the error code doesn't match the docs
-    -- }),
+    ["textDocument/publishDiagnostics"] = function(err, result, ctx, config)
+      -- First filter diagnostics to remove unused vars
+      local filtered_handler = ts_api.filter_diagnostics({
+        6196, -- unused vars
+        6133, -- also unused vars, even though the error code doesn't match the docs
+      })
+      -- Apply the filter which modifies result in place
+      filtered_handler(err, result, ctx, config)
+      -- Then translate the remaining diagnostics and publish
+      require("ts-error-translator").translate_diagnostics(err, result, ctx)
+      vim.lsp.diagnostic.on_publish_diagnostics(err, result, ctx)
+    end,
   },
   on_attach = function(client, bufnr)
     vim.keymap.set("n", "md", function()
@@ -230,7 +243,7 @@ require("lspconfig").eslint.setup({
   -- .eslintrc.* files are deprecated, see https://eslint.org/docs/latest/use/configure/migration-guide
   root_dir = require("lspconfig.util").root_pattern(
     "eslint.config.js",
-    "eslint.config.mjs", 
+    "eslint.config.mjs",
     "eslint.config.cjs",
     "eslint.config.ts",
     "eslint.config.mts",

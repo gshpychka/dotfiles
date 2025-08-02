@@ -7,6 +7,7 @@ Personal dotfiles managed with Nix flakes for multiple machines (eve, harbor, re
 - `machines/` - Machine-specific configurations
 - `modules/` - Nix modules (darwin/nixos/home-manager/common)
 - `overlays/` - Package overlays
+- `packages/` - Custom package definitions
 - `secrets/` - SOPS encrypted secrets
 
 ## Standards
