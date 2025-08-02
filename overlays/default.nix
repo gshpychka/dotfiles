@@ -1,5 +1,14 @@
 inputs: [
   (import ./claude-code.nix)
-  (import ./vim-plugins.nix)
+  (import ./claudecode-nvim.nix)
+  (final: prev: 
+    let
+      packages = import ../packages { pkgs = final; };
+    in
+    {
+      vimPlugins = prev.vimPlugins // {
+        inherit (packages) ts-error-translator-nvim;
+      };
+    })
   inputs.mcp-servers-nix.overlays.default
 ]
