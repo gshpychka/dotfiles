@@ -6,8 +6,11 @@ require("claudecode").setup({
   -- Terminal configuration
   terminal = {
     split_side = "right",
-    split_width_percentage = 0.30,
-    provider = "auto",
+    split_width_percentage = 0.45,
+    provider = "snacks",
+    snacks_win_opts = {
+      -- TODO: disable title
+    },
     auto_close = true
   },
   -- Diff configuration
