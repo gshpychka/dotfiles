@@ -4,54 +4,60 @@
 }:
 {
   boot = {
-    initrd.luks.devices = {
-      # parted /dev/sdc --script mklabel gpt mkart primary 0% 100%
-      # cryptsetup luksFormat --type luks2 --cipher aes-xts-plain64 --key-size 512 --sector-size 4096 /dev/sdc1
-      # cryptsetup config --label="hoard-alpha-enc" /dev/sdc1
-      # systemd-cryptenroll --tpm2-device=auto /dev/sdc1
-      # cryptsetup luksOpen /dev/sdc1 hoard-alpha
+    initrd = {
+      luks.devices = {
+        # parted /dev/sdc --script mklabel gpt mkart primary 0% 100%
+        # cryptsetup luksFormat --type luks2 --cipher aes-xts-plain64 --key-size 512 --sector-size 4096 /dev/sdc1
+        # cryptsetup config --label="hoard-alpha-enc" /dev/sdc1
+        # systemd-cryptenroll --tpm2-device=auto /dev/sdc1
+        # cryptsetup luksOpen /dev/sdc1 hoard-alpha
 
-      # On first device:
-      # mkfs.btrfs -d single -m dup -L hoard -s 4096 -n 65536 --csum xxhash /dev/mapper/hoard-beta
+        # On first device:
+        # mkfs.btrfs -d single -m dup -L hoard -s 4096 -n 65536 --csum xxhash /dev/mapper/hoard-beta
 
-      # On second device:
-      # btrfs device add /dev/mapper/hoard-alpha /mnt/hoard
-      # btrfs balance start -dconvert=raid0 -mconvert=raid1 --bg /mnt/hoard
-      hoard-alpha = {
-        device = "/dev/disk/by-label/hoard-alpha-enc";
-        crypttabExtraOpts = [
-          "tpm2-device=auto"
-          # make it wait for the USB enclosure to show up
-          "x-systemd.device-timeout=10s"
-          # continue with boot if it doesn't show up
-          # nofail
-          # nofail breaks the setup - it will not wait for the USB device to show up
-          # https://github.com/systemd/systemd/issues/27321#issuecomment-1543226472
-        ];
+        # On second device:
+        # btrfs device add /dev/mapper/hoard-alpha /mnt/hoard
+        # btrfs balance start -dconvert=raid0 -mconvert=raid1 --bg /mnt/hoard
+        hoard-alpha = {
+          device = "/dev/disk/by-label/hoard-alpha-enc";
+          crypttabExtraOpts = [
+            "tpm2-device=auto"
+            # make it wait for the USB enclosure to show up
+            "x-systemd.device-timeout=10s"
+            # continue with boot if it doesn't show up
+            # nofail
+            # nofail breaks the setup - it will not wait for the USB device to show up
+            # https://github.com/systemd/systemd/issues/27321#issuecomment-1543226472
+          ];
+        };
+        hoard-beta = {
+          device = "/dev/disk/by-label/hoard-beta-enc";
+          crypttabExtraOpts = [
+            "tpm2-device=auto"
+            "x-systemd.device-timeout=10s"
+          ];
+        };
+        trove = {
+          device = "/dev/disk/by-label/trove-enc";
+          crypttabExtraOpts = [
+            "tpm2-device=auto"
+            "x-systemd.device-timeout=10s"
+            "nofail"
+          ];
+        };
+        oasis = {
+          device = "/dev/disk/by-label/oasis-enc";
+          crypttabExtraOpts = [
+            "tpm2-device=auto"
+            "x-systemd.device-timeout=10s"
+          ];
+          allowDiscards = true;
+          bypassWorkqueues = true;
+        };
       };
-      hoard-beta = {
-        device = "/dev/disk/by-label/hoard-beta-enc";
-        crypttabExtraOpts = [
-          "tpm2-device=auto"
-          "x-systemd.device-timeout=10s"
-        ];
-      };
-      trove = {
-        device = "/dev/disk/by-label/trove-enc";
-        crypttabExtraOpts = [
-          "tpm2-device=auto"
-          "x-systemd.device-timeout=10s"
-          "nofail"
-        ];
-      };
-      oasis = {
-        device = "/dev/disk/by-label/oasis-enc";
-        crypttabExtraOpts = [
-          "tpm2-device=auto"
-          "x-systemd.device-timeout=10s"
-        ];
-        allowDiscards = true;
-        bypassWorkqueues = true;
+      systemd = {
+        enable = true;
+        tpm2.enable = true;
       };
     };
 
@@ -74,6 +80,10 @@
       useTmpfs = true; # /tmp is stored in RAM
       tmpfsSize = "80%"; # /tmp can take up to 80% of RAM
     };
+  };
+  hardware.block = {
+    defaultScheduler = "mq-deadline";
+    defaultSchedulerRotational = "bfq";
   };
 
   fileSystems = {

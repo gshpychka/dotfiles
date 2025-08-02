@@ -37,10 +37,13 @@
           port = 22;
           authorizedKeys = config.users.users.${config.my.user}.openssh.authorizedKeys.keys;
           authorizedKeyFiles = config.users.users.${config.my.user}.openssh.authorizedKeys.keyFiles;
-          # automatically present LUKS password prompt on SSH connection
-          # /bin/cryptsetup-askpass apparently only handles a single device at a time
-          shell = "/bin/systemd-tty-ask-password-agent";
         };
+      };
+      systemd = {
+        enable = true;
+        # automatically present LUKS password prompt on SSH connection
+        # /bin/cryptsetup-askpass apparently only handles a single device at a time
+        users.root.shell = "/bin/systemd-tty-ask-password-agent";
       };
       availableKernelModules = [
         "xhci_pci"
@@ -54,10 +57,6 @@
       kernelModules = [
         "r8169" # ethernet driver
       ];
-      systemd = {
-        enable = true;
-        tpm2.enable = true;
-      };
     };
     kernelModules = [
       "kvm-intel"

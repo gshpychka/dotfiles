@@ -1,5 +1,4 @@
 {
-  lib,
   modulesPath,
   ...
 }:
@@ -11,10 +10,5 @@
     enableAllFirmware = true;
     cpu.intel.updateMicrocode = true;
     usbStorage.manageShutdown = true;
-    block = {
-      defaultScheduler = "mq-deadline";
-      defaultSchedulerRotational = "bfq";
-    };
   };
 }
-
