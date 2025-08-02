@@ -38,7 +38,7 @@ local capabilities = vim.tbl_deep_extend(
   }
 )
 
-local create_on_attach = function(formatting)
+local create_on_attach = function()
   local on_attach = function(client, bufnr)
     if client.server_capabilities.documentHighlightProvider then
       local group = vim.api.nvim_create_augroup("LSPDocumentHighlight", {})
@@ -55,7 +55,7 @@ local create_on_attach = function(formatting)
         callback = vim.lsp.buf.clear_references,
       })
     end
-    if formatting then
+    if client.server_capabilities.documentFormattingProvider then
       vim.api.nvim_create_autocmd({ "BufWritePre" }, {
         desc = "LSP formatting on write",
         callback = function()
@@ -72,12 +72,12 @@ end
 
 require("lspconfig").pyright.setup({
   capabilities = capabilities,
-  on_attach = create_on_attach(true),
+  on_attach = create_on_attach(),
 })
 
 require("lspconfig").lua_ls.setup({
   capabilities = capabilities,
-  on_attach = create_on_attach(true),
+  on_attach = create_on_attach(),
   settings = {
     Lua = {
       runtime = {
@@ -106,7 +106,7 @@ require("lspconfig").lua_ls.setup({
 
 require("lspconfig").nil_ls.setup({
   capabilities = capabilities,
-  on_attach = create_on_attach(true),
+  on_attach = create_on_attach(),
   settings = {
     ["nil"] = {
       formatting = {
@@ -124,12 +124,12 @@ require("lspconfig").nil_ls.setup({
 
 require("lspconfig").dockerls.setup({
   capabilities = capabilities,
-  on_attach = create_on_attach(true),
+  on_attach = create_on_attach(),
 })
 
 require("lspconfig").jsonls.setup({
   capabilities = capabilities,
-  on_attach = create_on_attach(true),
+  on_attach = create_on_attach(),
   init_options = {
     provideFormatter = true,
   },
@@ -137,17 +137,17 @@ require("lspconfig").jsonls.setup({
 
 require("lspconfig").yamlls.setup({
   capabilities = capabilities,
-  on_attach = create_on_attach(true),
+  on_attach = create_on_attach(),
 })
 
 require("lspconfig").bashls.setup({
   capabilities = capabilities,
-  on_attach = create_on_attach(true),
+  on_attach = create_on_attach(),
 })
 
 require("lspconfig").zls.setup({
   capabilities = capabilities,
-  on_attach = create_on_attach(true),
+  on_attach = create_on_attach(),
 })
 
 require("ts-error-translator").setup({
@@ -177,6 +177,8 @@ require("typescript-tools").setup({
     }),
   },
   on_attach = function(client, bufnr)
+    -- Disable formatting for typescript-tools (use eslint/biome instead)
+    client.server_capabilities.documentFormattingProvider = false
     vim.keymap.set("n", "md", function()
       local handler = function(_, result, _, _)
         if result == nil or vim.tbl_isempty(result) then
@@ -206,10 +208,9 @@ require("typescript-tools").setup({
       ts_api.remove_unused_imports(true)
       ts_api.add_missing_imports(true)
       ts_api.organize_imports(true)
-      vim.lsp.buf.format({ async = false, bufnr = bufnr, name = "eslint" })
-    end, { desc = "Organize imports with tsserver and format with eslint", buffer = bufnr })
+    end, { desc = "Organize imports with tsserver", buffer = bufnr })
 
-    create_on_attach(false)(client, bufnr)
+    create_on_attach()(client, bufnr)
   end,
   capabilities = capabilities,
   settings = {
@@ -229,7 +230,12 @@ require("typescript-tools").setup({
 })
 
 require("lspconfig").eslint.setup({
-  on_attach = create_on_attach(true),
+  on_attach = function(client, bufnr)
+    -- eslint uses dynamic registration which neovim doesn't support
+    -- https://github.com/microsoft/vscode-eslint/pull/1307
+    client.server_capabilities.documentFormattingProvider = true
+    create_on_attach()(client, bufnr)
+  end,
   -- only use flat config files (eslint.config.*)
   -- .eslintrc.* files are deprecated, see https://eslint.org/docs/latest/use/configure/migration-guide
   root_dir = require("lspconfig.util").root_pattern(
@@ -249,5 +255,5 @@ require("lspconfig").eslint.setup({
 })
 
 require("lspconfig").biome.setup({
-  on_attach = create_on_attach(true),
+  on_attach = create_on_attach(),
 })
