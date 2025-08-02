@@ -208,7 +208,7 @@ require("typescript-tools").setup({
           return nil
         end
       end
-      vim.lsp.buf_request(bufnr, "textDocument/definition", util.make_position_params(), handler)
+      vim.lsp.buf_request(bufnr, "textDocument/definition", util.make_position_params(0, client.offset_encoding), handler)
     end, { desc = "Create mark at definition", buffer = bufnr })
 
     vim.keymap.set("n", "<leader>fo", function()
