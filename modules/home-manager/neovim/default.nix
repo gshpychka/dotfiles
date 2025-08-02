@@ -13,6 +13,11 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    # clear neovim cache on activation to ensure config changes take effect
+    home.activation.clearNeovimCache = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+      run rm -rf ${config.xdg.cacheHome}/nvim
+    '';
+
     programs.neovim = {
       enable = true;
       defaultEditor = true;
@@ -113,4 +118,3 @@ in
     };
   };
 }
-
