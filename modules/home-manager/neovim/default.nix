@@ -51,7 +51,6 @@ in
         nvim-notify
         noice-nvim
         inc-rename-nvim
-        indent-blankline-nvim
         text-case-nvim
         nvim-lspconfig
         flash-nvim

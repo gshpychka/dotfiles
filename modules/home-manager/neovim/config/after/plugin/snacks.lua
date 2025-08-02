@@ -5,7 +5,7 @@ local snacks = require("snacks")
 snacks.setup({
   bigfile = { enabled = true },
   dashboard = { enabled = false }, -- requires lazy.nvim
-  indent = { enabled = false },    -- using indent-blankline.nvim
+  indent = { enabled = true },
   input = { enabled = false },     -- using noice.nvim for input dialogs
   notifier = { enabled = false },  -- using noice.nvim for notifications
   quickfile = { enabled = false },
