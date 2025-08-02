@@ -94,6 +94,7 @@ in
         telescope-ui-select-nvim
         typescript-tools-nvim
         tsc-nvim
+        snacks-nvim
       ];
       extraPackages = with pkgs; [
         # LSP servers
