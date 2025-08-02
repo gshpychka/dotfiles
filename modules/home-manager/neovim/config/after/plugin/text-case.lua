@@ -12,7 +12,7 @@ local function has_rename_capability()
   return false
 end
 
-vim.keymap.set("n", "<leader>cc", function()
+vim.keymap.set("n", "<leader>rc", function()
   if has_rename_capability() then
     textcase.lsp_rename("to_camel_case")
   else
@@ -21,7 +21,7 @@ vim.keymap.set("n", "<leader>cc", function()
   end
 end, { desc = "Rename to camelCase", remap = false })
 
-vim.keymap.set("n", "<leader>fcc", function()
+vim.keymap.set("n", "<leader>frc", function()
   if has_rename_capability() then
     vim.cmd("TextCaseOpenTelescopeLSPChange")
   else

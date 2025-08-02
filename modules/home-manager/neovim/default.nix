@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   cfg = config.my.neovim;
 in
@@ -69,6 +74,7 @@ in
             markdown_inline
           ]
         ))
+        claudecode-nvim
         neogen
         luasnip
         # nvim-lightbulb
@@ -107,3 +113,4 @@ in
     };
   };
 }
+
