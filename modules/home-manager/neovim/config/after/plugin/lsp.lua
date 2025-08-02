@@ -187,7 +187,7 @@ require("typescript-tools").setup({
   },
   on_attach = function(client, bufnr)
     vim.keymap.set("n", "md", function()
-      local handler = function(_, result, ctx, config)
+      local handler = function(_, result, _, _)
         if result == nil or vim.tbl_isempty(result) then
           return nil
         end
