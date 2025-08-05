@@ -5,8 +5,8 @@ final: prev: {
       src = final.fetchFromGitHub {
         owner = "coder";
         repo = "claudecode.nvim";
-        rev = "d0f97489d9064bdd55592106e99aa5f355a09914";
-        sha256 = "1x5lp5s1par0zqasnldz46gc8jdv5h63adr6b105ql3xja6lyrma";
+        rev = "477009003cbec7e6088dbbeab46aba80f461d5f0";
+        sha256 = "P2FELIY8roeII4kVgk5BEHWkhelJCsaV6PyMIkEpC8I=";
       };
     });
   };
