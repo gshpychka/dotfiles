@@ -26,6 +26,10 @@
       url = "github:Mic92/sops-nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    lanzaboote = {
+      url = "github:nix-community/lanzaboote/v0.4.2";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     overseerr-nixpkgs.url = "github:jf-uu/nixpkgs/overseerr";
     mcp-servers-nix = {
       url = "github:natsukium/mcp-servers-nix";
@@ -78,6 +82,7 @@
         specialArgs = { inherit inputs; };
         modules = [
           inputs.sops-nix.nixosModules.sops
+          inputs.lanzaboote.nixosModules.lanzaboote
           home-manager.nixosModules.home-manager
 
           ./modules/system/nixos

@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ pkgs, lib, ... }:
 {
   boot = {
     kernelPackages = pkgs.linuxPackages_latest;
@@ -15,14 +15,22 @@
     };
     kernelModules = [ "kvm-intel" ];
     extraModulePackages = [ ];
+
+    # Lanzaboote replaces systemd-boot
     loader = {
       grub.enable = false;
-      systemd-boot = {
-        enable = true;
-        configurationLimit = 2;
-      };
+      systemd-boot.enable = lib.mkForce false;
       efi.canTouchEfiVariables = true;
       timeout = 3;
+    };
+
+    # secure boot
+    lanzaboote = {
+      enable = true;
+      pkiBundle = "/var/lib/sbctl";
+      # run once:
+      # sudo sbctl create-keys
+      # sudo sbctl enroll-keys --microsoft
     };
 
     # silent and pretty boot
