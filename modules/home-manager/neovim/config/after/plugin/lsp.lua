@@ -172,8 +172,11 @@ require("typescript-tools").setup({
       return vim.lsp.handlers["textDocument/references"](err, result, ctx, config)
     end,
     ["textDocument/publishDiagnostics"] = ts_api.filter_diagnostics({
-      6196, -- unused vars
-      6133, -- also unused vars, even though the error code doesn't match the docs
+      6196, -- `'{0}' is declared but never used.`
+      6133, -- `'{0}' is declared but its value is never read`
+      6134, -- `Report errors on unused locals.`
+      6135, -- `Report errors on unused parameters.`
+      6138, -- `Property '{0}' is declared but its value is never read.`
     }),
   },
   on_attach = function(client, bufnr)
