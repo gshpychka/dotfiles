@@ -28,9 +28,11 @@
     lanzaboote = {
       enable = true;
       pkiBundle = "/var/lib/sbctl";
-      # run once:
+      # run once before rebuild:
       # sudo sbctl create-keys
-      # sudo sbctl enroll-keys --microsoft
+      # run once after rebuild:
+      # https://github.com/nix-community/lanzaboote/issues/389#issuecomment-2729324645
+      # sudo sbctl enroll-keys --microsoft --ignore-immutable
     };
 
     # silent and pretty boot
