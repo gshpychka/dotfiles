@@ -9,7 +9,7 @@
 
   # Shared boot partition
   fileSystems."/boot" = {
-    device = "/dev/disk/by-uuid/063D-73D8";
+    device = "/dev/disk/by-uuid/D6D6-CDCD";
     fsType = "vfat";
     options = [
       "fmask=0022"

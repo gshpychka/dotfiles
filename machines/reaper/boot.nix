@@ -28,6 +28,7 @@
     lanzaboote = {
       enable = true;
       pkiBundle = "/var/lib/sbctl";
+      configurationLimit = 10;
       # run once before rebuild:
       # sudo sbctl create-keys
       # run once after rebuild:
