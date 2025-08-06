@@ -19,7 +19,9 @@ in
       dnsutils
     ];
 
-    programs.jq.enable = true;
+    programs = {
+      jq.enable = true;
+      nix-index.enable = true;
+    };
   };
 }
-
