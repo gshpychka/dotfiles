@@ -21,7 +21,7 @@ in
       # https://github.com/search?q=mcp-servers-nix+claude-code&type=code
       # https://github.com/anthropics/claude-code/issues/1455
       context7-mcp
+      ccusage
     ];
   };
 }
-
