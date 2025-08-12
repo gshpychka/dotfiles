@@ -6,7 +6,7 @@ final: prev: {
         owner = "coder";
         repo = "claudecode.nvim";
         rev = "985b4b117ea13ec85c92830ecac8f63543dd5ead";
-        sha256 = "";
+        sha256 = "b4jCKIqowkVuWhI9jxthluZISBOnIc8eOIgkw5++HRY=";
       };
     });
   };
