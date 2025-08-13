@@ -35,12 +35,12 @@ in
       (
         final: prev:
         let
-          overseerrPkgs = import inputs.overseerr-nixpkgs {
+          nixpkgs-master = import inputs.nixpkgs-master {
             inherit (final) system config;
           };
         in
         {
-          overseerr = overseerrPkgs.overseerr;
+          overseerr = nixpkgs-master.overseerr;
         }
       )
     ];

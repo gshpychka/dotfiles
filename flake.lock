@@ -134,11 +134,11 @@
     "homebrew-cask": {
       "flake": false,
       "locked": {
-        "lastModified": 1755007990,
-        "narHash": "sha256-/PgzbIe6Zm532BLWUmXENCb1n3dFGl76CyWN2Q3mEWY=",
+        "lastModified": 1755084206,
+        "narHash": "sha256-JBJ2d366v4OaX44kaV1ppeAttboWkjPAUbP0oSgeRTk=",
         "owner": "homebrew",
         "repo": "homebrew-cask",
-        "rev": "ca45c71c6b71f3a34900a8dec0b5f6033918ec5f",
+        "rev": "643cc1f0e7066bee2d657f6cb21f6009c02602b5",
         "type": "github"
       },
       "original": {
@@ -150,11 +150,11 @@
     "homebrew-core": {
       "flake": false,
       "locked": {
-        "lastModified": 1755012348,
-        "narHash": "sha256-F5hpDReZe1+d0iD0zsuI86vB4N3AcsAjMMk6cDYvVjE=",
+        "lastModified": 1755085580,
+        "narHash": "sha256-amJpALz9Sa4QsfF3D5A7zoWF/Z8b2tqweUjNkI489DM=",
         "owner": "homebrew",
         "repo": "homebrew-core",
-        "rev": "2e4e06f343762a05654e4cefa48d53357d6367f2",
+        "rev": "dd2a0a479a087634bc96ba010b2fc7fefc5d0022",
         "type": "github"
       },
       "original": {
@@ -259,6 +259,22 @@
         "type": "github"
       }
     },
+    "nixpkgs-master": {
+      "locked": {
+        "lastModified": 1755085938,
+        "narHash": "sha256-viWXzpBf9Xz7FGrss4VLiHFrAGiJHsCPhcOKPjGEssU=",
+        "owner": "nixos",
+        "repo": "nixpkgs",
+        "rev": "2e37ab61069f944cd7e6374f76241fe244267d62",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nixos",
+        "ref": "master",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
     "nixpkgs-stable": {
       "locked": {
         "lastModified": 1730741070,
@@ -271,22 +287,6 @@
       "original": {
         "owner": "NixOS",
         "ref": "nixos-24.05",
-        "repo": "nixpkgs",
-        "type": "github"
-      }
-    },
-    "overseerr-nixpkgs": {
-      "locked": {
-        "lastModified": 1753184613,
-        "narHash": "sha256-KFKmqlZHyH001+fazZe/o+Dzk09wiPA9MYmrQqMFGsw=",
-        "owner": "jf-uu",
-        "repo": "nixpkgs",
-        "rev": "50b7400d9343a1bd52e3f8b3f63318441111c403",
-        "type": "github"
-      },
-      "original": {
-        "owner": "jf-uu",
-        "ref": "overseerr",
         "repo": "nixpkgs",
         "type": "github"
       }
@@ -329,7 +329,7 @@
         "nix-homebrew": "nix-homebrew",
         "nixos-stable": "nixos-stable",
         "nixpkgs": "nixpkgs",
-        "overseerr-nixpkgs": "overseerr-nixpkgs",
+        "nixpkgs-master": "nixpkgs-master",
         "sops-nix": "sops-nix"
       }
     },

@@ -3,6 +3,7 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     nixos-stable.url = "github:nixos/nixpkgs/nixos-25.05";
+    nixpkgs-master.url = "github:nixos/nixpkgs/master";
     home-manager = {
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -30,7 +31,6 @@
       url = "github:nix-community/lanzaboote/v0.4.2";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    overseerr-nixpkgs.url = "github:jf-uu/nixpkgs/overseerr";
     mcp-servers-nix = {
       url = "github:natsukium/mcp-servers-nix";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -42,7 +42,7 @@
       self,
       nixpkgs,
       nixos-stable,
-      overseerr-nixpkgs,
+      nixpkgs-master,
       darwin,
       home-manager,
       nix-homebrew,
@@ -101,7 +101,6 @@
           ./machines/hoard
         ];
       };
-
 
       checks = {
         aarch64-darwin.eve = self.darwinConfigurations.eve.config.system.build.toplevel;
