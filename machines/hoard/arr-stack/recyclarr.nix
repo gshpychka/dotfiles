@@ -3,10 +3,7 @@
   ...
 }:
 let
-  ports = {
-    radarr = "7878";
-    sonarr = "8989";
-  };
+  inherit ((import ../ports.nix { inherit config; })) ports;
 in
 {
   services.recyclarr = {
