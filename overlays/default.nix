@@ -1,6 +1,7 @@
 inputs: [
   (import ./claude-code.nix)
   (import ./claudecode-nvim.nix)
+  (import ./plex.nix)
   (
     final: prev:
     let
