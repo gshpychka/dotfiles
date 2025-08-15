@@ -1,7 +1,8 @@
 { pkgs, lib, ... }:
 {
   boot = {
-    kernelPackages = pkgs.linuxPackages_latest;
+    # pinning because shutdown hangs with 6.16
+    kernelPackages = pkgs.linuxPackages_6_15;
     initrd = {
       availableKernelModules = [
         "vmd"
