@@ -9,11 +9,9 @@
     ./cloudflare-ddns.nix
     ./glances.nix
     ./ollama.nix
-    ./overseerr.nix
     ./qbittorrent.nix
     ./sabnzbd.nix
     ./tailscale.nix
     ./terminfo.nix
   ];
 }
-
