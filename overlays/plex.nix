@@ -1,5 +1,5 @@
 final: prev: {
-  plex = prev.plex.overrideAttrs (oldAttrs: rec {
+  plexRaw = prev.plexRaw.overrideAttrs (oldAttrs: rec {
     # https://github.com/NixOS/nixpkgs/issues/433054
     version = "1.42.1.10060-4e8b05daf";
     src =
