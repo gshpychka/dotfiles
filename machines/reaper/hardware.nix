@@ -7,11 +7,10 @@
 
   networking.useDHCP = lib.mkDefault true;
   networking = {
-
     wireless.enable = false;
   };
   hardware = {
-    bluetooth.enable = true;
+    bluetooth.enable = false;
     gpgSmartcards.enable = true;
     enableAllFirmware = true;
     cpu.intel.updateMicrocode = true;
