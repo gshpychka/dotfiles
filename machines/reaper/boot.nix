@@ -48,6 +48,7 @@
       "udev.log_priority=3"
     ];
     initrd.verbose = false;
+    consoleLogLevel = 3;
 
     tmp = {
       useTmpfs = true;
