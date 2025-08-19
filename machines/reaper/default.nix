@@ -13,6 +13,7 @@
     ./whisper.nix
     ./monitoring.nix
     ./home.nix
+    ./openwebui.nix
   ];
   networking.hostName = "reaper";
   nixpkgs.hostPlatform = "x86_64-linux";
@@ -36,9 +37,10 @@
   my.buildServer = {
     enable = true;
     systems = [
+      # Support both native and ARM builds
       "x86_64-linux"
       "aarch64-linux"
-    ]; # Support both native and ARM builds
+    ];
     maxJobs = 16;
     speedFactor = 4;
     supportedFeatures = [
