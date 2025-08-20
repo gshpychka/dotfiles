@@ -6,7 +6,7 @@
       settings = {
         allowed-users = [ config.my.user ];
         trusted-users = [ config.my.user ];
-        
+
         # Binary caches - consolidated configuration
         extra-substituters = [
           "https://nix-community.cachix.org"

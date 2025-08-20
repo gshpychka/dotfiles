@@ -11,8 +11,8 @@
       # cudaSupport = true; (do NOT uncomment)
 
       # https://en.wikipedia.org/wiki/CUDA#GPUs_supported
-      # Use common capabilities that are more likely to be cached
-      # cudaCapabilities = [ "8.0" "8.6" "8.9" ];
+      # specifying this leads to more rebuilds
+      # cudaCapabilities = [ "8.9" ];
       cudaForwardCompat = true;
       nvidia.acceptLicense = true;
     };

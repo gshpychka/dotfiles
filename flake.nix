@@ -34,6 +34,10 @@
       url = "github:natsukium/mcp-servers-nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    nixified-ai = {
+      url = "github:nixified-ai/flake";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -47,6 +51,7 @@
       homebrew-core,
       homebrew-cask,
       mcp-servers-nix,
+      nixified-ai,
       ...
     }@inputs:
     {
