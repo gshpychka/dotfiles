@@ -18,6 +18,7 @@
   my.distributedBuilds = {
     enable = true;
     servers = [ "reaper" ];
+    clientSpeedFactor = 1;
     sshKeyPath = config.sops.secrets.nixbuild-ssh-key.path;
   };
 

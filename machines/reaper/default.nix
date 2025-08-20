@@ -42,7 +42,7 @@
       "aarch64-linux"
     ];
     maxJobs = 16;
-    speedFactor = 4;
+    speedFactor = 100;
     supportedFeatures = [
       "nixos-test"
       "benchmark"

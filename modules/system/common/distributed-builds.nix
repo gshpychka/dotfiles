@@ -8,12 +8,18 @@ let
     serverName:
     let
       serverConfig = config.my.buildServers.${serverName};
+      # relative speed factor: server speed / client speed
+      # integer division with a minimum of 1 to avoid disabling the builder
+      # otherwise, it would have a speed factor of 0 if server is slower than client
+      # might reevaluate in the future - maybe we want to disable slower builders?
+      rawSpeedFactor = builtins.div serverConfig.speedFactor cfg.clientSpeedFactor;
+      relativeSpeedFactor = if rawSpeedFactor < 1 then 1 else rawSpeedFactor;
     in
     {
       hostName = serverConfig.hostName;
       systems = serverConfig.systems;
       maxJobs = serverConfig.maxJobs;
-      speedFactor = serverConfig.speedFactor;
+      speedFactor = relativeSpeedFactor;
       supportedFeatures = serverConfig.supportedFeatures;
       mandatoryFeatures = serverConfig.mandatoryFeatures;
       sshUser = serverConfig.sshUser;
@@ -37,6 +43,13 @@ in
       type = lib.types.str;
       description = "Path to SSH private key for connecting to build servers";
       example = "/run/secrets/nixbuild-ssh-key";
+    };
+
+    clientSpeedFactor = lib.mkOption {
+      type = lib.types.ints.positive;
+      default = 1;
+      description = "Absolute speed factor of this client (used to calculate relative speed of build servers)";
+      example = 2;
     };
 
     fallbackToBuildLocally = lib.mkOption {
@@ -72,4 +85,3 @@ in
     );
   };
 }
-
