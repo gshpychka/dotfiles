@@ -7,6 +7,7 @@
     ./disk-spindown.nix
     ./duckdns.nix
     ./cloudflare-ddns.nix
+    ./generic-machine-id.nix
     ./glances.nix
     ./ollama.nix
     ./qbittorrent.nix
