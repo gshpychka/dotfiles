@@ -1,7 +1,5 @@
 {
   config,
-  inputs,
-  pkgs,
   ...
 }:
 {
@@ -46,19 +44,7 @@
       # Enable the Nvidia settings menu,
       # accessible via `nvidia-settings`.
       nvidiaSettings = false;
-
-      # override nvidia-persistenced due to https://github.com/NixOS/nixpkgs/issues/437066
-      package =
-        let
-          stablePkgs = import inputs.nixos-stable {
-            system = pkgs.stdenv.hostPlatform.system;
-            config.allowUnfree = true;
-          };
-        in
-        config.boot.kernelPackages.nvidiaPackages.beta
-        // {
-          persistenced = stablePkgs.linuxPackages.nvidia_x11.persistenced;
-        };
+      package = config.boot.kernelPackages.nvidiaPackages.beta;
     };
     nvidia-container-toolkit.enable = true;
   };
