@@ -5,8 +5,17 @@
     host = "127.0.0.1";
     port = 8080;
     environment = {
+      ENABLE_PERSISTENT_CONFIG = "False";
+      ENABLE_SIGNUP = "True";
+      DEFAULT_USER_ROLE = "pending"; # users have to be approved by an admin
+      ENABLE_VERSION_UPDATE_CHECK = "False";
+      WEBUI_URL = "https://openwebui.${config.networking.fqdn}";
+
       OLLAMA_API_BASE_URL = "http://${config.services.ollama.host}:${toString config.services.ollama.port}";
-      DEFAULT_USER_ROLE = "user";
+
+      ENABLE_IMAGE_GENERATION = "True";
+      IMAGE_GENERATION_ENGINE = "comfyui";
+      COMFYUI_BASE_URL = "http://${config.services.comfyui.host}:${toString config.services.comfyui.port}/";
     };
   };
 

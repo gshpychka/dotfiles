@@ -14,6 +14,7 @@
     ./monitoring.nix
     ./home.nix
     ./openwebui.nix
+    ./comfyui.nix
   ];
   networking.hostName = "reaper";
   nixpkgs.hostPlatform = "x86_64-linux";

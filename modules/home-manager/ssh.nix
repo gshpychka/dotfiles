@@ -24,12 +24,7 @@ in
           # only canonicalize hosts with no dots
           CanonicalizeMaxDots 0
         '';
-
-        # this is needed because otherwise (if we leave the default value of `false`),
-        # our override will not be applied if domain canonicalization happens -
-        # since the value will be set on the first pass and first one wins
-        # we will set it to false on the second pass
-        forwardAgent = true;
+        enableDefaultConfig = false;
 
         matchBlocks = {
 
@@ -72,15 +67,26 @@ in
             # N.B. we need to use `final` as opposed to `canonical`,
             # since the latter will not match if no canonicalization happens
             match = "final host !*.${domain}";
-            # restore the safe default
             forwardAgent = false;
             setEnv = {
               # avoid compatibility issues with Ghostty
               TERM = "xterm-256color";
             };
           };
+          "*" = {
+            addKeysToAgent = "no";
+            compression = false;
+            serverAliveInterval = 0;
+            serverAliveCountMax = 3;
+            hashKnownHosts = false;
+            userKnownHostsFile = "~/.ssh/known_hosts";
+            controlMaster = "no";
+            controlPath = "~/.ssh/master-%r@%n:%p";
+            controlPersist = "no";
+          };
         };
       };
     };
   };
 }
+
