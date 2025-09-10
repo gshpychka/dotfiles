@@ -266,7 +266,6 @@ in
 
         # bind ctrl+R (overrides default fzf binding)
         bindkey '^R' fzf-history-widget-custom
-
       '';
 
       plugins = [
