@@ -22,6 +22,9 @@ in
       # https://github.com/anthropics/claude-code/issues/1455
       context7-mcp
       ccusage
+      codex
+      gemini-cli-bin
+      opencode
     ];
   };
 }
