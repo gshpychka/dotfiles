@@ -1,4 +1,9 @@
-{ config, lib, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 let
   cfg = config.my.tailscale;
@@ -37,12 +42,18 @@ in
     };
 
     services.tailscale = {
+      # https://github.com/NixOS/nixpkgs/issues/438765#issuecomment-3281041188
+      package = pkgs.tailscale.overrideAttrs { doCheck = false; };
       enable = true;
-      extraSetFlags =
-        [ (if cfg.ssh then "--ssh" else "--ssh=false") ]
-        ++ [ (if cfg.magicDns then "--accept-dns" else "--accept-dns=false") ]
-        ++ [ (if cfg.exitNode then "--advertise-exit-node" else "--advertise-exit-node=false") ]
-        ++ [ "--advertise-routes" "${lib.concatStringsSep "," cfg.advertiseRoutes}" ];
+      extraSetFlags = [
+        (if cfg.ssh then "--ssh" else "--ssh=false")
+      ]
+      ++ [ (if cfg.magicDns then "--accept-dns" else "--accept-dns=false") ]
+      ++ [ (if cfg.exitNode then "--advertise-exit-node" else "--advertise-exit-node=false") ]
+      ++ [
+        "--advertise-routes"
+        "${lib.concatStringsSep "," cfg.advertiseRoutes}"
+      ];
       authKeyFile = config.sops.secrets."tailscale-auth-key".path;
     };
 
