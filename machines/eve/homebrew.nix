@@ -112,7 +112,10 @@
         name = "dash";
         greedy = true;
       }
-      "tailscale-app"
+      {
+        name = "tailscale-app";
+        greedy = true;
+      }
       # -- 3d printing
       {
         name = "bambu-studio";
