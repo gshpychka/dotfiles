@@ -107,7 +107,7 @@ in
         bash-language-server
         yaml-language-server
         vscode-langservers-extracted # eslint, json
-        nodePackages_latest.dockerfile-language-server-nodejs
+        dockerfile-language-server
         biome # formatter/linter
 
         ripgrep
