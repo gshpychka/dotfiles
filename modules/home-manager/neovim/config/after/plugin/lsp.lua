@@ -26,20 +26,19 @@ vim.diagnostic.config({
   },
 })
 
-local capabilities = vim.tbl_deep_extend(
-  "force",
-  vim.lsp.protocol.make_client_capabilities(),
-  require("cmp_nvim_lsp").default_capabilities(),
-  {
-    workspace = {
-      didChangeWatchedFiles = { dynamicRegistration = true },
-      didChangeWorkspaceFolders = { dynamicRegistration = true },
-    },
-  }
-)
-
-local create_on_attach = function()
-  local on_attach = function(client, bufnr)
+vim.lsp.config('*', {
+  capabilities = vim.tbl_deep_extend(
+    "force",
+    vim.lsp.protocol.make_client_capabilities(),
+    require("cmp_nvim_lsp").default_capabilities(),
+    {
+      workspace = {
+        didChangeWatchedFiles = { dynamicRegistration = true },
+        didChangeWorkspaceFolders = { dynamicRegistration = true },
+      },
+    }
+  ),
+  on_attach = function(client, bufnr)
     if client.server_capabilities.documentHighlightProvider then
       local group = vim.api.nvim_create_augroup("LSPDocumentHighlight", {})
       vim.api.nvim_create_autocmd({ "CursorHold" }, {
@@ -64,49 +63,36 @@ local create_on_attach = function()
         buffer = bufnr,
       })
     end
-  end
-  return on_attach
-end
-
--- LSP servers
-
-require("lspconfig").pyright.setup({
-  capabilities = capabilities,
-  on_attach = create_on_attach(),
+  end,
 })
 
-require("lspconfig").lua_ls.setup({
-  capabilities = capabilities,
-  on_attach = create_on_attach(),
+vim.lsp.enable('pyright')
+
+vim.lsp.config('lua_ls', {
   settings = {
     Lua = {
       runtime = {
-        -- Tell the language server which version of Lua you're using (most likely LuaJIT in the case of Neovim)
         version = "LuaJIT",
       },
       diagnostics = {
-        -- Get the language server to recognize the `vim` global
         globals = { "vim" },
       },
       format = {
         enable = true,
       },
       workspace = {
-        -- Make the server aware of Neovim runtime files
         library = vim.api.nvim_get_runtime_file("", true),
         checkThirdParty = true,
       },
-      -- Do not send telemetry data containing a randomized but unique identifier
       telemetry = {
         enable = false,
       },
     },
   },
 })
+vim.lsp.enable('lua_ls')
 
-require("lspconfig").nil_ls.setup({
-  capabilities = capabilities,
-  on_attach = create_on_attach(),
+vim.lsp.config('nil_ls', {
   settings = {
     ["nil"] = {
       formatting = {
@@ -121,34 +107,22 @@ require("lspconfig").nil_ls.setup({
     },
   },
 })
+vim.lsp.enable('nil_ls')
 
-require("lspconfig").dockerls.setup({
-  capabilities = capabilities,
-  on_attach = create_on_attach(),
-})
+vim.lsp.enable('dockerls')
 
-require("lspconfig").jsonls.setup({
-  capabilities = capabilities,
-  on_attach = create_on_attach(),
+vim.lsp.config('jsonls', {
   init_options = {
     provideFormatter = true,
   },
 })
+vim.lsp.enable('jsonls')
 
-require("lspconfig").yamlls.setup({
-  capabilities = capabilities,
-  on_attach = create_on_attach(),
-})
+vim.lsp.enable('yamlls')
 
-require("lspconfig").bashls.setup({
-  capabilities = capabilities,
-  on_attach = create_on_attach(),
-})
+vim.lsp.enable('bashls')
 
-require("lspconfig").zls.setup({
-  capabilities = capabilities,
-  on_attach = create_on_attach(),
-})
+vim.lsp.enable('zls')
 
 require("ts-error-translator").setup({
   auto_override_publish_diagnostics = true,
@@ -213,9 +187,12 @@ require("typescript-tools").setup({
       ts_api.organize_imports(true)
     end, { desc = "Organize imports with tsserver", buffer = bufnr })
 
-    create_on_attach()(client, bufnr)
+    local default_on_attach = vim.lsp.config['*'].on_attach
+    if default_on_attach then
+      default_on_attach(client, bufnr)
+    end
   end,
-  capabilities = capabilities,
+  capabilities = vim.lsp.config['*'].capabilities,
   settings = {
     separate_diagnostic_server = true,
     tsserver_file_preferences = {
@@ -232,12 +209,15 @@ require("typescript-tools").setup({
   },
 })
 
-require("lspconfig").eslint.setup({
+local default_on_attach = vim.lsp.config['*'].on_attach
+vim.lsp.config('eslint', {
   on_attach = function(client, bufnr)
     -- eslint uses dynamic registration which neovim doesn't support
     -- https://github.com/microsoft/vscode-eslint/pull/1307
     client.server_capabilities.documentFormattingProvider = true
-    create_on_attach()(client, bufnr)
+    if default_on_attach then
+      default_on_attach(client, bufnr)
+    end
   end,
   -- only use flat config files (eslint.config.*)
   -- .eslintrc.* files are deprecated, see https://eslint.org/docs/latest/use/configure/migration-guide
@@ -256,7 +236,6 @@ require("lspconfig").eslint.setup({
     },
   },
 })
+vim.lsp.enable('eslint')
 
-require("lspconfig").biome.setup({
-  on_attach = create_on_attach(),
-})
+vim.lsp.enable('biome')
