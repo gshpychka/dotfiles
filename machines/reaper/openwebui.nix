@@ -13,9 +13,9 @@
 
       OLLAMA_API_BASE_URL = "http://${config.services.ollama.host}:${toString config.services.ollama.port}";
 
-      ENABLE_IMAGE_GENERATION = "True";
-      IMAGE_GENERATION_ENGINE = "comfyui";
-      COMFYUI_BASE_URL = "http://${config.services.comfyui.host}:${toString config.services.comfyui.port}/";
+      # ENABLE_IMAGE_GENERATION = "True";
+      # IMAGE_GENERATION_ENGINE = "comfyui";
+      # COMFYUI_BASE_URL = "http://${config.services.comfyui.host}:${toString config.services.comfyui.port}/";
     };
   };
 
