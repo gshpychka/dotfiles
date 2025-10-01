@@ -116,6 +116,7 @@
         name = "tailscale-app";
         greedy = true;
       }
+      "coconutbattery"
       # -- 3d printing
       {
         name = "bambu-studio";
@@ -161,6 +162,7 @@
         name = "mongodb-compass";
         greedy = true;
       }
+      "microsoft-excel"
     ];
     masApps = {
       "Dark Reader for Safari" = 1438243180;
