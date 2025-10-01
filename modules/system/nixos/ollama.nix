@@ -42,10 +42,6 @@ in
     services.ollama = {
       enable = true;
       acceleration = "cuda";
-      package = (import inputs.nixos-stable {
-        system = config.nixpkgs.system;
-        config.allowUnfree = true;
-      }).ollama;
       loadModels = lib.mkBefore (map (m: m.name) cfg.loadModels);
     };
 
