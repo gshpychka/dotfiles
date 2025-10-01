@@ -13,7 +13,7 @@
     ./whisper.nix
     ./monitoring.nix
     ./home.nix
-    # ./openwebui.nix
+    ./openwebui.nix
     # ./comfyui.nix
   ];
   networking.hostName = "reaper";
