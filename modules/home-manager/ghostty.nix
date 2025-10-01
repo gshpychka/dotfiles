@@ -15,7 +15,7 @@ in
       clearDefaultKeybinds = false;
       enableZshIntegration = true;
       settings = {
-        theme = "GruvboxDark";
+        theme = "Gruvbox Dark";
         cursor-style = "block";
         window-padding-x = 5;
         window-padding-y = 5;
@@ -40,4 +40,3 @@ in
     };
   };
 }
-
