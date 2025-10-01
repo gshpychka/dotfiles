@@ -42,8 +42,6 @@ in
     };
 
     services.tailscale = {
-      # https://github.com/NixOS/nixpkgs/issues/438765#issuecomment-3281041188
-      package = pkgs.tailscale.overrideAttrs { doCheck = false; };
       enable = true;
       extraSetFlags = [
         (if cfg.ssh then "--ssh" else "--ssh=false")
