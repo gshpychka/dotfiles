@@ -15,5 +15,7 @@
     overseerr = toString config.services.overseerr.port;
     tautulli = toString config.services.tautulli.port;
     plex = "32400";
+    grafana = toString config.services.grafana.settings.server.http_port;
+    prometheus = toString config.services.prometheus.port;
   };
 }

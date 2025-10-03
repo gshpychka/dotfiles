@@ -39,6 +39,20 @@ in
       description = "Whether to open firewall port for Glances";
     };
 
+    prometheusExport = {
+      enable = mkOption {
+        type = types.bool;
+        default = false;
+        description = "Enable Prometheus export on a separate port";
+      };
+      
+      port = mkOption {
+        type = types.int;
+        default = 9091;
+        description = "Port for Prometheus metrics export";
+      };
+    };
+
     networkInterfaces = mkOption {
       type = types.nullOr (types.listOf types.str);
       default = null;
@@ -87,6 +101,33 @@ in
         "--enable-plugin"
         "cpu,mem,sensors,fs,network,system"
       ];
+    };
+
+    # Add Prometheus exporter service when enabled
+    systemd.services.glances-prometheus = mkIf cfg.prometheusExport.enable {
+      description = "Glances Prometheus Exporter";
+      wantedBy = [ "multi-user.target" ];
+      after = [ "network.target" ];
+      serviceConfig = {
+        ExecStart = ''
+          ${pkgs.glances}/bin/glances \
+            --export prometheus \
+            --export-prometheus-host 0.0.0.0 \
+            --export-prometheus-port ${toString cfg.prometheusExport.port} \
+            --export-prometheus-prefix glances \
+            -C ${glancesConfig} \
+            --disable-webui \
+            --quiet
+        '';
+        Restart = "always";
+        RestartSec = 10;
+        DynamicUser = true;
+        ProtectSystem = "strict";
+        ProtectHome = true;
+        NoNewPrivileges = true;
+        PrivateTmp = true;
+      };
+      path = [ pkgs.lm_sensors ];
     };
   };
 }

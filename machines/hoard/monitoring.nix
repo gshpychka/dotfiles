@@ -1,5 +1,6 @@
 {
   config,
+  pkgs,
   ...
 }:
 let
@@ -19,12 +20,18 @@ in
       "/mnt/oasis"
       "/"
     ];
+    # Export metrics to Prometheus
+    prometheusExport = {
+      enable = true;
+      port = 9091;
+    };
   };
 
   services = {
     tautulli = {
       enable = true;
     };
+
     homepage-dashboard = {
       enable = true;
       settings = {
@@ -226,6 +233,54 @@ in
         }
       ];
     };
+
+    # Prometheus for metrics collection
+    prometheus = {
+      enable = true;
+      port = 9090;
+      retentionTime = "7d"; # PoC retention
+      scrapeConfigs = [
+        {
+          job_name = "glances";
+          static_configs = [
+            {
+              targets = [ "localhost:9091" ];
+            }
+          ];
+        }
+      ];
+    };
+
+    # Grafana for visualization
+    grafana = {
+      enable = true;
+      settings = {
+        server.http_port = 3000;
+        # Anonymous access for PoC
+        "auth.anonymous" = {
+          enabled = true;
+          org_role = "Admin";
+        };
+      };
+      provision = {
+        enable = true;
+        datasources.settings.datasources = [
+          {
+            name = "Prometheus";
+            type = "prometheus";
+            access = "proxy";
+            url = "http://localhost:${ports.prometheus}";
+            isDefault = true;
+          }
+        ];
+        dashboards.settings.providers = [
+          {
+            name = "default";
+            options.path = ./dashboards;
+          }
+        ];
+      };
+    };
   };
 
   sops = {
@@ -257,3 +312,4 @@ in
     };
   };
 }
+
