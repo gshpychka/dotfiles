@@ -69,7 +69,7 @@
       }
       {
         name = "google-drive";
-        greedy = true;
+        greedy = false;
       }
       {
         name = "cyberduck";
@@ -109,10 +109,6 @@
         greedy = true;
       }
       {
-        name = "dash";
-        greedy = true;
-      }
-      {
         name = "tailscale-app";
         greedy = true;
       }
@@ -131,7 +127,7 @@
       "telegram"
       {
         name = "signal";
-        greedy = true;
+        greedy = false;
       }
       "discord"
       {
@@ -156,13 +152,16 @@
       }
       {
         name = "microsoft-teams";
-        greedy = true;
+        greedy = false;
       }
       {
         name = "mongodb-compass";
         greedy = true;
       }
       "microsoft-excel"
+    ];
+    brews = [
+      "mas"
     ];
     masApps = {
       "Dark Reader for Safari" = 1438243180;
