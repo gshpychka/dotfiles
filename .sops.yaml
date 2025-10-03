@@ -1,15 +1,15 @@
 keys:
+  # TODO: figure out what the command was
   - &yubikey_alpha 7A5FB73E81C9215C692D994349E1D3136F71FED7
-    # TODO: figure out what the command was
-  - &reaper_host age1d3hhj0tzjrqt7w5nzqx86fha5cemmgdn99n5v2aw76ut7ucp8vyqspxyhn
     # nix-shell -p ssh-to-age --run 'ssh-keyscan reaper | ssh-to-age'
-  - &hoard_host age1ae5trkyduadhc45d90svq9yem62fhj676m4jyapplcsrjq78tf2qtk2yuw
+  - &reaper_host age1d3hhj0tzjrqt7w5nzqx86fha5cemmgdn99n5v2aw76ut7ucp8vyqspxyhn
     # nix-shell -p ssh-to-age --run 'ssh-keyscan hoard | ssh-to-age'
-  - &harbor_host age142kp0x4azfwvmxe0drmpt0lug4upj22wahefsezrcv3nvmcgkeds74jeld
+  - &hoard_host age1ae5trkyduadhc45d90svq9yem62fhj676m4jyapplcsrjq78tf2qtk2yuw
     # nix-shell -p ssh-to-age --run 'ssh-keyscan harbor | ssh-to-age'
-  - &eve_host age17h86yfzhhn47lnp64r4szyu2dwd6gwt7nxwy3hlcuuq06ycd3slsh580m4
+  - &harbor_host age142kp0x4azfwvmxe0drmpt0lug4upj22wahefsezrcv3nvmcgkeds74jeld
     # key generated with a nix-darin launchd daemon
     # cat /var/lib/sops-keygen.log
+  - &eve_host age17h86yfzhhn47lnp64r4szyu2dwd6gwt7nxwy3hlcuuq06ycd3slsh580m4
 creation_rules:
   - path_regex: secrets/common/.*
     key_groups:
@@ -41,7 +41,7 @@ creation_rules:
           - *yubikey_alpha
   - path_regex: secrets/eve/.*
     key_groups:
-      - pgp:
-          - *yubikey_alpha
-        age:
+      - age:
           - *eve_host
+        pgp:
+          - *yubikey_alpha
