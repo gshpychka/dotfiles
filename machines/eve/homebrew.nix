@@ -101,7 +101,7 @@
       }
       {
         name = "chatgpt";
-        greedy = true;
+        greedy = false;
       }
       "caldigit-thunderbolt-charging"
       {
@@ -143,7 +143,7 @@
       # -- work --
       {
         name = "firefox";
-        greedy = true;
+        greedy = false;
       }
       "postman"
       {
