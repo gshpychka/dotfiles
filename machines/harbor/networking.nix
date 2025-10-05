@@ -41,6 +41,12 @@ let
       mac = "1C:AF:4A:0C:6E:76";
       enableSubdomains = false;
     }
+    {
+      name = "p1s";
+      ip = "192.168.1.53";
+      mac = "EC:DA:3B:99:80:E4";
+      enableSubdomains = false;
+    }
   ];
 
 in
