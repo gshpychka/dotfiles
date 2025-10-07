@@ -65,6 +65,7 @@ vim.lsp.config('*', {
     end
   end,
 })
+local default_on_attach = vim.lsp.config['*'].on_attach
 
 vim.lsp.enable('pyright')
 
@@ -187,7 +188,6 @@ require("typescript-tools").setup({
       ts_api.organize_imports(true)
     end, { desc = "Organize imports with tsserver", buffer = bufnr })
 
-    local default_on_attach = vim.lsp.config['*'].on_attach
     if default_on_attach then
       default_on_attach(client, bufnr)
     end
@@ -209,7 +209,6 @@ require("typescript-tools").setup({
   },
 })
 
-local default_on_attach = vim.lsp.config['*'].on_attach
 vim.lsp.config('eslint', {
   on_attach = function(client, bufnr)
     -- eslint uses dynamic registration which neovim doesn't support
