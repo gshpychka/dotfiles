@@ -146,7 +146,7 @@
       config.boot.initrd.luks.devices.hoard-alpha.device
       config.boot.initrd.luks.devices.hoard-beta.device
     ];
-    timeoutMinutes = 5;
+    timeoutMinutes = 30;
   };
 
   services = {
