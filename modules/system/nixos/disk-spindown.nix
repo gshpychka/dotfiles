@@ -72,28 +72,38 @@ in
     };
   };
 
-  config = mkIf cfg.enable {
-    systemd.services = listToAttrs (
-      map (
-        device:
-        let
-          serviceName = builtins.replaceStrings [ "/" "-" ] [ "-" "--" ] (lib.removePrefix "/" device);
-          hdparmValue = minutesToHdparmValue cfg.timeoutMinutes;
-        in
+  config =
+    let
+      hdparmValue = minutesToHdparmValue cfg.timeoutMinutes;
+    in
+    mkIf cfg.enable {
+      assertions = [
         {
-          name = "hdparm-${serviceName}";
-          value = {
-            description = "Configure hdparm for ${device}";
-            wantedBy = [ "multi-user.target" ];
-            after = [ "${builtins.replaceStrings [ "/" "-" ] [ "\\x2f" "\\x2d" ] device}.device" ];
-            serviceConfig = {
-              Type = "oneshot";
-              RemainAfterExit = true;
-              ExecStart = "${lib.getExe' pkgs.hdparm "hdparm"} -S ${toString hdparmValue} ${device}";
-            };
-          };
+          assertion = (hdparmValue >= 0 && hdparmValue <= 251);
+          message = "Computed hdparm value must be between 0 and 251, got: ${toString hdparmValue}";
         }
-      ) cfg.devices
-    );
-  };
+      ];
+
+      systemd.services = listToAttrs (
+        map (
+          device:
+          let
+            serviceName = builtins.replaceStrings [ "/" "-" ] [ "-" "--" ] (lib.removePrefix "/" device);
+          in
+          {
+            name = "hdparm-${serviceName}";
+            value = {
+              description = "Configure hdparm for ${device}";
+              wantedBy = [ "multi-user.target" ];
+              after = [ "${builtins.replaceStrings [ "/" "-" ] [ "\\x2f" "\\x2d" ] device}.device" ];
+              serviceConfig = {
+                Type = "oneshot";
+                RemainAfterExit = true;
+                ExecStart = "${lib.getExe' pkgs.hdparm "hdparm"} -S ${toString hdparmValue} ${device}";
+              };
+            };
+          }
+        ) cfg.devices
+      );
+    };
 }
