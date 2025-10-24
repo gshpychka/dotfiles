@@ -12,32 +12,37 @@ in
       lazygit = {
         enable = true;
       };
+      delta = {
+        enable = true;
+        enableGitIntegration = true;
+      };
       git = {
         enable = true;
-        delta.enable = true;
-        userEmail = "23005347+gshpychka@users.noreply.github.com";
-        userName = "Glib Shpychka";
-        aliases = {
-          cm = "commit";
-          ca = "commit --amend --no-edit";
-          di = "diff";
-          dh = "diff HEAD";
-          pu = "pull";
-          ps = "push";
-          pf = "push -f";
-          st = "status -sb";
-          co = "checkout";
-          fe = "fetch";
-          gr = "grep -in";
-          re = "rebase -i";
-        };
         signing = {
           format = "ssh";
           key = osConfig.my.sshKeys.main;
           signByDefault = true;
         };
 
-        extraConfig = {
+        settings = {
+          user = {
+            email = "23005347+gshpychka@users.noreply.github.com";
+            name = "Glib Shpychka";
+          };
+          alias = {
+            cm = "commit";
+            ca = "commit --amend --no-edit";
+            di = "diff";
+            dh = "diff HEAD";
+            pu = "pull";
+            ps = "push";
+            pf = "push -f";
+            st = "status -sb";
+            co = "checkout";
+            fe = "fetch";
+            gr = "grep -in";
+            re = "rebase -i";
+          };
           init.defaultBranch = "main";
           pull = {
             ff = false;
