@@ -1,7 +1,8 @@
 # NixOS bootable installer ISO configuration
 #
-# Build the ISO:
-#   nix build .#installer-iso
+# Build:
+#   nix build .#iso
+#
 # Find device name with: lsblk or diskutil list (macOS)
 #
 # Write to USB stick

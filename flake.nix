@@ -106,26 +106,25 @@
       };
 
       # bootable ISO installer image
-      nixosConfigurations.installer-iso = nixpkgs.lib.nixosSystem {
+      nixosConfigurations.iso = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
         specialArgs = { inherit inputs; };
         modules = [
-          ./modules/common/globals.nix
-          ./modules/system/common/nix-config.nix
-          ./machines/installer-iso
+          ./modules/common
+          ./modules/system/common
+          ./machines/iso
         ];
       };
 
-      # expose the ISO for easy building: `nix build .#installer-iso`
-      packages.x86_64-linux.installer-iso =
-        self.nixosConfigurations.installer-iso.config.system.build.isoImage;
+      # expose the ISO for easy building: `nix build .#iso`
+      packages.x86_64-linux.iso = self.nixosConfigurations.iso.config.system.build.isoImage;
 
       checks = {
         aarch64-darwin.eve = self.darwinConfigurations.eve.config.system.build.toplevel;
         aarch64-linux.harbor = self.nixosConfigurations.harbor.config.system.build.toplevel;
         x86_64-linux.reaper = self.nixosConfigurations.reaper.config.system.build.toplevel;
         x86_64-linux.hoard = self.nixosConfigurations.hoard.config.system.build.toplevel;
-        x86_64-linux.installer-iso = self.nixosConfigurations.installer-iso.config.system.build.isoImage;
+        x86_64-linux.iso = self.nixosConfigurations.iso.config.system.build.isoImage;
       };
     };
 }
