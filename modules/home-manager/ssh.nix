@@ -28,9 +28,14 @@ in
 
         matchBlocks = {
 
-          # orders matters for SSH, since the first value wins (no overrides later)
+          # order matters for SSH, since the first value wins (no overrides later)
           # The order of the attrs specified here has no effect on the resulting file
           # because HM orders these as a DAG, so we need to specify the dependencies ourselves
+
+          iso = lib.hm.dag.entryBefore [ "local" ] {
+            match = "final host iso.${domain}";
+            user = "nixos";
+          };
 
           harbor = lib.hm.dag.entryBefore [ "local" ] {
             match = "final host harbor.${domain}";
@@ -89,4 +94,3 @@ in
     };
   };
 }
-
