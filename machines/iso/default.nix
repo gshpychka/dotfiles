@@ -28,5 +28,6 @@
     parted
     smartmontools
     efibootmgr
+    sbctl
   ];
 }
