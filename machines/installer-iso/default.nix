@@ -14,7 +14,7 @@
 }:
 {
   imports = [
-    "${inputs.nixpkgs}/nixos/modules/installer/cd-dvd/installation-cd-minimal.nix"
+    "${inputs.nixpkgs}/nixos/modules/installer/cd-dvd/installation-cd-base.nix"
   ];
 
   # SSH into installer via `ssh nixos@iso`
@@ -26,5 +26,6 @@
   environment.systemPackages = with pkgs; [
     parted
     smartmontools
+    efibootmgr
   ];
 }
