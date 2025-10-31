@@ -38,6 +38,7 @@ in
             "glances"
             "tautulli"
             "overseerr"
+            "jellyfin"
           ];
 
           serviceToVhost = name: {

@@ -15,5 +15,6 @@
     overseerr = toString config.services.overseerr.port;
     tautulli = toString config.services.tautulli.port;
     plex = "32400";
+    jellyfin = "8096";
   };
 }
