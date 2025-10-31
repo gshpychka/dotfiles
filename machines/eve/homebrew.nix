@@ -109,6 +109,10 @@
         greedy = true;
       }
       {
+        name = "jellyfin-media-player";
+        greedy = false;
+      }
+      {
         name = "tailscale-app";
         greedy = true;
       }
