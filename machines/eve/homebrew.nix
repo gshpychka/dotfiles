@@ -163,6 +163,7 @@
         greedy = true;
       }
       "microsoft-excel"
+      "microsoft-word"
     ];
     brews = [
       "mas"
