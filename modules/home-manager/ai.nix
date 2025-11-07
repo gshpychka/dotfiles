@@ -25,6 +25,7 @@ in
       codex
       gemini-cli-bin
       opencode
+      amp-cli
     ];
   };
 }
