@@ -117,6 +117,8 @@
         greedy = true;
       }
       "coconutbattery"
+      "losslesscut"
+      "handbrake"
       # -- 3d printing
       {
         name = "bambu-studio";
