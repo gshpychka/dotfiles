@@ -180,6 +180,7 @@ in
       "bogus-priv" = true; # drop RFC1918 reverse look‑ups that are not in DHCP leases
       "no-resolv" = true; # ignore /etc/resolv.conf
       "stop-dns-rebind" = true; # Reject addresses from upstream nameservers which are in the private IP ranges.
+      "rebind-domain-ok" = "/plex.direct/"; # https://support.plex.tv/articles/206225077-how-to-use-secure-server-connections/
 
       # resolve these locally
       local = (
