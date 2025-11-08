@@ -11,6 +11,7 @@
     ./machine-id.nix
     ./ollama.nix
     ./qbittorrent.nix
+    ./rustdesk.nix
     ./sabnzbd.nix
     ./tailscale.nix
     ./terminfo.nix

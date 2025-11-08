@@ -11,6 +11,7 @@
     ./networking.nix
     ./users.nix
     ./nginx.nix
+    ./rustdesk.nix
     ./home.nix
   ];
 

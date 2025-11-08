@@ -80,6 +80,10 @@
         greedy = true;
       }
       {
+        name = "rustdesk";
+        greedy = false;
+      }
+      {
         name = "yubico-authenticator";
         greedy = true;
       }
