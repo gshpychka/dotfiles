@@ -46,11 +46,11 @@
       # -- utilities --
       {
         name = "mullvad-vpn";
-        greedy = true;
+        greedy = false;
       }
       {
         name = "docker-desktop";
-        greedy = true;
+        greedy = false;
       }
       {
         # choose browser on each link
@@ -118,11 +118,11 @@
       }
       {
         name = "tailscale-app";
-        greedy = true;
+        greedy = false;
       }
       "coconutbattery"
       "losslesscut"
-      "handbrake"
+      "handbrake-app"
       # -- 3d printing
       {
         name = "bambu-studio";
@@ -142,7 +142,7 @@
       "discord"
       {
         name = "whatsapp";
-        greedy = true;
+        greedy = false;
       }
       {
         name = "element";
@@ -158,7 +158,7 @@
       "postman"
       {
         name = "slack";
-        greedy = true;
+        greedy = false;
       }
       {
         name = "microsoft-teams";
