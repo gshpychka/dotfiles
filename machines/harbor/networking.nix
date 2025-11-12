@@ -61,7 +61,9 @@ in
         }
       ];
     };
-
+    firewall = {
+      logRefusedConnections = false;
+    };
     defaultGateway = routerAddress;
     enableIPv6 = false;
     nameservers = [ "127.0.0.1" ];

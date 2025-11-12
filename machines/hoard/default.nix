@@ -31,6 +31,9 @@
       };
     };
     useDHCP = lib.mkDefault true;
+    firewall = {
+      logRefusedConnections = false;
+    };
   };
 
   nixpkgs.hostPlatform = "x86_64-linux";
@@ -93,4 +96,3 @@
     config.services.nginx.defaultSSLListenPort
   ];
 }
-
