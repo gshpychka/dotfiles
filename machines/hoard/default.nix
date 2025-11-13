@@ -71,11 +71,6 @@
     extraDomainNames = [ "*.${config.networking.fqdn}" ];
   };
 
-  my.tailscale = {
-    enable = true;
-    ssh = true;
-  };
-
   my.terminfo.enable = true;
 
   programs = {

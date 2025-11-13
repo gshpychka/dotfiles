@@ -30,10 +30,6 @@
       };
     };
   };
-  my.tailscale = {
-    enable = true;
-    ssh = true;
-  };
 
   my.buildServer = {
     enable = true;
