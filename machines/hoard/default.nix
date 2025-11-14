@@ -9,6 +9,7 @@
     ./hardware.nix
     ./boot.nix
     ./nix.nix
+    ./networking.nix
     ./filesystems.nix
     ./users.nix
     ./frontend.nix
@@ -20,21 +21,6 @@
     ./io-scheduling.nix
     ./home.nix
   ];
-
-  networking = {
-    hostName = "hoard";
-    usePredictableInterfaceNames = true;
-    enableIPv6 = false;
-    interfaces = {
-      enp1s0 = {
-        wakeOnLan.enable = true;
-      };
-    };
-    useDHCP = lib.mkDefault true;
-    firewall = {
-      logRefusedConnections = false;
-    };
-  };
 
   nixpkgs.hostPlatform = "x86_64-linux";
   system.stateVersion = "24.11";
