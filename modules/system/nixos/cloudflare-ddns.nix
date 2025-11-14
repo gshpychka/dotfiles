@@ -7,6 +7,11 @@ with lib;
 {
   options.my.cloudflare-ddns = {
     enable = mkEnableOption "Cloudflare dynamic DNS updater";
+    subdomains = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [ "wan" ];
+      description = "Subdomains to update with Cloudflare.";
+    };
   };
 
   config = mkIf cfg.enable {
@@ -19,7 +24,7 @@ with lib;
     services.cloudflare-dyndns = {
       enable = true;
       apiTokenFile = config.sops.secrets.cloudflare-dns-api-token.path;
-      domains = [ "wan.${config.my.domain}" ];
+      domains = map (subdomain: "${subdomain}.${config.my.domain}") cfg.subdomains;
       frequency = "*:*:0/30"; # Every 30 seconds
     };
   };
