@@ -37,8 +37,12 @@ in
       '';
     };
     localCommands = ''
-      ip route add default via ${secondaryWanGateway} dev ${secondaryWanInterface} table secondary_wan
-      ip rule add from ${secondaryWanIP} table secondary_wan
+      # Add route to secondary_wan table (replace if exists for idempotency)
+      ip route replace default via ${secondaryWanGateway} dev ${secondaryWanInterface} table secondary_wan
+      
+      # Add policy rule (skip if already exists)
+      ip rule list | grep -q "from ${secondaryWanIP} lookup secondary_wan" || \
+        ip rule add from ${secondaryWanIP} table secondary_wan
     '';
     firewall = {
       logRefusedConnections = false;
