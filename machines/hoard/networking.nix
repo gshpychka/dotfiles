@@ -19,6 +19,7 @@ in
     useDHCP = false;
     firewall = {
       logRefusedConnections = false;
+      # TODO: parametrize port/iface name
       extraCommands = ''
         # Enable NAT for plex namespace traffic going out secondary WAN
         iptables -t nat -A POSTROUTING -s ${plexNamespaceIP}/32 -o ${secondaryWanInterface} -j SNAT --to-source ${secondaryWanIP}
@@ -111,6 +112,7 @@ in
   };
 
   # Plex namespace setup
+  # TODO: make generic (no need to mention plex)
   systemd.services.plex-namespace = {
     description = "Network namespace for Plex";
     before = [ "plex.service" ];
@@ -141,6 +143,7 @@ in
       ip netns exec plex ip route add default via ${plexHostVethIP}
 
       # Configure DNS in namespace
+      # TODO: avoid hardcoding twice, tear down the folder
       mkdir -p /etc/netns/plex
       cat > /etc/netns/plex/resolv.conf <<EOF
       nameserver 1.1.1.1
