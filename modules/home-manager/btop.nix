@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   cfg = config.my.btop;
 in
@@ -15,6 +20,8 @@ in
         vim_keys = true;
         update_ms = 100;
         proc_tree = true;
+        proc_aggregate = true;
+        proc_filter_kernel = true;
         disks_filter = "exclude=/boot";
         io_mode = true;
         net_download = 1000;
@@ -24,3 +31,4 @@ in
     };
   };
 }
+
