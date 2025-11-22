@@ -33,20 +33,9 @@ in
               # "820b09bb9acbfde9c35c71e0e565dad8" # 1080p
               # "b2be17d608fc88818940cd1833b0b24c" # 720p
 
-              "c53085ddbd027d9624b320627748612f" # DV HDR10+
-              "e23edd2482476e595fb990b12e7c609c" # DV HDR10
-              "58d6a88f13e2db7f5059c41047876f00" # DV
-              "55d53828b9d81cbe20b02efd00aa0efd" # DV HLG
-              "a3e19f8f627608af0211acd02bf89735" # DV SDR
-              "b974a6cd08c1066250f1f177d7aa1225" # HDR10+
-              "dfb86d5941bc9075d6af23b09c2aeecd" # HDR10
-              "e61e28db95d22bedcadf030b8f156d96" # HDR
-              "2a4d9069cc1fe3242ff9bdaebed239bb" # HDR (undefined)
-              "08d6d8834ad9ec87b1dc7ec8148e7a1f" # PQ
-              "9364dd386c9b4a1100dde8264690add7" # HLG
-              "b17886cb4158d9fea189859409975758" # HDR10+ Boost
-              "55a5b50cb416dea5a50c4955896217ab" # DV HDR10+ Boost
-              # "f700d29429c023a5734505e77daeaea7" # DV (Disk)
+              "493b6d1dbec3c3364c59d7607f7e3405" # HDR
+              "b337d6812e06c200ec9a2d3cfa9d20a7" # DV Boost
+              "caa37d0df9c348912df1fb1d88f9273a" # HDR10+ Boost
 
               "496f355514737f7d83bf7aa4d24f8169" # TrueHD ATMOS
               "2f22d89048b01681dde8afe203bf2e95" # DTS X
@@ -111,7 +100,6 @@ in
               "0a3f082873eb454bde444150b70253cc" # Extras
               "712d74cd88bceb883ee32f773656b1f5" # Sing-Along Versions
               "cae4ca30163749b891686f95532519bd" # AV1
-              # "923b6abef9b17f937fab56cfcf89e1f1" # DV (WEBDL)
               "b6832f586342ef70d9c128d40c07b872" # Bad Dual Groups
               "cc444569854e9de0b084ab2b8b1532b2" # Black and White Editions
               # "ae9b7c9ebde1f3bd336a8cbd1ec4c5e5" # No-RlsGroup
@@ -124,6 +112,17 @@ in
             ];
             assign_scores_to = [
               { name = "Any"; }
+            ];
+          }
+          {
+            trash_ids = [
+              "923b6abef9b17f937fab56cfcf89e1f1" # DV (w/o HDR fallback)
+            ];
+            assign_scores_to = [
+              {
+                name = "Any";
+                score = -100; # instead of -1000 in the guide
+              }
             ];
           }
         ];
@@ -151,19 +150,9 @@ in
               # "290078c8b266272a5cc8e251b5e2eb0b" # 1080p
               # "c99279ee27a154c2f20d1d505cc99e25" # 720p
 
-              "2b239ed870daba8126a53bd5dc8dc1c8" # DV HDR10+
-              "7878c33f1963fefb3d6c8657d46c2f0a" # DV HDR10
-              "6d0d8de7b57e35518ac0308b0ddf404e" # DV HDR
-              "1f733af03141f068a540eec352589a89" # DV HLG
-              "27954b0a80aab882522a88a4d9eae1cd" # DV SDR
-              "a3d82cbef5039f8d295478d28a887159" # HDR10+
-              "3497799d29a085e2ac2df9d468413c94" # HDR10
-              "3e2c4e748b64a1a1118e0ea3f4cf6875" # HDR
-              "bb019e1cd00f304f80971c965de064dc" # HDR (undefined)
-              "2a7e3be05d3861d6df7171ec74cad727" # PQ
-              "17e889ce13117940092308f48b48b45b" # HLG
-              "0dad0a507451acddd754fe6dc3a7f5e7" # HDR10+ Boost
-              "385e9e8581d33133c3961bdcdeffb7b4" # DV HDR10+ Boost
+              "505d871304820ba7106b693be6fe4a9e" # HDR
+              "7c3a61a9c6cb04f52f1544be6d44a026" # DV Boost
+              "0c4b99df9206d2cfac3c05ab897dd62a" # HDR10+ Boost
 
               "0d7824bb924701997f874e7ff7d4844a" # TrueHD ATMOS
               "9d00418ba386a083fbf4d58235fc37ef" # DTS X
@@ -206,7 +195,6 @@ in
               "1efe8da11bfd74fbbcd4d8117ddb9213" # STAN
               "9623c5c9cac8e939c1b9aedd32f640bf" # SYFY
               "43b3cf48cb385cd3eac608ee6bca7f09" # UHD Streaming Boost
-              "d2d299244a92b8a52d4921ce3897a256" # UHD Streaming Cut
 
               "e6258996055b9fbab7e9cb2f75819294" # WEB Tier 01
               "58790d4e2fdcd9733aa7ae68ba2bb503" # WEB Tier 02
@@ -222,11 +210,23 @@ in
               "9c11cd3f07101cdba90a2d81cf0e56b4" # LQ
               "e2315f990da2e2cbfc9fa5b7a6fcfe48" # LQ (Release Title)
               "23297a736ca77c0fc8e70f8edd7ee56c" # Upscaled
+              "15a05bc7c1a36e2b57fd628f8977e2fc" # AV1
               # "9b27ab6498ec0f31a3353992e19434ca" # DV (WEBDL)
               # "83304f261cf516bb208c18c54c0adf97" # SDR (no WEBDL)
             ];
             assign_scores_to = [
               { name = "Any"; }
+            ];
+          }
+          {
+            trash_ids = [
+              "9b27ab6498ec0f31a3353992e19434ca" # DV (w/o HDR fallback)
+            ];
+            assign_scores_to = [
+              {
+                name = "Any";
+                score = -100; # instead of -1000 in the guide
+              }
             ];
           }
         ];
