@@ -211,7 +211,6 @@ in
               "e2315f990da2e2cbfc9fa5b7a6fcfe48" # LQ (Release Title)
               "23297a736ca77c0fc8e70f8edd7ee56c" # Upscaled
               "15a05bc7c1a36e2b57fd628f8977e2fc" # AV1
-              # "9b27ab6498ec0f31a3353992e19434ca" # DV (WEBDL)
               # "83304f261cf516bb208c18c54c0adf97" # SDR (no WEBDL)
             ];
             assign_scores_to = [
