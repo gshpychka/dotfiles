@@ -35,7 +35,6 @@ in
 
               "493b6d1dbec3c3364c59d7607f7e3405" # HDR
               "b337d6812e06c200ec9a2d3cfa9d20a7" # DV Boost
-              "caa37d0df9c348912df1fb1d88f9273a" # HDR10+ Boost
 
               "496f355514737f7d83bf7aa4d24f8169" # TrueHD ATMOS
               "2f22d89048b01681dde8afe203bf2e95" # DTS X
@@ -115,6 +114,7 @@ in
             ];
           }
           {
+            # allow DV Profile 5
             trash_ids = [
               "923b6abef9b17f937fab56cfcf89e1f1" # DV (w/o HDR fallback)
             ];
@@ -122,6 +122,18 @@ in
               {
                 name = "Any";
                 score = -100; # instead of -1000 in the guide
+              }
+            ];
+          }
+          {
+            # prefer HDR10+ over DV
+            trash_ids = [
+              "caa37d0df9c348912df1fb1d88f9273a" # HDR10+ Boost
+            ];
+            assign_scores_to = [
+              {
+                name = "Any";
+                score = 1000; # instead of +100 in the guide
               }
             ];
           }
@@ -152,7 +164,6 @@ in
 
               "505d871304820ba7106b693be6fe4a9e" # HDR
               "7c3a61a9c6cb04f52f1544be6d44a026" # DV Boost
-              "0c4b99df9206d2cfac3c05ab897dd62a" # HDR10+ Boost
 
               "0d7824bb924701997f874e7ff7d4844a" # TrueHD ATMOS
               "9d00418ba386a083fbf4d58235fc37ef" # DTS X
@@ -218,6 +229,7 @@ in
             ];
           }
           {
+            # allow DV Profile 5
             trash_ids = [
               "9b27ab6498ec0f31a3353992e19434ca" # DV (w/o HDR fallback)
             ];
@@ -225,6 +237,18 @@ in
               {
                 name = "Any";
                 score = -100; # instead of -1000 in the guide
+              }
+            ];
+          }
+          {
+            # prefer HDR10+ over DV
+            trash_ids = [
+              "0c4b99df9206d2cfac3c05ab897dd62a" # HDR10+ Boost
+            ];
+            assign_scores_to = [
+              {
+                name = "Any";
+                score = 1000; # instead of +100 in the guide
               }
             ];
           }
