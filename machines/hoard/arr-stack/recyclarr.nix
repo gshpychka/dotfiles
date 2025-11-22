@@ -11,7 +11,7 @@ in
     group = "media";
     configuration = {
       radarr.radarr = {
-        api_key._secret = "/run/credentials/recyclarr.service/radarr-api-key";
+        api_key._secret = config.sops.secrets.radarr-api-key.path;
         base_url = "http://localhost:${ports.radarr}";
         delete_old_custom_formats = true;
         replace_existing_custom_formats = true;
@@ -129,7 +129,7 @@ in
         ];
       };
       sonarr.sonarr = {
-        api_key._secret = "/run/credentials/recyclarr.service/sonarr-api-key";
+        api_key._secret = config.sops.secrets.sonarr-api-key.path;
         base_url = "http://localhost:${ports.sonarr}";
         delete_old_custom_formats = true;
         replace_existing_custom_formats = true;
@@ -232,16 +232,5 @@ in
         ];
       };
     };
-  };
-
-  systemd.services.recyclarr = {
-    after = [
-      config.systemd.services.radarr.name
-      config.systemd.services.sonarr.name
-    ];
-    serviceConfig.LoadCredential = [
-      "radarr-api-key:${config.sops.secrets.radarr-api-key.path}"
-      "sonarr-api-key:${config.sops.secrets.sonarr-api-key.path}"
-    ];
   };
 }
