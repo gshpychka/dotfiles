@@ -93,22 +93,16 @@ vim.lsp.config('lua_ls', {
 })
 vim.lsp.enable('lua_ls')
 
-vim.lsp.config('nil_ls', {
+vim.lsp.config('nixd', {
   settings = {
-    ["nil"] = {
+    nixd = {
       formatting = {
         command = { "nixfmt" },
-      },
-      nix = {
-        flake = {
-          autoEvalInputs = false,
-          autoArchive = false,
-        },
       },
     },
   },
 })
-vim.lsp.enable('nil_ls')
+vim.lsp.enable('nixd')
 
 vim.lsp.enable('dockerls')
 

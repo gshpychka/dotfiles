@@ -101,7 +101,7 @@ in
         # LSP servers
         nodePackages_latest.typescript-language-server
         pyright
-        nil
+        nixd
         lua-language-server
         zls
         bash-language-server
