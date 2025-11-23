@@ -33,6 +33,7 @@ in
             "sonarr"
             "lidarr"
             "prowlarr"
+            "bazarr"
             "sabnzbd"
             "home"
             "glances"

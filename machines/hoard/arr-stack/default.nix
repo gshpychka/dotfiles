@@ -22,6 +22,10 @@
       enable = true;
       group = "media";
     };
+    bazarr = {
+      enable = true;
+      group = "media";
+    };
     overseerr = {
       enable = true;
     };

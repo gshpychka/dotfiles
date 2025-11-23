@@ -12,6 +12,7 @@
     radarr = "7878";
     lidarr = "8686";
     prowlarr = "9696";
+    bazarr = toString config.services.bazarr.listenPort;
     overseerr = toString config.services.overseerr.port;
     tautulli = toString config.services.tautulli.port;
     plex = "32400";
