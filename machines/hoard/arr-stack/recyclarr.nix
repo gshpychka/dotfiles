@@ -137,6 +137,18 @@ in
               }
             ];
           }
+          {
+            # avoid VC-1 (sound sync issue)
+            trash_ids = [
+              "11cd1db7165d6a7ad9a83bc97b8b1060" # VC-1
+            ];
+            assign_scores_to = [
+              {
+                name = "Any";
+                score = -3000; # possible to offset above zero (might tweak later)
+              }
+            ];
+          }
         ];
       };
       sonarr.sonarr = {
@@ -249,6 +261,18 @@ in
               {
                 name = "Any";
                 score = 1000; # instead of +100 in the guide
+              }
+            ];
+          }
+          {
+            # avoid VC-1 (sound sync issue)
+            trash_ids = [
+              "7470a681e6205243983c4410ee4c920f" # VC-1
+            ];
+            assign_scores_to = [
+              {
+                name = "Any";
+                score = -3000; # possible to offset above zero (might tweak later)
               }
             ];
           }
