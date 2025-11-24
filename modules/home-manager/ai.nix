@@ -24,7 +24,10 @@ in
       ccusage
       codex
       gemini-cli-bin
-      opencode
+      # opencode broken on darwin
+      # https://github.com/sst/opencode/issues/4575
+      # https://github.com/oven-sh/bun/issues/24645
+      # opencode
       amp-cli
     ];
   };
