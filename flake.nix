@@ -2,7 +2,7 @@
   description = "My Machines";
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
-    nixos-stable.url = "github:nixos/nixpkgs/nixos-25.05";
+    nixos-stable.url = "github:nixos/nixpkgs/nixos-25.11";
     home-manager = {
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -44,14 +44,9 @@
     {
       self,
       nixpkgs,
-      nixos-stable,
       darwin,
       home-manager,
       nix-homebrew,
-      homebrew-core,
-      homebrew-cask,
-      mcp-servers-nix,
-      nixified-ai,
       ...
     }@inputs:
     {
