@@ -1,4 +1,10 @@
-{ config, lib, options, inputs, ... }:
+{
+  config,
+  lib,
+  options,
+  inputs,
+  ...
+}:
 {
   config = lib.mkMerge [
     {
@@ -8,6 +14,8 @@
           allowed-users = [ config.my.user ];
           trusted-users = [ config.my.user ];
 
+          # https://wiki.nixos.org/wiki/Maintainers:Fastly#Cache_v2_plans
+          # substituters = lib.mkForce [ "https://aseipp-nix-cache.global.ssl.fastly.net" ];
           extra-substituters = [
             "https://nix-community.cachix.org"
             "https://numtide.cachix.org"

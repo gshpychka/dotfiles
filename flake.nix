@@ -42,6 +42,10 @@
       url = "github:nixified-ai/flake";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    jovian-nixos = {
+      url = "github:Jovian-Experiments/Jovian-NixOS";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -85,6 +89,7 @@
         modules = [
           inputs.sops-nix.nixosModules.sops
           inputs.lanzaboote.nixosModules.lanzaboote
+          inputs.jovian-nixos.nixosModules.jovian
           home-manager.nixosModules.home-manager
 
           ./modules/system/nixos
