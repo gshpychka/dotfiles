@@ -14,8 +14,7 @@
       # cudaSupport = true; (do NOT uncomment)
 
       # https://en.wikipedia.org/wiki/CUDA#GPUs_supported
-      # specifying this leads to more rebuilds
-      # cudaCapabilities = [ "8.9" ];
+      cudaCapabilities = [ "8.9" ];
       cudaForwardCompat = true;
       nvidia.acceptLicense = true;
     };
@@ -33,9 +32,6 @@
   };
   hardware = {
     nvidia = {
-      # Modesetting is required.
-      modesetting.enable = true;
-
       # ensure GPU is awake while headless
       nvidiaPersistenced = true;
       powerManagement.enable = true;
