@@ -24,7 +24,7 @@ in
       ccusage
       codex
       gemini-cli-bin
-      # opencode broken on darwin
+      opencode
       # https://github.com/sst/opencode/issues/4575
       # https://github.com/oven-sh/bun/issues/24645
       # opencode
