@@ -13,6 +13,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    # AI CLI/TUI tools from github:numtide/nix-ai-tools (via overlay)
+    # context7-mcp is from github:natsukium/mcp-servers-nix
     home.packages = with pkgs; [
       claude-code
       # until I figure out how to wire it up declaratively, add it imperatively:
@@ -23,12 +25,9 @@ in
       context7-mcp
       ccusage
       codex
-      gemini-cli-bin
+      gemini-cli
       opencode
-      # https://github.com/sst/opencode/issues/4575
-      # https://github.com/oven-sh/bun/issues/24645
-      # opencode
-      amp-cli
+      amp
     ];
   };
 }
