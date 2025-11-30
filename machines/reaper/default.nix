@@ -24,8 +24,6 @@
   networking = {
     usePredictableInterfaceNames = true;
     enableIPv6 = false;
-    # NetworkManager is required for Steam Deck UI first-time setup
-    networkmanager.enable = true;
     interfaces = {
       eno3 = {
         wakeOnLan.enable = true;
@@ -67,7 +65,6 @@
           "wheel"
           "plugdev"
           "usb"
-          "networkmanager"
         ];
         openssh.authorizedKeys.keys = [
           config.my.sshKeys.main

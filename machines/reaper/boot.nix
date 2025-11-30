@@ -55,4 +55,7 @@
       tmpfsSize = "32G";
     };
   };
+  environment.systemPackages = with pkgs; [
+    sbctl
+  ];
 }

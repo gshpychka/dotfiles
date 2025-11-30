@@ -37,9 +37,8 @@
       powerManagement.enable = true;
       open = false;
 
-      # Enable the Nvidia settings menu,
-      # accessible via `nvidia-settings`.
-      nvidiaSettings = false;
+      # GUI settings
+      nvidiaSettings = true;
       package = config.boot.kernelPackages.nvidiaPackages.beta;
     };
     nvidia-container-toolkit.enable = true;
