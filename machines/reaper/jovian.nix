@@ -1,14 +1,36 @@
 {
   config,
   pkgs,
+  lib,
   ...
 }:
 {
+  home-manager.users.jovian =
+    { ... }:
+    {
+      home.packages = with pkgs; [ razergenie ];
+      programs = {
+        firefox.enable = true;
+      };
+      home.stateVersion = "25.11";
+    };
+
+  users = {
+    users.jovian = {
+      isNormalUser = true;
+      extraGroups = [
+        "plugdev"
+        "usb"
+      ]
+      ++ lib.optional config.hardware.openrazer.enable "openrazer";
+    };
+  };
+
   jovian = {
     steam = {
       enable = true;
       autoStart = true;
-      user = config.my.user;
+      user = config.users.users.jovian.name;
       # Desktop session to switch to from Gaming Mode
       # Using Plasma 6 for a full desktop experience
       desktopSession = "plasma";
@@ -25,10 +47,8 @@
     };
     hardware.has.amd.gpu = false;
   };
-
-  environment.systemPackages = with pkgs; [
-    razergenie
-  ];
+  # required at least for the first boot / onboarding
+  networking.networkmanager.enable = true;
 
   services.desktopManager.plasma6.enable = true;
 

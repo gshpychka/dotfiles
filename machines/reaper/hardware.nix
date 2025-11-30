@@ -1,7 +1,6 @@
 {
   lib,
   pkgs,
-  config,
   ...
 }:
 {
@@ -23,7 +22,12 @@
     steam-hardware.enable = true;
     openrazer = {
       enable = true;
-      users = [ config.my.user ];
+    };
+    keyboard = {
+      qmk = {
+        enable = true;
+        keychronSupport = true;
+      };
     };
   };
   services.fstrim.enable = true;
