@@ -57,6 +57,12 @@
     # otherwise, UI will be laggy
     # that's the only reason to enable Steam here
     enable = true;
+    extraCompatPackages = with pkgs; [
+      # fork of proton that's apparently better (?)
+      # https://github.com/GloriousEggroll/proton-ge-custom
+      proton-ge-bin
+    ];
+
   };
 
   # 32-bit graphics support for Steam/Proton games
