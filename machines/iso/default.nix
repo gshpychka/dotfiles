@@ -20,6 +20,7 @@
 
   # SSH into installer via `ssh nixos@iso`
   networking.hostName = "iso";
+  nixpkgs.hostPlatform = "x86_64-linux";
   services.openssh.enable = true;
   users.users.nixos.openssh.authorizedKeys.keys = [ config.my.sshKeys.main ];
 

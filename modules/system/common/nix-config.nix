@@ -16,7 +16,7 @@
 
           # https://wiki.nixos.org/wiki/Maintainers:Fastly#Cache_v2_plans
           # substituters = lib.mkForce [ "https://aseipp-nix-cache.global.ssl.fastly.net" ];
-          extra-substituters = [
+          extra-trusted-substituters = [
             "https://nix-community.cachix.org"
             "https://numtide.cachix.org"
           ];

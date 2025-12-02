@@ -4,15 +4,15 @@
   fetchFromGitHub,
 }:
 
-vimUtils.buildVimPlugin {
+vimUtils.buildVimPlugin rec {
   pname = "ts-error-translator.nvim";
-  version = "1.2.0";
+  version = "2.0.1";
 
   src = fetchFromGitHub {
     owner = "dmmulroy";
     repo = "ts-error-translator.nvim";
-    rev = "v1.2.0";
-    sha256 = "08whn7l75qv5n74cifmnxc0s7n7ja1g7589pjnbbsk2djn6bqbky";
+    rev = "v${version}";
+    sha256 = "sha256-/eLbUkjFpAneMoITdknATvpDjnA5XMUjEKaDq0CG+ys=";
   };
 
   meta = with lib; {

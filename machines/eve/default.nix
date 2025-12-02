@@ -24,6 +24,8 @@
     computerName = "Eve";
   };
 
+  nixpkgs.hostPlatform = "aarch64-darwin";
+
   users.users.${config.my.user} = {
     home = "/Users/${config.my.user}";
     shell = pkgs.zsh;

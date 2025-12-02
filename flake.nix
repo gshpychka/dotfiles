@@ -59,7 +59,6 @@
     }@inputs:
     {
       darwinConfigurations.eve = darwin.lib.darwinSystem {
-        system = "aarch64-darwin";
         specialArgs = { inherit inputs; };
         modules = [
           inputs.sops-nix.darwinModules.sops
@@ -72,7 +71,6 @@
       };
 
       nixosConfigurations.harbor = nixpkgs.lib.nixosSystem {
-        system = "aarch64-linux";
         specialArgs = { inherit inputs; };
         modules = [
           inputs.sops-nix.nixosModules.sops
@@ -84,7 +82,6 @@
       };
 
       nixosConfigurations.reaper = nixpkgs.lib.nixosSystem {
-        system = "x86_64-linux";
         specialArgs = { inherit inputs; };
         modules = [
           inputs.sops-nix.nixosModules.sops
@@ -98,7 +95,6 @@
       };
 
       nixosConfigurations.hoard = nixpkgs.lib.nixosSystem {
-        system = "x86_64-linux";
         specialArgs = { inherit inputs; };
         modules = [
           inputs.sops-nix.nixosModules.sops
@@ -111,7 +107,6 @@
 
       # bootable ISO installer image
       nixosConfigurations.iso = nixpkgs.lib.nixosSystem {
-        system = "x86_64-linux";
         specialArgs = { inherit inputs; };
         modules = [
           ./modules/common
