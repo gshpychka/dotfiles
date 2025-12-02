@@ -24,8 +24,6 @@ creation_rules:
     key_groups:
       - age:
           - *reaper_host
-        pgp:
-          - *yubikey_alpha
 
   - path_regex: secrets/hoard/.*
     key_groups:

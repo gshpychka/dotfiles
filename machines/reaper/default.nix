@@ -16,6 +16,7 @@
     ./home.nix
     ./openwebui.nix
     # ./comfyui.nix
+    ../../modules/system/nixos/sops-age-key.nix
   ];
   networking.hostName = "reaper";
   nixpkgs.hostPlatform = "x86_64-linux";
@@ -57,6 +58,7 @@
   boot.binfmt.emulatedSystems = [ "aarch64-linux" ];
 
   users = {
+    mutableUsers = false;
     defaultUserShell = pkgs.zsh;
     users = {
       ${config.my.user} = {
@@ -70,7 +72,7 @@
           config.my.sshKeys.main
         ];
         linger = true;
-        initialHashedPassword = "";
+        hashedPasswordFile = config.sops.secrets.gshpychka-hashed-password.path;
       };
       hass = {
         group = "homeassistant";
@@ -113,7 +115,12 @@
     };
   };
 
-  sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
+  sops = {
+    age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
+    defaultSopsFile = ../../secrets/reaper/users.yaml;
+    secrets.gshpychka-hashed-password.neededForUsers = true;
+    secrets.jovian-hashed-password.neededForUsers = true;
+  };
 
   my.acme = {
     enable = true;

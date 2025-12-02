@@ -23,8 +23,11 @@
         "usb"
       ]
       ++ lib.optional config.hardware.openrazer.enable "openrazer";
+      hashedPasswordFile = config.sops.secrets.jovian-hashed-password.path;
     };
   };
+
+  nix.settings.allowed-users = [ "jovian" ];
 
   jovian = {
     steam = {
