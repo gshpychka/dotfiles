@@ -49,15 +49,18 @@
       # https://github.com/GloriousEggroll/proton-ge-custom
       proton-ge-bin
     ];
+
   };
 
   # 32-bit graphics support for Steam/Proton games
+  # this is already et by jovian-nixos
   hardware.graphics.enable32Bit = true;
 
   # Audio setup - PipeWire with low latency for gaming
   services.pipewire = {
     enable = true;
     alsa.enable = true;
+    # this is already enabled by jovian-nixos
     alsa.support32Bit = true;
     pulse.enable = true;
     jack.enable = true;
