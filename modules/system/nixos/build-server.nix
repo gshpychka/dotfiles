@@ -59,7 +59,7 @@ in
 
     systems = lib.mkOption {
       type = lib.types.listOf lib.types.str;
-      default = [ pkgs.system ];
+      default = [ pkgs.stdenv.hostPlatform.system ];
       description = "List of systems this build server can build for";
       example = [
         "x86_64-linux"

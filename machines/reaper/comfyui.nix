@@ -8,7 +8,7 @@
 
 let
   # Access nixified-ai models if available
-  aiModels = inputs.nixified-ai.packages.${pkgs.system}.models or { };
+  aiModels = inputs.nixified-ai.packages.${pkgs.stdenv.hostPlatform.system}.models or { };
 in
 {
   imports = [

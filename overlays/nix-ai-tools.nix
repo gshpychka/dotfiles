@@ -2,7 +2,7 @@
 # These replace the nixpkgs versions for AI CLI/TUI tools
 inputs: final: prev:
 let
-  ai-tools = inputs.nix-ai-tools.packages.${prev.system};
+  ai-tools = inputs.nix-ai-tools.packages.${prev.stdenv.hostPlatform.system};
 in
 {
   inherit (ai-tools)
