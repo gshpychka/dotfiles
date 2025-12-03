@@ -9,7 +9,7 @@
     ./nix.nix
     ./filesystems.nix
     ./hardware.nix
-    ./jovian.nix
+    ./jovian
     ./kokoro.nix
     ./whisper.nix
     ./monitoring.nix

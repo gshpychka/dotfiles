@@ -1,31 +1,14 @@
 {
   config,
   pkgs,
-  lib,
   ...
 }:
 {
-  home-manager.users.jovian =
-    { ... }:
-    {
-      home.packages = with pkgs; [ razergenie ];
-      programs = {
-        firefox.enable = true;
-      };
-      home.stateVersion = "25.11";
-    };
+  imports = [
+    ./user.nix
+  ];
 
-  users = {
-    users.jovian = {
-      isNormalUser = true;
-      extraGroups = [
-        "plugdev"
-        "usb"
-      ]
-      ++ lib.optional config.hardware.openrazer.enable "openrazer";
-      hashedPasswordFile = config.sops.secrets.jovian-hashed-password.path;
-    };
-  };
+  home-manager.users.jovian = import ./home.nix;
 
   nix.settings.allowed-users = [ "jovian" ];
 
@@ -50,6 +33,7 @@
     };
     hardware.has.amd.gpu = false;
   };
+
   # required at least for the first boot / onboarding
   networking.networkmanager.enable = true;
 
@@ -65,7 +49,6 @@
       # https://github.com/GloriousEggroll/proton-ge-custom
       proton-ge-bin
     ];
-
   };
 
   # 32-bit graphics support for Steam/Proton games
