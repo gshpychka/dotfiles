@@ -35,7 +35,7 @@
       # ensure GPU is awake while headless
       nvidiaPersistenced = true;
       powerManagement.enable = true;
-      open = false;
+      open = true;
 
       # GUI settings
       nvidiaSettings = true;
