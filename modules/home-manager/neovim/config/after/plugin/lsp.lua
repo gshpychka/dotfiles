@@ -120,7 +120,8 @@ vim.lsp.enable('bashls')
 vim.lsp.enable('zls')
 
 require("ts-error-translator").setup({
-  auto_override_publish_diagnostics = true,
+  auto_attach = true,
+  servers = { "typescript-tools" },
 })
 
 local ts_api = require("typescript-tools.api")
