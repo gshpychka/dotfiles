@@ -1,6 +1,12 @@
-{ config, lib, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   cfg = config.my.ghostty;
+  isDarwin = pkgs.stdenv.isDarwin;
 in
 {
   options.my.ghostty = {
@@ -9,34 +15,37 @@ in
 
   config = lib.mkIf cfg.enable {
     programs.ghostty = {
-      # installed via homebrew
-      package = null;
       enable = true;
+      # on macOS, installed via homebrew
+      package = lib.mkIf isDarwin null;
       clearDefaultKeybinds = false;
       enableZshIntegration = true;
-      settings = {
-        theme = "Gruvbox Dark";
-        cursor-style = "block";
-        window-padding-x = 5;
-        window-padding-y = 5;
-        window-padding-balance = true;
-        window-colorspace = "display-p3";
-        macos-titlebar-style = "hidden";
-        quit-after-last-window-closed = true;
-        macos-option-as-alt = true;
-        auto-update = "off";
+      settings =
+        {
+          theme = "Gruvbox Dark";
+          cursor-style = "block";
+          window-padding-x = 5;
+          window-padding-y = 5;
+          window-padding-balance = true;
+          quit-after-last-window-closed = true;
+          auto-update = "off";
 
-        font-family = "JetBrainsMono Nerd Font";
-        font-family-bold = "JetBrainsMono Nerd Font";
-        font-family-italic = "JetBrainsMono Nerd Font";
-        font-family-bold-italic = "JetBrainsMono Nerd Font";
+          font-family = "JetBrainsMono Nerd Font";
+          font-family-bold = "JetBrainsMono Nerd Font";
+          font-family-italic = "JetBrainsMono Nerd Font";
+          font-family-bold-italic = "JetBrainsMono Nerd Font";
 
-        font-style = "Regular";
-        font-style-bold = "Bold";
-        font-style-italic = "Italic";
-        font-thicken = true;
-        font-size = 12;
-      };
+          font-style = "Regular";
+          font-style-bold = "Bold";
+          font-style-italic = "Italic";
+          font-thicken = true;
+          font-size = 12;
+        }
+        // lib.optionalAttrs isDarwin {
+          window-colorspace = "display-p3";
+          macos-titlebar-style = "hidden";
+          macos-option-as-alt = true;
+        };
     };
   };
 }
