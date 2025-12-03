@@ -1,4 +1,4 @@
-{ config, ... }:
+{ config, lib, ... }:
 {
   services.open-webui = {
     enable = true;
@@ -18,6 +18,11 @@
       # COMFYUI_BASE_URL = "http://${config.services.comfyui.host}:${toString config.services.comfyui.port}/";
     };
   };
+
+  systemd.services.open-webui.requisite =
+    lib.optional
+      (config.services.open-webui.environment ? OLLAMA_API_BASE_URL)
+      config.systemd.services.ollama.name;
 
   services.nginx.virtualHosts."openwebui" = {
     serverName = "openwebui.${config.networking.fqdn}";
