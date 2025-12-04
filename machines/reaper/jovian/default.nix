@@ -49,7 +49,6 @@
       # https://github.com/GloriousEggroll/proton-ge-custom
       proton-ge-bin
     ];
-
   };
 
   # 32-bit graphics support for Steam/Proton games
