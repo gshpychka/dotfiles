@@ -4,6 +4,7 @@
 {
   imports = [
     ./recyclarr.nix
+    ./maintainerr.nix
   ];
 
   services = {

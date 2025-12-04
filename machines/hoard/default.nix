@@ -19,6 +19,7 @@
     ./smb.nix
     ./arr-stack
     ./io-scheduling.nix
+    ./docker.nix
     ./home.nix
   ];
 

@@ -39,6 +39,7 @@ in
             "glances"
             "tautulli"
             "overseerr"
+            "maintainerr"
             "jellyfin"
           ];
 

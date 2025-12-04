@@ -5,10 +5,8 @@
 }:
 {
   users = {
-    groups.media = {
-      members = [
-        config.users.users.${config.my.user}.name
-      ];
+    groups = {
+      media = { };
     };
     users = {
       ${config.my.user} = {
@@ -18,6 +16,7 @@
           "wheel"
           "plugdev"
           "usb"
+          config.users.groups.media.name
         ];
         packages = with pkgs; [
           git

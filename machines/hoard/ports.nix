@@ -14,6 +14,7 @@
     prowlarr = "9696";
     bazarr = toString config.services.bazarr.listenPort;
     overseerr = toString config.services.overseerr.port;
+    maintainerr = "6246";
     tautulli = toString config.services.tautulli.port;
     plex = "32400";
     jellyfin = "8096";
