@@ -34,4 +34,9 @@
     User = config.users.users.uptime-kuma.name;
     Group = config.users.users.uptime-kuma.group;
   };
+
+  # data dir is owned by root:root, so we need to fix that
+  systemd.tmpfiles.rules = [
+    "d ${config.services.uptime-kuma.settings.DATA_DIR} 0740 ${config.users.users.uptime-kuma.name} ${config.users.groups.uptime-kuma.name}"
+  ];
 }
