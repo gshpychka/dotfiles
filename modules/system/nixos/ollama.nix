@@ -2,7 +2,6 @@
   lib,
   pkgs,
   config,
-  inputs,
   ...
 }:
 
@@ -41,7 +40,7 @@ in
 
     services.ollama = {
       enable = true;
-      acceleration = "cuda";
+      package = pkgs.ollama-cuda;
       loadModels = lib.mkBefore (map (m: m.name) cfg.loadModels);
     };
 
