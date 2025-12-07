@@ -105,6 +105,18 @@
         ];
       };
 
+      # vm in gcp
+      # nixos-rebuild switch --flake .#buoy --target-host buoy --sudo
+      nixosConfigurations.buoy = nixpkgs.lib.nixosSystem {
+        specialArgs = { inherit inputs; };
+        modules = [
+          inputs.sops-nix.nixosModules.sops
+
+          ./modules/system/nixos
+          ./machines/buoy
+        ];
+      };
+
       # bootable ISO installer image
       nixosConfigurations.iso = nixpkgs.lib.nixosSystem {
         specialArgs = { inherit inputs; };
@@ -123,6 +135,7 @@
         aarch64-linux.harbor = self.nixosConfigurations.harbor.config.system.build.toplevel;
         x86_64-linux.reaper = self.nixosConfigurations.reaper.config.system.build.toplevel;
         x86_64-linux.hoard = self.nixosConfigurations.hoard.config.system.build.toplevel;
+        x86_64-linux.buoy = self.nixosConfigurations.buoy.config.system.build.toplevel;
         x86_64-linux.iso = self.nixosConfigurations.iso.config.system.build.isoImage;
       };
     };

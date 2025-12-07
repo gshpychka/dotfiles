@@ -69,7 +69,7 @@ in
       key = ""; # we want the entire file
     };
     cloudflare-cert = {
-      sopsFile = ../../secrets/hoard/cloudflare-cert.pem;
+      sopsFile = ../../secrets/common/cloudflare-cert.pem;
       mode = "0440";
       format = "binary";
     };

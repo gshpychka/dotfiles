@@ -4,4 +4,5 @@ inputs: [
   inputs.mcp-servers-nix.overlays.default
   (import ./claude-code.nix inputs)
   (import ./claudecode-nvim.nix)
+  (import ./uptime-kuma.nix)
 ]
