@@ -14,6 +14,7 @@ in
       credentialsFile = config.sops.secrets.cloudflare-tunnel.path;
       default = "http_status:404";
       ingress = {
+        # cloudflared tunnel route dns buoy-tunnel <hostname>
         "status.${config.my.domain}" = "http://localhost:${uptimeKumaPort}";
       };
     };
