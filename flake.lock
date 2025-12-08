@@ -3,7 +3,7 @@
     "blueprint": {
       "inputs": {
         "nixpkgs": [
-          "nix-ai-tools",
+          "llm-agents",
           "nixpkgs"
         ],
         "systems": "systems"
@@ -272,6 +272,28 @@
         "type": "github"
       }
     },
+    "llm-agents": {
+      "inputs": {
+        "blueprint": "blueprint",
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "treefmt-nix": "treefmt-nix"
+      },
+      "locked": {
+        "lastModified": 1765188893,
+        "narHash": "sha256-GDHlP/CHbB8FQwTBoMWE1qe6Sk64y9hgNyzxze3lXxY=",
+        "owner": "numtide",
+        "repo": "llm-agents.nix",
+        "rev": "8041c8a7715dc48b75a18b17c21c11179c31ffc0",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "llm-agents.nix",
+        "type": "github"
+      }
+    },
     "mcp-servers-nix": {
       "inputs": {
         "nixpkgs": [
@@ -289,28 +311,6 @@
       "original": {
         "owner": "natsukium",
         "repo": "mcp-servers-nix",
-        "type": "github"
-      }
-    },
-    "nix-ai-tools": {
-      "inputs": {
-        "blueprint": "blueprint",
-        "nixpkgs": [
-          "nixpkgs"
-        ],
-        "treefmt-nix": "treefmt-nix"
-      },
-      "locked": {
-        "lastModified": 1765116482,
-        "narHash": "sha256-FKWFpk937KfmCK3/qQBs1P5JRWIvSIc3xvhZ1mjhsck=",
-        "owner": "numtide",
-        "repo": "nix-ai-tools",
-        "rev": "e2b2ff4cf805cda9a8c3b290e6c33f1a5bb47f60",
-        "type": "github"
-      },
-      "original": {
-        "owner": "numtide",
-        "repo": "nix-ai-tools",
         "type": "github"
       }
     },
@@ -439,8 +439,8 @@
         "homebrew-core": "homebrew-core",
         "jovian-nixos": "jovian-nixos",
         "lanzaboote": "lanzaboote",
+        "llm-agents": "llm-agents",
         "mcp-servers-nix": "mcp-servers-nix",
-        "nix-ai-tools": "nix-ai-tools",
         "nix-homebrew": "nix-homebrew",
         "nixified-ai": "nixified-ai",
         "nixos-stable": "nixos-stable",
@@ -507,7 +507,7 @@
     "treefmt-nix": {
       "inputs": {
         "nixpkgs": [
-          "nix-ai-tools",
+          "llm-agents",
           "nixpkgs"
         ]
       },
