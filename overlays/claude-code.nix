@@ -1,5 +1,3 @@
-# Apply customizations on top of nix-ai-tools' claude-code
-# This overlay must be applied BEFORE the nix-ai-tools overlay
 inputs: final: prev: {
   claude-code = prev.claude-code.overrideAttrs (oldAttrs: {
     # https://docs.anthropic.com/en/docs/claude-code/settings#environment-variables
