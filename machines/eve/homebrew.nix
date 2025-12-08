@@ -162,7 +162,7 @@
       }
       {
         name = "microsoft-teams";
-        greedy = false;
+        greedy = true;
       }
       {
         name = "mongodb-compass";
