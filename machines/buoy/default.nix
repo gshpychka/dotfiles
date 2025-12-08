@@ -25,7 +25,8 @@
     enableLsColors = false;
   };
 
-  sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
+  # age key from persistent storage (fetched from Secret Manager by the bootstrap image)
+  sops.age.keyFile = "${config.fileSystems.data.mountPoint}/sops-age-key.txt";
 
   security = {
     sudo.enable = true;

@@ -8,6 +8,7 @@
     device = "/dev/disk/by-id/google-data";
     fsType = "ext4";
     autoFormat = true;
+    neededForBoot = true;
   };
 
   # state directories go onto persistent disk
