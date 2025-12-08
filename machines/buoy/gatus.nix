@@ -32,10 +32,30 @@
       };
       endpoints = [
         {
-          name = "Ping";
-          url = "icmp://1.1.1.1";
-          interval = "1m";
+          name = "Internet";
+          url = "icmp://wan.glib.sh";
+          interval = "30s";
+          ui.hide-hostname = true;
           conditions = [ "[CONNECTED] == true" ];
+        }
+        {
+          name = "Overseerr";
+          url = "https://overseerr.glib.sh";
+          interval = "30s";
+          conditions = [
+            "[STATUS] == 200"
+            "[RESPONSE_TIME] < 5000"
+          ];
+        }
+        {
+          name = "Plex";
+          url = "http://\${PLEX_HOST}:\${PLEX_PORT}/web/index.html";
+          interval = "30s";
+          ui.hide-url = true;
+          conditions = [
+            "[STATUS] == 200"
+            "[RESPONSE_TIME] < 5000"
+          ];
         }
       ];
     };
