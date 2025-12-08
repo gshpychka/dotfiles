@@ -2,9 +2,6 @@
   config,
   ...
 }:
-let
-  uptimeKumaPort = config.services.uptime-kuma.settings.PORT;
-in
 {
   services.cloudflared = {
     enable = true;
@@ -15,7 +12,7 @@ in
       default = "http_status:404";
       ingress = {
         # cloudflared tunnel route dns buoy-tunnel <hostname>
-        "status.${config.my.domain}" = "http://localhost:${uptimeKumaPort}";
+        "status.${config.my.domain}" = "http://localhost:${toString config.services.gatus.settings.web.port}";
       };
     };
   };

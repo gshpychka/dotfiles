@@ -7,7 +7,7 @@
 {
   imports = [
     "${modulesPath}/virtualisation/google-compute-image.nix"
-    ./uptime-kuma.nix
+    ./gatus.nix
     ./cloudflare-tunnel.nix
   ];
 
