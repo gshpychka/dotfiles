@@ -25,7 +25,7 @@
     enableLsColors = false;
   };
 
-  # age key from persistent storage (fetched from Secret Manager by the bootstrap image)
+  # age key from persistent storage (fetched and written by the bootstrap image)
   sops.age.keyFile = "${config.fileSystems.data.mountPoint}/sops-age-key.txt";
 
   security = {
