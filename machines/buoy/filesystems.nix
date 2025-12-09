@@ -14,14 +14,10 @@
 
   # state directories go onto persistent disk
   fileSystems."/var/lib" = {
+    # directory created by the bootstrap image
     device = "${config.fileSystems.data.mountPoint}/var-lib";
     fsType = "none";
     options = [ "bind" ];
     depends = [ config.fileSystems.data.mountPoint ];
   };
-
-  # bootstrap the source directory
-  systemd.tmpfiles.rules = [
-    "d ${config.fileSystems."/var/lib".device} 0755 root root"
-  ];
 }
