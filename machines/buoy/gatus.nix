@@ -8,13 +8,9 @@
     environmentFile = config.sops.secrets.gatus-env.path;
     settings = {
       web.address = "127.0.0.1";
-      security.basic = {
-        username = "\${GATUS_USERNAME}";
-        password-bcrypt-base64 = "\${GATUS_PASSWORD_BCRYPT_BASE64}";
-      };
       storage = {
         type = "sqlite";
-        path = "data.db";
+        path = "/var/lib/gatus/data.db";
       };
       endpoints = [
         {
@@ -37,7 +33,10 @@
           name = "Plex";
           url = "http://\${PLEX_HOST}:\${PLEX_PORT}/web/index.html";
           interval = "30s";
-          ui.hide-url = true;
+          ui = {
+            hide-hostname = true;
+            hide-errors = true;
+          };
           conditions = [
             "[STATUS] == 200"
             "[RESPONSE_TIME] < 5000"
