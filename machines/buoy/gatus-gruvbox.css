@@ -1,0 +1,124 @@
+/* Gruvbox Dark theme for Gatus */
+
+#global {
+  background-color: #282828 !important;
+  color: #ebdbb2 !important;
+}
+
+.dashboard-container {
+  background-color: #282828 !important;
+}
+
+.endpoint,
+.endpoint-group {
+  background-color: #3c3836 !important;
+  border: 1px solid #504945 !important;
+}
+
+.endpoint:hover,
+.endpoint-group:hover {
+  border-color: #665c54 !important;
+}
+
+.endpoint-header,
+.endpoint-group-header {
+  background-color: #3c3836 !important;
+  color: #ebdbb2 !important;
+}
+
+.endpoint-content,
+.endpoint-group-content {
+  background-color: #3c3836 !important;
+  color: #d5c4a1 !important;
+}
+
+.announcement-container {
+  background-color: #3c3836 !important;
+  border: 1px solid #504945 !important;
+}
+
+.announcement-header {
+  background-color: #3c3836 !important;
+  color: #ebdbb2 !important;
+}
+
+.announcement-content {
+  background-color: #3c3836 !important;
+  color: #d5c4a1 !important;
+}
+
+/* Status bars - success */
+.bg-green-500 {
+  background-color: #98971a !important;
+}
+
+.bg-green-700 {
+  background-color: #b8bb26 !important;
+}
+
+/* Status bars - failure */
+.bg-red-500 {
+  background-color: #cc241d !important;
+}
+
+.bg-red-700 {
+  background-color: #fb4934 !important;
+}
+
+/* Empty slots */
+.bg-gray-200 {
+  background-color: #504945 !important;
+}
+
+.bg-gray-700 {
+  background-color: #504945 !important;
+}
+
+/* Text styling */
+.font-bold {
+  color: #ebdbb2 !important;
+}
+
+.font-medium {
+  color: #ebdbb2 !important;
+}
+
+.font-light {
+  color: #d5c4a1 !important;
+}
+
+.text-muted-foreground {
+  color: #a89984 !important;
+}
+
+/* Header */
+header {
+  background-color: #1d2021 !important;
+  border-color: #504945 !important;
+}
+
+/* Footer */
+footer {
+  background-color: #1d2021 !important;
+  border-color: #504945 !important;
+}
+
+/* Links */
+a {
+  color: #83a598 !important;
+}
+
+a:hover {
+  color: #8ec07c !important;
+}
+
+/* Cards */
+.bg-card {
+  background-color: #3c3836 !important;
+}
+
+/* Borders */
+.border-b,
+.border-t {
+  border-color: #504945 !important;
+}

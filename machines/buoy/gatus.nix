@@ -7,6 +7,7 @@
     enable = true;
     environmentFile = config.sops.secrets.gatus-env.path;
     settings = {
+      ui.custom-css = builtins.readFile ./gatus-gruvbox.css;
       web.address = "127.0.0.1";
       storage = {
         type = "sqlite";
