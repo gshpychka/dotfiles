@@ -13,6 +13,7 @@
           btop.enable = true;
           direnv.enable = true;
           git.enable = true;
+          gpg.enable = true;
           neovim.enable = true;
           nh.enable = true;
           ssh.enable = true;

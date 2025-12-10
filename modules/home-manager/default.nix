@@ -9,6 +9,7 @@
     ./finicky
     ./ghostty.nix
     ./git.nix
+    ./gpg.nix
     ./neovim
     ./nh.nix
     ./npm.nix

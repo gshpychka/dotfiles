@@ -1,0 +1,5 @@
+gcp_project_id = "status-glibsh"
+gcp_region     = "us-central1"
+gcp_zone       = "us-central1-a"
+domain_name    = "glib.sh"
+hostname       = "buoy"

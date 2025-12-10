@@ -130,6 +130,23 @@
       # expose the ISO for easy building: `nix build .#iso`
       packages.x86_64-linux.iso = self.nixosConfigurations.iso.config.system.build.isoImage;
 
+      # Minimal bootstrap NixOS config for GCE image
+      # Full config is deployed separately via nixos-rebuild
+      nixosConfigurations.buoy-bootstrap = nixpkgs.lib.nixosSystem {
+        system = "x86_64-linux";
+        modules = [ ./infra/nixos/configuration.nix ];
+      };
+
+      # GCE image for buoy VPS: `nix build .#gce-image`
+      packages.x86_64-linux.gce-image =
+        let
+          pkgs = nixpkgs.legacyPackages.x86_64-linux;
+          original = self.nixosConfigurations.buoy-bootstrap.config.system.build.googleComputeImage;
+        in
+        pkgs.runCommand "gce-image.raw.tar.gz" { inherit original; } ''
+          cp $original/*.raw.tar.gz $out
+        '';
+
       checks = {
         aarch64-darwin.eve = self.darwinConfigurations.eve.config.system.build.toplevel;
         aarch64-linux.harbor = self.nixosConfigurations.harbor.config.system.build.toplevel;
@@ -138,5 +155,22 @@
         x86_64-linux.buoy = self.nixosConfigurations.buoy.config.system.build.toplevel;
         x86_64-linux.iso = self.nixosConfigurations.iso.config.system.build.isoImage;
       };
+
+      devShells =
+        let
+          mkShell =
+            system:
+            let
+              pkgs = nixpkgs.legacyPackages.${system};
+            in
+            {
+              default = pkgs.mkShell { buildInputs = [ pkgs.sops ]; };
+              infra = import ./infra/shell.nix { inherit nixpkgs system; };
+            };
+        in
+        {
+          x86_64-linux = mkShell "x86_64-linux";
+          aarch64-darwin = mkShell "aarch64-darwin";
+        };
     };
 }

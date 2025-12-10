@@ -169,6 +169,20 @@
 
   my.terminfo.enable = true;
 
+  # Start pcscd on boot instead of socket-activation (needed for GPG smartcard)
+  systemd.services.pcscd.wantedBy = [ "multi-user.target" ];
+
+  # Allow users in plugdev group to access PC/SC smartcards
+  security.polkit.extraConfig = ''
+    polkit.addRule(function(action, subject) {
+      if ((action.id == "org.debian.pcsc-lite.access_pcsc" ||
+           action.id == "org.debian.pcsc-lite.access_card") &&
+          subject.isInGroup("plugdev")) {
+        return polkit.Result.YES;
+      }
+    });
+  '';
+
   services = {
     pcscd.enable = true;
     udev.packages = [ pkgs.yubikey-personalization ];

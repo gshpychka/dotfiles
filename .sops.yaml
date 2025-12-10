@@ -52,3 +52,11 @@ creation_rules:
           - *buoy_host
         pgp:
           - *yubikey_alpha
+  - path_regex: secrets/infra/.*
+    key_groups:
+      - age:
+          - *eve_host
+          - *reaper_host
+          - *hoard_host
+        pgp:
+          - *yubikey_alpha
