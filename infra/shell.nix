@@ -12,7 +12,7 @@ pkgs.mkShell {
     pkgs.sops
     pkgs.age
     (pkgs.writeShellScriptBin "tf" ''
-      eval "$(${pkgs.sops}/bin/sops -d "$PRJ_ROOT/../secrets/infra/cloudflare.enc.yaml" | sed 's/: /=/g' | sed 's/^/export TF_VAR_/')"
+      eval "$(${pkgs.sops}/bin/sops -d "$PRJ_ROOT/../secrets/infra/cloudflare.yaml" | sed 's/: /=/g' | sed 's/^/export TF_VAR_/')"
       ${pkgs.terraform}/bin/terraform "$@"
     '')
   ];
