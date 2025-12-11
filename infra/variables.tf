@@ -23,7 +23,6 @@ variable "domain_name" {
 variable "hostname" {
   description = "Hostname for the VM (used for DNS A record)"
   type        = string
-  default     = "buoy"
 }
 
 variable "cloudflare_zone_id" {

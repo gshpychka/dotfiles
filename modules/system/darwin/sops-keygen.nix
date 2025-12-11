@@ -51,6 +51,7 @@ in
           # Convert SSH ed25519 key to age format
           ${pkgs.ssh-to-age}/bin/ssh-to-age -private-key -i "$SSH_KEY_PATH" > "$AGE_KEY_FILE"
           chmod 600 "$AGE_KEY_FILE"
+          chown ${config.system.primaryUser}:staff "$AGE_KEY_FILE"
           
           echo "Age key generated from SSH key at $AGE_KEY_FILE"
         else

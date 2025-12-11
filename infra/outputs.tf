@@ -8,11 +8,6 @@ output "instance_external_ip" {
   value       = google_compute_address.static_ip.address
 }
 
-output "ssh_command" {
-  description = "SSH command to connect to the instance"
-  value       = "ssh root@${var.hostname}.${var.domain_name}"
-}
-
 output "nixos_image_hash" {
   description = "Hash of the NixOS compute image"
   value       = local.nixos_image_hash

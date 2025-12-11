@@ -4,15 +4,15 @@ terraform {
   required_providers {
     google = {
       source  = "hashicorp/google"
-      version = "~> 5.0"
+      version = "7.13.0"
     }
     cloudflare = {
       source  = "cloudflare/cloudflare"
-      version = "~> 4.0"
+      version = "5.14.0"
     }
     age = {
       source  = "clementblaise/age"
-      version = "~> 0.1"
+      version = "0.1.1"
     }
   }
 }
