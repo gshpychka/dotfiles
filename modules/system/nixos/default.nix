@@ -15,5 +15,6 @@
     ./sabnzbd.nix
     ./tailscale.nix
     ./terminfo.nix
+    ./gatus-path-check.nix
   ];
 }
