@@ -95,7 +95,6 @@ in
         tsc-nvim
         ts-error-translator-nvim
         snacks-nvim
-        otter-nvim
       ];
       extraPackages = with pkgs; [
         # LSP servers
