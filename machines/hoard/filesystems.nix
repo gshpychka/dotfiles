@@ -1,5 +1,7 @@
 {
   config,
+  pkgs,
+  utils,
   ...
 }:
 {
@@ -163,4 +165,36 @@
       interval = "monthly";
     };
   };
+
+  systemd.services.reboot-if-hoard-is-not-rw = {
+    unitConfig = rec {
+      # only run when it is a mount point AND it's not read-write (i.e. ro)
+      ConditionPathIsMountPoint = config.fileSystems."/mnt/hoard".mountPoint;
+      ConditionPathIsReadWrite = "!${ConditionPathIsMountPoint}";
+    };
+    serviceConfig.Type = "oneshot";
+    script = ''
+      echo "Rebooting because /mnt/hoard is not read-write"
+      ${pkgs.systemd}/bin/systemctl --no-block reboot
+    '';
+  };
+
+  systemd.timers.reboot-if-hoard-is-not-rw =
+    let
+      mountUnit = "${utils.escapeSystemdPath config.fileSystems."/mnt/hoard".mountPoint}.mount";
+    in
+    {
+      # start the timer iif the mount unit is active
+      wantedBy = [ mountUnit ];
+      # the timer is started after the mount (this is only about ordering)
+      after = [ mountUnit ];
+      # if the mount unit is stopped, the timer will be too
+      partOf = [ mountUnit ];
+
+      timerConfig = {
+        OnUnitActiveSec = "1min";
+        Unit = config.systemd.services.reboot-if-hoard-is-not-rw.name;
+      };
+    };
+
 }
