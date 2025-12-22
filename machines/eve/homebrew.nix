@@ -77,7 +77,7 @@
       }
       {
         name = "teamviewer";
-        greedy = true;
+        greedy = false;
       }
       {
         name = "rustdesk";
@@ -89,7 +89,7 @@
       }
       {
         name = "trezor-suite";
-        greedy = true;
+        greedy = false;
       }
       {
         name = "gimp";
@@ -146,7 +146,7 @@
       }
       {
         name = "element";
-        greedy = true;
+        greedy = false;
       }
       "zoom"
 
