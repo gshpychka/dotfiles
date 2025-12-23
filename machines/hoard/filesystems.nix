@@ -166,20 +166,20 @@
     };
   };
 
-  systemd.services.reboot-if-hoard-is-not-rw = {
-    unitConfig = rec {
-      # only run when it is a mount point AND it's not read-write (i.e. ro)
+  systemd.services.reboot-if-hoard-is-borked = rec {
+    unitConfig = {
       ConditionPathIsMountPoint = config.fileSystems."/mnt/hoard".mountPoint;
-      ConditionPathIsReadWrite = "!${ConditionPathIsMountPoint}";
     };
     serviceConfig.Type = "oneshot";
     script = ''
-      echo "Rebooting because /mnt/hoard is not read-write"
-      ${pkgs.systemd}/bin/systemctl --no-block reboot
+      if ! ${pkgs.coreutils}/bin/touch ${unitConfig.ConditionPathIsMountPoint}/.health-check 2>/dev/null; then
+        echo "Filesystem not healthy, rebooting"
+        ${pkgs.systemd}/bin/systemctl --no-block reboot
+      fi
     '';
   };
 
-  systemd.timers.reboot-if-hoard-is-not-rw =
+  systemd.timers.reboot-if-hoard-is-borked =
     let
       mountUnit = "${utils.escapeSystemdPath config.fileSystems."/mnt/hoard".mountPoint}.mount";
     in
@@ -192,8 +192,11 @@
       partOf = [ mountUnit ];
 
       timerConfig = {
+        # fires every minute
+        OnActiveSec = "1min";
+        # only fires after the unit is activated once
         OnUnitActiveSec = "1min";
-        Unit = config.systemd.services.reboot-if-hoard-is-not-rw.name;
+        Unit = config.systemd.services.reboot-if-hoard-is-borked.name;
       };
     };
 
