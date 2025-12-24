@@ -3,9 +3,9 @@
 result
 
 .terraform/
-.terraform.lock.hcl
 *.tfstate
 *.tfstate.*
 *.tfplan
 *.tfvars
 !terraform.tfvars
+!.terraform.lock.hcl

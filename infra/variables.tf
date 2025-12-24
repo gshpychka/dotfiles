@@ -37,6 +37,11 @@ variable "cloudflare_api_token" {
   sensitive   = true
 }
 
+variable "hcloud_api_token" {
+  description = "Hetzner Cloud API token"
+  type        = string
+  sensitive   = true
+}
 
 variable "nixos_image_path" {
   description = "Path to the NixOS GCE image tarball (.raw.tar.gz)"

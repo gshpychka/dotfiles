@@ -14,6 +14,10 @@ terraform {
       source  = "clementblaise/age"
       version = "0.1.1"
     }
+    hcloud = {
+      source  = "hetznercloud/hcloud"
+      version = "1.57.0"
+    }
   }
 }
 
@@ -25,4 +29,8 @@ provider "google" {
 
 provider "cloudflare" {
   api_token = var.cloudflare_api_token
+}
+
+provider "hcloud" {
+  api_token = var.hcloud_api_token
 }
