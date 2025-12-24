@@ -27,7 +27,7 @@ in
     };
   };
   virtualisation.oci-containers.containers.maintainerr = {
-    image = "ghcr.io/maintainerr/maintainerr:2.22";
+    image = "ghcr.io/maintainerr/maintainerr:2.25";
     volumes = [
       "/var/lib/maintainerr:/opt/data"
     ];
