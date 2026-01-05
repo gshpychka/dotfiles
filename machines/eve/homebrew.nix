@@ -65,7 +65,7 @@
       }
       {
         name = "dropbox";
-        greedy = true;
+        greedy = false;
       }
       {
         name = "google-drive";
