@@ -73,7 +73,6 @@ in
             vim
             vimdoc
             yaml
-            wing
             markdown
             markdown_inline
           ]

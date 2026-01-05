@@ -1,4 +1,4 @@
-require("nvim-treesitter.configs").setup({
+require("nvim-treesitter").setup({
   -- grammars are managed with nix
   auto_install = false,
   highlight = {

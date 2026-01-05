@@ -11,13 +11,13 @@ vim.opt.statuscolumn = "%=%{v:virtnum < 1 ? (v:relnum ? v:relnum : v:lnum < 10 ?
 
 vim.opt.expandtab = true
 vim.opt.tabstop = 2
--- stylua uses tabs
--- black uses 4 spaces
-vim.api.nvim_exec(
-  [[
-  autocmd FileType python setlocal tabstop=4
-]],
-  false
+vim.api.nvim_create_autocmd(
+  "FileType",
+  {
+    pattern = "python",
+    command = "setlocal tabstop=4",
+    desc = "Set python tab width to 4 to match black",
+  }
 )
 
 -- make Tab characters visible
@@ -57,9 +57,4 @@ vim.o.foldenable = false
 vim.o.splitright = true
 vim.o.splitbelow = true
 
-vim.filetype.add({
-  extension = {
-    w = "wing",
-  },
-})
 require("config")
