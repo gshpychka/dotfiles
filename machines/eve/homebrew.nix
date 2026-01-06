@@ -170,6 +170,7 @@
       }
       "microsoft-excel"
       "microsoft-word"
+      "onedrive"
     ];
     brews = [
       "mas"
