@@ -107,9 +107,9 @@ in
         vscode-langservers-extracted # eslint, json
         dockerfile-language-server
         biome # formatter/linter
+        nixfmt
 
         ripgrep
-        nixfmt-rfc-style
       ];
     };
     xdg.configFile.nvim = {

@@ -8,7 +8,8 @@
 
   networking.useDHCP = lib.mkDefault true;
   networking = {
-    wireless.enable = false;
+    # force disable wireless to prevent conflicts with networkmanager
+    wireless.enable = lib.mkForce false;
   };
   hardware = {
     bluetooth.enable = true;
