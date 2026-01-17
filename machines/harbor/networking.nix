@@ -9,7 +9,7 @@ let
   routerAddress = "192.168.1.1";
   machineAddress = "192.168.1.2";
 
-  # Hosts that need wildcard sub-domains (e.g. foo.reaper.lan → reaper’s IP)
+  # hosts that need wildcard sub-domains (e.g. foo.reaper → reaper’s IP)
   staticHosts = [
     {
       name = "hoard";
