@@ -13,6 +13,13 @@
         type = "sqlite";
         path = "/var/lib/gatus/data.db";
       };
+      alerting = {
+        telegram = {
+          token = "\${TELEGRAM_TOKEN}";
+          id = "\${TELEGRAM_CHAT_ID}";
+          topic-id = "\${TELEGRAM_TOPIC_ID}";
+        };
+      };
       endpoints = [
         {
           name = "Internet";
@@ -20,6 +27,11 @@
           interval = "30s";
           ui.hide-hostname = true;
           conditions = [ "[CONNECTED] == true" ];
+          alerts = [
+            {
+              type = "telegram";
+            }
+          ];
         }
         {
           name = "Overseerr";
@@ -40,7 +52,12 @@
           };
           conditions = [
             "[STATUS] == 200"
-            "[RESPONSE_TIME] < 5000"
+            "[RESPONSE_TIME] < 10000"
+          ];
+          alerts = [
+            {
+              type = "telegram";
+            }
           ];
         }
       ];
