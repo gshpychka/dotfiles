@@ -20,6 +20,7 @@
           finicky.enable = true;
           ghostty.enable = true;
           git.enable = true;
+          gpg.enable = true;
           neovim.enable = true;
           nh.enable = true;
           npm.enable = true;
@@ -34,8 +35,6 @@
           stateVersion = "22.11";
           packages = with pkgs; [
             yubikey-manager
-            gnupg
-            pinentry_mac
             sops
           ];
         };

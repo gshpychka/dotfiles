@@ -1,11 +1,13 @@
 {
   config,
   lib,
+  pkgs,
   osConfig ? null,
   ...
 }:
 let
   cfg = config.my.gpg;
+  isDarwin = pkgs.stdenv.isDarwin;
 in
 {
   options.my.gpg = {
@@ -13,7 +15,7 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    assertions = lib.optionals (osConfig != null) [
+    assertions = lib.optionals (osConfig != null && !isDarwin) [
       {
         assertion = osConfig.services.pcscd.enable or false;
         message = "my.gpg requires services.pcscd.enable = true in NixOS config";
@@ -26,6 +28,10 @@ in
         assertion = osConfig.programs.gnupg.agent.enable or false;
         message = "my.gpg requires programs.gnupg.agent.enable = true in NixOS config";
       }
+    ];
+
+    home.packages = lib.mkIf isDarwin [
+      pkgs.pinentry_mac
     ];
 
     # user-level config files only
@@ -42,6 +48,14 @@ in
           trust = 5; # ultimate
         }
       ];
+    };
+
+    # on Darwin, configure gpg-agent manually since services.gpg-agent doesn't work
+    # pinentry-mac provides a GUI prompt for YubiKey PIN
+    home.file.".gnupg/gpg-agent.conf" = lib.mkIf isDarwin {
+      text = ''
+        pinentry-program ${pkgs.pinentry_mac}/bin/pinentry-mac
+      '';
     };
   };
 }

@@ -27,7 +27,6 @@ creation_rules:
     key_groups:
       - age:
           - *reaper_host
-
   - path_regex: secrets/hoard/.*
     key_groups:
       - age:
