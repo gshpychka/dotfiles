@@ -48,6 +48,9 @@
         name = "mullvad-vpn";
         greedy = false;
       }
+      "transmission"
+      "commander-one"
+      "forklift"
       {
         name = "docker-desktop";
         greedy = false;
@@ -171,6 +174,7 @@
       "microsoft-excel"
       "microsoft-word"
       "onedrive"
+      "vmware-fusion"
     ];
     brews = [
       "mas"
