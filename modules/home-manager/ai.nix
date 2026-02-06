@@ -25,8 +25,7 @@ in
       context7-mcp
       ccusage
       codex
-      # disabling due to https://github.com/numtide/llm-agents.nix/issues/1707
-      # gemini-cli
+      gemini-cli
       opencode
       amp
     ];
