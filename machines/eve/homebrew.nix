@@ -169,12 +169,11 @@
       }
       {
         name = "mongodb-compass";
-        greedy = true;
+        greedy = false;
       }
       "microsoft-excel"
       "microsoft-word"
       "onedrive"
-      "vmware-fusion"
     ];
     brews = [
       "mas"
