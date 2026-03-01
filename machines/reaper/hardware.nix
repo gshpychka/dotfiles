@@ -13,7 +13,7 @@ in
   networking.useDHCP = lib.mkDefault true;
   networking = {
     # force disable wireless to prevent conflicts with networkmanager
-    wireless.enable = lib.mkForce false;
+    wireless.enable = lib.mkIf config.networking.networkmanager.enable (lib.mkForce false);
   };
   hardware = {
     bluetooth.enable = true;
