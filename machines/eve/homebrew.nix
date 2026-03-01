@@ -119,10 +119,6 @@
         name = "jellyfin-media-player";
         greedy = false;
       }
-      {
-        name = "tailscale-app";
-        greedy = false;
-      }
       "coconutbattery"
       "losslesscut"
       "handbrake-app"
