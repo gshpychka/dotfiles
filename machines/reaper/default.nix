@@ -1,5 +1,4 @@
 {
-  lib,
   pkgs,
   config,
   ...
@@ -118,7 +117,7 @@
   };
 
   my.gaming.enable = false;
-  my.open-webui.enable = true;
+  my.open-webui.enable = false;
 
   sops = {
     age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
