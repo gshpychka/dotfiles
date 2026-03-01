@@ -22,10 +22,10 @@
       # Since we don't set cudaSupport = true globally, we need to enable CUDA
       # for each package that requires it
       (self: super: {
-        # ctranslate2 = super.ctranslate2.override {
-        #   withCUDA = true;
-        #   withCuDNN = true;
-        # };
+        ctranslate2 = super.ctranslate2.override {
+          withCUDA = true;
+          withCuDNN = true;
+        };
         btop = super.btop.override { cudaSupport = true; };
       })
     ];
