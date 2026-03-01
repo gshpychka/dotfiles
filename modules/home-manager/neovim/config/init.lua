@@ -33,7 +33,7 @@ vim.opt.smartindent = true
 
 vim.opt.wrap = false
 
-vim.opt.undodir = os.getenv("HOME") .. "/.nvim/undodir"
+vim.opt.undodir = os.getenv("XDG_STATE_HOME") .. "/.nvim/undodir"
 vim.opt.undofile = true
 
 vim.opt.swapfile = false

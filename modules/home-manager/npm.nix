@@ -12,9 +12,11 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    xdg.dataFile.".npm-packages/.keep".source = builtins.toFile "keep" "";
     home.sessionVariables = {
-      NPM_CONFIG_USERCONFIG = "${config.xdg.configHome}/npm";
+      NPM_CONFIG_USERCONFIG = "${config.xdg.configHome}/npm/.npmrc";
+      NPM_CONFIG_CACHE = "${config.xdg.cacheHome}/npm";
+      NPM_CONFIG_TMP = "${config.xdg.cacheHome}/npm/tmp";
+
     };
 
     xdg.configFile = {
