@@ -1,8 +1,12 @@
 {
   lib,
+  config,
   pkgs,
   ...
 }:
+let
+  gamingEnabled = config.my.gaming.enable;
+in
 {
   imports = [ ./nvidia.nix ];
 
@@ -19,10 +23,10 @@
     graphics = {
       enable = true;
     };
-    xone.enable = true;
-    steam-hardware.enable = true;
+    xone.enable = gamingEnabled;
+    steam-hardware.enable = gamingEnabled;
     openrazer = {
-      enable = true;
+      enable = gamingEnabled;
     };
     keyboard = {
       qmk = {
@@ -32,6 +36,6 @@
     };
   };
   services.fstrim.enable = true;
-  environment.systemPackages = [ pkgs.headsetcontrol ];
-  services.udev.packages = [ pkgs.headsetcontrol ];
+  environment.systemPackages = lib.optionals gamingEnabled [ pkgs.headsetcontrol ];
+  services.udev.packages = lib.optionals gamingEnabled [ pkgs.headsetcontrol ];
 }

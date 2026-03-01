@@ -1,4 +1,5 @@
 {
+  lib,
   pkgs,
   config,
   ...
@@ -116,11 +117,12 @@
     };
   };
 
+  my.gaming.enable = true;
+
   sops = {
     age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
     defaultSopsFile = ../../secrets/reaper/users.yaml;
     secrets.gshpychka-hashed-password.neededForUsers = true;
-    secrets.jovian-hashed-password.neededForUsers = true;
   };
 
   my.acme = {
