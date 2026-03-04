@@ -19,8 +19,6 @@
     LESSHISTFILE = "${config.xdg.stateHome}/lesshst";
     NODE_REPL_HISTORY = "${config.xdg.stateHome}/node_repl_history";
     PSQL_HISTORY = "${config.xdg.stateHome}/psql_history";
-    TERMINFO = "${config.xdg.dataHome}/terminfo";
-    TERMINFO_DIRS = "${config.xdg.dataHome}/terminfo:/usr/share/terminfo";
   }
   // lib.optionalAttrs pkgs.stdenv.isDarwin {
     XDG_RUNTIME_DIR = "/tmp";

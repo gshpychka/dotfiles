@@ -110,6 +110,14 @@
         name = "chatgpt";
         greedy = false;
       }
+      {
+        name = "codex-app";
+        greedy = false;
+      }
+      {
+        name = "claude";
+        greedy = false;
+      }
       "caldigit-thunderbolt-charging"
       {
         name = "plexamp";
@@ -157,6 +165,18 @@
       "postman"
       {
         name = "slack";
+        greedy = false;
+      }
+      {
+        name = "notion";
+        greedy = false;
+      }
+      {
+        name = "linear-linear";
+        greedy = false;
+      }
+      {
+        name = "twingate";
         greedy = false;
       }
       {

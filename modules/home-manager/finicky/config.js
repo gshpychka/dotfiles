@@ -10,7 +10,15 @@ module.exports = {
       match: ({ opener, url }) => {
         const basedOnOpener =  [
           "Teams",
-          "Leapp"
+          "Leapp",
+          "Ghostty",
+          "Claude",
+          "Codex",
+          "ChatGPT",
+          "Slack",
+          "Notion",
+          "Linear",
+          "Zoom"
         ].some(
           appName => {
             try {
@@ -28,6 +36,7 @@ module.exports = {
           "atlassian",
           "awsapps.com",
           "learn.microsoft.com",
+          "linear.app",
         ].some(
           targetHostName => {
             try {
