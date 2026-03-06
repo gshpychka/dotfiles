@@ -1,5 +1,5 @@
-module.exports = {
-  defaultBrowser: ({ urlString }) => ({
+export default {
+  defaultBrowser: () => ({
     name: "Google Chrome",
   }), 
   options: {
@@ -7,7 +7,7 @@ module.exports = {
   },
   handlers: [
     {
-      match: ({ opener, url }) => {
+      match: (url, { opener }) => {
         const basedOnOpener =  [
           "Teams",
           "Leapp",
@@ -37,6 +37,7 @@ module.exports = {
           "awsapps.com",
           "learn.microsoft.com",
           "linear.app",
+          "mcp.notion.com"
         ].some(
           targetHostName => {
             try {
@@ -50,7 +51,7 @@ module.exports = {
         );
         return basedOnOpener || basedOnUrl;
       },
-      browser: ({ urlString }) => ({
+      browser: () => ({
         name: "Firefox",
       }),
     },
