@@ -222,6 +222,7 @@
       enable = true;
       enableSSHSupport = true;
     };
+    nix-ld.enable = true;
   };
   networking.firewall.allowedTCPPorts = [
     config.services.nginx.defaultSSLListenPort
