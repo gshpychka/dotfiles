@@ -12,6 +12,7 @@
     taps = {
       "homebrew/homebrew-core" = inputs.homebrew-core;
       "homebrew/homebrew-cask" = inputs.homebrew-cask;
+      "dagger/homebrew-tap" = inputs.homebrew-dagger;
     };
     mutableTaps = false;
     extraEnv = {
@@ -193,6 +194,7 @@
     ];
     brews = [
       "mas"
+      "dagger/tap/dagger"
     ];
     masApps = {
       "Dark Reader for Safari" = 1438243180;

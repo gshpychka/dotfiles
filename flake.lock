@@ -286,6 +286,22 @@
         "type": "github"
       }
     },
+    "homebrew-dagger": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1773953408,
+        "narHash": "sha256-1KUoIQSqpdQB/JBOFN1zaLPHRjiIt8vizj8QQzLJybI=",
+        "owner": "dagger",
+        "repo": "homebrew-tap",
+        "rev": "1c29b24c5945cc1b6c95adb2d4e61ba06064240d",
+        "type": "github"
+      },
+      "original": {
+        "owner": "dagger",
+        "repo": "homebrew-tap",
+        "type": "github"
+      }
+    },
     "import-tree": {
       "locked": {
         "lastModified": 1763762820,
@@ -527,6 +543,7 @@
         "home-manager": "home-manager",
         "homebrew-cask": "homebrew-cask",
         "homebrew-core": "homebrew-core",
+        "homebrew-dagger": "homebrew-dagger",
         "jovian-nixos": "jovian-nixos",
         "lanzaboote": "lanzaboote",
         "llm-agents": "llm-agents",
