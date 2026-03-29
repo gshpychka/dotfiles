@@ -136,11 +136,6 @@
         name = "bambu-studio";
         greedy = true;
       }
-      {
-        name = "orcaslicer";
-        greedy = true;
-      }
-
       # -- communication --
       "telegram"
       {
