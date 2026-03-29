@@ -159,8 +159,7 @@
     loadModels = [
       {
         # home assistant
-        # name = "qwen3:14b-q8_0";
-        name = "qwen3:14b-q4_K_M";
+        name = "qwen3.5:9b-q8_0";
         loadIntoVram = true;
       }
       {
