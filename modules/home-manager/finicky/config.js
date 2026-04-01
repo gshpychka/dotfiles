@@ -18,7 +18,8 @@ export default {
           "Slack",
           "Notion",
           "Linear",
-          "Zoom"
+          "Zoom",
+          "Twingate"
         ].some(
           appName => {
             try {
@@ -32,12 +33,18 @@ export default {
         );
         const basedOnUrl = [
           "aws.amazon.com",
+          "amazonaws.com",
+          "amazoncognito.com",
+          "claude.ai",
+          "anthropic.com",
+          "github.com",
           "gitlab.com",
           "atlassian",
           "awsapps.com",
           "learn.microsoft.com",
           "linear.app",
-          "mcp.notion.com"
+          "mcp.notion.com",
+          "twingate.com"
         ].some(
           targetHostName => {
             try {
