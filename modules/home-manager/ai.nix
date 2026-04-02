@@ -13,6 +13,9 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    # experimental flicker-free fullscreen renderer for claude-code
+    home.sessionVariables.CLAUDE_CODE_NO_FLICKER = "1";
+
     # AI CLI/TUI tools from github:numtide/llm-agents.nix (via overlay)
     # context7-mcp is from github:natsukium/mcp-servers-nix
     home.packages = with pkgs; [
