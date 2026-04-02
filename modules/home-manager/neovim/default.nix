@@ -97,7 +97,7 @@ in
       ];
       extraPackages = with pkgs; [
         # LSP servers
-        nodePackages_latest.typescript-language-server
+        typescript-language-server
         pyright
         nixd
         lua-language-server
