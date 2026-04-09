@@ -1,4 +1,9 @@
-{ config, lib, osConfig, ... }:
+{
+  config,
+  lib,
+  osConfig,
+  ...
+}:
 let
   cfg = config.my.git;
 in
@@ -59,7 +64,6 @@ in
             contents = {
               user.signingkey = osConfig.my.sshKeys.gitlab;
               user.email = "20539359-gshpychka@users.noreply.gitlab.com";
-              init.defaultBranch = "master";
             };
           }
         ];
