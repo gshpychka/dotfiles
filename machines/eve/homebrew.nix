@@ -75,6 +75,7 @@
         name = "google-drive";
         greedy = false;
       }
+      "onedrive"
       {
         name = "cyberduck";
         greedy = true;
@@ -175,17 +176,8 @@
         name = "twingate";
         greedy = false;
       }
-      {
-        name = "microsoft-teams";
-        greedy = true;
-      }
-      {
-        name = "mongodb-compass";
-        greedy = false;
-      }
       "microsoft-excel"
       "microsoft-word"
-      "onedrive"
     ];
     brews = [
       "mas"
