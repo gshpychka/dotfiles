@@ -22,8 +22,10 @@ in
       enable = true;
       defaultEditor = true;
       vimAlias = true;
-      withNodeJs = true;
-      withPython3 = true;
+      # none of our plugins use remote plugin hosts, so no runtimes needed
+      withNodeJs = false;
+      withPython3 = false;
+      withRuby = false;
       plugins = with pkgs.vimPlugins; [
         # vim-sensible
         # vim-surround
