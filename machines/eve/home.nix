@@ -14,7 +14,6 @@
 
         my = {
           ai.enable = true;
-          alacritty.enable = true;
           btop.enable = true;
           direnv.enable = true;
           finicky.enable = true;
