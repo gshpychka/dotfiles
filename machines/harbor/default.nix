@@ -5,7 +5,6 @@
 {
   imports = [
     ./hardware.nix
-    ./boot.nix
     ./nix.nix
     ./filesystems.nix
     ./networking.nix

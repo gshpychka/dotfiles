@@ -49,6 +49,7 @@
       url = "github:Jovian-Experiments/Jovian-NixOS";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    nixos-hardware.url = "github:NixOS/nixos-hardware/master";
   };
 
   outputs =
@@ -77,6 +78,7 @@
         specialArgs = { inherit inputs; };
         modules = [
           inputs.sops-nix.nixosModules.sops
+          inputs.nixos-hardware.nixosModules.raspberry-pi-4
           home-manager.nixosModules.home-manager
 
           ./modules/system/nixos
