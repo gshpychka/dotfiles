@@ -156,10 +156,13 @@
 
       # -- work --
       {
+        name = "datagrip";
+        greedy = false;
+      }
+      {
         name = "firefox";
         greedy = false;
       }
-      "postman"
       {
         name = "slack";
         greedy = false;
