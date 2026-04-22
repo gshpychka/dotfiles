@@ -155,10 +155,11 @@
       "zoom"
 
       # -- work --
-      {
-        name = "datagrip";
-        greedy = false;
-      }
+      # fails to install - installing manually instead
+      # {
+      #   name = "datagrip";
+      #   greedy = false;
+      # }
       {
         name = "firefox";
         greedy = false;
