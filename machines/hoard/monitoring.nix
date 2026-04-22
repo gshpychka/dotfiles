@@ -31,7 +31,7 @@ in
         title = config.networking.hostName;
       };
       allowedHosts = config.services.nginx.virtualHosts.home.serverName;
-      environmentFile = config.sops.templates."homepage-dashboard.env".path;
+      environmentFiles = [ config.sops.templates."homepage-dashboard.env".path ];
       widgets =
         let
           glancesBase = {
