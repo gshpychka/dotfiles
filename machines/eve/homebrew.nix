@@ -96,10 +96,11 @@
         name = "trezor-suite";
         greedy = false;
       }
-      {
-        name = "gimp";
-        greedy = true;
-      }
+      # fails to install
+      # {
+      #   name = "gimp";
+      #   greedy = true;
+      # }
       {
         name = "vlc";
         greedy = true;
