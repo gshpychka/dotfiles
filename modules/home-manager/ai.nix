@@ -38,12 +38,12 @@ in
       # https://github.com/natsukium/mcp-servers-nix/issues/71
       # https://github.com/search?q=mcp-servers-nix+claude-code&type=code
       # https://github.com/anthropics/claude-code/issues/1455
-      context7-mcp
-      ccusage
+      # context7-mcp
+      # ccusage
       codex
-      gemini-cli
-      opencode
-      amp
+      # gemini-cli
+      # opencode
+      # amp
     ];
   };
 }
