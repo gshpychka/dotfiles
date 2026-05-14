@@ -105,10 +105,11 @@
         name = "vlc";
         greedy = true;
       }
-      {
-        name = "balenaetcher";
-        greedy = true;
-      }
+      # disabling until https://github.com/zhaofengli/nix-homebrew/issues/140 is fixed
+      # {
+      #   name = "balenaetcher";
+      #   greedy = true;
+      # }
       {
         name = "chatgpt";
         greedy = false;
