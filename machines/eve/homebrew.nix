@@ -174,7 +174,7 @@
         greedy = false;
       }
       {
-        name = "linear-linear";
+        name = "linear";
         greedy = false;
       }
       {
