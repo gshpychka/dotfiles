@@ -52,7 +52,6 @@ in
         "${lib.concatStringsSep "," cfg.advertiseRoutes}"
       ];
       authKeyFile = config.sops.secrets."tailscale-auth-key".path;
-      openFirewall = lib.mkIf cfg.exitNode true;
     };
 
     # Enable IP forwarding for exit node functionality and subnet routing
