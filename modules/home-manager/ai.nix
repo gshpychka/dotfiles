@@ -33,13 +33,7 @@ in
     # context7-mcp is from github:natsukium/mcp-servers-nix
     home.packages = with pkgs; [
       claude-code
-      # until I figure out how to wire it up declaratively, add it imperatively:
-      # `claude mcp add context7 -s user context7-mcp`
-      # https://github.com/natsukium/mcp-servers-nix/issues/71
-      # https://github.com/search?q=mcp-servers-nix+claude-code&type=code
-      # https://github.com/anthropics/claude-code/issues/1455
-      # context7-mcp
-      # ccusage
+      ccusage
       codex
       # gemini-cli
       # opencode
