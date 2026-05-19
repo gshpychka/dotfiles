@@ -30,7 +30,6 @@ in
     };
 
     # AI CLI/TUI tools from github:numtide/llm-agents.nix (via overlay)
-    # context7-mcp is from github:natsukium/mcp-servers-nix
     home.packages = with pkgs; [
       claude-code
       ccusage
@@ -38,6 +37,8 @@ in
       # gemini-cli
       # opencode
       # amp
+
+      skills # from vercel-labs
     ];
   };
 }
