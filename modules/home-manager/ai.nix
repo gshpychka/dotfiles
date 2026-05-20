@@ -23,6 +23,10 @@ in
       CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS = "1";
       # https://code.claude.com/docs/en/model-config#adjust-effort-level
       CLAUDE_CODE_EFFORT_LEVEL = "max";
+      CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS = "50000";
+      # https://code.claude.com/docs/en/sub-agents#fork-the-current-conversation
+      CLAUDE_CODE_FORK_SUBAGENT = "1";
+      CLAUDE_CODE_TMUX_TRUECOLOR = "1";
       # would disable "effort" and always use a static thinking budget
       # CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING = "1";
       # needs to be combined with a thinking budget like this:
