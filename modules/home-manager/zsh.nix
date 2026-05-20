@@ -161,6 +161,11 @@ in
       defaultKeymap = "viins";
       autosuggestion = {
         enable = true;
+        highlight = "fg=#928374"; # gruvbox grey
+        strategy = [
+          "history"
+          "completion"
+        ];
       };
 
       history = {
@@ -187,6 +192,10 @@ in
       ];
 
       initContent = ''
+        FAST_HIGHLIGHT_STYLES[variable]='fg=#83a598'       # gruvbox bright_blue
+        FAST_HIGHLIGHT_STYLES[globbing-ext]='fg=#d3869b'   # gruvbox bright_purple
+        FAST_HIGHLIGHT_STYLES[correct-subtle]='fg=#928374' # gruvbox gray
+
         bindkey '^E' autosuggest-accept
 
         # delete past insert start in insert mode
