@@ -16,6 +16,7 @@ in
       historyLimit = 1000000;
       keyMode = "vi";
       disableConfirmationPrompt = true;
+      terminal = "tmux-direct";
       extraConfig = lib.concatStringsSep "\n" (
         map lib.fileContents [
           ./gruvbox-dark.conf
