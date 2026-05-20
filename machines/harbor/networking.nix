@@ -66,7 +66,6 @@ in
     };
     defaultGateway = routerAddress;
     enableIPv6 = false;
-    nameservers = [ "127.0.0.1" ];
     # Build /etc/hosts so expand‑hosts can append the domain and local look‑ups work offline
     hosts =
       builtins.listToAttrs (
@@ -94,12 +93,6 @@ in
   };
 
   services.resolved.enable = lib.mkForce false; # disable systemd‑resolved stub
-
-  # used by processes on this machine to find out how to resolve DNS
-  environment.etc."resolv.conf".text = ''
-    nameserver 127.0.0.1 # libc resolver talks to dnsmasq
-    search ${config.networking.domain} # bare hostnames auto‑expand
-  '';
 
   services.adguardhome = {
     enable = true;
