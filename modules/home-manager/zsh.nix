@@ -67,12 +67,6 @@ in
           };
 
         env_var = {
-          NODE_ENV = {
-            variable = "NODE_ENV";
-            # TODO: style brackets and contents
-            format = "<[$env_value]($style)> ";
-            style = "white";
-          };
           AWS_PROFILE = {
             variable = "AWS_PROFILE";
             format = "[$env_value $symbol]($style) ";
@@ -108,7 +102,6 @@ in
           "$python"
           "$terraform"
           "$nix_shell"
-          "$\{env_var.NODE_ENV}"
           "$sudo"
           "$character"
         ];
@@ -170,11 +163,11 @@ in
 
       history = {
         expireDuplicatesFirst = true;
-        ignoreDups = true;
         ignoreSpace = true; # ignore commands starting with a space
         save = 20000;
         size = 20000;
-        share = true;
+        append = true;
+        share = false;
       };
       historySubstringSearch = {
         enable = true;
