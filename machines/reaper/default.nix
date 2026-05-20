@@ -16,6 +16,7 @@
     ./home.nix
     ./openwebui.nix
     ./gpu-ai-slice.nix
+    ./tty.nix
     # ./comfyui.nix
     ../../modules/system/nixos/sops-age-key.nix
   ];
