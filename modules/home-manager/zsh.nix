@@ -146,6 +146,13 @@ in
       ];
     };
 
+    home.sessionVariables.FAST_WORK_DIR = "${config.xdg.configHome}/fsh";
+
+    # theme loaded by fast-syntax-highlighting
+    xdg.configFile."fsh/current_theme.zsh".source = ./fsh-gruvbox-dark.zsh;
+    # blocks fast-syntax-highlighting's GitHub download
+    xdg.configFile."fsh/secondary_theme.zsh".text = "";
+
     programs.zsh = {
       enable = true;
       enableCompletion = true;
@@ -185,10 +192,6 @@ in
       ];
 
       initContent = ''
-        FAST_HIGHLIGHT_STYLES[variable]='fg=#83a598'       # gruvbox bright_blue
-        FAST_HIGHLIGHT_STYLES[globbing-ext]='fg=#d3869b'   # gruvbox bright_purple
-        FAST_HIGHLIGHT_STYLES[correct-subtle]='fg=#928374' # gruvbox gray
-
         bindkey '^E' autosuggest-accept
 
         # delete past insert start in insert mode
