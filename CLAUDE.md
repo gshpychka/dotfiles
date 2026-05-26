@@ -1,14 +1,17 @@
 # Nix Dotfiles Configuration
 
 ## Overview
-Personal dotfiles managed with Nix flakes for multiple machines (eve, harbor, reaper, hoard).
+Personal dotfiles managed with Nix flakes for multiple machines (eve, harbor, reaper, hoard, buoy) plus a bootable installer ISO. Cloud infrastructure for the buoy VPS is managed with Terraform under `infra/`.
 
 ## Architecture
 - `machines/` - Machine-specific configurations
-- `modules/` - Nix modules (darwin/nixos/home-manager/common)
+- `modules/common/` - Shared options and values, including the typed `my.*` globals (domain, user, SSH keys, build servers) defined in `globals.nix`
+- `modules/system/` - System-level modules, split into `common/`, `darwin/`, and `nixos/`
+- `modules/home-manager/` - home-manager configs (neovim, zsh, tmux, git, and other user tooling)
 - `overlays/` - Package overlays
 - `packages/` - Custom package definitions
 - `secrets/` - SOPS encrypted secrets
+- `infra/` - Terraform for cloud infrastructure (GCP VM for buoy, Cloudflare DNS) and the bootstrap GCE image under `infra/nixos/`
 
 ## Standards
 - As much as possible should be declarative
@@ -24,15 +27,21 @@ Personal dotfiles managed with Nix flakes for multiple machines (eve, harbor, re
     - Acts as the entry point - the only machine that is used directly
     - nix-darwin for system setup, homebrew for GUI apps
 - harbor: Raspberry Pi 4 DNS/DHCP server (aarch64-linux)
-    - dnsmasq for DHCP and local DNS, Adgurd Home upstream ad blocking
+    - dnsmasq for DHCP and local DNS, AdGuard Home for upstream ad blocking
 - reaper: Desktop with Intel 14900k, RTX 4090, 96GB RAM (x86_64-linux)
     - Headless
-    - AI server: ollama, whisper, kokoro
+    - AI server: ollama, whisper (speech-to-text), kokoro (text-to-speech); open-webui available
+    - Distributed build server for the other machines (x86_64 natively, aarch64 via QEMU binfmt)
     - Work environment: SSH from eve, coding in neovim
 - hoard: Beelink S12 Pro Intel N100 mini PC media server with external HDD enclosure (x86_64-linux)
     - Media server running the arr stack and Plex
+- buoy: GCP Compute Engine VM / VPS (x86_64-linux)
+    - Public status page (Gatus) exposed via Cloudflare Tunnel, Telegram alerting
+    - Built as a GCE image and deployed with `nixos-rebuild switch --flake .#buoy --target-host buoy --sudo`
+- iso: Bootable NixOS installer image (x86_64-linux)
+    - Build with `nix build .#iso`; SSH into the booted installer via `ssh nixos@iso`
 
 ## Notes
-- Nix only sees files that are tracked by git - run `git add` before checking config
+- Nix only sees files that are tracked by git - run `git add` after creating new files before checking config
 - Check config after making non-trivial changes: `nix flake check --all-systems --no-build`
 - Perform a full build if on the relevant machine: `nix flake check`
