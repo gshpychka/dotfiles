@@ -18,7 +18,7 @@ in
       # experimental flicker-free fullscreen renderer for claude-code
       CLAUDE_CODE_NO_FLICKER = "1";
       CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD = "1";
-      CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = "1";
+      DISABLE_AUTOUPDATER = "1";
       # https://code.claude.com/docs/en/agent-teams
       CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS = "1";
       # https://code.claude.com/docs/en/model-config#adjust-effort-level
