@@ -15,7 +15,7 @@
       };
       alerting = {
         telegram = {
-          token = "\${TELEGRAM_TOKEN}";
+          token = "\${TELEGRAM_BOT_TOKEN}";
           id = "\${TELEGRAM_CHAT_ID}";
           topic-id = "\${TELEGRAM_TOPIC_ID}";
         };
