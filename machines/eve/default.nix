@@ -42,5 +42,7 @@
     clientSpeedFactor = 50;
     sshKeyPath = config.sops.secrets.nixbuild-ssh-key.path;
   };
+
+  my.terminfo.enable = true;
   system.stateVersion = 4;
 }

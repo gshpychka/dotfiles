@@ -198,6 +198,16 @@ in
         bindkey -M viins '^?' backward-delete-char # If Backspace sends DEL (127)
         bindkey -M viins '^H' backward-delete-char # If Backspace sends Ctrl-H
 
+        # vi-mode cursor shape via DECSCUSR escape sequences
+        _set_vi_cursor_shape() {
+          case ''${KEYMAP-} in
+            vicmd|visual) print -n '\e[2 q' ;; # steady block
+            *)            print -n '\e[6 q' ;; # steady bar
+          esac
+        }
+        zle -N zle-keymap-select _set_vi_cursor_shape
+        zle -N zle-line-init _set_vi_cursor_shape
+
         function cd() {
           builtin cd "$@" && ls
         }

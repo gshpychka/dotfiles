@@ -17,8 +17,11 @@ in
 
   config = lib.mkIf cfg.enable {
     environment.systemPackages = with pkgs; [
-      ghostty.terminfo
       tmux.terminfo
+      # ncurses provides tmux-direct (not shipped by tmux.terminfo)
+      ncurses
+      # the source ghostty package isn't supported on darwin; ghostty-bin is
+      (if stdenv.isDarwin then ghostty-bin.terminfo else ghostty.terminfo)
     ];
   };
 }
