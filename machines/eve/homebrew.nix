@@ -155,7 +155,6 @@
         name = "element";
         greedy = false;
       }
-      "zoom"
 
       # -- work --
       # fails to install - installing manually instead
@@ -183,8 +182,10 @@
         name = "twingate";
         greedy = false;
       }
+      "zoom"
       "microsoft-excel"
       "microsoft-word"
+      "cursor"
     ];
     brews = [
       "mas"
