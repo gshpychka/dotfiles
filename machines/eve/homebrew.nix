@@ -34,7 +34,8 @@
       upgrade = true;
     };
     caskArgs = {
-      no_quarantine = true;
+      # no_quarantine is no longer a thing
+      # no_quarantine = true;
     };
     casks = [
       # -- essentials --
