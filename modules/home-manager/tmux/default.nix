@@ -16,7 +16,9 @@ in
       historyLimit = 1000000;
       keyMode = "vi";
       disableConfirmationPrompt = true;
-      terminal = "tmux-direct";
+      # would be cooler to use "tmux-direct" but zsh can't handle it
+      # we still get 16M colors via config
+      terminal = "tmux-256color";
       extraConfig = lib.concatStringsSep "\n" (
         map lib.fileContents [
           ./gruvbox-dark.conf
