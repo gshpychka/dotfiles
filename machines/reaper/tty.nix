@@ -25,10 +25,16 @@ let
   '';
 in
 {
-  systemd.services."getty@tty1".serviceConfig.ExecStart = [
-    "" # reset inherited ExecStart list
-    "${matrixGetty}"
-  ];
+  # tty1 runs as `autovt@tty1.service` (a `getty@` instance), so an explicit
+  # `getty@tty1.service` file is ignored; the override has to be a drop-in.
+  systemd.services."getty@tty1" = {
+    overrideStrategy = "asDropin";
+    restartIfChanged = false; # don't restart the animation on rebuild
+    serviceConfig.ExecStart = [
+      "" # reset inherited ExecStart list
+      "${matrixGetty}"
+    ];
+  };
 
   environment.systemPackages = [ pkgs.unimatrix ];
 }
