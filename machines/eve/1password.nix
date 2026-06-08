@@ -23,9 +23,8 @@
     in
     {
       programs = {
-        ssh.matchBlocks._1p-auth = lib.mkIf hmConfig.programs.ssh.enable {
-          host = "*";
-          extraOptions.IdentityAgent = ''"~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"'';
+        ssh.settings."*" = lib.mkIf hmConfig.programs.ssh.enable {
+          IdentityAgent = ''"~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"'';
         };
         git.signing.signer = lib.mkIf (
           hmConfig.programs.git.enable && hmConfig.programs.git.signing.format == "ssh"
