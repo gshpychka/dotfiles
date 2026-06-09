@@ -6,12 +6,13 @@
   ...
 }:
 let
+  values = import ../../modules/common/values.nix;
   dataMountPoint = "/mnt/data";
   ageKeySecretName = "sops-age-key";
   dataDiskDevice = "/dev/sdb";
   dataDirectoriesToBootstrap = [ "${dataMountPoint}/var-lib" ];
-  authorizedSshKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIB737o9Ltm1K3w9XX9SBHNW1JT4NpCPP5qg9R+SB18dG";
-  gcpProjectId = "status-glibsh";
+  authorizedSshKey = values.sshKeys.main;
+  gcpProjectId = values.gcpProjectId;
 in
 {
   imports = [

@@ -1,15 +1,19 @@
 { lib, ... }:
 # Global configuration options and values.
+# Identity values shared with non-module Nix live in values.nix.
+let
+  values = import ./values.nix;
+in
 {
   options.my = {
     domain = lib.mkOption {
       type = lib.types.str;
-      default = "glib.sh";
+      default = values.domain;
       description = "Public domain name";
     };
     user = lib.mkOption {
       type = lib.types.str;
-      default = "gshpychka";
+      default = values.user;
       description = "Main username";
     };
     sshKeys = lib.mkOption {
@@ -77,7 +81,7 @@
   };
   config = {
     my.sshKeys = {
-      main = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIB737o9Ltm1K3w9XX9SBHNW1JT4NpCPP5qg9R+SB18dG";
+      main = values.sshKeys.main;
       homeassistant = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAC9nquQBUuHWrWJvuUJLuR2zfupJp+QtQlpck0n5J0J";
       gitlab = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIH1ykR9CzbUNoPsyPqgs9OYIgUCRNOHj8KefPhYJv+qr";
     };
