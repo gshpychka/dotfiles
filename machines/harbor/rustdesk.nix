@@ -5,14 +5,20 @@
 {
   my.rustdesk-server = {
     enable = true;
-    # Harbor's Tailscale IP (check with: tailscale ip -4)
+    # This address is handed to clients verbatim, and the firewall only
+    # accepts connections on the Tailscale interface - so every client must
+    # resolve it to harbor's Tailscale address (tailnet MagicDNS). If
+    # MagicDNS is off on a client, replace this with harbor's Tailscale IP
+    # (`tailscale ip -4` on harbor).
     relayHosts = [ config.networking.hostName ];
     privateKeyFile = config.sops.secrets.rustdesk-private-key.path;
     tailscaleOnly = true;
   };
 
-  # Public key (for client configuration):
-  # 7gl/siUhUB1ucVatf6aiXg5BGzE+RWfl+a/uY2JQKMU=
+  # Client setup (RustDesk -> Settings -> Network -> ID/Relay server):
+  #   ID server: harbor (or harbor's Tailscale IP, see above)
+  #   Relay server: leave empty - the signal server advertises it
+  #   Key: 7gl/siUhUB1ucVatf6aiXg5BGzE+RWfl+a/uY2JQKMU=
   #
   # To generate a keypair:
   # nix-shell -p rustdesk-server --run "rustdesk-utils genkeypair"
