@@ -28,15 +28,8 @@
   # age key from persistent storage (fetched and written by the bootstrap image)
   sops.age.keyFile = "${config.fileSystems.data.mountPoint}/sops-age-key.txt";
 
-  security = {
-    sudo.enable = true;
-    pam = {
-      sshAgentAuth.enable = true;
-      services.sudo.sshAgentAuth = true;
-    };
-    # handle auth in NixOS, not GCP
-    googleOsLogin.enable = lib.mkForce false;
-  };
+  # handle auth in NixOS, not GCP
+  security.googleOsLogin.enable = lib.mkForce false;
 
   users = {
     mutableUsers = false;
@@ -49,14 +42,7 @@
     };
   };
 
-  services.openssh = {
-    enable = true;
-    settings = {
-      PasswordAuthentication = false;
-      KbdInteractiveAuthentication = false;
-      PermitRootLogin = "no";
-    };
-  };
+  services.openssh.enable = true;
 
   my.terminfo.enable = true;
 }

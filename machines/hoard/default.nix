@@ -25,22 +25,7 @@
   nixpkgs.hostPlatform = "x86_64-linux";
   system.stateVersion = "24.11";
 
-  security = {
-    sudo.enable = true;
-    pam = {
-      sshAgentAuth.enable = true;
-      services.sudo.sshAgentAuth = true;
-    };
-  };
-
-  services.openssh = {
-    enable = true;
-    settings = {
-      PasswordAuthentication = false;
-      KbdInteractiveAuthentication = false;
-      PermitRootLogin = "no";
-    };
-  };
+  services.openssh.enable = true;
 
   environment.systemPackages = with pkgs; [
     cryptsetup
@@ -51,11 +36,7 @@
     age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
   };
 
-  my.acme = {
-    enable = true;
-    domain = config.my.domain;
-    extraDomainNames = [ "*.${config.networking.fqdn}" ];
-  };
+  my.acme.enable = true;
 
   my.terminfo.enable = true;
 

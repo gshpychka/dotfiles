@@ -89,12 +89,7 @@
   };
 
   security = {
-    pam = {
-      sshAgentAuth.enable = true;
-      services.sudo.sshAgentAuth = true;
-    };
     sudo = {
-      enable = true;
       extraRules = [
         {
           users = [ "hass" ];
@@ -126,11 +121,7 @@
     secrets.gshpychka-hashed-password.neededForUsers = true;
   };
 
-  my.acme = {
-    enable = true;
-    domain = config.my.domain;
-    extraDomainNames = [ "*.${config.networking.fqdn}" ];
-  };
+  my.acme.enable = true;
 
   virtualisation = {
     docker = {
@@ -188,14 +179,7 @@
   services = {
     pcscd.enable = true;
     udev.packages = [ pkgs.yubikey-personalization ];
-    openssh = {
-      enable = true;
-      settings = {
-        PasswordAuthentication = false;
-        KbdInteractiveAuthentication = false;
-        PermitRootLogin = "no";
-      };
-    };
+    openssh.enable = true;
     nginx = {
       enable = true;
       recommendedTlsSettings = true;

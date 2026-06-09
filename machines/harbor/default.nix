@@ -32,11 +32,7 @@
 
   sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
 
-  my.acme = {
-    enable = true;
-    domain = config.my.domain;
-    extraDomainNames = [ "*.${config.networking.fqdn}" ];
-  };
+  my.acme.enable = true;
 
   my.tailscale = {
     enable = true;
@@ -50,19 +46,5 @@
 
   my.terminfo.enable = true;
 
-  security = {
-    sudo.enable = true;
-    pam = {
-      sshAgentAuth.enable = true;
-      services.sudo.sshAgentAuth = true;
-    };
-  };
-  services.openssh = {
-    enable = true;
-    settings = {
-      PasswordAuthentication = false;
-      KbdInteractiveAuthentication = false;
-      PermitRootLogin = "no";
-    };
-  };
+  services.openssh.enable = true;
 }

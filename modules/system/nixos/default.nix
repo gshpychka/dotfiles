@@ -9,10 +9,12 @@
     ./cloudflare-ddns.nix
     ./glances.nix
     ./machine-id.nix
+    ./nix.nix
     ./ollama.nix
     ./qbittorrent.nix
     ./rustdesk.nix
     ./sabnzbd.nix
+    ./ssh-hardening.nix
     ./tailscale.nix
     ./gatus-path-check.nix
   ];

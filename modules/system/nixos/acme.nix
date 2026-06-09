@@ -15,12 +15,14 @@ with lib;
 
     domain = mkOption {
       type = types.str;
+      default = config.my.domain;
       description = "Base domain used for ACME registration.";
     };
 
     extraDomainNames = mkOption {
       type = types.listOf types.str;
-      default = [ ];
+      # wildcard for this machine's subdomains, e.g. *.hoard.glib.sh
+      default = [ "*.${config.networking.fqdn}" ];
       description = "Additional SANs to include on the same certificate.";
       example = [ "alt.example.com" ];
     };
