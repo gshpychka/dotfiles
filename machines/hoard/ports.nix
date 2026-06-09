@@ -5,7 +5,7 @@
   # Define all service ports in one place
   ports = {
     glances = toString config.services.glances.port;
-    qbittorrent = toString config.services.qbittorrent.port;
+    qbittorrent = toString config.services.qbittorrent.webuiPort;
     home = toString config.services.homepage-dashboard.listenPort;
     sabnzbd = "8085";
     sonarr = "8989";

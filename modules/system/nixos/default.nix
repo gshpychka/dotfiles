@@ -11,7 +11,6 @@
     ./machine-id.nix
     ./nix.nix
     ./ollama.nix
-    ./qbittorrent.nix
     ./rustdesk.nix
     ./sabnzbd.nix
     ./sops-age-key.nix
