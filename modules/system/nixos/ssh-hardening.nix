@@ -10,7 +10,12 @@
   };
 
   security = {
-    sudo.enable = lib.mkDefault true;
+    sudo = {
+      enable = lib.mkDefault true;
+      # let `sudo -n` authenticate via PAM instead of failing outright
+      # when no timestamp is cached
+      extraConfig = "Defaults noninteractive_auth";
+    };
     pam = {
       sshAgentAuth.enable = lib.mkDefault true;
       services.sudo.sshAgentAuth = lib.mkDefault true;
