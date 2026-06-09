@@ -23,7 +23,7 @@
       endpoints = [
         {
           name = "Internet";
-          url = "icmp://wan.glib.sh";
+          url = "icmp://wan.${config.my.domain}";
           interval = "30s";
           ui.hide-hostname = true;
           conditions = [ "[CONNECTED] == true" ];
@@ -35,7 +35,7 @@
         }
         {
           name = "Overseerr";
-          url = "https://overseerr.glib.sh";
+          url = "https://overseerr.${config.my.domain}";
           interval = "30s";
           conditions = [
             "[STATUS] == 200"

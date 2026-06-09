@@ -6,49 +6,17 @@
 
 let
   lanInterface = "eth0";
-  routerAddress = "192.168.1.1";
-  machineAddress = "192.168.1.2";
+  routerAddress = config.my.lan.routerIp;
+  machineAddress = config.my.hosts.${config.networking.hostName}.lanIp;
 
+  # views over the fleet registry (modules/common/hosts.nix)
+  lanHosts = lib.filterAttrs (_: h: h.lanIp != null) config.my.hosts;
+  # hosts that get a DHCP static lease (we assign our own address ourselves)
+  leaseHosts = lib.filterAttrs (_: h: h.mac != null) lanHosts;
   # hosts that need wildcard sub-domains (e.g. foo.reaper → reaper’s IP)
-  staticHosts = [
-    {
-      name = "hoard";
-      ip = "192.168.1.3";
-      mac = "E8:FF:1E:D6:89:EB";
-      enableSubdomains = true;
-    }
-    {
-      name = "reaper";
-      ip = "192.168.1.4";
-      mac = "C8:7F:54:0B:FB:8C";
-      enableSubdomains = true;
-    }
-    {
-      name = "switch-alpha";
-      ip = "192.168.1.5";
-      mac = "98:BA:5F:46:87:00";
-      enableSubdomains = false;
-    }
-    {
-      name = "air-conditioner";
-      ip = "192.168.1.51";
-      mac = "08:BC:20:04:48:5A";
-      enableSubdomains = false;
-    }
-    {
-      name = "tv";
-      ip = "192.168.1.52";
-      mac = "1C:AF:4A:0C:6E:76";
-      enableSubdomains = false;
-    }
-    {
-      name = "p1s";
-      ip = "192.168.1.53";
-      mac = "EC:DA:3B:99:80:E4";
-      enableSubdomains = false;
-    }
-  ];
-
+  subdomainHosts = lib.filterAttrs (_: h: h.enableSubdomains) lanHosts;
+  # every LAN host except ourselves (we are covered by expand-hosts)
+  otherLanHosts = lib.filterAttrs (name: _: name != config.networking.hostName) lanHosts;
 in
 {
   networking = {
@@ -66,20 +34,10 @@ in
     };
     defaultGateway = routerAddress;
     enableIPv6 = false;
-    # Build /etc/hosts so expand‑hosts can append the domain and local look‑ups work offline
-    hosts =
-      builtins.listToAttrs (
-        map (h: {
-          name = h.ip;
-          value = [ h.name ];
-        }) staticHosts
-      )
-      // {
-        # override default /etc/hosts entry that maps our own domain to our LAN address
-        # otherwise, it will map to 127.0.0.2
-        # we insert our row at the bottom, so it will take precedence
-        "${machineAddress}" = [ config.networking.hostName ];
-      };
+    # Build /etc/hosts so expand‑hosts can append the domain and local look‑ups work offline.
+    # Our own row (from the registry) overrides the default /etc/hosts entry that
+    # would map our own domain to 127.0.0.2 - it sorts below it and takes precedence.
+    hosts = lib.mapAttrs' (name: h: lib.nameValuePair h.lanIp [ name ]) lanHosts;
 
     firewall = {
       allowedTCPPorts = [
@@ -183,7 +141,7 @@ in
         # We could have set the entire `${config.networking.domain}` zone to be local, but then we wouldn't be able
         # to use a public domain name for other use-cases (have it be resolved upstream)
         # So we explicitly list all the hosts here, and all other subdomains will be forwarded upstream.
-        (map (h: "/" + h.name + "." + config.networking.domain + "/") staticHosts)
+        (map (name: "/" + name + "." + config.networking.domain + "/") (lib.attrNames otherLanHosts))
         ++ [
           # reverse zone kept local
           # Apple Bonjour service discovery queries
@@ -202,17 +160,13 @@ in
         ]
       );
 
-      # wildcard A records for all our static hosts
+      # wildcard A records for all our static hosts (ourselves included)
       # allows us to use subdomains
       # dnsmasq cannot alias wildcard to another name, so we have to specify the IPs
       # this is why we use static leases at all
-      address = (
-        (map (h: "/" + h.name + "." + config.networking.domain + "/" + h.ip) (
-          # Filter out hosts that don't need subdomain resolution
-          lib.filter (h: h ? enableSubdomains && h.enableSubdomains) staticHosts
-        ))
-        ++ [ "/${config.networking.hostName}.${config.networking.domain}/${machineAddress}" ]
-      );
+      address = lib.mapAttrsToList (
+        name: h: "/" + name + "." + config.networking.domain + "/" + h.lanIp
+      ) subdomainHosts;
 
       # upstream
       server = [ "127.0.0.1#${toString config.services.adguardhome.settings.dns.port}" ];
@@ -225,7 +179,7 @@ in
         "option:domain-search,${config.networking.domain}"
       ];
       # sticky leases
-      "dhcp-host" = (map (h: "${h.mac},${h.ip},${h.name}") staticHosts);
+      "dhcp-host" = lib.mapAttrsToList (name: h: "${h.mac},${h.lanIp},${name}") leaseHosts;
 
     };
   };
