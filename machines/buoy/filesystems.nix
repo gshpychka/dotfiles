@@ -3,18 +3,12 @@
   ...
 }:
 {
-  fileSystems.data = {
-    mountPoint = "/mnt/data";
-    # /dev/sdb because /dev/disk/by-id/ isn't available in initrd
-    device = "/dev/sdb";
-    fsType = "ext4";
-    autoFormat = true;
-    neededForBoot = true;
-  };
+  imports = [ ./data-disk.nix ];
 
   # state directories go onto persistent disk
   fileSystems."/var/lib" = {
     # directory created by the bootstrap image
+    # (dataDirectoriesToBootstrap in infra/nixos/configuration.nix)
     device = "${config.fileSystems.data.mountPoint}/var-lib";
     fsType = "none";
     options = [ "bind" ];

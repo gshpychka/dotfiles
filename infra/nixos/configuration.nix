@@ -7,16 +7,18 @@
 }:
 let
   values = import ../../modules/common/values.nix;
-  dataMountPoint = "/mnt/data";
+  # also the filename (plus .txt) the runtime config reads the key from -
+  # see sops.age.keyFile in machines/buoy/default.nix
   ageKeySecretName = "sops-age-key";
-  dataDiskDevice = "/dev/sdb";
-  dataDirectoriesToBootstrap = [ "${dataMountPoint}/var-lib" ];
+  # bind-mounted as /var/lib by the runtime config (machines/buoy/filesystems.nix)
+  dataDirectoriesToBootstrap = [ "${config.fileSystems.data.mountPoint}/var-lib" ];
   authorizedSshKey = values.sshKeys.main;
   gcpProjectId = values.gcpProjectId;
 in
 {
   imports = [
     "${modulesPath}/virtualisation/google-compute-image.nix"
+    ../../machines/buoy/data-disk.nix
   ];
 
   virtualisation.googleComputeImage.efi = true;
@@ -38,15 +40,6 @@ in
     authorizedSshKey
   ];
 
-  # persistent disk
-  fileSystems.data = {
-    mountPoint = dataMountPoint;
-    device = dataDiskDevice;
-    fsType = "ext4";
-    autoFormat = true;
-    neededForBoot = true;
-  };
-
   # fetch the age key from Secret Manager and write to the persistent disk
   systemd.services.fetch-sops-age-key = {
     description = "Fetch SOPS age key from GCP Secret Manager";
@@ -54,7 +47,7 @@ in
     requires = [ "network-online.target" ];
     after = [ "network-online.target" ];
 
-    unitConfig.RequiresMountsFor = dataMountPoint;
+    unitConfig.RequiresMountsFor = config.fileSystems.data.mountPoint;
 
     serviceConfig = {
       Type = "oneshot";

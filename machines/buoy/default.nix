@@ -25,7 +25,8 @@
     enableLsColors = false;
   };
 
-  # age key from persistent storage (fetched and written by the bootstrap image)
+  # age key from persistent storage, fetched and written by the bootstrap image.
+  # The filename must match ageKeySecretName in infra/nixos/configuration.nix.
   sops.age.keyFile = "${config.fileSystems.data.mountPoint}/sops-age-key.txt";
 
   # handle auth in NixOS, not GCP
