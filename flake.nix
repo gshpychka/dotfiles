@@ -140,8 +140,11 @@
       nixosConfigurations.iso = nixpkgs.lib.nixosSystem {
         specialArgs = { inherit inputs; };
         modules = [
-          ./modules/common
-          ./modules/system/common
+          # sops-nix is needed for evaluation: the (disabled) modules in
+          # modules/system/nixos define sops.secrets values behind mkIf
+          inputs.sops-nix.nixosModules.sops
+
+          ./modules/system/nixos
           ./machines/iso
         ];
       };

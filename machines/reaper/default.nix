@@ -9,6 +9,7 @@
     ./nix.nix
     ./filesystems.nix
     ./hardware.nix
+    ./users.nix
     ./jovian
     ./kokoro.nix
     ./whisper.nix
@@ -18,7 +19,6 @@
     ./gpu-ai-slice.nix
     ./tty.nix
     # ./comfyui.nix
-    ../../modules/system/nixos/sops-age-key.nix
   ];
   networking.hostName = "reaper";
   nixpkgs.hostPlatform = "x86_64-linux";
@@ -58,35 +58,6 @@
 
   # Enable QEMU binfmt emulation for cross-compilation
   boot.binfmt.emulatedSystems = [ "aarch64-linux" ];
-
-  users = {
-    mutableUsers = false;
-    defaultUserShell = pkgs.zsh;
-    users = {
-      ${config.my.user} = {
-        isNormalUser = true;
-        extraGroups = [
-          "wheel"
-          "plugdev"
-          "usb"
-        ];
-        openssh.authorizedKeys.keys = [
-          config.my.sshKeys.main
-        ];
-        linger = true;
-        hashedPasswordFile = config.sops.secrets.gshpychka-hashed-password.path;
-      };
-      hass = {
-        group = "homeassistant";
-        isSystemUser = true;
-        useDefaultShell = true;
-        openssh.authorizedKeys.keys = [
-          config.my.sshKeys.homeassistant
-        ];
-      };
-    };
-    groups.homeassistant = { };
-  };
 
   security = {
     sudo = {
@@ -161,6 +132,9 @@
   };
 
   my.terminfo.enable = true;
+
+  # root age key for editing secrets with the sops CLI on this machine
+  my.sops-age-key.enable = true;
 
   # Start pcscd on boot instead of socket-activation (needed for GPG smartcard)
   systemd.services.pcscd.wantedBy = [ "multi-user.target" ];

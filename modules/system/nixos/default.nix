@@ -14,6 +14,7 @@
     ./qbittorrent.nix
     ./rustdesk.nix
     ./sabnzbd.nix
+    ./sops-age-key.nix
     ./ssh-hardening.nix
     ./tailscale.nix
     ./gatus-path-check.nix
