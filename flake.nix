@@ -2,6 +2,7 @@
   description = "My Machines";
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
+    # currently unused - kept as an escape hatch for packages broken on unstable
     nixos-stable.url = "github:nixos/nixpkgs/nixos-25.11";
     home-manager = {
       url = "github:nix-community/home-manager";
@@ -12,6 +13,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     nix-homebrew = {
+      # has no nixpkgs input, so there is nothing to `follows`
       url = "github:zhaofengli/nix-homebrew";
     };
     homebrew-core = {
@@ -39,6 +41,9 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     llm-agents = {
+      # deliberately NOT following our nixpkgs: keeps the upstream
+      # cache.numtide.com binary cache usable (substituter is configured
+      # in modules/system/common/nix-config.nix)
       url = "github:numtide/llm-agents.nix";
     };
     nixified-ai = {
@@ -161,14 +166,27 @@
           cp $original/*.raw.tar.gz $out
         '';
 
-      checks = {
-        aarch64-darwin.eve = self.darwinConfigurations.eve.config.system.build.toplevel;
-        aarch64-linux.harbor = self.nixosConfigurations.harbor.config.system.build.toplevel;
-        x86_64-linux.reaper = self.nixosConfigurations.reaper.config.system.build.toplevel;
-        x86_64-linux.hoard = self.nixosConfigurations.hoard.config.system.build.toplevel;
-        x86_64-linux.buoy = self.nixosConfigurations.buoy.config.system.build.toplevel;
-        x86_64-linux.iso = self.nixosConfigurations.iso.config.system.build.isoImage;
-      };
+      # One check per machine, grouped by system and derived from the config
+      # sets, so new machines are covered automatically.
+      checks =
+        let
+          # iso's build artifact is the ISO image, special-cased below;
+          # buoy-bootstrap is only an image-build shim, covered by packages.gce-image
+          machines = builtins.removeAttrs self.nixosConfigurations [
+            "iso"
+            "buoy-bootstrap"
+          ];
+          nixosChecks = lib.foldlAttrs (
+            acc: name: machine:
+            lib.recursiveUpdate acc {
+              ${machine.config.nixpkgs.hostPlatform.system}.${name} = machine.config.system.build.toplevel;
+            }
+          ) { } machines;
+        in
+        lib.recursiveUpdate nixosChecks {
+          aarch64-darwin.eve = self.darwinConfigurations.eve.config.system.build.toplevel;
+          x86_64-linux.iso = self.nixosConfigurations.iso.config.system.build.isoImage;
+        };
 
       # `nix fmt`
       formatter = lib.genAttrs systems (system: nixpkgs.legacyPackages.${system}.nixfmt-rfc-style);
@@ -185,9 +203,6 @@
               infra = import ./infra/shell.nix { inherit nixpkgs system; };
             };
         in
-        {
-          x86_64-linux = mkShell "x86_64-linux";
-          aarch64-darwin = mkShell "aarch64-darwin";
-        };
+        lib.genAttrs systems mkShell;
     };
 }
