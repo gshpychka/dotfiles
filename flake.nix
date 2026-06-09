@@ -61,6 +61,15 @@
       nix-homebrew,
       ...
     }@inputs:
+    let
+      inherit (nixpkgs) lib;
+      # every system the fleet spans
+      systems = [
+        "x86_64-linux"
+        "aarch64-linux"
+        "aarch64-darwin"
+      ];
+    in
     {
       darwinConfigurations.eve = darwin.lib.darwinSystem {
         specialArgs = { inherit inputs; };
@@ -160,6 +169,9 @@
         x86_64-linux.buoy = self.nixosConfigurations.buoy.config.system.build.toplevel;
         x86_64-linux.iso = self.nixosConfigurations.iso.config.system.build.isoImage;
       };
+
+      # `nix fmt`
+      formatter = lib.genAttrs systems (system: nixpkgs.legacyPackages.${system}.nixfmt-rfc-style);
 
       devShells =
         let
