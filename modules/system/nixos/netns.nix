@@ -78,9 +78,11 @@ let
       spec = "PREROUTING -i ${fwd.interface} -p ${fwd.protocol} --dport ${toString fwd.port} -j DNAT --to-destination ${ns.namespaceAddress}:${toString fwd.port}";
     }) ns.portForwards;
 
-  # Delete before adding so firewall reloads (which re-run extraCommands) cannot
-  # accumulate duplicate rules; the delete alone runs from extraStopCommands.
-  deleteRule = r: "iptables -t ${r.table} -D ${r.spec} 2>/dev/null || true\n";
+  # Remove every existing copy of a rule before adding one back, so firewall
+  # reloads (which re-run extraCommands) converge on a single copy even when an
+  # earlier configuration left duplicates behind. The delete loop alone runs
+  # from extraStopCommands.
+  deleteRule = r: "while iptables -t ${r.table} -D ${r.spec} 2>/dev/null; do :; done\n";
   applyRule = r: "${deleteRule r}iptables -t ${r.table} -A ${r.spec}\n";
 
   netnsService = name: ns: {
