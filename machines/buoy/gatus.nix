@@ -2,6 +2,27 @@
   config,
   ...
 }:
+let
+  # Alerts post directly to the Telegram Bot API through Gatus's custom provider,
+  # so the message body is entirely ours. Each endpoint carries its own
+  # triggered/resolved copy via the [ALERT_TRIGGERED_OR_RESOLVED] placeholder,
+  # which Gatus substitutes into the body as a raw string. Each message is
+  # toJSON-encoded (quotes included) and placed unquoted in the body, so any
+  # quotes or newlines in the copy stay valid JSON.
+  #
+  # os.ExpandEnv runs over the whole config, so a literal "$" in a message must be
+  # written as "$$".
+  mkTelegramAlert =
+    { triggered, resolved }:
+    {
+      type = "custom";
+      send-on-resolved = true;
+      provider-override.placeholders.ALERT_TRIGGERED_OR_RESOLVED = {
+        TRIGGERED = builtins.toJSON triggered;
+        RESOLVED = builtins.toJSON resolved;
+      };
+    };
+in
 {
   services.gatus = {
     enable = true;
@@ -13,11 +34,17 @@
         type = "sqlite";
         path = "/var/lib/gatus/data.db";
       };
-      alerting = {
-        telegram = {
-          token = "\${TELEGRAM_BOT_TOKEN}";
-          id = "\${TELEGRAM_CHAT_ID}";
-          topic-id = "\${TELEGRAM_TOPIC_ID}";
+      alerting.custom = {
+        url = "https://api.telegram.org/bot\${TELEGRAM_BOT_TOKEN}/sendMessage";
+        method = "POST";
+        headers."Content-Type" = "application/json";
+        # message_thread_id is numeric; chat_id is quoted to accept numeric or @username ids.
+        # text is unquoted because the placeholder expands to a toJSON-encoded string.
+        body = ''{"chat_id":"''${TELEGRAM_CHAT_ID}","message_thread_id":''${TELEGRAM_TOPIC_ID},"text":[ALERT_TRIGGERED_OR_RESOLVED]}'';
+        # Fallback copy for any alert that omits its own messages.
+        placeholders.ALERT_TRIGGERED_OR_RESOLVED = {
+          TRIGGERED = builtins.toJSON "⚠️ A monitored service is having problems.";
+          RESOLVED = builtins.toJSON "✅ A monitored service has recovered.";
         };
       };
       endpoints = [
@@ -28,9 +55,10 @@
           ui.hide-hostname = true;
           conditions = [ "[CONNECTED] == true" ];
           alerts = [
-            {
-              type = "telegram";
-            }
+            (mkTelegramAlert {
+              triggered = "🔴 Інтернет зник.";
+              resolved = "🟢 Інтернет знову є.";
+            })
           ];
         }
         {
@@ -40,6 +68,12 @@
           conditions = [
             "[STATUS] == 200"
             "[RESPONSE_TIME] < 5000"
+          ];
+          alerts = [
+            (mkTelegramAlert {
+              triggered = "🔴 Overseerr недоступний.";
+              resolved = "🟢 Overseerr знову доступний.";
+            })
           ];
         }
         {
@@ -55,9 +89,10 @@
             "[RESPONSE_TIME] < 10000"
           ];
           alerts = [
-            {
-              type = "telegram";
-            }
+            (mkTelegramAlert {
+              triggered = "🔴 Plex недоступний.";
+              resolved = "🟢 Plex знову доступний.";
+            })
           ];
         }
       ];
