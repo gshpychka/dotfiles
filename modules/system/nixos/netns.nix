@@ -22,9 +22,9 @@ let
   # Linux caps interface names at IFNAMSIZ (15 usable characters).
   ifnameMax = 15;
 
-  # Healthcheck attempts spaced 0.1s apart, bounding the wait for the host end
-  # at roughly 5s.
-  healthcheckRetries = 50;
+  # Healthcheck attempts spaced 0.1s apart, bounding the wait for systemd-networkd
+  # to configure the host end at roughly 10s.
+  healthcheckRetries = 100;
 
   cidr = address: prefix: "${address}/${toString prefix}";
 
@@ -54,6 +54,11 @@ let
     ip -n ${name} address add ${cidr ns.namespaceAddress ns.prefixLength} dev ${ns.namespaceInterface}
     ip -n ${name} link set ${ns.namespaceInterface} up
     ip -n ${name} route add default via ${ns.hostAddress}
+
+    # Prompt systemd-networkd to configure the freshly created host end now.
+    # Left to its own reconfiguration it can lag the veth appearing by seconds,
+    # which during activation outruns the healthcheck below.
+    ${config.systemd.package}/bin/networkctl reload
   '';
 
   # Confirm the namespace came up as configured before the unit reports started.
