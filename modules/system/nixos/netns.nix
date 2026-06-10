@@ -22,6 +22,10 @@ let
   # Linux caps interface names at IFNAMSIZ (15 usable characters).
   ifnameMax = 15;
 
+  # Healthcheck attempts spaced 0.1s apart, bounding the wait for the host end
+  # at roughly 5s.
+  healthcheckRetries = 50;
+
   cidr = address: prefix: "${address}/${toString prefix}";
 
   # Tear a namespace down to a clean slate. Deleting the namespace destroys the
@@ -50,6 +54,54 @@ let
     ip -n ${name} address add ${cidr ns.namespaceAddress ns.prefixLength} dev ${ns.namespaceInterface}
     ip -n ${name} link set ${ns.namespaceInterface} up
     ip -n ${name} route add default via ${ns.hostAddress}
+  '';
+
+  # Confirm the namespace came up as configured before the unit reports started.
+  # The host end and (for egress) the policy rule are configured by
+  # systemd-networkd asynchronously, so those are polled within a bounded window.
+  healthcheckScript = name: ns: ''
+    set -euo pipefail
+
+    [[ -e /run/netns/${name} ]] || {
+      echo "netns ${name}: namespace is missing" >&2
+      exit 1
+    }
+    [[ "$(ip -n ${name} -o addr show ${ns.namespaceInterface})" == *"${ns.namespaceAddress}/"* ]] || {
+      echo "netns ${name}: ${ns.namespaceInterface} is missing address ${ns.namespaceAddress}" >&2
+      exit 1
+    }
+    [[ "$(ip -n ${name} route show default)" == *"via ${ns.hostAddress} "* ]] || {
+      echo "netns ${name}: default route is not via ${ns.hostAddress}" >&2
+      exit 1
+    }
+
+    for ((i = 0; i < ${toString healthcheckRetries}; i++)); do
+      if [[ "$(ip -o addr show dev ${ns.hostInterface} up 2>/dev/null)" == *"${ns.hostAddress}/"* ]]; then
+        host_ready=true
+      else
+        host_ready=false
+      fi
+      ${
+        if ns.egress != null then
+          ''
+            if [[ "$(ip rule show table ${toString ns.egress.routingTable} 2>/dev/null)" == *"from ${cidr ns.namespaceAddress 32}"* ]]; then
+              rule_ready=true
+            else
+              rule_ready=false
+            fi''
+        else
+          "rule_ready=true"
+      }
+      if $host_ready && $rule_ready; then
+        exit 0
+      fi
+      sleep 0.1
+    done
+
+    echo "netns ${name}: systemd-networkd did not configure ${ns.hostInterface}${
+      optionalString (ns.egress != null) " and the egress rule"
+    } in time" >&2
+    exit 1
   '';
 
   # iptables rules connecting a namespace to the outside world, modelled as
@@ -93,12 +145,16 @@ let
         "systemd-networkd.service"
       ];
       wantedBy = [ "multi-user.target" ];
-      path = [ pkgs.iproute2 ];
+      path = [
+        pkgs.iproute2
+        pkgs.coreutils
+      ];
       serviceConfig = {
         Type = "oneshot";
         RemainAfterExit = true;
       };
       script = setupScript name ns;
+      postStart = healthcheckScript name ns;
       preStop = teardownScript name ns;
     };
   };
