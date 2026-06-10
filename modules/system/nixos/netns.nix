@@ -88,8 +88,10 @@ let
       fi
       ${
         if ns.egress != null then
+          # `ip rule show` prints a /32 source without the prefix, so match the
+          # bare address followed by a space.
           ''
-            if [[ "$(ip rule show table ${toString ns.egress.routingTable} 2>/dev/null)" == *"from ${cidr ns.namespaceAddress 32}"* ]]; then
+            if [[ "$(ip rule show table ${toString ns.egress.routingTable} 2>/dev/null)" == *"from ${ns.namespaceAddress} "* ]]; then
               rule_ready=true
             else
               rule_ready=false
