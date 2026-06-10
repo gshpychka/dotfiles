@@ -1,6 +1,16 @@
-{ config, lib, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  osConfig,
+  ...
+}:
 let
   cfg = config.my.tmux;
+  # stable symlink to the newest forwarded-agent socket, which sshd places at a random path per connection; tmux panes outlive their connection
+  agentSock = "${config.home.homeDirectory}/.ssh/ssh_auth_sock";
+  # == true also handles nix-darwin, where the option is null when unmanaged
+  sshdHost = (osConfig.services.openssh.enable or false) == true;
 in
 {
   options.my.tmux = {
@@ -28,5 +38,22 @@ in
         ]
       );
     };
+
+    # sshd runs this at session setup (sshd(8): ~/.ssh/rc)
+    home.file.".ssh/rc" = lib.mkIf sshdHost {
+      text = ''
+        if [ -S "''${SSH_AUTH_SOCK:-}" ]; then
+          ${pkgs.coreutils}/bin/ln -sfn "$SSH_AUTH_SOCK" "${agentSock}"
+        fi
+      '';
+    };
+
+    # Scoped to SSH-originated shells (tmux propagates SSH_CONNECTION on
+    # attach) so the gpg-agent SSH socket on local sessions is left alone.
+    programs.zsh.initContent = lib.mkIf sshdHost ''
+      if [[ -n "''${SSH_CONNECTION-}" && -S "${agentSock}" ]]; then
+        export SSH_AUTH_SOCK="${agentSock}"
+      fi
+    '';
   };
 }

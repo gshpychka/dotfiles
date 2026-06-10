@@ -72,14 +72,19 @@ in
             };
             "*" = {
               AddKeysToAgent = "no";
-              Compression = false;
-              ServerAliveInterval = 0;
+              Compression = true;
+              # detect dead connections in ~45s and keep NAT mappings alive
+              ServerAliveInterval = 15;
               ServerAliveCountMax = 3;
+              # keystroke-timing chaff costs ~20ms per keypress and extra packets
+              ObscureKeystrokeTiming = false;
               HashKnownHosts = false;
               UserKnownHostsFile = "~/.ssh/known_hosts";
-              ControlMaster = "no";
-              ControlPath = "~/.ssh/master-%r@%n:%p";
-              ControlPersist = "no";
+              # share one connection per destination; new sessions skip the
+              # TCP + key exchange + auth round trips
+              ControlMaster = "auto";
+              ControlPath = "~/.ssh/master-%C"; # %C = hash of user/host/port
+              ControlPersist = "10m";
             };
           };
       };
