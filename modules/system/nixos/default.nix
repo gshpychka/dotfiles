@@ -9,6 +9,7 @@
     ./cloudflare-ddns.nix
     ./glances.nix
     ./machine-id.nix
+    ./netns.nix
     ./nix.nix
     ./ollama.nix
     ./rustdesk.nix
