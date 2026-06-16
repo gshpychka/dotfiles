@@ -14,6 +14,11 @@
       "homebrew/homebrew-cask" = inputs.homebrew-cask;
       "dagger/homebrew-tap" = inputs.homebrew-dagger;
     };
+    trust = {
+      formulae = [
+        "dagger/tap/dagger"
+      ];
+    };
     mutableTaps = false;
     extraEnv = {
       HOMEBREW_NO_ANALYTICS = "1";
@@ -28,7 +33,8 @@
     };
     onActivation = {
       # "zap" removes manually installed brews and casks
-      cleanup = "zap";
+      # cleanup is no longer a thing
+      # cleanup = "zap";
       # nix-homebrew is handling homebrew updates
       autoUpdate = false;
       upgrade = true;
@@ -41,41 +47,22 @@
       # -- essentials --
       "google-chrome"
       "raycast"
-      {
-        name = "ghostty";
-        greedy = true;
-      }
+      "ghostty"
       # -- utilities --
-      {
-        name = "mullvad-vpn";
-        greedy = false;
-      }
+      "mullvad-vpn"
       "transmission"
       "commander-one"
       "forklift"
-      {
-        name = "docker-desktop";
-        greedy = false;
-      }
+      "docker-desktop"
       {
         # choose browser on each link
         name = "finicky";
         greedy = true;
       }
-      {
-        name = "betterdisplay";
-      }
-      {
-        name = "insta360-link-controller";
-      }
-      {
-        name = "dropbox";
-        greedy = false;
-      }
-      {
-        name = "google-drive";
-        greedy = false;
-      }
+      "betterdisplay"
+      "insta360-link-controller"
+      "dropbox"
+      "google-drive"
       "onedrive"
       {
         name = "cyberduck";
@@ -83,55 +70,38 @@
       }
       {
         name = "teamviewer";
-        greedy = false;
+        greedy = true;
       }
       {
         name = "rustdesk";
-        greedy = false;
+        greedy = true;
       }
       {
         name = "yubico-authenticator";
         greedy = true;
       }
+      "trezor-suite"
       {
-        name = "trezor-suite";
-        greedy = false;
+        name = "gimp";
+        greedy = true;
       }
-      # fails to install
-      # {
-      #   name = "gimp";
-      #   greedy = true;
-      # }
       {
         name = "vlc";
         greedy = true;
       }
-      # disabling until https://github.com/zhaofengli/nix-homebrew/issues/140 is fixed
-      # {
-      #   name = "balenaetcher";
-      #   greedy = true;
-      # }
       {
-        name = "chatgpt";
-        greedy = false;
+        name = "balenaetcher";
+        greedy = true;
       }
-      {
-        name = "codex-app";
-        greedy = false;
-      }
-      {
-        name = "claude";
-        greedy = false;
-      }
+      "chatgpt"
+      "codex-app"
+      "claude"
       "caldigit-thunderbolt-charging"
       {
         name = "plexamp";
         greedy = true;
       }
-      {
-        name = "jellyfin-media-player";
-        greedy = false;
-      }
+      "jellyfin-media-player"
       "coconutbattery"
       "losslesscut"
       "handbrake-app"
@@ -142,19 +112,10 @@
       }
       # -- communication --
       "telegram"
-      {
-        name = "signal";
-        greedy = false;
-      }
+      "signal"
       "discord"
-      {
-        name = "whatsapp";
-        greedy = false;
-      }
-      {
-        name = "element";
-        greedy = false;
-      }
+      "whatsapp"
+      "element"
 
       # -- work --
       # fails to install - installing manually instead
@@ -162,26 +123,11 @@
       #   name = "datagrip";
       #   greedy = false;
       # }
-      {
-        name = "firefox";
-        greedy = false;
-      }
-      {
-        name = "slack";
-        greedy = false;
-      }
-      {
-        name = "notion";
-        greedy = false;
-      }
-      {
-        name = "linear";
-        greedy = false;
-      }
-      {
-        name = "twingate";
-        greedy = false;
-      }
+      "firefox"
+      "slack"
+      "notion"
+      "linear"
+      "twingate"
       "zoom"
       "microsoft-excel"
       "microsoft-word"
