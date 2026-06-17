@@ -221,6 +221,20 @@ in
           NIXPKGS_ALLOW_UNFREE=1 nix shell --impure "''${packages[@]}"
         }
 
+        # Wrap granted so it's sourced.
+        # GRANTED_ALIAS_CONFIGURED makes granted emit its machine-readable
+        # export line — its own detection only fires for aliases, not functions.
+        assume() {
+          local bin
+          bin="$(whence -p assume)"
+          if [[ -z "$bin" ]]; then
+            print -u2 "assume: no 'assume' binary on PATH — enter a devshell that provides it"
+            return 1
+          fi
+          export GRANTED_ALIAS_CONFIGURED=true
+          source "$bin" "$@"
+        }
+
         # fzf history search with prefix filtering
         # when ctrl+r is pressed:
         # - empty buffer: fuzzy search all history
