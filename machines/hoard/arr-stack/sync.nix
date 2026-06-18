@@ -17,6 +17,8 @@ let
 
   secret = name: config.sops.secrets.${name}.path;
   localUrl = port: "http://localhost:${port}";
+  publicHost = service: "${service}.${config.networking.fqdn}";
+  httpsPort = config.services.nginx.defaultSSLListenPort;
 
   # qBittorrent / SABnzbd are shared by every *Arr; only the per-arr category field
   # (tvCategory / movieCategory / musicCategory) differs, passed in via `category`.
@@ -25,9 +27,9 @@ let
     implementation = "QBittorrent";
     protocol = "torrent";
     fields = {
-      host = "localhost";
-      port = config.services.qbittorrent.webuiPort;
-      useSsl = false;
+      host = publicHost "qbittorrent";
+      port = httpsPort;
+      useSsl = true;
     }
     // category;
     secretFields = {
@@ -41,9 +43,9 @@ let
     implementation = "Sabnzbd";
     protocol = "usenet";
     fields = {
-      host = "localhost";
-      port = lib.toInt ports.sabnzbd;
-      useSsl = false;
+      host = publicHost "sabnzbd";
+      port = httpsPort;
+      useSsl = true;
     }
     // category;
     secretFields.apiKey = secret "sabnzbd-api-key";
