@@ -5,6 +5,8 @@
   imports = [
     ./recyclarr.nix
     ./maintainerr.nix
+    ./api-keys.nix
+    ./sync.nix
   ];
 
   services = {

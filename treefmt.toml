@@ -18,3 +18,8 @@ includes = ["*.sh", "*.bash"]
 command = "taplo"
 options = ["format"]
 includes = ["*.toml"]
+
+[formatter.ruff-format]
+command = "ruff"
+options = ["format"]
+includes = ["*.py"]

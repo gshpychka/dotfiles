@@ -88,6 +88,7 @@
           stylua
           shfmt
           taplo
+          ruff
         ];
     in
     {
