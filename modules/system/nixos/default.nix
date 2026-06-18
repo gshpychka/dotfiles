@@ -8,6 +8,7 @@
     ./duckdns.nix
     ./cloudflare-ddns.nix
     ./glances.nix
+    ./headless.nix
     ./machine-id.nix
     ./netns.nix
     ./nix.nix
