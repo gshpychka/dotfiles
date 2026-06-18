@@ -11,5 +11,6 @@ in
     gemini-cli
     opencode
     claude-code
+    pi
     ;
 }
