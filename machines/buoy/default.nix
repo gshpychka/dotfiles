@@ -1,3 +1,15 @@
+# Bootstrap (from eve):
+# cd infra && nix develop ..#infra   # provides tf (terraform + sops-decrypted TF_VARs), gcloud, sops
+# gcloud auth login && gcloud auth application-default login
+# ./bootstrap/terraform-backend.sh   # new GCP project only: create tf state bucket
+# nix build ..#packages.x86_64-linux.gce-image -o result   # bootstrap image .raw.tar.gz
+# tf init && tf apply   # age key → Secret Manager, VM, data disk, static IP, DNS
+# tf output -raw sops_age_public_key   # → buoy_host (new on first apply / lost tf state)
+# if buoy_host changed (repo root): set .sops.yaml buoy_host
+#   nix shell nixpkgs#sops nixpkgs#gnupg -c find secrets -type f -exec sops updatekeys -y {} \;   # YubiKey plugged in
+#   git commit -am rekey && git push
+# nixos-rebuild switch --flake .#buoy --target-host root@buoy   # first deploy: bootstrap image authorizes root only
+# redeploy: nixos-rebuild switch --flake .#buoy --target-host buoy --sudo
 {
   config,
   modulesPath,
