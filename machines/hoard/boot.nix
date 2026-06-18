@@ -11,6 +11,8 @@
       systemd-boot = {
         enable = true;
         configurationLimit = 10;
+        # block kernel cmdline tampering from the boot menu
+        editor = false;
       };
       efi.canTouchEfiVariables = true;
     };
