@@ -26,7 +26,7 @@ vim.diagnostic.config({
   },
 })
 
-vim.lsp.config('*', {
+vim.lsp.config("*", {
   capabilities = vim.tbl_deep_extend(
     "force",
     vim.lsp.protocol.make_client_capabilities(),
@@ -65,59 +65,94 @@ vim.lsp.config('*', {
     end
   end,
 })
-local default_on_attach = vim.lsp.config['*'].on_attach
+local default_on_attach = vim.lsp.config["*"].on_attach
 
-vim.lsp.enable('pyright')
+-- Per-server config merged over the '*' defaults; an empty table just
+-- enables the server with those defaults.
+local servers = {
+  pyright = {},
 
-vim.lsp.config('lua_ls', {
-  settings = {
-    Lua = {
-      runtime = {
-        version = "LuaJIT",
+  lua_ls = {
+    settings = {
+      Lua = {
+        runtime = {
+          version = "LuaJIT",
+        },
+        diagnostics = {
+          globals = { "vim" },
+        },
+        format = {
+          enable = true,
+        },
+        workspace = {
+          library = vim.api.nvim_get_runtime_file("", true),
+          checkThirdParty = true,
+        },
+        telemetry = {
+          enable = false,
+        },
       },
-      diagnostics = {
-        globals = { "vim" },
+    },
+  },
+
+  nixd = {
+    settings = {
+      nixd = {
+        formatting = {
+          command = { "nixfmt" },
+        },
       },
+    },
+  },
+
+  dockerls = {},
+
+  jsonls = {
+    init_options = {
+      provideFormatter = true,
+    },
+  },
+
+  yamlls = {},
+
+  bashls = {},
+
+  zls = {},
+
+  eslint = {
+    on_attach = function(client, bufnr)
+      -- eslint uses dynamic registration which neovim doesn't support
+      -- https://github.com/microsoft/vscode-eslint/pull/1307
+      client.server_capabilities.documentFormattingProvider = true
+      if default_on_attach then
+        default_on_attach(client, bufnr)
+      end
+    end,
+    -- only use flat config files (eslint.config.*)
+    -- .eslintrc.* files are deprecated, see https://eslint.org/docs/latest/use/configure/migration-guide
+    root_dir = require("lspconfig.util").root_pattern(
+      "eslint.config.js",
+      "eslint.config.mjs",
+      "eslint.config.cjs",
+      "eslint.config.ts",
+      "eslint.config.mts",
+      "eslint.config.cts"
+    ),
+    settings = {
+      workingDirectory = { mode = "auto" },
       format = {
         enable = true,
       },
-      workspace = {
-        library = vim.api.nvim_get_runtime_file("", true),
-        checkThirdParty = true,
-      },
-      telemetry = {
-        enable = false,
-      },
     },
   },
-})
-vim.lsp.enable('lua_ls')
 
-vim.lsp.config('nixd', {
-  settings = {
-    nixd = {
-      formatting = {
-        command = { "nixfmt" },
-      },
-    },
-  },
-})
-vim.lsp.enable('nixd')
+  biome = {},
+}
 
-vim.lsp.enable('dockerls')
-
-vim.lsp.config('jsonls', {
-  init_options = {
-    provideFormatter = true,
-  },
-})
-vim.lsp.enable('jsonls')
-
-vim.lsp.enable('yamlls')
-
-vim.lsp.enable('bashls')
-
-vim.lsp.enable('zls')
+for name, cfg in pairs(servers) do
+  vim.lsp.config(name, cfg)
+  vim.lsp.enable(name)
+end
 
 require("ts-error-translator").setup({
   auto_attach = true,
@@ -174,7 +209,12 @@ require("typescript-tools").setup({
           return nil
         end
       end
-      vim.lsp.buf_request(bufnr, "textDocument/definition", util.make_position_params(0, client.offset_encoding), handler)
+      vim.lsp.buf_request(
+        bufnr,
+        "textDocument/definition",
+        util.make_position_params(0, client.offset_encoding),
+        handler
+      )
     end, { desc = "Create mark at definition", buffer = bufnr })
 
     vim.keymap.set("n", "<leader>fo", function()
@@ -187,7 +227,7 @@ require("typescript-tools").setup({
       default_on_attach(client, bufnr)
     end
   end,
-  capabilities = vim.lsp.config['*'].capabilities,
+  capabilities = vim.lsp.config["*"].capabilities,
   settings = {
     separate_diagnostic_server = true,
     tsserver_file_preferences = {
@@ -203,33 +243,3 @@ require("typescript-tools").setup({
     },
   },
 })
-
-vim.lsp.config('eslint', {
-  on_attach = function(client, bufnr)
-    -- eslint uses dynamic registration which neovim doesn't support
-    -- https://github.com/microsoft/vscode-eslint/pull/1307
-    client.server_capabilities.documentFormattingProvider = true
-    if default_on_attach then
-      default_on_attach(client, bufnr)
-    end
-  end,
-  -- only use flat config files (eslint.config.*)
-  -- .eslintrc.* files are deprecated, see https://eslint.org/docs/latest/use/configure/migration-guide
-  root_dir = require("lspconfig.util").root_pattern(
-    "eslint.config.js",
-    "eslint.config.mjs",
-    "eslint.config.cjs",
-    "eslint.config.ts",
-    "eslint.config.mts",
-    "eslint.config.cts"
-  ),
-  settings = {
-    workingDirectory = { mode = "auto" },
-    format = {
-      enable = true,
-    },
-  },
-})
-vim.lsp.enable('eslint')
-
-vim.lsp.enable('biome')

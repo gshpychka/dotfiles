@@ -5,7 +5,7 @@ require("nvim-treesitter").setup({
     enable = true,
   },
   indent = {
-    emable = true,
+    enable = true,
   },
   incremental_selection = {
     enable = true,
