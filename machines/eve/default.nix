@@ -1,17 +1,15 @@
 # Bootstrap:
 # 1. Create user account
-# 5. Sign into the App Store.
-# 2. xcode-select --install
-# 3. sh <(curl -L https://nixos.org/nix/install)
-# 4. git clone https://github.com/gshpychka/dotfiles.git ~/dotfiles && cd ~/dotfiles
+# 2. Sign into the App Store.
+# 3. xcode-select --install
+# 4. sh <(curl -L https://nixos.org/nix/install)
+# 5. git clone https://github.com/gshpychka/dotfiles.git ~/dotfiles && cd ~/dotfiles
 # 6. nix --experimental-features "nix-command flakes" build .#darwinConfigurations.eve.system
-#    ./result/sw/bin/darwin-rebuild switch --flake .#eve
-#    Mints the host key; fails on secrets/eve until re-keyed.
+#    ./result/sw/bin/darwin-rebuild switch --flake .#eve <-- fill fail (expected)
 # 7. Set .sops.yaml eve_host to the recipient in /var/log/sops-keygen.log.
-# 8. Re-key, switch:
-#      nix shell nixpkgs#sops nixpkgs#gnupg -c find secrets -type f -exec sops updatekeys -y {} \;
-#      ./result/sw/bin/darwin-rebuild switch --flake .
-# 9. 1Password > Developer: enable SSH agent + CLI;
+# 8. nix shell nixpkgs#sops nixpkgs#gnupg -c find secrets -type f -exec sops updatekeys -y {} \;
+# 9. ./result/sw/bin/darwin-rebuild switch --flake .
+# 10. 1Password > Developer: enable SSH agent + CLI;
 
 {
   config,
