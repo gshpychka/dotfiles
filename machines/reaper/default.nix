@@ -1,3 +1,20 @@
+# Bootstrap:
+# flash .#iso to USB, boot reaper
+# ssh nixos@iso
+# lsblk   # find <disk> (e.g. /dev/nvme0n1), partitions are <disk>p1 <disk>p2
+# sgdisk -Z <disk> && sgdisk -n1:0:+1G -t1:EF00 -n2:0:0 <disk>
+# mkfs.fat -F32 -i D6D6CDCD <disk>p1 && mkfs.ext4 -L nixos <disk>p2
+# mount /dev/disk/by-label/nixos /mnt && mount -m /dev/disk/by-uuid/D6D6-CDCD /mnt/boot
+# mkdir -p /mnt/etc/ssh && ssh-keygen -t ed25519 -N "" -f /mnt/etc/ssh/ssh_host_ed25519_key
+# nix-shell -p ssh-to-age --run 'ssh-to-age -i /mnt/etc/ssh/ssh_host_ed25519_key.pub'   # → reaper_host
+# on eve: set .sops.yaml reaper_host; rm secrets/reaper/users.yaml
+#         nix-shell -p mkpasswd --run 'mkpasswd -m sha-512'
+#         sops secrets/reaper/users.yaml: gshpychka-hashed-password, jovian-hashed-password
+#         nix shell nixpkgs#sops nixpkgs#gnupg -c find secrets -type f -exec sops updatekeys -y {} \;
+#         git commit -am rekey && git push
+# sbctl create-keys && mkdir -p /mnt/var/lib && cp -a /var/lib/sbctl /mnt/var/lib/
+# nixos-install --flake github:gshpychka/dotfiles#reaper && reboot
+# sbctl enroll-keys --microsoft --ignore-immutable   # BIOS in Setup Mode
 {
   pkgs,
   config,
@@ -133,7 +150,6 @@
 
   my.terminfo.enable = true;
 
-  # root age key for editing secrets with the sops CLI on this machine
   my.sops-age-key.enable = true;
 
   # Start pcscd on boot instead of socket-activation (needed for GPG smartcard)
