@@ -15,6 +15,7 @@
 #         git commit -am rekey && git push
 # nixos-install --flake github:gshpychka/dotfiles#hoard && reboot
 # encrypted media drives + TPM2 enrollment: see filesystems.nix
+# TODO: complete bootstrap doc (including arr stack)
 {
   pkgs,
   config,
