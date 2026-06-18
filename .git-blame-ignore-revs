@@ -1,0 +1,6 @@
+# Commits that only reformat code — skipped by `git blame`.
+# Enable locally once: git config blame.ignoreRevsFile .git-blame-ignore-revs
+# (the GitHub blame view applies it automatically.)
+
+# chore(treefmt): format the whole tree and enforce it in CI
+d28c2cd528373ac0e9849651c6875b6c5f2c98a9
