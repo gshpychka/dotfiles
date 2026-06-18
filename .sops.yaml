@@ -1,5 +1,5 @@
 keys:
-  # TODO: figure out what the command was
+  # YubiKey OpenPGP fingerprint (gpg --card-status)
   - &yubikey_alpha 7A5FB73E81C9215C692D994349E1D3136F71FED7
     # nix-shell -p ssh-to-age --run 'ssh-keyscan reaper | ssh-to-age'
   - &reaper_host age1d3hhj0tzjrqt7w5nzqx86fha5cemmgdn99n5v2aw76ut7ucp8vyqspxyhn
