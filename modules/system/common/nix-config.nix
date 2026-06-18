@@ -41,6 +41,8 @@
         useGlobalPkgs = true;
         useUserPackages = true;
         sharedModules = [ inputs.nix-index-database.homeModules.nix-index ];
+        # make flake inputs available inside home-manager modules
+        extraSpecialArgs = { inherit inputs; };
       };
     })
   ];

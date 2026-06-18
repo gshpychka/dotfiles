@@ -1,23 +1,9 @@
+{ inputs, ... }:
 {
   imports = [
     ../../common
     ../common
-    ./acme.nix
-    ./build-server.nix
-    ./disk-spindown.nix
-    ./duckdns.nix
-    ./cloudflare-ddns.nix
-    ./glances.nix
-    ./headless.nix
-    ./machine-id.nix
-    ./netns.nix
-    ./nix.nix
-    ./ollama.nix
-    ./rustdesk.nix
-    ./sabnzbd.nix
-    ./sops-age-key.nix
-    ./ssh-hardening.nix
-    ./tailscale.nix
-    ./gatus-path-check.nix
+    # import-tree imports this tree's modules; matchNot drops this default.nix entry point
+    (inputs.import-tree.matchNot "/default\\.nix" ./.)
   ];
 }

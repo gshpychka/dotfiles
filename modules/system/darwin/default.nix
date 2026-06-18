@@ -1,8 +1,9 @@
+{ inputs, ... }:
 {
   imports = [
     ../../common
     ../common
-    ./touch-id.nix
-    ./sops-age-key.nix
+    # import-tree imports this tree's modules; matchNot drops this default.nix entry point
+    (inputs.import-tree.matchNot "/default\\.nix" ./.)
   ];
 }

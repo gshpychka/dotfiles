@@ -1,7 +1,5 @@
+{ inputs, ... }:
 {
-  imports = [
-    ./distributed-builds.nix
-    ./nix-config.nix
-    ./terminfo.nix
-  ];
+  # import-tree imports this tree's modules; matchNot drops this default.nix entry point
+  imports = [ (inputs.import-tree.matchNot "/default\\.nix" ./.) ];
 }

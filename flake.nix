@@ -59,6 +59,8 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
+    # auto-imports a directory tree of modules
+    import-tree.url = "github:vic/import-tree";
   };
 
   outputs =
