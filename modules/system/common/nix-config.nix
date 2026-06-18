@@ -40,6 +40,7 @@
       home-manager = {
         useGlobalPkgs = true;
         useUserPackages = true;
+        sharedModules = [ inputs.nix-index-database.homeModules.nix-index ];
       };
     })
   ];
