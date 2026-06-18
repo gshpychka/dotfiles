@@ -1,3 +1,12 @@
+# Bootstrap:
+# nix build .#harbor-sd-image
+# flash result/sd-image/*.img.zst to SD, boot harbor
+# ssh -A pi@192.168.1.2
+# nix-shell -p ssh-to-age --run 'ssh-to-age -i /etc/ssh/ssh_host_ed25519_key.pub'   # → harbor_host
+# on eve: set .sops.yaml harbor_host
+#         nix shell nixpkgs#sops nixpkgs#gnupg -c find secrets -type f -exec sops updatekeys -y {} \;   # YubiKey plugged in
+#         git commit -am rekey && git push
+# sudo nixos-rebuild switch --flake github:gshpychka/dotfiles#harbor
 {
   config,
   ...
