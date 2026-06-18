@@ -3,7 +3,6 @@
     ../../common
     ../common
     ./touch-id.nix
-    ./sops-keygen.nix
+    ./sops-age-key.nix
   ];
 }
-

@@ -4,12 +4,12 @@
 # 3. xcode-select --install
 # 4. sh <(curl -L https://nixos.org/nix/install)
 # 5. git clone https://github.com/gshpychka/dotfiles.git ~/dotfiles && cd ~/dotfiles
-# 6. nix --experimental-features "nix-command flakes" build .#darwinConfigurations.eve.system
-#    ./result/sw/bin/darwin-rebuild switch --flake .#eve <-- fill fail (expected)
-# 7. Set .sops.yaml eve_host to the recipient in /var/log/sops-keygen.log.
+# 6. sudo ssh-keygen -t ed25519 -N "" -f /etc/ssh/ssh_host_ed25519_key
+# 7. set .sops.yaml eve_host: nix-shell -p ssh-to-age --run 'ssh-to-age -i /etc/ssh/ssh_host_ed25519_key.pub'
 # 8. nix shell nixpkgs#sops nixpkgs#gnupg -c find secrets -type f -exec sops updatekeys -y {} \;
-# 9. ./result/sw/bin/darwin-rebuild switch --flake .
-# 10. 1Password > Developer: enable SSH agent + CLI;
+# 9. nix --experimental-features "nix-command flakes" build .#darwinConfigurations.eve.system
+#    ./result/sw/bin/darwin-rebuild switch --flake .#eve
+# 10. 1Password > Developer: enable SSH agent + CLI
 
 {
   config,
