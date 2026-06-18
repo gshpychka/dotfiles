@@ -1,6 +1,7 @@
 {
   config,
   lib,
+  pkgs,
   inputs,
   ...
 }:
@@ -32,12 +33,11 @@
       autoUpdate = false;
     };
     onActivation = {
-      # "zap" removes manually installed brews and casks
-      # cleanup is no longer a thing
-      # cleanup = "zap";
       # nix-homebrew is handling homebrew updates
       autoUpdate = false;
       upgrade = true;
+      # --cleanup is deprecated
+      cleanup = lib.mkForce "none";
     };
     caskArgs = {
       # no_quarantine is no longer a thing
@@ -160,4 +160,13 @@
     )
   );
 
+  # nix-darwin's `brew bundle --cleanup` is deprecated in favor of `brew bundle cleanup`
+  system.activationScripts.postActivation.text = ''
+    if [ -f "${config.homebrew.prefix}/bin/brew" ]; then
+      echo >&2 "Homebrew cleanup (zap)..."
+      PATH="${config.homebrew.prefix}/bin:${lib.makeBinPath [ pkgs.mas ]}:$PATH" \
+      sudo --preserve-env=PATH --user=${lib.escapeShellArg config.homebrew.user} --set-home \
+        brew bundle cleanup --zap --force --file=${pkgs.writeText "Brewfile" config.homebrew.brewfile}
+    fi
+  '';
 }
