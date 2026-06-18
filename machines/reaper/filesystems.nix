@@ -8,9 +8,10 @@
   fileSystems."/boot" = {
     device = "/dev/disk/by-uuid/D6D6-CDCD";
     fsType = "vfat";
+    # keep the ESP readable by root only
     options = [
-      "fmask=0022"
-      "dmask=0022"
+      "fmask=0077"
+      "dmask=0077"
     ];
   };
 
