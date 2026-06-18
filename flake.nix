@@ -231,6 +231,10 @@
                 HOME=$TMPDIR treefmt --no-cache --fail-on-change --tree-root .
                 touch $out
               '';
+              ruff = pkgs.runCommand "check-ruff" { nativeBuildInputs = [ pkgs.ruff ]; } ''
+                ruff check --config ${self}/ruff.toml ${self}
+                touch $out
+              '';
             }
           );
         in

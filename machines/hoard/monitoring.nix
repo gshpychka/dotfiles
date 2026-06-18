@@ -230,10 +230,6 @@ in
 
   sops = {
     secrets = {
-      radarr-api-key = { };
-      sonarr-api-key = { };
-      lidarr-api-key = { };
-      prowlarr-api-key = { };
       qbittorrent-username = { };
       qbittorrent-password = { };
       sabnzbd-api-key = { };

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """arr-sync — idempotently converge Servarr cross-service wiring over the REST API.
 
 Reads one JSON spec per target service and ensures the target's root folders,

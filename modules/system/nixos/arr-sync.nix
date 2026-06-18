@@ -16,23 +16,10 @@
 let
   cfg = config.my.arrSync;
 
-  # Lint with ruff and byte-compile at build time; install with a patched interpreter.
-  engine =
-    pkgs.runCommandLocal "arr-sync"
-      {
-        nativeBuildInputs = [
-          pkgs.python3
-          pkgs.ruff
-        ];
-        meta.mainProgram = "arr-sync";
-      }
-      ''
-        cp ${./arr-sync.py} arr-sync.py
-        ruff check --config ${./ruff.toml} arr-sync.py
-        python3 -m py_compile arr-sync.py
-        install -Dm755 arr-sync.py $out/bin/arr-sync
-        patchShebangs $out/bin/arr-sync
-      '';
+  # ruff format owns line width, so flake8's E501 is ignored.
+  engine = pkgs.writers.writePython3Bin "arr-sync" { flakeIgnore = [ "E501" ]; } (
+    builtins.readFile ./arr-sync.py
+  );
 
   # A non-secret download-client / application field value.
   fieldType = lib.types.oneOf [
@@ -110,120 +97,77 @@ let
     };
   };
 
-  endpointType = lib.types.submodule {
+  targetType = lib.types.submodule {
     options = {
-      name = lib.mkOption { type = lib.types.str; };
-      url = lib.mkOption { type = lib.types.str; };
+      url = lib.mkOption {
+        type = lib.types.str;
+        example = "http://localhost:8989";
+      };
       apiVersion = lib.mkOption {
         type = lib.types.enum [
           "v1"
           "v3"
         ];
+        description = "API version: v3 for Sonarr/Radarr, v1 for Prowlarr/Lidarr.";
       };
-      apiKeyFile = lib.mkOption { type = lib.types.str; };
+      apiKeyFile = lib.mkOption {
+        type = lib.types.str;
+        description = "Path to a file holding the target's API key (sent as X-Api-Key).";
+      };
+      afterUnits = lib.mkOption {
+        type = lib.types.listOf lib.types.str;
+        default = [ ];
+        description = "Extra systemd units to order after (e.g. download-client services).";
+      };
+      rootFolders = lib.mkOption {
+        type = lib.types.listOf lib.types.str;
+        default = [ ];
+      };
+      rootFolderNeedsProfiles = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+        description = ''
+          Whether root folders require default quality/metadata profiles (Lidarr).
+          When set, the engine attaches the first available profiles and monitor=all.
+        '';
+      };
+      downloadClients = lib.mkOption {
+        type = lib.types.listOf downloadClientType;
+        default = [ ];
+      };
+      applications = lib.mkOption {
+        type = lib.types.listOf applicationType;
+        default = [ ];
+      };
+      waitForTargets = lib.mkOption {
+        type = lib.types.listOf lib.types.str;
+        default = [ ];
+        description = "Other target names whose API must be reachable before syncing (e.g. Prowlarr → *Arrs).";
+      };
     };
   };
 
-  targetType = lib.types.submodule (
-    { name, ... }:
-    {
-      options = {
-        url = lib.mkOption {
-          type = lib.types.str;
-          example = "http://localhost:8989";
-        };
-        apiVersion = lib.mkOption {
-          type = lib.types.enum [
-            "v1"
-            "v3"
-          ];
-          description = "API version: v3 for Sonarr/Radarr, v1 for Prowlarr/Lidarr.";
-        };
-        apiKeyFile = lib.mkOption {
-          type = lib.types.str;
-          description = "Path to a file holding the target's API key (sent as X-Api-Key).";
-        };
-        serviceName = lib.mkOption {
-          type = lib.types.str;
-          default = name;
-          description = "systemd service the sync orders after (defaults to the attr name).";
-        };
-        afterUnits = lib.mkOption {
-          type = lib.types.listOf lib.types.str;
-          default = [ ];
-          description = "Extra systemd services to order after (e.g. download clients).";
-        };
-        rootFolders = lib.mkOption {
-          type = lib.types.listOf lib.types.str;
-          default = [ ];
-        };
-        rootFolderNeedsProfiles = lib.mkOption {
-          type = lib.types.bool;
-          default = false;
-          description = ''
-            Whether root folders require default quality/metadata profiles (Lidarr).
-            When set, the engine attaches the first available profiles and monitor=all.
-          '';
-        };
-        downloadClients = lib.mkOption {
-          type = lib.types.listOf downloadClientType;
-          default = [ ];
-        };
-        applications = lib.mkOption {
-          type = lib.types.listOf applicationType;
-          default = [ ];
-        };
-        waitFor = lib.mkOption {
-          type = lib.types.listOf endpointType;
-          default = [ ];
-          description = "Apps whose API must be reachable before syncing (e.g. Prowlarr → *Arrs).";
-        };
-      };
-    }
-  );
+  # submodule values carry an internal _module attr; drop it before JSON serialization
+  clean = x: removeAttrs x [ "_module" ];
 
   specFile =
     tname: t:
-    pkgs.writeText "arr-sync-${tname}.json" (
-      builtins.toJSON {
-        name = tname;
-        inherit (t)
-          url
-          apiVersion
-          apiKeyFile
-          rootFolders
-          rootFolderNeedsProfiles
-          ;
-        downloadClients = map (c: {
-          inherit (c)
-            name
-            implementation
-            protocol
-            enable
-            priority
-            fields
-            secretFields
-            ;
-        }) t.downloadClients;
-        applications = map (a: {
-          inherit (a)
-            name
-            implementation
-            syncLevel
-            fields
-            secretFields
-            ;
-        }) t.applications;
-        waitFor = map (w: {
-          inherit (w)
-            name
-            url
-            apiVersion
-            apiKeyFile
-            ;
-        }) t.waitFor;
-      }
-    );
+    (pkgs.formats.json { }).generate "arr-sync-${tname}.json" {
+      name = tname;
+      inherit (t)
+        url
+        apiVersion
+        apiKeyFile
+        rootFolders
+        rootFolderNeedsProfiles
+        ;
+      downloadClients = map clean t.downloadClients;
+      applications = map clean t.applications;
+      waitFor = map (n: {
+        name = n;
+        inherit (cfg.targets.${n}) url apiVersion apiKeyFile;
+      }) t.waitForTargets;
+    };
 in
 {
   options.my.arrSync = {
@@ -231,17 +175,20 @@ in
     targets = lib.mkOption {
       type = lib.types.attrsOf targetType;
       default = { };
-      description = "Apps to push wiring into, keyed by a systemd-friendly name.";
+      description = "Apps to push wiring into, keyed by their systemd service name.";
     };
   };
 
   config = lib.mkIf cfg.enable {
     systemd.services = lib.mapAttrs' (
       tname: t:
+      let
+        ownUnit = config.systemd.services.${tname}.name;
+      in
       lib.nameValuePair "arr-sync-${tname}" {
         description = "Converge ${tname} cross-service wiring";
-        after = [ "${t.serviceName}.service" ] ++ map (u: "${u}.service") t.afterUnits;
-        wants = [ "${t.serviceName}.service" ];
+        after = [ ownUnit ] ++ t.afterUnits;
+        wants = [ ownUnit ];
         wantedBy = [ "multi-user.target" ];
         # Spec/engine live in the store, so a changed wiring re-runs this on switch.
         serviceConfig = {

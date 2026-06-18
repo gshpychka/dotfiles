@@ -1,7 +1,7 @@
 # Declarative cross-service wiring for hoard's *Arr stack (mechanism: my.arrSync, in
 # modules/system/nixos/arr-sync.nix). Converges, over each app's REST API:
 #   - Prowlarr Applications  -> registers Sonarr/Radarr/Lidarr for indexer push
-#   - download clients       -> qBittorrent + SABnzbd in each *Arr
+#   - download clients       -> qBittorrent + SABnzbd in every app
 #   - root folders           -> the media library path per *Arr
 #
 # API keys come from the SOPS secrets pinned in ./api-keys.nix, so this wiring is plain
@@ -16,12 +16,16 @@ let
   inherit (import ../ports.nix { inherit config; }) ports;
 
   secret = name: config.sops.secrets.${name}.path;
+  secretName = service: "${service}-api-key";
   localUrl = port: "http://localhost:${port}";
   publicHost = service: "${service}.${config.networking.fqdn}";
   httpsPort = config.services.nginx.defaultSSLListenPort;
 
-  # qBittorrent / SABnzbd are shared by every *Arr; only the per-arr category field
-  # (tvCategory / movieCategory / musicCategory) differs, passed in via `category`.
+  downloadClientUnits = [
+    config.systemd.services.qbittorrent.name
+    config.systemd.services.sabnzbd.name
+  ];
+
   qbittorrent = category: {
     name = "qBittorrent";
     implementation = "QBittorrent";
@@ -51,28 +55,20 @@ let
     secretFields.apiKey = secret "sabnzbd-api-key";
   };
 
-  downloadClients = category: [
-    (qbittorrent category)
-    (sabnzbd category)
-  ];
-
   # Connection details for one *Arr, reused as the sync target base and (with a name)
   # as Prowlarr's readiness/application targets — one source of truth per app.
-  arrs = {
+  arrs = lib.mapAttrs (name: a: a // { key = secretName name; }) {
     sonarr = {
       apiVersion = "v3";
       port = ports.sonarr;
-      key = "sonarr-api-key";
     };
     radarr = {
       apiVersion = "v3";
       port = ports.radarr;
-      key = "radarr-api-key";
     };
     lidarr = {
       apiVersion = "v1";
       port = ports.lidarr;
-      key = "lidarr-api-key";
     };
   };
   arrApi = a: {
@@ -97,42 +93,46 @@ in
     enable = true;
     targets = {
       sonarr = arrApi arrs.sonarr // {
-        afterUnits = [
-          "qbittorrent"
-          "sabnzbd"
-        ];
+        afterUnits = downloadClientUnits;
         rootFolders = [ "/mnt/hoard/plex/shows" ];
-        downloadClients = downloadClients { tvCategory = "sonarr"; };
+        downloadClients = [
+          (qbittorrent { tvCategory = "sonarr"; })
+          (sabnzbd { tvCategory = "tv"; })
+        ];
       };
       radarr = arrApi arrs.radarr // {
-        afterUnits = [
-          "qbittorrent"
-          "sabnzbd"
-        ];
+        afterUnits = downloadClientUnits;
         rootFolders = [ "/mnt/hoard/plex/movies" ];
-        downloadClients = downloadClients { movieCategory = "radarr"; };
+        downloadClients = [
+          (qbittorrent { movieCategory = "radarr"; })
+          (sabnzbd { movieCategory = "movies"; })
+        ];
       };
       lidarr = arrApi arrs.lidarr // {
-        afterUnits = [
-          "qbittorrent"
-          "sabnzbd"
-        ];
+        afterUnits = downloadClientUnits;
         rootFolders = [ "/mnt/hoard/media/music" ];
         # Lidarr root folders require default quality/metadata profiles.
         rootFolderNeedsProfiles = true;
-        downloadClients = downloadClients { musicCategory = "lidarr"; };
+        downloadClients = [
+          (qbittorrent { musicCategory = "lidarr"; })
+          (sabnzbd { musicCategory = "music"; })
+        ];
       };
       prowlarr = {
         url = localUrl ports.prowlarr;
         apiVersion = "v1";
-        apiKeyFile = secret "prowlarr-api-key";
-        afterUnits = [
-          "sonarr"
-          "radarr"
-          "lidarr"
+        apiKeyFile = secret (secretName "prowlarr");
+        afterUnits = downloadClientUnits ++ [
+          config.systemd.services.sonarr.name
+          config.systemd.services.radarr.name
+          config.systemd.services.lidarr.name
+        ];
+        downloadClients = [
+          (qbittorrent { category = "prowlarr"; })
+          (sabnzbd { category = "prowlarr"; })
         ];
         # POSTing an Application tests the *Arr connection, so wait for them first.
-        waitFor = lib.mapAttrsToList (name: a: arrApi a // { inherit name; }) arrs;
+        waitForTargets = lib.attrNames arrs;
         applications = [
           (application "Sonarr" arrs.sonarr)
           (application "Radarr" arrs.radarr)

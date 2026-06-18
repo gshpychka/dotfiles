@@ -13,26 +13,30 @@
   ...
 }:
 let
-  # service/env-prefix (lowercase) -> SOPS secret holding its API key.
-  # Secrets are declared in ../monitoring.nix.
-  arrKeys = {
-    sonarr = "sonarr-api-key";
-    radarr = "radarr-api-key";
-    lidarr = "lidarr-api-key";
-    prowlarr = "prowlarr-api-key";
-  };
-  envFileName = app: "${app}-api-key.env";
+  arrs = [
+    "sonarr"
+    "radarr"
+    "lidarr"
+    "prowlarr"
+  ];
+  # TODO: secretName is duplicated in sync.nix and recyclarr.nix; consolidate to one shared definition.
+  secretName = service: "${service}-api-key";
+  envFileName = service: "${secretName service}.env";
 in
 {
-  sops.templates = lib.mapAttrs' (
-    app: secret:
-    lib.nameValuePair (envFileName app) {
-      content = "${lib.toUpper app}__AUTH__APIKEY=${config.sops.placeholder.${secret}}\n";
-      restartUnits = [ "${app}.service" ];
-    }
-  ) arrKeys;
+  sops.secrets = lib.genAttrs (map secretName arrs) (_: { });
 
-  services = lib.mapAttrs (app: _: {
+  sops.templates = lib.listToAttrs (
+    map (
+      app:
+      lib.nameValuePair (envFileName app) {
+        content = "${lib.toUpper app}__AUTH__APIKEY=${config.sops.placeholder.${secretName app}}\n";
+        restartUnits = [ config.systemd.services.${app}.name ];
+      }
+    ) arrs
+  );
+
+  services = lib.genAttrs arrs (app: {
     environmentFiles = [ config.sops.templates.${envFileName app}.path ];
-  }) arrKeys;
+  });
 }

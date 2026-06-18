@@ -4,6 +4,7 @@
 }:
 let
   inherit ((import ../ports.nix { inherit config; })) ports;
+  secretName = service: "${service}-api-key";
 in
 {
   services.recyclarr = {
@@ -11,7 +12,7 @@ in
     group = "media";
     configuration = {
       radarr.radarr = {
-        api_key._secret = config.sops.secrets.radarr-api-key.path;
+        api_key._secret = config.sops.secrets.${secretName "radarr"}.path;
         base_url = "http://localhost:${ports.radarr}";
         delete_old_custom_formats = true;
         replace_existing_custom_formats = true;
@@ -152,7 +153,7 @@ in
         ];
       };
       sonarr.sonarr = {
-        api_key._secret = config.sops.secrets.sonarr-api-key.path;
+        api_key._secret = config.sops.secrets.${secretName "sonarr"}.path;
         base_url = "http://localhost:${ports.sonarr}";
         delete_old_custom_formats = true;
         replace_existing_custom_formats = true;
