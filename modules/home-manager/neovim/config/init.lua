@@ -11,14 +11,11 @@ vim.opt.statuscolumn = "%=%{v:virtnum < 1 ? (v:relnum ? v:relnum : v:lnum < 10 ?
 
 vim.opt.expandtab = true
 vim.opt.tabstop = 2
-vim.api.nvim_create_autocmd(
-  "FileType",
-  {
-    pattern = "python",
-    command = "setlocal tabstop=4",
-    desc = "Set python tab width to 4 to match black",
-  }
-)
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = "python",
+  command = "setlocal tabstop=4",
+  desc = "Set python tab width to 4 to match black",
+})
 
 -- make Tab characters visible
 vim.opt.list = true

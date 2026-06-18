@@ -63,22 +63,17 @@ vim.keymap.set({ "n" }, "<leader>fo", function()
   })
 end, { desc = "LSP formatting" })
 
-vim.keymap.set(
-  { "n" },
-  "<leader>qf",
-  function()
-    local quickfix_open = false
-    for _, win in ipairs(vim.fn.getwininfo()) do
-      if win.quickfix == 1 then
-        quickfix_open = true
-        break
-      end
+vim.keymap.set({ "n" }, "<leader>qf", function()
+  local quickfix_open = false
+  for _, win in ipairs(vim.fn.getwininfo()) do
+    if win.quickfix == 1 then
+      quickfix_open = true
+      break
     end
-    if quickfix_open then
-      vim.cmd("cclose")
-    else
-      vim.cmd("copen")
-    end
-  end,
-  { noremap = true, silent = true, desc = "Toggle the quickfix window" }
-)
+  end
+  if quickfix_open then
+    vim.cmd("cclose")
+  else
+    vim.cmd("copen")
+  end
+end, { noremap = true, silent = true, desc = "Toggle the quickfix window" })

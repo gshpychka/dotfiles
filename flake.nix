@@ -78,6 +78,15 @@
         "aarch64-linux"
         "aarch64-darwin"
       ];
+      # formatter packages shared by `nix fmt` and the treefmt check
+      treefmtTools =
+        pkgs: with pkgs; [
+          treefmt
+          nixfmt
+          stylua
+          shfmt
+          taplo
+        ];
     in
     {
       darwinConfigurations.eve = darwin.lib.darwinSystem {
@@ -205,6 +214,14 @@
                 deadnix --fail ${self}
                 touch $out
               '';
+              # whole-tree format check; copy out of the read-only store so
+              # treefmt can rewrite in place, then fail if anything changed
+              treefmt = pkgs.runCommand "check-treefmt" { nativeBuildInputs = treefmtTools pkgs; } ''
+                cp -r --no-preserve=mode,ownership ${self} src
+                cd src
+                HOME=$TMPDIR treefmt --no-cache --fail-on-change --tree-root .
+                touch $out
+              '';
             }
           );
         in
@@ -213,8 +230,18 @@
           x86_64-linux.iso = self.nixosConfigurations.iso.config.system.build.isoImage;
         };
 
-      # `nix fmt`
-      formatter = lib.genAttrs systems (system: nixpkgs.legacyPackages.${system}.nixfmt-rfc-style);
+      # `nix fmt` — treefmt drives the per-language formatters (see treefmt.toml)
+      formatter = lib.genAttrs systems (
+        system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+        in
+        pkgs.writeShellApplication {
+          name = "treefmt";
+          runtimeInputs = treefmtTools pkgs;
+          text = ''exec treefmt "$@"'';
+        }
+      );
 
       devShells =
         let

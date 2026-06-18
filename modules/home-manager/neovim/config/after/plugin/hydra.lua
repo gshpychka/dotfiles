@@ -56,7 +56,7 @@ Hydra({
       gitsigns.stage_hunk,
       { silent = true, desc = "Stage hunk" },
     },
-    { "S", gitsigns.stage_buffer,    { desc = "Stage buffer" } },
+    { "S", gitsigns.stage_buffer, { desc = "Stage buffer" } },
     {
       "r",
       gitsigns.reset_hunk,
@@ -75,14 +75,14 @@ Hydra({
           sidebar_width = 40,
           formatter = function(commit)
             return commit.date.day
-                .. "/"
-                .. commit.date.month
-                .. "/"
-                .. commit.date.year
-                .. " "
-                .. commit.author
-                .. " - "
-                .. commit.summary
+              .. "/"
+              .. commit.date.month
+              .. "/"
+              .. commit.date.year
+              .. " "
+              .. commit.author
+              .. " - "
+              .. commit.summary
           end,
         })
       end,

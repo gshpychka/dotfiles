@@ -11,4 +11,3 @@
   # argononed fails to start
   # services.hardware.argonone.enable = true;
 }
-

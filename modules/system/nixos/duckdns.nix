@@ -39,8 +39,14 @@ with lib;
 
     # Ensure DuckDNS waits for network to be fully online
     systemd.services.duckdns = {
-      after = [ "network-online.target" "nss-lookup.target" ];
-      wants = [ "network-online.target" "nss-lookup.target" ];
+      after = [
+        "network-online.target"
+        "nss-lookup.target"
+      ];
+      wants = [
+        "network-online.target"
+        "nss-lookup.target"
+      ];
     };
   };
 }

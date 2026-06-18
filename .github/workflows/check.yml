@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/nix-installer-action@main
-      # Fleet-wide eval (all systems, no machine builds) + run the lint checks.
-      # statix/deadnix invocations live in the flake, so they aren't restated here.
+      # Fleet-wide eval: all systems, no machine builds.
       - run: nix flake check --all-systems --no-build
-      - run: nix build --no-link -L .#checks.x86_64-linux.statix .#checks.x86_64-linux.deadnix
+      # --no-build skips the check derivations, so build the lint/format checks to run them.
+      - run: nix build --no-link -L .#checks.x86_64-linux.statix .#checks.x86_64-linux.deadnix .#checks.x86_64-linux.treefmt

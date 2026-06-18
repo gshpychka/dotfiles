@@ -11,13 +11,13 @@ require("claudecode").setup({
     snacks_win_opts = {
       -- TODO: disable title
     },
-    auto_close = true
+    auto_close = true,
   },
   -- Diff configuration
   diff_opts = {
     auto_close_on_accept = true,
-    vertical_split = true
-  }
+    vertical_split = true,
+  },
 })
 
 -- Key mappings

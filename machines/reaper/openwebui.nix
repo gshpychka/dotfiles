@@ -27,10 +27,9 @@ in
       };
     };
 
-    systemd.services.open-webui.requisite =
-      lib.optional
-        (config.services.open-webui.environment ? OLLAMA_API_BASE_URL)
-        config.systemd.services.ollama.name;
+    systemd.services.open-webui.requisite = lib.optional (
+      config.services.open-webui.environment ? OLLAMA_API_BASE_URL
+    ) config.systemd.services.ollama.name;
 
     services.nginx.virtualHosts."openwebui" = {
       serverName = "openwebui.${config.networking.fqdn}";

@@ -1,7 +1,8 @@
 {
   config,
   ...
-}: {
+}:
+{
   # Define all service ports in one place
   ports = {
     glances = toString config.services.glances.port;

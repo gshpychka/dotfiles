@@ -14,7 +14,7 @@ snacks.setup({
       hl = "CursorLineNr",
     },
   },
-  input = { enabled = false },    -- using noice.nvim for input dialogs
+  input = { enabled = false }, -- using noice.nvim for input dialogs
   notifier = { enabled = false }, -- using noice.nvim for notifications
   quickfile = { enabled = false },
   rename = { enabled = true },
@@ -31,4 +31,3 @@ snacks.setup({
 vim.keymap.set("n", "<leader>cR", function()
   require("snacks").rename.rename_file()
 end, { desc = "Rename File" })
-
