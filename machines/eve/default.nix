@@ -1,7 +1,17 @@
-# printf 'run\tprivate/var/run\n' | sudo tee -a /etc/synthetic.conf
-# /System/Library/Filesystems/apfs.fs/Contents/Resources/apfs.util -t
-# nix --experimental-features "nix-command flakes" build ".#darwinConfigurations.eve.system"
-# ./result/sw/bin/darwin-rebuild switch --flake ".#eve"
+# Bootstrap:
+# 1. Create user account
+# 5. Sign into the App Store.
+# 2. xcode-select --install
+# 3. sh <(curl -L https://nixos.org/nix/install)
+# 4. git clone https://github.com/gshpychka/dotfiles.git ~/dotfiles && cd ~/dotfiles
+# 6. nix --experimental-features "nix-command flakes" build .#darwinConfigurations.eve.system
+#    ./result/sw/bin/darwin-rebuild switch --flake .#eve
+#    Mints the host key; fails on secrets/eve until re-keyed.
+# 7. Set .sops.yaml eve_host to the recipient in /var/log/sops-keygen.log.
+# 8. Re-key, switch:
+#      nix shell nixpkgs#sops nixpkgs#gnupg -c find secrets -type f -exec sops updatekeys -y {} \;
+#      ./result/sw/bin/darwin-rebuild switch --flake .
+# 9. 1Password > Developer: enable SSH agent + CLI;
 
 {
   config,

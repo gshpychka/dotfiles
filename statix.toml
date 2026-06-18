@@ -1,0 +1,3 @@
+# repeated_keys: NixOS/flake style intentionally spreads keys (services.*, my.*,
+# per-host nixosConfigurations.*) instead of merging them into one attrset
+disabled = ["repeated_keys"]

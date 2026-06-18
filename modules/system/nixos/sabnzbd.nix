@@ -58,7 +58,7 @@ in
     users.users = mkIf (cfg.user == "sabnzbd") {
       sabnzbd = {
         isSystemUser = true;
-        group = cfg.group;
+        inherit (cfg) group;
         description = "sabnzbd user";
       };
     };

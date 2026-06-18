@@ -79,7 +79,7 @@ in
     mkIf cfg.enable {
       assertions = [
         {
-          assertion = (hdparmValue >= 0 && hdparmValue <= 251);
+          assertion = hdparmValue >= 0 && hdparmValue <= 251;
           message = "Computed hdparm value must be between 0 and 251, got: ${toString hdparmValue}";
         }
       ];

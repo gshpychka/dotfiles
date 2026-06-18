@@ -21,7 +21,7 @@
     overlays = [
       # Since we don't set cudaSupport = true globally, we need to enable CUDA
       # for each package that requires it
-      (self: super: {
+      (_self: super: {
         ctranslate2 = super.ctranslate2.override {
           withCUDA = true;
           withCuDNN = true;

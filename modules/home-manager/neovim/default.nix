@@ -55,6 +55,7 @@ in
         inc-rename-nvim
         text-case-nvim
         nvim-lspconfig
+        nvim-lint
         flash-nvim
         (nvim-treesitter.withPlugins (
           p: with p; [
@@ -110,6 +111,8 @@ in
         dockerfile-language-server
         biome # formatter/linter
         nixfmt
+        statix
+        deadnix
 
         ripgrep
       ];

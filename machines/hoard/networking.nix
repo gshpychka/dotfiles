@@ -80,10 +80,10 @@ in
   my.netns.wan2 = {
     hostAddress = "10.200.0.1";
     namespaceAddress = "10.200.0.2";
-    nameservers = secondaryWan.nameservers;
+    inherit (secondaryWan) nameservers;
 
     egress = {
-      interface = secondaryWan.interface;
+      inherit (secondaryWan) interface;
       snatTo = secondaryWan.address;
       routingTable = secondaryWan.table;
     };
@@ -94,7 +94,7 @@ in
         port = lib.toInt ports.plex;
       }
       {
-        interface = secondaryWan.interface;
+        inherit (secondaryWan) interface;
         port = lib.toInt ports.plex;
       }
     ];

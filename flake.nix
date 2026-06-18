@@ -185,8 +185,26 @@
               ${machine.config.nixpkgs.hostPlatform.system}.${name} = machine.config.system.build.toplevel;
             }
           ) { } machines;
+          # statix + deadnix lint the flake source per system; statix.toml at the
+          # repo root disables repeated_keys, deadnix runs strict (no exceptions)
+          lintChecks = lib.genAttrs systems (
+            system:
+            let
+              pkgs = nixpkgs.legacyPackages.${system};
+            in
+            {
+              statix = pkgs.runCommand "check-statix" { nativeBuildInputs = [ pkgs.statix ]; } ''
+                statix check ${self} -c ${self}
+                touch $out
+              '';
+              deadnix = pkgs.runCommand "check-deadnix" { nativeBuildInputs = [ pkgs.deadnix ]; } ''
+                deadnix --fail ${self}
+                touch $out
+              '';
+            }
+          );
         in
-        lib.recursiveUpdate nixosChecks {
+        lib.recursiveUpdate (lib.recursiveUpdate nixosChecks lintChecks) {
           aarch64-darwin.eve = self.darwinConfigurations.eve.config.system.build.toplevel;
           x86_64-linux.iso = self.nixosConfigurations.iso.config.system.build.isoImage;
         };

@@ -1,8 +1,4 @@
 {
-  config,
-  ...
-}:
-{
   systemd = {
     slices = {
       media = {

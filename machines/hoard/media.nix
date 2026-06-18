@@ -1,7 +1,4 @@
 {
-  ...
-}:
-{
   services = {
     plex = {
       enable = true;
@@ -15,4 +12,3 @@
     };
   };
 }
-

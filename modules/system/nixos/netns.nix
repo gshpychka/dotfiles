@@ -367,10 +367,10 @@ in
     environment.etc = mkMerge (eachNamespace resolvConf);
 
     networking.firewall.extraCommands = concatStrings (
-      eachNamespace (name: ns: concatMapStrings applyRule (natRules ns))
+      eachNamespace (_name: ns: concatMapStrings applyRule (natRules ns))
     );
     networking.firewall.extraStopCommands = concatStrings (
-      eachNamespace (name: ns: concatMapStrings deleteRule (natRules ns))
+      eachNamespace (_name: ns: concatMapStrings deleteRule (natRules ns))
     );
   };
 }

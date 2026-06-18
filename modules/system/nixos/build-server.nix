@@ -109,14 +109,13 @@ in
     # Export this server's configuration for clients to import
     # This will be used by the flake to provide server configs to clients
     passthru.buildServerConfig = {
-      hostName = cfg.hostName;
-      systems = cfg.systems;
-      maxJobs = cfg.maxJobs;
-      speedFactor = cfg.speedFactor;
-      supportedFeatures = cfg.supportedFeatures;
-      mandatoryFeatures = cfg.mandatoryFeatures;
+      inherit (cfg) hostName;
+      inherit (cfg) systems;
+      inherit (cfg) maxJobs;
+      inherit (cfg) speedFactor;
+      inherit (cfg) supportedFeatures;
+      inherit (cfg) mandatoryFeatures;
       user = nixbuildUser;
     };
   };
 }
-

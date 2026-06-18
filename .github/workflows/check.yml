@@ -1,0 +1,22 @@
+name: check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  flake-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+      # Fleet-wide eval (all systems, no machine builds) + run the lint checks.
+      # statix/deadnix invocations live in the flake, so they aren't restated here.
+      - run: nix flake check --all-systems --no-build
+      - run: nix build --no-link -L .#checks.x86_64-linux.statix .#checks.x86_64-linux.deadnix

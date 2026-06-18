@@ -38,7 +38,7 @@ in
               require_repo = true;
               command = "";
               style = color;
-              symbol = symbol;
+              inherit symbol;
               description = "Custom icon for ${host}";
             };
           in

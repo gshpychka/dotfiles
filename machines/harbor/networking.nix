@@ -136,11 +136,7 @@ in
       "rebind-domain-ok" = "/plex.direct/"; # https://support.plex.tv/articles/206225077-how-to-use-secure-server-connections/
 
       # resolve these locally
-      local = (
-        # Set our static hosts to be resolved locally.
-        # We could have set the entire `${config.networking.domain}` zone to be local, but then we wouldn't be able
-        # to use a public domain name for other use-cases (have it be resolved upstream)
-        # So we explicitly list all the hosts here, and all other subdomains will be forwarded upstream.
+      local =
         (map (name: "/" + name + "." + config.networking.domain + "/") (lib.attrNames otherLanHosts))
         ++ [
           # reverse zone kept local
@@ -157,8 +153,7 @@ in
           # suppress WPAD queries
           "/wpad.${config.networking.domain}/"
           "/wpad/"
-        ]
-      );
+        ];
 
       # wildcard A records for all our static hosts (ourselves included)
       # allows us to use subdomains

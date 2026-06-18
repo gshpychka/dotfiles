@@ -1,4 +1,3 @@
-{ ... }:
 let
   localPort = 8000;
 in

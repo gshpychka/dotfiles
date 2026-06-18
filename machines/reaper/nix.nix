@@ -1,4 +1,3 @@
-{ ... }:
 {
   nix.settings = {
     # https://github.com/NixOS/nix/issues/11728#issuecomment-2725297584

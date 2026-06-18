@@ -44,7 +44,7 @@ in
           ];
 
           serviceToVhost = name: {
-            name = name;
+            inherit name;
             value = {
               serverName = "${name}.${config.networking.fqdn}";
               useACMEHost = config.networking.fqdn;

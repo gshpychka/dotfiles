@@ -16,13 +16,13 @@ let
       relativeSpeedFactor = if rawSpeedFactor < 1 then 1 else rawSpeedFactor;
     in
     {
-      hostName = serverConfig.hostName;
-      systems = serverConfig.systems;
-      maxJobs = serverConfig.maxJobs;
+      inherit (serverConfig) hostName;
+      inherit (serverConfig) systems;
+      inherit (serverConfig) maxJobs;
       speedFactor = relativeSpeedFactor;
-      supportedFeatures = serverConfig.supportedFeatures;
-      mandatoryFeatures = serverConfig.mandatoryFeatures;
-      sshUser = serverConfig.sshUser;
+      inherit (serverConfig) supportedFeatures;
+      inherit (serverConfig) mandatoryFeatures;
+      inherit (serverConfig) sshUser;
       sshKey = cfg.sshKeyPath;
     };
 

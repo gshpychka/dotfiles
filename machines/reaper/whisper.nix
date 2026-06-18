@@ -1,11 +1,10 @@
-{ ... }:
 let
   localPort = 10300;
   remotePort = 10299;
 in
 {
   services = {
-    nginx.streamConfig = (
+    nginx.streamConfig =
       let
         upstreamName = "wyoming_whisper";
       in
@@ -19,8 +18,7 @@ in
           proxy_pass           ${upstreamName};
           proxy_socket_keepalive on;
         }
-      ''
-    );
+      '';
     wyoming = {
       faster-whisper = {
         servers.hass = {

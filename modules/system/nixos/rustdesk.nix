@@ -82,7 +82,7 @@ in
       openFirewall = false;
       signal = {
         enable = true;
-        relayHosts = cfg.relayHosts;
+        inherit (cfg) relayHosts;
         extraArgs = keyArgs;
       };
       relay = {

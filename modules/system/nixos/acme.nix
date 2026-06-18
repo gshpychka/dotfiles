@@ -55,7 +55,7 @@ with lib;
       };
 
       certs."${config.networking.fqdn}" = {
-        extraDomainNames = cfg.extraDomainNames;
+        inherit (cfg) extraDomainNames;
       };
     };
 

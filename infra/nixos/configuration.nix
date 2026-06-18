@@ -13,7 +13,7 @@ let
   # bind-mounted as /var/lib by the runtime config (machines/buoy/filesystems.nix)
   dataDirectoriesToBootstrap = [ "${config.fileSystems.data.mountPoint}/var-lib" ];
   authorizedSshKey = values.sshKeys.main;
-  gcpProjectId = values.gcpProjectId;
+  inherit (values) gcpProjectId;
 in
 {
   imports = [

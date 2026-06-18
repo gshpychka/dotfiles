@@ -1,5 +1,5 @@
 # packages from github:numtide/llm-agents.nix
-inputs: final: prev:
+inputs: _final: prev:
 let
   llm-agents = inputs.llm-agents.packages.${prev.stdenv.hostPlatform.system};
 in

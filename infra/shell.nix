@@ -7,7 +7,7 @@ let
     inherit system;
     config.allowUnfree = true;
   };
-  lib = pkgs.lib;
+  inherit (pkgs) lib;
   values = import ../modules/common/values.nix;
 in
 pkgs.mkShell {

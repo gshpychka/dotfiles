@@ -65,15 +65,13 @@ in
     # Enable base glances service
     services.glances = {
       enable = true;
-      openFirewall = cfg.openFirewall;
+      inherit (cfg) openFirewall;
       package = pkgs.glances.overrideAttrs (oldAttrs: {
         # Wrap glances to include lm_sensors in its PATH
-        postInstall =
-          (oldAttrs.postInstall or "")
-          + ''
-            wrapProgram $out/bin/glances \
-              --prefix PATH : ${lib.makeBinPath [ pkgs.lm_sensors ]}
-          '';
+        postInstall = (oldAttrs.postInstall or "") + ''
+          wrapProgram $out/bin/glances \
+            --prefix PATH : ${lib.makeBinPath [ pkgs.lm_sensors ]}
+        '';
       });
       extraArgs = [
         "--webserver"
@@ -90,4 +88,3 @@ in
     };
   };
 }
-

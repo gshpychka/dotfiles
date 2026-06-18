@@ -17,7 +17,7 @@
       "1Password for Safari" = 1569813296;
     };
   };
-  home-manager.users.${config.system.primaryUser} = (
+  home-manager.users.${config.system.primaryUser} =
     let
       hmConfig = config.home-manager.users.${config.system.primaryUser};
     in
@@ -41,6 +41,5 @@
           };
         };
       };
-    }
-  );
+    };
 }
