@@ -6,7 +6,8 @@
 }:
 let
   cfg = config.my.sops-age-key;
-  ageDir = "${config.system.primaryUserHome}/Library/Application Support/sops/age";
+  # sops resolves its key file under XDG_CONFIG_HOME.
+  ageDir = "${config.system.primaryUserHome}/.config/sops/age";
 in
 {
   # age key for interactive `sops` CLI use, derived from the SSH host key.
