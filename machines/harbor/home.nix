@@ -14,6 +14,7 @@
           ssh.enable = true;
           tools.enable = true;
           zsh.enable = true;
+          nh.enable = true;
         };
 
         home.stateVersion = "22.11";
