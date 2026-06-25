@@ -1,4 +1,8 @@
 # Bootstrap:
+# TODO: rework for dual-boot — reaper shares this disk with Windows. As written
+# this assumes an empty disk and is destructive: `sgdisk -Z` and the fixed two-
+# partition layout wipe Windows. The real procedure must keep the Windows
+# partitions, reuse the existing ESP, and carve only the ext4 root from free space.
 # flash .#iso to USB, boot reaper
 # ssh nixos@iso
 # lsblk   # find <disk> (e.g. /dev/nvme0n1), partitions are <disk>p1 <disk>p2
