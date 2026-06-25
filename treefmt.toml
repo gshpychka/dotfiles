@@ -1,6 +1,3 @@
-# treefmt formatter multiplexer — config consumed by `nix fmt` and the
-# treefmt flake check. https://github.com/numtide/treefmt
-
 [formatter.nixfmt]
 command = "nixfmt"
 includes = ["*.nix"]
