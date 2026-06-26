@@ -9,16 +9,23 @@ let
   };
   inherit (pkgs) lib;
   values = import ../modules/common/values.nix;
+
+  # tf providers managed by nix
+  terraform = pkgs.terraform.withPlugins (p: [
+    p.cloudflare_cloudflare
+    p.hashicorp_google
+    p.clementblaise_age
+  ]);
 in
 pkgs.mkShell {
   buildInputs = [
-    pkgs.terraform
+    terraform
     pkgs.google-cloud-sdk
     pkgs.sops
     pkgs.age
     pkgs.ssh-to-age
     (pkgs.writeShellScriptBin "tf" ''
-      ${lib.getExe pkgs.sops} exec-env "$REPO_ROOT/secrets/infra/terraform.env" "${lib.getExe pkgs.terraform} $*"
+      ${lib.getExe pkgs.sops} exec-env "$REPO_ROOT/secrets/infra/terraform.env" "${lib.getExe terraform} $*"
     '')
   ];
   shellHook = ''
@@ -29,6 +36,7 @@ pkgs.mkShell {
     export CLOUDSDK_CORE_PROJECT="${values.gcpProjectId}"
     export TF_VAR_gcp_project_id="${values.gcpProjectId}"
     export TF_VAR_domain_name="${values.domain}"
+    export TF_STATE_BUCKET="${values.gcpTfStateBucket}"
 
     # decrypt infra with the host key, derived on demand via sudo (reaper);
     # the :- default preserves eve's op-based SOPS_AGE_KEY_CMD when already set

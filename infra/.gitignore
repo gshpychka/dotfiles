@@ -8,4 +8,6 @@ result
 *.tfplan
 *.tfvars
 !terraform.tfvars
-!.terraform.lock.hcl
+
+# providers managed by nix
+.terraform.lock.hcl

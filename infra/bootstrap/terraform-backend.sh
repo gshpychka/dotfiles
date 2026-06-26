@@ -2,12 +2,17 @@
 
 set -e
 
+# Creates the versioned GCS bucket that holds Terraform state; run once per GCP project.
 PROJECT_ID="$(gcloud config get-value project)"
 REGION="$(gcloud config get-value compute/region)"
 
 # Validate environment variables
 if [ -z "$PROJECT_ID" ] || [ -z "$REGION" ]; then
   echo "Error: Missing project ID or region in the gcloud configuration."
+  exit 1
+fi
+if [ -z "$TF_STATE_BUCKET" ]; then
+  echo "Error: TF_STATE_BUCKET is unset; run this inside the infra devshell."
   exit 1
 fi
 
@@ -18,8 +23,7 @@ echo "  Region: $REGION"
 echo "Enabling required APIs..."
 gcloud services enable storage-component.googleapis.com
 
-# Create GCS bucket for Terraform state
-BUCKET_NAME="${PROJECT_ID}-tf-state"
+BUCKET_NAME="$TF_STATE_BUCKET"
 
 echo "Creating GCS bucket for Terraform state..."
 
@@ -38,15 +42,5 @@ else
   echo "Versioning already enabled on bucket"
 fi
 
-# write the backend.tf file
-cat <<EOF >backend.tf
-terraform {
-  backend "gcs" {
-    bucket = "$BUCKET_NAME"
-    prefix = "terraform/state"
-  }
-}
-EOF
-
-echo -e "\n✓ GCP Terraform backend infrastructure deployed successfully!"
+echo -e "\n✓ Terraform state bucket ready."
 echo "  Bucket: gs://${BUCKET_NAME}"

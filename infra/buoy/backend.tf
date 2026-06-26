@@ -1,6 +1,6 @@
 terraform {
   backend "gcs" {
-    # Must stay in sync with gcpProjectId in modules/common/values.nix.
+    # Must stay in sync with $TF_STATE_BUCKET
     bucket = "status-glibsh-tf-state"
     prefix = "terraform/state"
   }
