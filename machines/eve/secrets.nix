@@ -13,6 +13,4 @@
       format = "binary";
     };
   };
-
-  my.sops-age-key.enable = true;
 }
