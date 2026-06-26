@@ -11,3 +11,8 @@ result
 
 # providers managed by nix
 .terraform.lock.hcl
+
+# terragrunt-generated provider/backend blocks and run cache
+.terragrunt-cache/
+backend.tf
+provider.tf
