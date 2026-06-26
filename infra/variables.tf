@@ -1,50 +1,16 @@
-variable "gcp_project_id" {
-  description = "GCP Project ID"
-  type        = string
-}
-
-variable "gcp_region" {
-  description = "GCP region"
-  type        = string
-  default     = "us-central1"
-}
-
-variable "gcp_zone" {
-  description = "GCP zone"
-  type        = string
-  default     = "us-central1-a"
-}
-
 variable "domain_name" {
   description = "Domain name managed by Cloudflare"
   type        = string
 }
 
-variable "hostname" {
-  description = "Hostname for the VM (used for DNS A record)"
-  type        = string
-}
-
 variable "cloudflare_zone_id" {
-  description = "Cloudflare Zone ID for your domain"
+  description = "Cloudflare Zone ID"
   type        = string
   sensitive   = true
 }
 
 variable "cloudflare_api_token" {
-  description = "Cloudflare API token with DNS edit permissions"
+  description = "Cloudflare API token"
   type        = string
   sensitive   = true
-}
-
-variable "hcloud_api_token" {
-  description = "Hetzner Cloud API token"
-  type        = string
-  sensitive   = true
-}
-
-variable "data_disk_size" {
-  description = "Size of the persistent data disk in GB"
-  type        = number
-  default     = 5
 }

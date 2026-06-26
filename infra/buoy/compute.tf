@@ -55,21 +55,21 @@ resource "google_compute_instance" "vm" {
   }
 
   attached_disk {
-    source      = data.google_compute_disk.data.self_link
+    source      = google_compute_disk.data.self_link
     device_name = "data"
   }
 
   network_interface {
-    network    = data.google_compute_network.vpc.name
-    subnetwork = data.google_compute_subnetwork.subnet.name
+    network    = google_compute_network.vpc.name
+    subnetwork = google_compute_subnetwork.subnet.name
 
     access_config {
-      nat_ip = data.google_compute_address.static_ip.address
+      nat_ip = google_compute_address.static_ip.address
     }
   }
 
   service_account {
-    email  = data.google_service_account.vm.email
+    email  = google_service_account.vm.email
     scopes = ["cloud-platform"]
   }
 

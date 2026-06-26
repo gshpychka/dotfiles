@@ -1,8 +1,3 @@
-# Plain attrset, deliberately NOT a module: the single source of truth for
-# identity values that are also needed OUTSIDE the module system
-# (infra/shell.nix, infra/nixos/configuration.nix, infra/backend.tf).
-# Inside machine configs always use the typed `my.*` options from globals.nix,
-# which reads its defaults from here.
 {
   domain = "glib.sh";
   user = "gshpychka";
