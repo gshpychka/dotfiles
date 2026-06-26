@@ -44,7 +44,11 @@ in
       };
       publicKeys = [
         {
-          source = ../../yubikey.pub;
+          # Yubikey Alpha
+          source = pkgs.fetchurl {
+            url = "https://keys.openpgp.org/vks/v1/by-fingerprint/AD22AA17EF9518ED74AB44AA2F73A8E69F3663E3";
+            hash = "sha256-a2qSNM20jd6pRMHh5pnDbrHq0Ud6VZzy0cxKIpYtCkg=";
+          };
           trust = 5; # ultimate
         }
       ];
