@@ -154,8 +154,6 @@
 
   my.terminfo.enable = true;
 
-  my.sops-age-key.enable = true;
-
   # Start pcscd on boot instead of socket-activation (needed for GPG smartcard)
   systemd.services.pcscd.wantedBy = [ "multi-user.target" ];
 
