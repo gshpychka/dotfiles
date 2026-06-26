@@ -43,12 +43,6 @@ variable "hcloud_api_token" {
   sensitive   = true
 }
 
-variable "nixos_image_path" {
-  description = "Path to the NixOS GCE image tarball (.raw.tar.gz)"
-  type        = string
-  default     = "result"
-}
-
 variable "data_disk_size" {
   description = "Size of the persistent data disk in GB"
   type        = number

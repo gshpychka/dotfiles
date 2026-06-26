@@ -18,7 +18,7 @@ pkgs.mkShell {
     pkgs.age
     pkgs.ssh-to-age
     (pkgs.writeShellScriptBin "tf" ''
-      ${lib.getExe pkgs.sops} exec-env ../secrets/infra/terraform.env "${lib.getExe pkgs.terraform} $*"
+      ${lib.getExe pkgs.sops} exec-env $PRJ_ROOT/../secrets/infra/terraform.env "${lib.getExe pkgs.terraform} $*"
     '')
   ];
   shellHook = ''

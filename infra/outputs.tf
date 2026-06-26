@@ -1,16 +1,6 @@
-output "instance_name" {
-  description = "Name of the GCE instance"
-  value       = google_compute_instance.vm.name
-}
-
 output "instance_external_ip" {
-  description = "External IP address of the instance"
+  description = "Reserved external IP the VM uses"
   value       = google_compute_address.static_ip.address
-}
-
-output "nixos_image_hash" {
-  description = "Hash of the NixOS compute image"
-  value       = local.nixos_image_hash
 }
 
 output "sops_age_public_key" {

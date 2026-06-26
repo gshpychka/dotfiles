@@ -20,5 +20,5 @@ resource "google_secret_manager_secret_version" "sops_age_key" {
 resource "google_secret_manager_secret_iam_member" "sops_age_key" {
   secret_id = google_secret_manager_secret.sops_age_key.id
   role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${google_compute_instance.vm.service_account[0].email}"
+  member    = "serviceAccount:${google_service_account.vm.email}"
 }
