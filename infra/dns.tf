@@ -3,7 +3,7 @@ resource "cloudflare_dns_record" "home" {
   name    = "home.${var.domain_name}"
   type    = "CNAME"
   content = "n8ovrmnzr5a0rt9rwxmddfsakrsgoms9.ui.nabu.casa"
-  proxied = true
+  proxied = false
   ttl     = 1
   comment = "Home Assistant Cloud (Nabu Casa)"
 }
