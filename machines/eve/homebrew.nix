@@ -125,6 +125,7 @@
       # }
       "firefox"
       "slack"
+      "rippling"
       "notion"
       "linear"
       "twingate"
