@@ -22,10 +22,22 @@
       # Since we don't set cudaSupport = true globally, we need to enable CUDA
       # for each package that requires it
       (_self: super: {
-        ctranslate2 = super.ctranslate2.override {
-          withCUDA = true;
-          withCuDNN = true;
-        };
+        ctranslate2 =
+          (super.ctranslate2.override {
+            withCUDA = true;
+            withCuDNN = true;
+          }).overrideAttrs
+            (old: {
+              cmakeFlags = (old.cmakeFlags or [ ]) ++ [
+                # ct2 uses CMake's legacy FindCUDA, which reads the GPU arch only
+                # from CUDA_NVCC_FLAGS. nixpkgs stopped setting it, so nvcc falls
+                # back to sm_52 and the fp16 kernels fail.
+                # See https://github.com/NixOS/nixpkgs/pull/536525
+                (super.lib.cmakeFeature "CUDA_NVCC_FLAGS" (
+                  super.lib.concatStringsSep ";" super.cudaPackages.flags.gencode
+                ))
+              ];
+            });
         btop = super.btop.override { cudaSupport = true; };
       })
     ];
