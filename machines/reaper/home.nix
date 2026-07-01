@@ -1,4 +1,9 @@
-{ config, pkgs, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}:
 {
   home-manager = {
     users.${config.my.user} =
@@ -23,6 +28,9 @@
         };
 
         home.packages = with pkgs; [ ];
+
+        # age identity for the sops CLI, derived from the SSH host key at runtime.
+        home.sessionVariables.SOPS_AGE_KEY_CMD = "sudo ${lib.getExe pkgs.ssh-to-age} -private-key -i /etc/ssh/ssh_host_ed25519_key";
 
         home.stateVersion = "24.05";
       };

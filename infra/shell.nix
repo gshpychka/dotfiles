@@ -23,7 +23,6 @@ pkgs.mkShell {
     pkgs.google-cloud-sdk
     pkgs.sops
     pkgs.age
-    pkgs.ssh-to-age
     pkgs.terragrunt
     (pkgs.writeShellScriptBin "tf" ''
       ${lib.getExe pkgs.sops} exec-env "$REPO_ROOT/secrets/infra/terraform.env" "${lib.getExe terraform} $*"
@@ -40,10 +39,5 @@ pkgs.mkShell {
     export TF_VAR_gcp_project_id="${values.gcpProjectId}"
     export TF_VAR_domain_name="${values.domain}"
     export TF_STATE_BUCKET="${values.gcpTfStateBucket}"
-
-    # decrypt infra with the host key, derived on demand via sudo (reaper);
-    # the :- default preserves eve's op-based SOPS_AGE_KEY_CMD when already set
-
-    export SOPS_AGE_KEY_CMD="''${SOPS_AGE_KEY_CMD:-sudo ${lib.getExe pkgs.ssh-to-age} -private-key -i /etc/ssh/ssh_host_ed25519_key}"
   '';
 }
