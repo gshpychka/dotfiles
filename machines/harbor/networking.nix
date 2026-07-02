@@ -1,6 +1,7 @@
 {
   config,
   lib,
+  pkgs,
   ...
 }:
 
@@ -107,7 +108,18 @@ in
         safe_search = {
           enabled = false;
         };
+        # allow loading the rule list from its exact /nix/store path
+        safe_fs_patterns = [ "${pkgs.adguard-rules}" ];
       };
+      # DNS blocklist rules I use, built by pkgs.adguard-rules (currently LOLRMM)
+      filters = [
+        {
+          enabled = true;
+          name = "adguard-rules";
+          id = 1;
+          url = "${pkgs.adguard-rules}";
+        }
+      ];
       clients = {
         # the only client is localhost anyway
         runtime_sources = {

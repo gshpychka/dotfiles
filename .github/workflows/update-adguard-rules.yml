@@ -1,0 +1,32 @@
+name: update-adguard-rules
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # Mondays 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+
+      # nix-update rewrites rev/hash/version in packages/adguard-rules.nix and
+      # builds it to verify; --version=branch tracks the latest commit on main.
+      - name: Bump rule source pin
+        run: nix run nixpkgs#nix-update -- --flake --version=branch --write-commit-message /tmp/nu.txt adguard-rules
+
+      - name: Commit and push
+        run: |
+          if git diff --quiet -- packages/adguard-rules.nix; then
+            echo "no update"; exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          { echo "chore(harbor): update adguard-rules blocklist"; echo; cat /tmp/nu.txt; } > /tmp/msg.txt
+          git commit -F /tmp/msg.txt -- packages/adguard-rules.nix
+          git push
