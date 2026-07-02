@@ -3,19 +3,26 @@
   ...
 }:
 {
+  # Community CUDA cache: https://wiki.nixos.org/wiki/CUDA
+  nix.settings = {
+    extra-substituters = [ "https://cache.nixos-cuda.org" ];
+    extra-trusted-public-keys = [
+      "cache.nixos-cuda.org:74DUi4Ye579gUqzH4ziL9IyiJBlDpMRn9MBN8oNan9M="
+    ];
+  };
   nixpkgs = {
     config = {
-      # We shouldn't set cudaSupport = true here, because it will lead to
-      # building e.g. pytorch from source
-      # Omitting it does NOT prevent CUDA support
-      # If a package requires this flag, use an override
+      # cudaSupport = true would enable CUDA for every package that has it,
+      # and we don't need it on for all packages that we use
+      # Omitting it does not prevent CUDA support; use per-package overrides
 
       # Keeping this here as a reference
       # cudaSupport = true; (do NOT uncomment)
 
-      # https://en.wikipedia.org/wiki/CUDA#GPUs_supported
-      cudaCapabilities = [ "8.9" ];
-      cudaForwardCompat = true;
+      # Setting cudaCapabilities would change CUDA derivation hashes and
+      # miss the cache
+      # cudaCapabilities = [ "8.9" ]; (do NOT uncomment)
+
       nvidia.acceptLicense = true;
     };
     overlays = [
