@@ -1,7 +1,6 @@
 {
   config,
   lib,
-  pkgs,
   ...
 }:
 
@@ -108,17 +107,19 @@ in
         safe_search = {
           enabled = false;
         };
-        # allow loading the rule list from its exact /nix/store path
-        safe_fs_patterns = [ "${pkgs.adguard-rules}" ];
       };
-      # DNS blocklist rules I use, built by pkgs.adguard-rules (currently LOLRMM)
       filters = [
         {
           enabled = true;
-          name = "adguard-rules";
+          name = "AdGuard DNS filter";
           id = 1;
-          url = "${pkgs.adguard-rules}";
+          url = "https://adguardteam.github.io/HostlistsRegistry/assets/filter_1.txt";
         }
+      ];
+      user_rules = map (d: "||${d}^") [
+        "splashtop.com"
+        "splashtop.eu"
+        "splashtop.nr"
       ];
       clients = {
         # the only client is localhost anyway

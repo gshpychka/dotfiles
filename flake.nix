@@ -168,12 +168,6 @@
       # expose the ISO for easy building: `nix build .#iso`
       packages.x86_64-linux.iso = self.nixosConfigurations.iso.config.system.build.isoImage;
 
-      # AdGuard blocklist rules I use (consumed by harbor)
-      # Refresh: nix-update --flake --version=branch adguard-rules
-      packages.x86_64-linux.adguard-rules =
-        nixpkgs.legacyPackages.x86_64-linux.callPackage ./packages/adguard-rules.nix
-          { };
-
       # bootable SD image for harbor: `nix build .#harbor-sd-image`
       packages.aarch64-linux.harbor-sd-image =
         (self.nixosConfigurations.harbor.extendModules {
