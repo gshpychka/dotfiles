@@ -137,8 +137,12 @@ in
 
     programs.fzf = {
       enable = true;
-      fileWidgetCommand = "${pkgs.fd}/bin/fd --type f --strip-cwd-prefix";
-      changeDirWidgetCommand = "${pkgs.fd}/bin/fd --type d --strip-cwd-prefix";
+      fileWidget = {
+        command = "${pkgs.fd}/bin/fd --type f --strip-cwd-prefix";
+      };
+      changeDirWidget = {
+        command = "${pkgs.fd}/bin/fd --type d --strip-cwd-prefix";
+      };
       defaultOptions = [
         "--border sharp"
         "--inline-info"
