@@ -66,13 +66,15 @@ in
     services.glances = {
       enable = true;
       inherit (cfg) openFirewall;
-      package = pkgs.glances.overrideAttrs (oldAttrs: {
-        # Wrap glances to include lm_sensors in its PATH
-        postInstall = (oldAttrs.postInstall or "") + ''
-          wrapProgram $out/bin/glances \
-            --prefix PATH : ${lib.makeBinPath [ pkgs.lm_sensors ]}
-        '';
-      });
+      # I got tired of the rebuilds and I don't even rememer why I needed lm_sensors
+      # TODO: reevaluate
+      # package = pkgs.glances.overrideAttrs (oldAttrs: {
+      #   # Wrap glances to include lm_sensors in its PATH
+      #   postInstall = (oldAttrs.postInstall or "") + ''
+      #     wrapProgram $out/bin/glances \
+      #       --prefix PATH : ${lib.makeBinPath [ pkgs.lm_sensors ]}
+      #   '';
+      # });
       extraArgs = [
         "--webserver"
         "--disable-webui"
