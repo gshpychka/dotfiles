@@ -12,39 +12,20 @@
   };
   nixpkgs = {
     config = {
-      # cudaSupport = true would enable CUDA for every package that has it,
-      # and we don't need it on for all packages that we use
-      # Omitting it does not prevent CUDA support; use per-package overrides
-
-      # Keeping this here as a reference
+      # cudaSupport = true would enable CUDA for every package that has it and
+      # build them from source: cache.nixos-cuda.org covers channel heads, not
+      # this machine's unstable pin. CUDA is enabled per package instead.
       # cudaSupport = true; (do NOT uncomment)
 
-      # Setting cudaCapabilities would change CUDA derivation hashes and
-      # miss the cache
+      # Narrowing cudaCapabilities to this GPU (8.9) changes CUDA derivation
+      # hashes. Here it only rebuilds btop; the cache-sensitive default lives
+      # with the whisper closure (whisper.nix).
       # cudaCapabilities = [ "8.9" ]; (do NOT uncomment)
 
       nvidia.acceptLicense = true;
     };
     overlays = [
-      # Since we don't set cudaSupport = true globally, we need to enable CUDA
-      # for each package that requires it
       (_self: super: {
-        ctranslate2 =
-          (super.ctranslate2.override {
-            withCUDA = true;
-            withCuDNN = true;
-          }).overrideAttrs
-            (old: {
-              cmakeFlags = (old.cmakeFlags or [ ]) ++ [
-                # ct2 uses CMake's legacy FindCUDA, which reads the GPU arch only
-                # from CUDA_NVCC_FLAGS. nixpkgs stopped setting it, so nvcc falls
-                # back to sm_52 and the fp16 kernels fail.
-                # See https://github.com/NixOS/nixpkgs/pull/536525
-                (super.lib.cmakeFeature "CUDA_NVCC_FLAGS" (
-                  super.lib.concatStringsSep ";" super.cudaPackages.flags.gencode
-                ))
-              ];
-            });
         btop = super.btop.override { cudaSupport = true; };
       })
     ];

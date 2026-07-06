@@ -2,7 +2,9 @@
   description = "My Machines";
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
-    # currently unused - kept as an escape hatch for packages broken on unstable
+    # source for reaper's whisper CUDA closure (cache.nixos-cuda.org builds these
+    # on the 25.11 channel; see machines/reaper/whisper.nix), and an escape hatch
+    # for packages broken on unstable
     nixos-stable.url = "github:nixos/nixpkgs/nixos-25.11";
     home-manager = {
       url = "github:nix-community/home-manager";
@@ -45,9 +47,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     llm-agents = {
-      # deliberately NOT following our nixpkgs: keeps the upstream
-      # cache.numtide.com binary cache usable (substituter is configured
-      # in modules/system/common/nix-config.nix)
+      # not following our nixpkgs: more cache hits that way
       url = "github:numtide/llm-agents.nix";
     };
     nixified-ai = {
@@ -58,7 +58,10 @@
       url = "github:Jovian-Experiments/Jovian-NixOS";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    nixos-hardware.url = "github:NixOS/nixos-hardware/master";
+    nixos-hardware = {
+      url = "github:NixOS/nixos-hardware/master";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     # auto-imports a directory tree of modules
     import-tree.url = "github:vic/import-tree";
   };
