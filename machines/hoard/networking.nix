@@ -10,10 +10,6 @@ let
     interface = "enp0s20f0u4";
     address = "109.86.45.81";
     gateway = "109.86.45.254";
-    nameservers = [
-      "1.1.1.1"
-      "1.0.0.1"
-    ];
     table = 100;
   };
 in
@@ -55,7 +51,6 @@ in
       networkConfig = {
         Address = "${secondaryWan.address}/24";
         IPv6AcceptRA = false;
-        DNS = secondaryWan.nameservers;
       };
 
       routes = [
@@ -80,7 +75,11 @@ in
   my.netns.wan2 = {
     hostAddress = "10.200.0.1";
     namespaceAddress = "10.200.0.2";
-    inherit (secondaryWan) nameservers;
+    # can't use harbor's own DNS server from here - use Google instead
+    nameservers = [
+      "1.1.1.1"
+      "1.0.0.1"
+    ];
 
     egress = {
       inherit (secondaryWan) interface;
