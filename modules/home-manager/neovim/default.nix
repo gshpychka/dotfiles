@@ -67,6 +67,7 @@ in
             html
             javascript
             json
+            json5
             lua
             nix
             python
