@@ -200,7 +200,7 @@
         let
           # iso's build artifact is the ISO image, special-cased below;
           # buoy-bootstrap is only an image-build shim, covered by packages.gce-image
-          machines = builtins.removeAttrs self.nixosConfigurations [
+          machines = removeAttrs self.nixosConfigurations [
             "iso"
             "buoy-bootstrap"
           ];
