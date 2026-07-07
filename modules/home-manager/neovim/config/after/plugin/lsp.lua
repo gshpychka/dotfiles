@@ -119,6 +119,8 @@ local servers = {
 
   zls = {},
 
+  terraformls = {},
+
   eslint = {
     on_attach = function(client, bufnr)
       -- eslint uses dynamic registration which neovim doesn't support

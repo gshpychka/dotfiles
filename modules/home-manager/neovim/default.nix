@@ -57,13 +57,14 @@ in
         nvim-lspconfig
         nvim-lint
         flash-nvim
-        # markdown preview via the glow cli (provided in extraPackages)
+        # markdown preview via the glow cli
         glow-nvim
         (nvim-treesitter.withPlugins (
           p: with p; [
             bash
             comment
             dockerfile
+            hcl
             html
             javascript
             json
@@ -74,6 +75,7 @@ in
             regex
             rust
             sql
+            terraform
             toml
             typescript
             vim
@@ -112,6 +114,8 @@ in
         yaml-language-server
         vscode-langservers-extracted # eslint, json
         dockerfile-language-server
+        terraform-ls
+        terraform # terraform-ls shells out to it for formatting
         biome # formatter/linter
         nixfmt
         statix
