@@ -15,6 +15,7 @@ let
     p.cloudflare_cloudflare
     p.hashicorp_google
     p.clementblaise_age
+    p.tailscale_tailscale
   ]);
 in
 pkgs.mkShell {

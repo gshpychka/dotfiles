@@ -1,0 +1,10 @@
+{
+	"tagOwners": {
+		"tag:tf": ["autogroup:admin"],
+	},
+
+	"grants": [
+		// Allow all connections.
+		{"src": ["*"], "dst": ["*"], "ip": ["*"]},
+	],
+}
