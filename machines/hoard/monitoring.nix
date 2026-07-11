@@ -35,7 +35,7 @@ in
       widgets =
         let
           glancesBase = {
-            url = "http://127.0.0.1:${ports.glances}";
+            url = "http://127.0.0.1:${toString ports.glances}";
             version = 4;
           };
         in
@@ -129,7 +129,7 @@ in
                 widgets = [
                   {
                     type = "plex";
-                    url = "http://127.0.0.1:${ports.plex}";
+                    url = "http://127.0.0.1:${toString ports.plex}";
                     key = "{{HOMEPAGE_VAR_PLEX_TOKEN}}";
                   }
                 ];
@@ -146,7 +146,7 @@ in
                 widgets = [
                   {
                     type = "qbittorrent";
-                    url = "http://127.0.0.1:${ports.qbittorrent}";
+                    url = "http://127.0.0.1:${toString ports.qbittorrent}";
                     username = "{{HOMEPAGE_VAR_QBITTORRENT_USERNAME}}";
                     password = "{{HOMEPAGE_VAR_QBITTORRENT_PASSWORD}}";
                   }
@@ -160,7 +160,7 @@ in
                 widgets = [
                   {
                     type = "sabnzbd";
-                    url = "http://127.0.0.1:${ports.sabnzbd}";
+                    url = "http://127.0.0.1:${toString ports.sabnzbd}";
                     key = "{{HOMEPAGE_VAR_SABNZBD_API_KEY}}";
                   }
                 ];
@@ -177,7 +177,7 @@ in
                 widgets = [
                   {
                     type = "sonarr";
-                    url = "http://127.0.0.1:${ports.sonarr}";
+                    url = "http://127.0.0.1:${toString ports.sonarr}";
                     key = "{{HOMEPAGE_VAR_SONARR_API_KEY}}";
                   }
                 ];
@@ -190,7 +190,7 @@ in
                 widgets = [
                   {
                     type = "radarr";
-                    url = "http://127.0.0.1:${ports.radarr}";
+                    url = "http://127.0.0.1:${toString ports.radarr}";
                     key = "{{HOMEPAGE_VAR_RADARR_API_KEY}}";
                   }
                 ];
@@ -203,7 +203,7 @@ in
                 widgets = [
                   {
                     type = "lidarr";
-                    url = "http://127.0.0.1:${ports.lidarr}";
+                    url = "http://127.0.0.1:${toString ports.lidarr}";
                     key = "{{HOMEPAGE_VAR_LIDARR_API_KEY}}";
                   }
                 ];
@@ -216,7 +216,7 @@ in
                 widgets = [
                   {
                     type = "prowlarr";
-                    url = "http://127.0.0.1:${ports.prowlarr}";
+                    url = "http://127.0.0.1:${toString ports.prowlarr}";
                     key = "{{HOMEPAGE_VAR_PROWLARR_API_KEY}}";
                   }
                 ];

@@ -1,4 +1,4 @@
-{ config, lib, ... }:
+{ config, ... }:
 let
   inherit (import ./ports.nix { inherit config; }) ports;
 
@@ -90,11 +90,11 @@ in
     portForwards = [
       {
         interface = primaryLanInterface;
-        port = lib.toInt ports.plex;
+        port = ports.plex;
       }
       {
         inherit (secondaryWan) interface;
-        port = lib.toInt ports.plex;
+        port = ports.plex;
       }
     ];
 

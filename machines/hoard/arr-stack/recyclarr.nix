@@ -13,7 +13,7 @@ in
     configuration = {
       radarr.radarr = {
         api_key._secret = config.sops.secrets.${secretName "radarr"}.path;
-        base_url = "http://localhost:${ports.radarr}";
+        base_url = "http://localhost:${toString ports.radarr}";
         delete_old_custom_formats = true;
         replace_existing_custom_formats = true;
         quality_profiles = [
@@ -154,7 +154,7 @@ in
       };
       sonarr.sonarr = {
         api_key._secret = config.sops.secrets.${secretName "sonarr"}.path;
-        base_url = "http://localhost:${ports.sonarr}";
+        base_url = "http://localhost:${toString ports.sonarr}";
         delete_old_custom_formats = true;
         replace_existing_custom_formats = true;
         quality_profiles = [

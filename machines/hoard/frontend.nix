@@ -6,58 +6,96 @@ let
   inherit ((import ./ports.nix { inherit config; })) ports;
 in
 {
-  services = {
-    cloudflared = {
-      enable = true;
-      certificateFile = config.sops.secrets.cloudflare-cert.path;
-      # cloudflared tunnel create hoard-tunnel
-      tunnels.hoard-tunnel = {
-        default = "http_status:404";
-        credentialsFile = config.sops.secrets.cloudflare-tunnel.path;
-        ingress = {
-          # cloudflared tunnel route dns hoard-tunnel <hostname>
-          "overseerr.${config.networking.domain}" = "http://localhost:${ports.overseerr}";
-          "tautulli.${config.networking.domain}" = "http://localhost:${ports.tautulli}";
-        };
+  services.cloudflared = {
+    enable = true;
+    certificateFile = config.sops.secrets.cloudflare-cert.path;
+    # cloudflared tunnel create hoard-tunnel
+    tunnels.hoard-tunnel = {
+      default = "http_status:404";
+      credentialsFile = config.sops.secrets.cloudflare-tunnel.path;
+      ingress = {
+        # cloudflared tunnel route dns hoard-tunnel <hostname>
+        "overseerr.${config.networking.domain}" = "http://localhost:${toString ports.overseerr}";
+        "tautulli.${config.networking.domain}" = "http://localhost:${toString ports.tautulli}";
       };
     };
-    nginx = {
-      enable = true;
-      recommendedProxySettings = true;
-      recommendedTlsSettings = true;
-      virtualHosts =
-        let
-          services = [
-            "qbittorrent"
-            "radarr"
-            "sonarr"
-            "lidarr"
-            "prowlarr"
-            "bazarr"
-            "sabnzbd"
-            "home"
-            "glances"
-            "tautulli"
-            "overseerr"
-            "maintainerr"
-            "jellyfin"
-          ];
+  };
 
-          serviceToVhost = name: {
-            inherit name;
-            value = {
-              serverName = "${name}.${config.networking.fqdn}";
-              useACMEHost = config.networking.fqdn;
-              onlySSL = true;
-              locations."/" = {
-                proxyPass = "http://127.0.0.1:${ports.${name}}/";
-              };
-            };
-          };
+  my.webGateway = {
+    enable = true;
+    services = {
+      home.port = ports.home;
+      glances.port = ports.glances;
+      maintainerr.port = ports.maintainerr;
+      qbittorrent.port = ports.qbittorrent;
+      sabnzbd = {
+        port = ports.sabnzbd;
+        apiBypassPrefixes = [
+          "/api"
+          "/sabnzbd/api"
+        ];
+      };
+      sonarr = {
+        port = ports.sonarr;
+        apiBypassPrefixes = [
+          "/api"
+          "/feed"
+        ];
+      };
+      radarr = {
+        port = ports.radarr;
+        apiBypassPrefixes = [
+          "/api"
+          "/feed"
+        ];
+      };
+      lidarr = {
+        port = ports.lidarr;
+        apiBypassPrefixes = [
+          "/api"
+          "/feed"
+        ];
+      };
+      prowlarr = {
+        port = ports.prowlarr;
+        apiBypassPrefixes = [ "/api" ];
+      };
+      bazarr = {
+        port = ports.bazarr;
+        apiBypassPrefixes = [ "/api" ];
+      };
 
-          vhosts = builtins.listToAttrs (map serviceToVhost services);
-        in
-        vhosts;
+      # multi-user identity lives in these apps (Plex accounts, Jellyfin
+      # accounts, Tautulli's own login), and overseerr/tautulli are also
+      # reachable from the internet through the Cloudflare tunnel above
+      overseerr = {
+        port = ports.overseerr;
+        auth = "native";
+      };
+      tautulli = {
+        port = ports.tautulli;
+        auth = "native";
+      };
+      jellyfin = {
+        port = ports.jellyfin;
+        auth = "native";
+      };
+    };
+    loopbackGate.clients = [
+      config.services.sonarr.user
+      config.services.radarr.user
+      config.services.lidarr.user
+      config.services.bazarr.user
+      config.services.recyclarr.user
+      config.users.users.maintainerr.name
+    ];
+    sso = {
+      enable = false;
+      sopsFile = ../../secrets/hoard/authelia.yaml;
+      users.${config.my.user} = {
+        displayName = "Glib";
+        email = "me@${config.my.domain}";
+      };
     };
   };
 

@@ -243,7 +243,9 @@
         in
         lib.recursiveUpdate (lib.recursiveUpdate nixosChecks lintChecks) {
           aarch64-darwin.eve = self.darwinConfigurations.eve.config.system.build.toplevel;
-          x86_64-linux.iso = self.nixosConfigurations.iso.config.system.build.isoImage;
+          x86_64-linux = {
+            iso = self.nixosConfigurations.iso.config.system.build.isoImage;
+          };
         };
 
       # `nix fmt` — treefmt drives the per-language formatters (see treefmt.toml)

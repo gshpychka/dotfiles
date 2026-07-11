@@ -4,7 +4,7 @@
 #   - download clients       -> qBittorrent + SABnzbd in every app
 #   - root folders           -> the media library path per *Arr
 #
-# API keys come from the SOPS secrets pinned in ./api-keys.nix, so this wiring is plain
+# API keys come from the SOPS secrets pinned in ./auth.nix, so this wiring is plain
 # Nix. Resources are matched by name (clients/apps) or path (root folders): existing
 # matches are updated in place, missing ones are created, and all others are preserved.
 {
@@ -17,25 +17,43 @@ let
 
   secret = name: config.sops.secrets.${name}.path;
   secretName = service: "${service}-api-key";
-  localUrl = port: "http://localhost:${port}";
-  publicHost = service: "${service}.${config.networking.fqdn}";
-  httpsPort = config.services.nginx.defaultSSLListenPort;
+  localUrl = port: "http://localhost:${toString port}";
+  gateway = config.my.webGateway;
+  hasPlainGatewayVhost =
+    service:
+    gateway.enable
+    && builtins.hasAttr service gateway.services
+    && (!gateway.sso.enable || gateway.services.${service}.auth == "native");
 
   downloadClientUnits = [
     config.systemd.services.qbittorrent.name
     config.systemd.services.sabnzbd.name
   ];
 
+  # Use the vhost only when it exists and accepts a cookie-less client. A
+  # gateway-auth vhost behind SSO rejects machine clients, while disabling the
+  # whole gateway removes the vhost; both states therefore use loopback. Every
+  # field appears in both forms because the engine overlays only listed fields.
+  downloadClientEndpoint =
+    service:
+    if hasPlainGatewayVhost service then
+      {
+        host = "${service}.${config.networking.fqdn}";
+        port = config.services.nginx.defaultSSLListenPort;
+        useSsl = true;
+      }
+    else
+      {
+        host = "localhost";
+        port = ports.${service};
+        useSsl = false;
+      };
+
   qbittorrent = category: {
     name = "qBittorrent";
     implementation = "QBittorrent";
     protocol = "torrent";
-    fields = {
-      host = publicHost "qbittorrent";
-      port = httpsPort;
-      useSsl = true;
-    }
-    // category;
+    fields = downloadClientEndpoint "qbittorrent" // category;
     secretFields = {
       username = secret "qbittorrent-username";
       password = secret "qbittorrent-password";
@@ -46,12 +64,7 @@ let
     name = "SABnzbd";
     implementation = "Sabnzbd";
     protocol = "usenet";
-    fields = {
-      host = publicHost "sabnzbd";
-      port = httpsPort;
-      useSsl = true;
-    }
-    // category;
+    fields = downloadClientEndpoint "sabnzbd" // category;
     secretFields.apiKey = secret "sabnzbd-api-key";
   };
 

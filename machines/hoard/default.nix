@@ -18,7 +18,6 @@
 # TODO: complete bootstrap doc (including arr stack)
 {
   pkgs,
-  config,
   ...
 }:
 {
@@ -71,8 +70,4 @@
     };
   };
 
-  networking.firewall.allowedTCPPorts = [
-    config.services.nginx.defaultHTTPListenPort
-    config.services.nginx.defaultSSLListenPort
-  ];
 }

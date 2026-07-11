@@ -33,7 +33,7 @@ in
     ];
     environment = {
       TZ = config.time.timeZone;
-      UI_PORT = ports.maintainerr;
+      UI_PORT = toString ports.maintainerr;
       UI_HOST = "127.0.0.1";
     };
     # need to refer by ID because these names don't exist in the container
