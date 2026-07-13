@@ -6,7 +6,7 @@ let
   # whisper's CUDA closure is expensive to build, and cache.nixos-cuda.org has
   # it built for nixos-25.11
   pkgsCuda = import inputs.nixos-stable {
-    inherit (pkgs) system;
+    inherit (pkgs.stdenv.hostPlatform) system;
     config = {
       allowUnfree = true;
       nvidia.acceptLicense = true;
