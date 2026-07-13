@@ -23,15 +23,22 @@ in
       flake = "${config.home.homeDirectory}/dotfiles";
     };
 
-    programs.zsh.shellAliases = lib.mkIf cfg.enableZshIntegration (
-      lib.mkMerge [
-        (lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
-          ns = "${lib.getExe pkgs.nh} os switch";
-        })
-        (lib.mkIf pkgs.stdenv.hostPlatform.isDarwin {
-          ns = "${lib.getExe pkgs.nh} darwin switch";
-        })
-      ]
-    );
+    # use `sudo --non-interactive`
+    home.sessionVariables.NH_ELEVATION_STRATEGY = "passwordless";
+
+    programs.zsh.initContent = lib.mkIf cfg.enableZshIntegration ''
+      # bare: switch this machine. with an arg: deploy to that host over ssh
+      ns() {
+        if (( $# == 0 )); then
+          ${lib.getExe pkgs.nh} ${
+            if pkgs.stdenv.hostPlatform.isDarwin then "darwin" else "os"
+          } switch
+        else
+          local host="$1"
+          shift
+          ${lib.getExe pkgs.nh} os switch --target-host "$host" . "$@"
+        fi
+      }
+    '';
   };
 }
