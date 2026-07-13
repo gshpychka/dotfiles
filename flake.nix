@@ -174,7 +174,12 @@
       # bootable SD image for harbor: `nix build .#harbor-sd-image`
       packages.aarch64-linux.harbor-sd-image =
         (self.nixosConfigurations.harbor.extendModules {
-          modules = [ "${nixpkgs}/nixos/modules/installer/sd-card/sd-image-aarch64.nix" ];
+          modules = [
+            "${nixpkgs}/nixos/modules/installer/sd-card/sd-image-aarch64.nix"
+            # the sd-image module pulls in zfs support; harbor's root is ext4,
+            # so opt into false, the default from nixpkgs 26.11 on
+            { boot.zfs.forceImportRoot = false; }
+          ];
         }).config.system.build.sdImage;
 
       # Minimal bootstrap NixOS config for GCE image
