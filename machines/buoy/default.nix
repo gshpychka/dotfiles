@@ -21,6 +21,7 @@
     "${modulesPath}/virtualisation/google-compute-image.nix"
     ./filesystems.nix
     ./gatus.nix
+    ./ntfy.nix
     ./cloudflare-tunnel.nix
   ];
 
