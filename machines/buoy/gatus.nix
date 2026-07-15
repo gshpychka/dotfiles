@@ -1,5 +1,6 @@
 {
   config,
+  lib,
   ...
 }:
 let
@@ -36,7 +37,6 @@ in
 {
   services.gatus = {
     enable = true;
-    environmentFile = config.sops.secrets.gatus-env.path;
     settings = {
       ui.custom-css = builtins.readFile ./gatus-gruvbox.css;
       web.address = "127.0.0.1";
@@ -45,9 +45,10 @@ in
         path = "/var/lib/gatus/data.db";
       };
       # Self-hosted ntfy on this same host (see ntfy.nix). The server is
-      # deny-all, so Gatus publishes with a write-only token. Gatus runs
-      # os.ExpandEnv over the whole config, so ${NTFY_TOKEN} (from the sops
-      # gatus.env) is substituted at load time, matching the Telegram token.
+      # deny-all, so Gatus publishes with the gatus write-only token. Gatus
+      # runs os.ExpandEnv over the whole config, so ${NTFY_TOKEN} (rendered
+      # into gatus-ntfy.env below from the same secret ntfy.nix provisions) is
+      # substituted at load time, matching the Telegram token.
       alerting.ntfy = {
         url = "https://ntfy.${config.my.domain}";
         topic = "buoy-status";
@@ -122,8 +123,20 @@ in
     };
   };
 
+  # Telegram credentials (existing) stay in gatus.env; the ntfy publish token is
+  # the same secret ntfy.nix provisions, rendered into its own file so it has a
+  # single source of truth. gatus's module takes one environmentFile, so load
+  # both via systemd instead (mkForce replaces the module's single-file list).
   sops.secrets.gatus-env = {
     sopsFile = ../../secrets/buoy/gatus.env;
     format = "dotenv";
   };
+  sops.templates."gatus-ntfy.env" = {
+    content = "NTFY_TOKEN=${config.sops.placeholder.ntfy-gatus-token}";
+    restartUnits = [ "gatus.service" ];
+  };
+  systemd.services.gatus.serviceConfig.EnvironmentFile = lib.mkForce [
+    config.sops.secrets.gatus-env.path
+    config.sops.templates."gatus-ntfy.env".path
+  ];
 }
