@@ -16,7 +16,6 @@
         # CNAMEs to <tunnel-id>.cfargotunnel.com), not `cloudflared tunnel route dns`.
         "status.${config.my.domain}" =
           "http://localhost:${toString config.services.gatus.settings.web.port}";
-        # cloudflared tunnel route dns buoy-tunnel ntfy.<domain>
         # Target the exact loopback address ntfy binds (see ntfy.nix), so the
         # port is defined once. WebSocket subscriptions tunnel fine over this.
         "ntfy.${config.my.domain}" = "http://${config.services.ntfy-sh.settings.listen-http}";
