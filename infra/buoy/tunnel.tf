@@ -1,22 +1,19 @@
 # Manage the buoy-tunnel Cloudflare Tunnel declaratively (it was previously
 # created out of band with `cloudflared tunnel create buoy-tunnel`).
 # config_src = "local" keeps the ingress/routing config on the box, managed by
-# cloudflared via machines/buoy/cloudflare-tunnel.nix - Terraform owns only the
-# tunnel's existence and secret, not its routes.
+# cloudflared via machines/buoy/cloudflare-tunnel.nix.
 #
-# Adopting the already-running tunnel with no downtime:
-#   - The import block below takes the live tunnel into state by its id, so it
-#     is not recreated.
-#   - cloudflare_tunnel_secret must be the tunnel's EXISTING secret (the
-#     TunnelSecret in `sops -d secrets/buoy/cloudflare-tunnel.json`) so the
-#     apply does not rotate it - buoy's credentials file stays valid.
-# Verify `tf plan` shows no change that rotates tunnel_secret before applying.
-# The import block can be removed after the first successful apply.
+# Terraform adopts the existing tunnel by id (import block) but deliberately
+# does NOT manage tunnel_secret: that secret is a cloudflared run credential
+# that already lives in secrets/buoy/cloudflare-tunnel.json, and Terraform
+# needs neither it to own the tunnel's identity nor to build the cfargotunnel
+# CNAMEs. Leaving it unset keeps the secret in exactly one place and means
+# `tf apply` can never rotate it (no downtime). The import block can be removed
+# after the first successful apply.
 resource "cloudflare_zero_trust_tunnel_cloudflared" "buoy" {
-  account_id    = var.cloudflare_account_id
-  name          = "buoy-tunnel"
-  config_src    = "local"
-  tunnel_secret = var.cloudflare_tunnel_secret
+  account_id = var.cloudflare_account_id
+  name       = "buoy-tunnel"
+  config_src = "local"
 }
 
 import {

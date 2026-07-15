@@ -43,12 +43,6 @@ variable "cloudflare_tunnel_id" {
   type        = string
 }
 
-variable "cloudflare_tunnel_secret" {
-  description = "Existing buoy-tunnel secret - the TunnelSecret in `sops -d secrets/buoy/cloudflare-tunnel.json` (base64). Set to the current value so `tf apply` does not rotate it (no downtime)."
-  type        = string
-  sensitive   = true
-}
-
 variable "status_dns_record_id" {
   description = "Cloudflare DNS record ID of the existing status.<domain> CNAME, used only to import it (GET /zones/{zone_id}/dns_records?name=status.<domain>)."
   type        = string
