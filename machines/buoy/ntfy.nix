@@ -18,8 +18,7 @@
       # Trust X-Forwarded-For from cloudflared for rate limiting / real IPs.
       behind-proxy = true;
       # Private instance: nothing is readable or publishable without an
-      # account. Accounts and per-topic access are provisioned via the ntfy
-      # CLI (one-time step below).
+      # account (accounts are provisioned declaratively below).
       auth-default-access = "deny-all";
       # Instant iOS/Android delivery for a self-hosted server: ntfy forwards a
       # content-free poll request to ntfy.sh, whose Firebase/APNs wakes the
@@ -27,20 +26,43 @@
       # hash derived from base-url leaves the box; message bodies stay local.
       upstream-base-url = "https://ntfy.sh";
     };
+    # Declarative accounts/ACL/tokens via the env file rendered below. ntfy
+    # reconciles these against its auth DB on every start and deletes anything
+    # no longer listed, so accounts are managed like NixOS users
+    # (mutableUsers = false) - never via the `ntfy user` CLI on the box.
+    environmentFile = config.sops.templates."ntfy.env".path;
   };
 
-  # One-time auth setup, run on buoy. State lives in the auth-file at
-  # /var/lib/ntfy-sh/user.db and survives reboots and redeploys; it is lost
-  # only if the VM is re-created (same durability as Gatus's data.db). The
-  # service creates the DB on first start, so run these afterwards. Run as the
-  # ntfy-sh service user so the SQLite file keeps the right ownership; the CLI
-  # reads the generated config at /etc/ntfy/server.yml automatically.
+  # ntfy requires a bcrypt password per account even when auth is by token, so
+  # both accounts carry a throwaway hash and authenticate with an access token
+  # (the "key" analogue - like this box's own key-only login). Only the hashes
+  # and tokens are secret; the account/topic/role structure is declared in the
+  # template below, the ntfy equivalent of a declarative users.users.* with a
+  # hashedPasswordFile.
   #
-  #   sudo -u ntfy-sh ntfy user add --role=admin <me>       # app / browser login
-  #   sudo -u ntfy-sh ntfy user add gatus                   # status-page publisher
-  #   sudo -u ntfy-sh ntfy access gatus buoy-status write-only
-  #   sudo -u ntfy-sh ntfy token add --label gatus gatus    # prints tk_...
-  #
-  # Put the tk_... token in secrets/buoy/gatus.env as NTFY_TOKEN=<token> (sops),
-  # then redeploy so Gatus can publish to the buoy-status topic.
+  # secrets/buoy/ntfy.yaml was generated with a CSPRNG (bcrypt cost 10, 32-char
+  # tk_ tokens) and encrypted to the buoy and glib age keys. To read the admin
+  # token for the mobile app / browser, or to rotate any value:
+  #   sops secrets/buoy/ntfy.yaml
+  # It is not yet encrypted to the YubiKey; add it with the usual rekey step:
+  #   sops updatekeys secrets/buoy/ntfy.yaml
+  sops.secrets = {
+    ntfy-admin-password-hash.sopsFile = ../../secrets/buoy/ntfy.yaml;
+    ntfy-admin-token.sopsFile = ../../secrets/buoy/ntfy.yaml;
+    ntfy-gatus-password-hash.sopsFile = ../../secrets/buoy/ntfy.yaml;
+    ntfy-gatus-token.sopsFile = ../../secrets/buoy/ntfy.yaml;
+  };
+
+  # admin: role=admin -> read + publish every topic (no ACL entry needed), used
+  # from your phone/browser via its token. gatus: write-only to its own topic
+  # only. Lists are comma-separated and reconciled on every restart (entries
+  # removed here are deleted from the DB). The gatus topic must match gatus.nix.
+  sops.templates."ntfy.env" = {
+    content = ''
+      NTFY_AUTH_USERS=admin:${config.sops.placeholder.ntfy-admin-password-hash}:admin,gatus:${config.sops.placeholder.ntfy-gatus-password-hash}:user
+      NTFY_AUTH_ACCESS=gatus:buoy-status:write-only
+      NTFY_AUTH_TOKENS=admin:${config.sops.placeholder.ntfy-admin-token},gatus:${config.sops.placeholder.ntfy-gatus-token}
+    '';
+    restartUnits = [ "ntfy-sh.service" ];
+  };
 }
