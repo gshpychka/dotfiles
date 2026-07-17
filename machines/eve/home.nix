@@ -37,7 +37,7 @@
             sops
           ];
           # age identity for the sops CLI, fetched from 1Password at runtime
-          sessionVariables.SOPS_AGE_KEY_CMD = "op read op://dev/sops-age-glib-op/credential";
+          sessionVariables.SOPS_AGE_KEY_CMD = "op read --account my.1password.com op://dev/sops-age-glib-op/credential";
         };
       };
   };
