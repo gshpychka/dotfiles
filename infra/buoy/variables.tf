@@ -32,6 +32,28 @@ variable "cloudflare_api_token" {
   sensitive   = true
 }
 
+variable "cloudflare_account_id" {
+  description = "Cloudflare account ID that owns the buoy-tunnel"
+  type        = string
+  sensitive   = true
+}
+
+# Both of the below are only read by the import blocks in tunnel.tf / dns.tf, so
+# they can be dropped from secrets/infra/terraform.env once those are removed
+# after the first successful apply. cloudflared is not installed on eve, so look
+# the ids up over the API (GET /accounts/{account_id}/cfd_tunnel?name=buoy-tunnel
+# and GET /zones/{zone_id}/dns_records?type=CNAME&name=status.<domain>); the PR
+# that introduced these has the exact commands.
+variable "cloudflare_tunnel_id" {
+  description = "UUID of the existing buoy-tunnel, used only to import it into Terraform state."
+  type        = string
+}
+
+variable "status_dns_record_id" {
+  description = "Cloudflare DNS record ID of the existing status.<domain> CNAME, used only to import it."
+  type        = string
+}
+
 variable "data_disk_size" {
   description = "Size of the persistent data disk in GB"
   type        = number

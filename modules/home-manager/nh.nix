@@ -30,9 +30,7 @@ in
       # bare: switch this machine. with an arg: deploy to that host over ssh
       ns() {
         if (( $# == 0 )); then
-          ${lib.getExe pkgs.nh} ${
-            if pkgs.stdenv.hostPlatform.isDarwin then "darwin" else "os"
-          } switch
+          ${lib.getExe pkgs.nh} ${if pkgs.stdenv.hostPlatform.isDarwin then "darwin" else "os"} switch
         else
           local host="$1"
           shift
