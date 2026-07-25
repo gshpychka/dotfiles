@@ -1,6 +1,7 @@
 {
   config,
   lib,
+  pkgs,
   osConfig,
   ...
 }:
@@ -11,9 +12,18 @@ in
 {
   options.my.ssh = {
     enable = lib.mkEnableOption "SSH client configuration";
+    opkssh.enable = lib.mkEnableOption "opkssh client, for SSH login with a Google identity";
   };
 
   config = lib.mkIf cfg.enable {
+    # Client half of modules/system/nixos/opkssh.nix. `opkssh login` authenticates
+    # to Google in a browser and writes a short-lived key to ~/.ssh/id_ecdsa - one
+    # of OpenSSH's default identity paths, so no ssh_config entry is needed for it
+    # to be offered. If a host ever rejects it, the cause is likely MaxAuthTries
+    # (default 6) being exhausted by agent keys first; fix with an explicit
+    # `IdentitiesOnly yes` + `IdentityFile ~/.ssh/id_ecdsa` for that host.
+    home.packages = lib.optional cfg.opkssh.enable pkgs.opkssh;
+
     programs = {
       ssh = {
         enable = true;

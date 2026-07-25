@@ -23,7 +23,10 @@
           neovim.enable = true;
           nh.enable = true;
           npm.enable = true;
-          ssh.enable = true;
+          ssh = {
+            enable = true;
+            opkssh.enable = true;
+          };
           tmux.enable = true;
           tools.enable = true;
           zsh.enable = true;
