@@ -27,3 +27,16 @@ import {
   to = cloudflare_dns_record.status
   id = "${var.cloudflare_zone_id}/${var.status_dns_record_id}"
 }
+
+# ntfy (machines/buoy/ntfy.nix) is served through the same tunnel. This is a new
+# record (no import), so `tf apply` creates it - replacing the manual
+# `cloudflared tunnel route dns buoy-tunnel ntfy.<domain>` step.
+resource "cloudflare_dns_record" "ntfy" {
+  zone_id = var.cloudflare_zone_id
+  name    = "ntfy.${var.domain_name}"
+  content = "${cloudflare_zero_trust_tunnel_cloudflared.buoy.id}.cfargotunnel.com"
+  type    = "CNAME"
+  ttl     = 1
+  proxied = true
+  comment = "ntfy via buoy-tunnel"
+}
