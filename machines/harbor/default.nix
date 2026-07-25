@@ -43,6 +43,8 @@
 
   my.acme.enable = true;
 
+  my.opkssh.enable = true;
+
   my.tailscale = {
     enable = true;
     ssh = true;

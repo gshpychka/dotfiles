@@ -16,11 +16,6 @@ in
       default = values.user;
       description = "Main username";
     };
-    googleEmail = lib.mkOption {
-      type = lib.types.nullOr lib.types.str;
-      default = values.googleEmail;
-      description = "Google account email authorized for opkssh SSH login (null disables the authorization)";
-    };
     sshKeys = lib.mkOption {
       type = lib.types.submodule {
         options = {

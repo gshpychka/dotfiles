@@ -115,6 +115,8 @@
 
   my.acme.enable = true;
 
+  my.opkssh.enable = true;
+
   virtualisation = {
     docker = {
       enable = true;
