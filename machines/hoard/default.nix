@@ -55,6 +55,8 @@
 
   my.acme.enable = true;
 
+  my.opkssh.enable = true;
+
   my.terminfo.enable = true;
 
   programs = {
