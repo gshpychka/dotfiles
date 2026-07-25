@@ -54,7 +54,7 @@ in
       content = "${config.my.user} ${config.sops.placeholder.opkssh-email} ${googleIssuer}";
       path = "/etc/opk/auth_id";
       owner = opk.user;
-      group = opk.group;
+      inherit (opk) group;
       mode = "0640";
     };
   };
