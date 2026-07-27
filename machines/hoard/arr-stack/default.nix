@@ -32,7 +32,7 @@
       # step: Settings → General → Security → Authentication = None; the web
       # gateway owns interactive auth and /api keeps requiring X-API-KEY.
     };
-    overseerr = {
+    seerr = {
       enable = true;
     };
   };

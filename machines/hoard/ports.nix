@@ -16,7 +16,7 @@
     lidarr = config.services.lidarr.settings.server.port;
     prowlarr = config.services.prowlarr.settings.server.port;
     bazarr = config.services.bazarr.listenPort;
-    overseerr = config.services.overseerr.port;
+    seerr = config.services.seerr.port;
     maintainerr = 6246;
     tautulli = config.services.tautulli.port;
     # fixed upstream

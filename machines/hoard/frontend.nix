@@ -15,7 +15,7 @@ in
       credentialsFile = config.sops.secrets.cloudflare-tunnel.path;
       ingress = {
         # cloudflared tunnel route dns hoard-tunnel <hostname>
-        "overseerr.${config.networking.domain}" = "http://localhost:${toString ports.overseerr}";
+        "overseerr.${config.networking.domain}" = "http://localhost:${toString ports.seerr}";
         "tautulli.${config.networking.domain}" = "http://localhost:${toString ports.tautulli}";
       };
     };
@@ -66,10 +66,10 @@ in
       };
 
       # multi-user identity lives in these apps (Plex accounts, Jellyfin
-      # accounts, Tautulli's own login), and overseerr/tautulli are also
+      # accounts, Tautulli's own login), and seerr/tautulli are also
       # reachable from the internet through the Cloudflare tunnel above
-      overseerr = {
-        port = ports.overseerr;
+      seerr = {
+        port = ports.seerr;
         auth = "native";
       };
       tautulli = {
