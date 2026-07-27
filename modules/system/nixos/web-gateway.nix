@@ -93,6 +93,16 @@ let
     };
   };
 
+  # unknown vhosts get 404
+  catchAllLabel = "_";
+  catchAllVhost = {
+    serverName = catchAllLabel;
+    default = true;
+    useACMEHost = fqdn;
+    onlySSL = true;
+    locations."/".return = 404;
+  };
+
   # Loopback gate: only connection-opening packets are checked, because reply
   # packets on lo carry the server process's uid.
   gateChain = "web-gateway";
@@ -288,6 +298,10 @@ in
           message = "my.webGateway.services: the vhost label 'auth' is reserved for the Authelia portal.";
         }
         {
+          assertion = !(cfg.services ? ${catchAllLabel});
+          message = "my.webGateway.services: the vhost label '${catchAllLabel}' is reserved for the catch-all 404 sink.";
+        }
+        {
           assertion = !ssoOn || gatewayAuthServices != { };
           message = "my.webGateway.sso: no service delegates auth to the gateway; drop the SSO layer instead.";
         }
@@ -389,16 +403,18 @@ in
         enable = true;
         recommendedProxySettings = true;
         recommendedTlsSettings = true;
-        virtualHosts =
-          lib.optionalAttrs ssoOn {
-            auth = {
-              serverName = authDomain;
-              useACMEHost = fqdn;
-              onlySSL = true;
-              locations."/".proxyPass = "http://${autheliaAddr}";
-            };
-          }
-          // lib.mapAttrs mkServiceVhost cfg.services;
+        virtualHosts = {
+          ${catchAllLabel} = catchAllVhost;
+        }
+        // lib.optionalAttrs ssoOn {
+          auth = {
+            serverName = authDomain;
+            useACMEHost = fqdn;
+            onlySSL = true;
+            locations."/".proxyPass = "http://${autheliaAddr}";
+          };
+        }
+        // lib.mapAttrs mkServiceVhost cfg.services;
       };
 
       networking.firewall.allowedTCPPorts = [ config.services.nginx.defaultSSLListenPort ];

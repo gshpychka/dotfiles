@@ -62,12 +62,12 @@ in
           ];
         }
         {
-          name = "seerr";
+          name = "Seerr";
           url = "https://seerr.${config.my.domain}";
           interval = "30s";
           conditions = [
             "[STATUS] == 200"
-            "[RESPONSE_TIME] < 5000"
+            "[RESPONSE_TIME] < 10000"
           ];
           alerts = [
             (mkTelegramAlert {
