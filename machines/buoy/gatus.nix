@@ -63,7 +63,7 @@ in
         }
         {
           name = "seerr";
-          url = "https://overseerr.${config.my.domain}";
+          url = "https://seerr.${config.my.domain}";
           interval = "30s";
           conditions = [
             "[STATUS] == 200"

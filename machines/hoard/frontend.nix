@@ -14,7 +14,7 @@ in
       credentialsFile = config.sops.secrets.cloudflare-tunnel.path;
       ingress = {
         # sops exec-file --no-fifo secrets/common/cloudflare-cert.pem 'env TUNNEL_ORIGIN_CERT={} cloudflared tunnel route dns hoard-tunnel <hostname>'
-        "overseerr.${config.networking.domain}" = "http://localhost:${toString ports.seerr}";
+        "seerr.${config.networking.domain}" = "http://localhost:${toString ports.seerr}";
         "tautulli.${config.networking.domain}" = "http://localhost:${toString ports.tautulli}";
       };
     };
