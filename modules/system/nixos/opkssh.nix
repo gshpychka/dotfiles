@@ -1,9 +1,6 @@
 { lib, config, ... }:
 # opkssh (OpenPubkey SSH): log in over SSH with a Google identity instead of a
 # long-lived key.
-#
-# This coexists with the usual authorizedKeys.keys entries: sshd still accepts
-# the static keys, opkssh just adds the OIDC path on top.
 let
   cfg = config.my.opkssh;
   opk = config.services.opkssh;
