@@ -31,8 +31,7 @@ in
       key = "email";
     };
 
-    # upstream builds this file from `authorizations`, which would put the address
-    # in the world-readable Nix store; sops-nix owns the path instead
+    # we construct the file ourselves via sops-nix
     environment.etc."opk/auth_id".enable = false;
     sops.templates."opk-auth_id" = {
       # line format: "<linux user> <principal> <issuer>"
