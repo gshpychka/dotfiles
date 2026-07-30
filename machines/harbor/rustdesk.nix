@@ -1,4 +1,4 @@
-{ ... }:
+_:
 {
   my.rustdesk-server = {
     enable = false;
