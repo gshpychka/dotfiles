@@ -1,7 +1,4 @@
-{
-  config,
-  ...
-}:
+{ ... }:
 {
   my.rustdesk-server = {
     enable = false;
