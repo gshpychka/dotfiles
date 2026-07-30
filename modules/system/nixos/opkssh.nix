@@ -12,7 +12,19 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    services.opkssh.enable = true;
+    services.opkssh = {
+      enable = true;
+
+      providers.google = {
+        issuer = googleIssuer;
+        # opkssh's public Google desktop client, the same value nixpkgs ships as
+        # the services.opkssh.providers default:
+        # https://github.com/openpubkey/opkssh/blob/main/README.md#server-configuration-nixos
+        clientId = "206584157355-7cbe4s640tvm7naoludob4ut1emii7sf.apps.googleusercontent.com";
+        # short-lived: `opkssh login` must be re-run once the key expires
+        lifetime = "24h";
+      };
+    };
 
     sops.secrets.opkssh-email = {
       sopsFile = ../../../secrets/common/opkssh.yaml;
