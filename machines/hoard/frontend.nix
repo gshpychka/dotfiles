@@ -8,14 +8,13 @@ in
 {
   services.cloudflared = {
     enable = true;
-    certificateFile = config.sops.secrets.cloudflare-cert.path;
-    # cloudflared tunnel create hoard-tunnel
+    # sops exec-file --no-fifo secrets/common/cloudflare-cert.pem 'env TUNNEL_ORIGIN_CERT={} cloudflared tunnel create hoard-tunnel'
     tunnels.hoard-tunnel = {
       default = "http_status:404";
       credentialsFile = config.sops.secrets.cloudflare-tunnel.path;
       ingress = {
-        # cloudflared tunnel route dns hoard-tunnel <hostname>
-        "overseerr.${config.networking.domain}" = "http://localhost:${toString ports.overseerr}";
+        # sops exec-file --no-fifo secrets/common/cloudflare-cert.pem 'env TUNNEL_ORIGIN_CERT={} cloudflared tunnel route dns hoard-tunnel <hostname>'
+        "seerr.${config.networking.domain}" = "http://localhost:${toString ports.seerr}";
         "tautulli.${config.networking.domain}" = "http://localhost:${toString ports.tautulli}";
       };
     };
@@ -66,10 +65,10 @@ in
       };
 
       # multi-user identity lives in these apps (Plex accounts, Jellyfin
-      # accounts, Tautulli's own login), and overseerr/tautulli are also
+      # accounts, Tautulli's own login), and seerr/tautulli are also
       # reachable from the internet through the Cloudflare tunnel above
-      overseerr = {
-        port = ports.overseerr;
+      seerr = {
+        port = ports.seerr;
         auth = "native";
       };
       tautulli = {
@@ -105,11 +104,6 @@ in
       mode = "0440";
       format = "json";
       key = ""; # we want the entire file
-    };
-    cloudflare-cert = {
-      sopsFile = ../../secrets/common/cloudflare-cert.pem;
-      mode = "0440";
-      format = "binary";
     };
   };
 }

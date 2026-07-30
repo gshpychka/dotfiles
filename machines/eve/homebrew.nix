@@ -114,19 +114,17 @@
       "telegram"
       "signal"
       "discord"
-      "whatsapp"
       "element"
 
       # -- work --
       # fails to install - installing manually instead
-      # {
-      #   name = "datagrip";
-      #   greedy = false;
-      # }
+      {
+        name = "datagrip";
+        greedy = false;
+      }
       "firefox"
       "slack"
       "rippling"
-      "notion"
       "linear"
       "twingate"
       "zoom"
@@ -143,6 +141,8 @@
       "WiFi Signal" = 525912054;
       "Xcode" = 497799835;
       "Flow - Focus & Pomodoro Timer" = 1423210932;
+      "WhatsApp Messenger" = 310633997;
+      "Tailscale" = 1475387142;
     };
   };
   # https://github.com/zhaofengli/nix-homebrew/issues/3#issuecomment-1622240992

@@ -62,17 +62,17 @@ in
           ];
         }
         {
-          name = "Overseerr";
-          url = "https://overseerr.${config.my.domain}";
+          name = "Seerr";
+          url = "https://seerr.${config.my.domain}";
           interval = "30s";
           conditions = [
             "[STATUS] == 200"
-            "[RESPONSE_TIME] < 5000"
+            "[RESPONSE_TIME] < 10000"
           ];
           alerts = [
             (mkTelegramAlert {
-              triggered = "🔴 Overseerr недоступний.";
-              resolved = "🟢 Overseerr знову доступний.";
+              triggered = "🔴 Seerr недоступний.";
+              resolved = "🟢 Seerr знову доступний.";
             })
           ];
         }
