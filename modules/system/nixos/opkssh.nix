@@ -19,7 +19,7 @@ in
         issuer = googleIssuer;
         # opkssh's public Google desktop client, the same value nixpkgs ships as
         # the services.opkssh.providers default:
-        # https://github.com/openpubkey/opkssh/blob/main/README.md#server-configuration-nixos
+        # https://github.com/NixOS/nixpkgs/blob/0954f7ee2f6bb3dc7d4e3d0d8bcb8fd4bde4cfc5/nixos/modules/services/networking/opkssh/opkssh.nix#L76
         clientId = "206584157355-7cbe4s640tvm7naoludob4ut1emii7sf.apps.googleusercontent.com";
         # short-lived: `opkssh login` must be re-run once the key expires
         lifetime = "24h";
