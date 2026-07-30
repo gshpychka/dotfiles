@@ -7,7 +7,6 @@
 let
   cfg = config.my.opkssh;
   opk = config.services.opkssh;
-  # accounts.google.com is the OIDC issuer for both Gmail and Workspace accounts
   googleIssuer = "https://accounts.google.com";
 in
 {
