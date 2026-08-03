@@ -195,11 +195,7 @@
   };
 
   programs = {
-    ssh.startAgent = false;
-    gnupg.agent = {
-      enable = true;
-      enableSSHSupport = true;
-    };
+    gnupg.agent.enable = true;
     nix-ld.enable = true;
   };
   networking.firewall.allowedTCPPorts = [

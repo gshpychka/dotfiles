@@ -49,7 +49,7 @@ in
     };
 
     # Scoped to SSH-originated shells (tmux propagates SSH_CONNECTION on
-    # attach) so the gpg-agent SSH socket on local sessions is left alone.
+    # attach), which are the sessions a forwarded agent belongs to.
     programs.zsh.initContent = lib.mkIf sshdHost ''
       if [[ -n "''${SSH_CONNECTION-}" && -S "${agentSock}" ]]; then
         export SSH_AUTH_SOCK="${agentSock}"

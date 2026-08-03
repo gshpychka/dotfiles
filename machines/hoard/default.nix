@@ -60,10 +60,7 @@
   my.terminfo.enable = true;
 
   programs = {
-    gnupg.agent = {
-      enable = true;
-      enableSSHSupport = true;
-    };
+    gnupg.agent.enable = true;
     zsh = {
       enable = true;
       enableCompletion = false;

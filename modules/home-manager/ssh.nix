@@ -32,20 +32,19 @@ in
 
         settings =
           let
-            # Per-host Match blocks come from the fleet registry (modules/common/hosts.nix).
-            # Hosts with no ssh-specific data need no block of their own - the
-            # generic "local" match below covers them.
-            fleetHosts = lib.filterAttrs (_: h: h.sshUser != null || h.sshSettings != { }) osConfig.my.hosts;
+            # Tailscale MagicDNS names take the form <host>.<tailnet>.ts.net
+            tailnetSuffix = "ts.net";
             fleetBlocks = lib.mapAttrs (
               name: h:
               lib.hm.dag.entryBefore [ "local" ] (
                 {
-                  header = "Match final host ${name}.${domain}";
+                  header = "Match final host ${name},${name}.${domain},${name}.*.${tailnetSuffix}";
+                  User = if h.sshUser != null then h.sshUser else osConfig.my.user;
+                  ForwardAgent = true;
                 }
-                // lib.optionalAttrs (h.sshUser != null) { User = h.sshUser; }
                 // h.sshSettings
               )
-            ) fleetHosts;
+            ) osConfig.my.hosts;
           in
           # order matters for SSH, since the first value wins (no overrides later)
           # The order of the attrs specified here has no effect on the resulting file
