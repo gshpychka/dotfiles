@@ -127,7 +127,10 @@
       "rippling"
       "linear"
       "twingate"
-      "zoom"
+      {
+        name = "zoom";
+        greedy = true;
+      }
       "microsoft-excel"
       "microsoft-word"
       "cursor"
