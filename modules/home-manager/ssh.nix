@@ -76,6 +76,7 @@ in
             "*" = {
               AddKeysToAgent = "no";
               Compression = true;
+              EscapeChar = "none";
               # detect dead connections in ~45s and keep NAT mappings alive
               ServerAliveInterval = 15;
               ServerAliveCountMax = 3;
