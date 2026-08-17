@@ -109,7 +109,6 @@ in
         "compress=zstd:1"
         "noatime"
         "lazytime"
-        "noauto"
         # mounts as soon as the unlocked device appears
         "x-systemd.wanted-by=${deviceUnit config.fileSystems."/mnt/hoard".device}"
       ];
@@ -130,9 +129,6 @@ in
       fsType = "ext4";
       options = [
         "noatime"
-        # skipped when the enclosure is absent: nofail drops the wait for the device
-        # https://github.com/systemd/systemd/issues/27321#issuecomment-1543226472
-        "nofail"
         # mounts as soon as the unlocked device appears
         "x-systemd.wanted-by=${deviceUnit config.fileSystems."/mnt/trove".device}"
       ];
