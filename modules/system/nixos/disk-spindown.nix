@@ -2,6 +2,7 @@
   config,
   lib,
   pkgs,
+  utils,
   ...
 }:
 with lib;
@@ -89,13 +90,16 @@ in
           device:
           let
             serviceName = builtins.replaceStrings [ "/" "-" ] [ "-" "--" ] (lib.removePrefix "/" device);
+            deviceUnit = "${utils.escapeSystemdPath device}.device";
           in
           {
             name = "hdparm-${serviceName}";
             value = {
               description = "Configure hdparm for ${device}";
-              wantedBy = [ "multi-user.target" ];
-              after = [ "${builtins.replaceStrings [ "/" "-" ] [ "\\x2f" "\\x2d" ] device}.device" ];
+              # the setting lives on the drive, so it is applied each time the drive appears
+              wantedBy = [ deviceUnit ];
+              after = [ deviceUnit ];
+              partOf = [ deviceUnit ];
               serviceConfig = {
                 Type = "oneshot";
                 RemainAfterExit = true;
