@@ -6,24 +6,8 @@
   ...
 }:
 let
-  # parted /dev/sdc --script mklabel gpt mkart primary 0% 100%
-  # cryptsetup luksFormat --type luks2 --cipher aes-xts-plain64 --key-size 512 --sector-size 4096 /dev/sdc1
-  # cryptsetup config --label="hoard-alpha-enc" /dev/sdc1
-  # systemd-cryptenroll --tpm2-device=auto /dev/sdc1
-  # cryptsetup luksOpen /dev/sdc1 hoard-alpha
-
-  # On first device:
-  # mkfs.btrfs -d single -m dup -L hoard -s 4096 -n 65536 --csum xxhash /dev/mapper/hoard-beta
-
-  # On second device:
-  # btrfs device add /dev/mapper/hoard-alpha /mnt/hoard
-  # btrfs balance start -dconvert=raid0 -mconvert=raid1 --bg /mnt/hoard
-
-  enclosureLuks = {
-    hoard-alpha = "/dev/disk/by-label/hoard-alpha-enc";
-    hoard-beta = "/dev/disk/by-label/hoard-beta-enc";
-    trove = "/dev/disk/by-label/trove-enc";
-  };
+  disks = import ./disks.nix;
+  inherit (disks) enclosureLuks;
 
   deviceUnit = path: "${utils.escapeSystemdPath path}.device";
 in
@@ -112,6 +96,11 @@ in
     };
 
     "/mnt/hoard" = {
+      # On first device:
+      # mkfs.btrfs -d single -m dup -L hoard -s 4096 -n 65536 --csum xxhash /dev/mapper/hoard-beta
+      # On second device:
+      # btrfs device add /dev/mapper/hoard-alpha /mnt/hoard
+      # btrfs balance start -dconvert=raid0 -mconvert=raid1 --bg /mnt/hoard
       # btrfs filesystem label /mnt/hoard hoard
       # this will mount both drives
       label = "hoard";
@@ -154,10 +143,7 @@ in
 
   my.disk-spindown = {
     enable = true;
-    devices = [
-      enclosureLuks.hoard-alpha
-      enclosureLuks.hoard-beta
-    ];
+    devices = lib.attrValues disks.arrayMembers;
     timeoutMinutes = 30;
   };
 

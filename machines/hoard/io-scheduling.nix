@@ -1,10 +1,15 @@
+let
+  inherit (import ./disks.nix) arrayMembers;
+  # systemd resolves each partition to the whole disk, which is where bfq runs.
+  weight = value: map (device: "${device} ${toString value}") (builtins.attrValues arrayMembers);
+in
 {
   systemd = {
     slices = {
       media = {
         sliceConfig = {
           IOAccounting = "yes";
-          IODeviceWeight = "/mnt/hoard 1200";
+          IODeviceWeight = weight 1000;
         };
         unitConfig = {
           RequiresMountsFor = [
@@ -17,7 +22,7 @@
         sliceConfig = {
           IOAccounting = "yes";
           # low priority - must not affect playback
-          IODeviceWeight = "/mnt/hoard 10";
+          IODeviceWeight = weight 10;
         };
       };
       system-samba = {
@@ -29,7 +34,7 @@
         };
         sliceConfig = {
           IOAccounting = "yes";
-          IODeviceWeight = "/mnt/hoard 100";
+          IODeviceWeight = weight 100;
         };
       };
     };
@@ -50,7 +55,7 @@
       plex = {
         serviceConfig = {
           Slice = "media.slice";
-          IODeviceWeight = "/mnt/hoard 1200";
+          IODeviceWeight = weight 1000;
           IOSchedulingClass = "best-effort";
           IOSchedulingPriority = "2";
         };
