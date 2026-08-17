@@ -85,6 +85,7 @@ in
       inherit (secondaryWan) interface;
       snatTo = secondaryWan.address;
       routingTable = secondaryWan.table;
+      localNetworks = [ config.my.lan.cidr ];
     };
 
     portForwards = [

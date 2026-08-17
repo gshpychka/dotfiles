@@ -192,11 +192,23 @@ let
       networkConfig.Address = cidr ns.hostAddress ns.prefixLength;
       # The namespace comes and goes; never let it hold up network-online.target.
       linkConfig.RequiredForOnline = "no";
-      routingPolicyRules = optional (ns.egress != null) {
-        From = cidr ns.namespaceAddress 32;
-        Table = ns.egress.routingTable;
-        Priority = ns.egress.rulePriority;
-      };
+      routingPolicyRules = optionals (ns.egress != null) (
+        # The egress table reaches a local network only through the uplink, so replies
+        # to one leave by the wrong interface unless they are matched first.
+        map (network: {
+          From = cidr ns.namespaceAddress 32;
+          To = network;
+          Table = "main";
+          Priority = ns.egress.rulePriority - 1;
+        }) ns.egress.localNetworks
+        ++ [
+          {
+            From = cidr ns.namespaceAddress 32;
+            Table = ns.egress.routingTable;
+            Priority = ns.egress.rulePriority;
+          }
+        ]
+      );
     };
   };
 
@@ -302,6 +314,13 @@ in
                       type = types.int;
                       default = 50;
                       description = "Priority of the routing policy rule that selects the egress table.";
+                    };
+
+                    localNetworks = mkOption {
+                      type = types.listOf types.str;
+                      default = [ ];
+                      example = [ "192.168.1.0/24" ];
+                      description = "Networks the namespace is reachable on directly, whose replies follow the main table.";
                     };
                   };
                 }
