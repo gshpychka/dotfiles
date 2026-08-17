@@ -1,52 +1,36 @@
 {
   config,
+  lib,
   pkgs,
   utils,
   ...
 }:
+let
+  # parted /dev/sdc --script mklabel gpt mkart primary 0% 100%
+  # cryptsetup luksFormat --type luks2 --cipher aes-xts-plain64 --key-size 512 --sector-size 4096 /dev/sdc1
+  # cryptsetup config --label="hoard-alpha-enc" /dev/sdc1
+  # systemd-cryptenroll --tpm2-device=auto /dev/sdc1
+  # cryptsetup luksOpen /dev/sdc1 hoard-alpha
+
+  # On first device:
+  # mkfs.btrfs -d single -m dup -L hoard -s 4096 -n 65536 --csum xxhash /dev/mapper/hoard-beta
+
+  # On second device:
+  # btrfs device add /dev/mapper/hoard-alpha /mnt/hoard
+  # btrfs balance start -dconvert=raid0 -mconvert=raid1 --bg /mnt/hoard
+
+  enclosureLuks = {
+    hoard-alpha = "/dev/disk/by-label/hoard-alpha-enc";
+    hoard-beta = "/dev/disk/by-label/hoard-beta-enc";
+    trove = "/dev/disk/by-label/trove-enc";
+  };
+
+  deviceUnit = path: "${utils.escapeSystemdPath path}.device";
+in
 {
   boot = {
     initrd = {
       luks.devices = {
-        # parted /dev/sdc --script mklabel gpt mkart primary 0% 100%
-        # cryptsetup luksFormat --type luks2 --cipher aes-xts-plain64 --key-size 512 --sector-size 4096 /dev/sdc1
-        # cryptsetup config --label="hoard-alpha-enc" /dev/sdc1
-        # systemd-cryptenroll --tpm2-device=auto /dev/sdc1
-        # cryptsetup luksOpen /dev/sdc1 hoard-alpha
-
-        # On first device:
-        # mkfs.btrfs -d single -m dup -L hoard -s 4096 -n 65536 --csum xxhash /dev/mapper/hoard-beta
-
-        # On second device:
-        # btrfs device add /dev/mapper/hoard-alpha /mnt/hoard
-        # btrfs balance start -dconvert=raid0 -mconvert=raid1 --bg /mnt/hoard
-        hoard-alpha = {
-          device = "/dev/disk/by-label/hoard-alpha-enc";
-          crypttabExtraOpts = [
-            "tpm2-device=auto"
-            # make it wait for the USB enclosure to show up
-            "x-systemd.device-timeout=10s"
-            # continue with boot if it doesn't show up
-            # nofail
-            # nofail breaks the setup - it will not wait for the USB device to show up
-            # https://github.com/systemd/systemd/issues/27321#issuecomment-1543226472
-          ];
-        };
-        hoard-beta = {
-          device = "/dev/disk/by-label/hoard-beta-enc";
-          crypttabExtraOpts = [
-            "tpm2-device=auto"
-            "x-systemd.device-timeout=10s"
-          ];
-        };
-        trove = {
-          device = "/dev/disk/by-label/trove-enc";
-          crypttabExtraOpts = [
-            "tpm2-device=auto"
-            "x-systemd.device-timeout=10s"
-            "nofail"
-          ];
-        };
         oasis = {
           device = "/dev/disk/by-label/oasis-enc";
           crypttabExtraOpts = [
@@ -88,6 +72,29 @@
     defaultSchedulerRotational = "bfq";
   };
 
+  environment.etc."crypttab".text = lib.concatLines (
+    lib.mapAttrsToList (name: device: "${name} ${device} - tpm2-device=auto,noauto") enclosureLuks
+  );
+
+  # Nothing unlocks these at boot, so each disk is unlocked here when its partition shows up.
+  services.udev.extraRules = lib.concatLines (
+    lib.mapAttrsToList (
+      name: device:
+      lib.concatStringsSep ", " [
+        # the partition appearing, or udev re-reading one already present
+        ''ACTION=="add|change"''
+        # disks and partitions
+        ''SUBSYSTEM=="block"''
+        # the encrypted container, not the filesystem inside it
+        ''ENV{ID_FS_TYPE}=="crypto_LUKS"''
+        # the label in the LUKS header, set by `cryptsetup config --label`
+        ''ENV{ID_FS_LABEL}=="${baseNameOf device}"''
+        # start this unit; systemd escapes the dash in the instance name
+        ''ENV{SYSTEMD_WANTS}+="systemd-cryptsetup@${utils.escapeSystemdPath name}.service"''
+      ]
+    ) enclosureLuks
+  );
+
   fileSystems = {
     "/" = {
       label = "nixos";
@@ -113,9 +120,9 @@
         "compress=zstd:1"
         "noatime"
         "lazytime"
-        # give it ample time to unlock before continuing
-        "x-systemd.device-timeout=10s"
-        "nofail"
+        "noauto"
+        # mounts as soon as the unlocked device appears
+        "x-systemd.wanted-by=${deviceUnit config.fileSystems."/mnt/hoard".device}"
       ];
     };
 
@@ -134,8 +141,11 @@
       fsType = "ext4";
       options = [
         "noatime"
-        "x-systemd.device-timeout=10s"
+        # skipped when the enclosure is absent: nofail drops the wait for the device
+        # https://github.com/systemd/systemd/issues/27321#issuecomment-1543226472
         "nofail"
+        # mounts as soon as the unlocked device appears
+        "x-systemd.wanted-by=${deviceUnit config.fileSystems."/mnt/trove".device}"
       ];
     };
   };
@@ -145,8 +155,8 @@
   my.disk-spindown = {
     enable = true;
     devices = [
-      config.boot.initrd.luks.devices.hoard-alpha.device
-      config.boot.initrd.luks.devices.hoard-beta.device
+      enclosureLuks.hoard-alpha
+      enclosureLuks.hoard-beta
     ];
     timeoutMinutes = 30;
   };
