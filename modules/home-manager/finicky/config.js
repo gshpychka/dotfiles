@@ -19,7 +19,7 @@ export default {
           "Slack",
           "Notion",
           "Linear",
-          "Twingate"
+          "Twingate",
           "Zoom",
         ].some(
           appName => {
@@ -45,7 +45,7 @@ export default {
           "learn.microsoft.com",
           "linear.app",
           "mcp.notion.com",
-          "twingate.com"
+          "twingate.com",
           "okta.com",
         ].some(
           targetHostName => {

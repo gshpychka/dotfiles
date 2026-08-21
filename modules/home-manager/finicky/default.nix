@@ -7,6 +7,16 @@
 let
   cfg = config.my.finicky;
   filePath = "finicky/config.js";
+  # the config is plain JS that finicky parses at runtime, where a syntax error
+  # takes out all URL routing; this fails the build instead
+  validatedConfig =
+    pkgs.runCommand "finicky-config.js" { nativeBuildInputs = [ pkgs.nodejs-slim ]; }
+      ''
+        # node picks ES module parsing from the .mjs extension
+        cp ${./config.js} config.mjs
+        node --check config.mjs
+        cp config.mjs $out
+      '';
 in
 {
   options.my.finicky = {
@@ -15,7 +25,7 @@ in
 
   config = lib.mkIf cfg.enable {
     xdg.configFile.${filePath} = {
-      source = ./config.js;
+      source = validatedConfig;
       # finicky does not support symlinks
       onChange = "cat ${config.xdg.configHome}/${filePath} > ${config.home.homeDirectory}/.finicky.js";
     };
