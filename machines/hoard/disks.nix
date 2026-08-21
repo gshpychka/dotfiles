@@ -3,18 +3,10 @@
 # cryptsetup config --label="hoard-alpha-enc" /dev/sdc1
 # systemd-cryptenroll --tpm2-device=auto /dev/sdc1
 # cryptsetup luksOpen /dev/sdc1 hoard-alpha
-let
+{
+  # The volumes the hoard btrfs filesystem spans.
   arrayMembers = {
     hoard-alpha = "/dev/disk/by-label/hoard-alpha-enc";
     hoard-beta = "/dev/disk/by-label/hoard-beta-enc";
-  };
-in
-{
-  # The volumes the hoard btrfs filesystem spans.
-  inherit arrayMembers;
-
-  # Every enclosure volume, unlocked from stage 2 as the disk arrives.
-  enclosureLuks = arrayMembers // {
-    trove = "/dev/disk/by-label/trove-enc";
   };
 }

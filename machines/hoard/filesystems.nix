@@ -6,8 +6,7 @@
   ...
 }:
 let
-  disks = import ./disks.nix;
-  inherit (disks) enclosureLuks;
+  inherit (import ./disks.nix) arrayMembers;
 
   deviceUnit = path: "${utils.escapeSystemdPath path}.device";
 in
@@ -57,7 +56,7 @@ in
   };
 
   environment.etc."crypttab".text = lib.concatLines (
-    lib.mapAttrsToList (name: device: "${name} ${device} - tpm2-device=auto,noauto") enclosureLuks
+    lib.mapAttrsToList (name: device: "${name} ${device} - tpm2-device=auto,noauto") arrayMembers
   );
 
   # Nothing unlocks these at boot, so each disk is unlocked here when its partition shows up.
@@ -76,7 +75,7 @@ in
         # start this unit; systemd escapes the dash in the instance name
         ''ENV{SYSTEMD_WANTS}+="systemd-cryptsetup@${utils.escapeSystemdPath name}.service"''
       ]
-    ) enclosureLuks
+    ) arrayMembers
   );
 
   fileSystems = {
@@ -123,23 +122,13 @@ in
         "nofail"
       ];
     };
-
-    "/mnt/trove" = {
-      device = "/dev/mapper/trove";
-      fsType = "ext4";
-      options = [
-        "noatime"
-        # mounts as soon as the unlocked device appears
-        "x-systemd.wanted-by=${deviceUnit config.fileSystems."/mnt/trove".device}"
-      ];
-    };
   };
 
   swapDevices = [ { device = "/dev/disk/by-label/swap"; } ];
 
   my.disk-spindown = {
     enable = true;
-    devices = lib.attrValues disks.arrayMembers;
+    devices = lib.attrValues arrayMembers;
     timeoutMinutes = 30;
   };
 
