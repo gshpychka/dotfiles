@@ -124,7 +124,6 @@
       }
       "firefox"
       "slack"
-      "rippling"
       "linear"
       "twingate"
       {
