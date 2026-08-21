@@ -126,6 +126,7 @@
       "slack"
       "linear"
       "twingate"
+      "okta-verify"
       {
         name = "zoom";
         greedy = true;

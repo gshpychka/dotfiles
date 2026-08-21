@@ -15,11 +15,12 @@ export default {
           "Claude",
           "Codex",
           "ChatGPT",
+          "Cursor",
           "Slack",
           "Notion",
           "Linear",
-          "Zoom",
           "Twingate"
+          "Zoom",
         ].some(
           appName => {
             try {
@@ -45,6 +46,7 @@ export default {
           "linear.app",
           "mcp.notion.com",
           "twingate.com"
+          "okta.com",
         ].some(
           targetHostName => {
             try {
