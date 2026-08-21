@@ -22,7 +22,7 @@ in
 
     # Set finicky as the default browser; this pops a one-time macOS dialog, so
     # only act when it isn't already default ("* " marks it in defaultbrowser).
-    home.activation.finickyDefaultBrowser = lib.mkIf pkgs.stdenv.isDarwin (
+    home.activation.finickyDefaultBrowser = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin (
       lib.hm.dag.entryAfter [ "writeBoundary" ] ''
         if ! ${pkgs.defaultbrowser}/bin/defaultbrowser | ${pkgs.gnugrep}/bin/grep -qx '\* finicky'; then
           $DRY_RUN_CMD ${pkgs.defaultbrowser}/bin/defaultbrowser finicky || true

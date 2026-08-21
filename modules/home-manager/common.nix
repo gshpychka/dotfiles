@@ -20,7 +20,7 @@
     NODE_REPL_HISTORY = "${config.xdg.stateHome}/node_repl_history";
     PSQL_HISTORY = "${config.xdg.stateHome}/psql_history";
   }
-  // lib.optionalAttrs pkgs.stdenv.isDarwin {
+  // lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {
     XDG_RUNTIME_DIR = "/tmp";
   };
 }

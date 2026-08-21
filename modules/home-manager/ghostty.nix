@@ -6,7 +6,7 @@
 }:
 let
   cfg = config.my.ghostty;
-  isDarwin = pkgs.stdenv.isDarwin;
+  isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
 in
 {
   options.my.ghostty = {

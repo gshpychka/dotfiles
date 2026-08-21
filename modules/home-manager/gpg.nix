@@ -7,7 +7,7 @@
 }:
 let
   cfg = config.my.gpg;
-  isDarwin = pkgs.stdenv.isDarwin;
+  isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
 in
 {
   options.my.gpg = {

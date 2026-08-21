@@ -190,7 +190,7 @@ in
           cdr = "cd $(git rev-parse --show-toplevel)";
           docker-clean = "docker rmi -f $(docker images -aq) && docker volume prune -f";
         }
-        (lib.mkIf pkgs.stdenv.isDarwin {
+        (lib.mkIf pkgs.stdenv.hostPlatform.isDarwin {
           dns-flush = "sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder";
         })
       ];

@@ -21,7 +21,7 @@ in
       # ncurses provides tmux-direct (not shipped by tmux.terminfo)
       ncurses
       # the source ghostty package isn't supported on darwin; ghostty-bin is
-      (if stdenv.isDarwin then ghostty-bin.terminfo else ghostty.terminfo)
+      (if stdenv.hostPlatform.isDarwin then ghostty-bin.terminfo else ghostty.terminfo)
     ];
   };
 }
