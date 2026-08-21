@@ -21,10 +21,17 @@ in
     programs.nh = {
       enable = true;
       flake = "${config.home.homeDirectory}/dotfiles";
+      clean = {
+        enable = true;
+        extraArgs = "--keep 5 --kep-since 5d --no-direnv";
+      };
     };
 
     # use `sudo --non-interactive`
-    home.sessionVariables.NH_ELEVATION_STRATEGY = "passwordless";
+    home.sessionVariables = {
+      NH_ELEVATION_STRATEGY = "passwordless";
+      NH_SHOW_ACTIVATION_LOGS = "1";
+    };
 
     programs.zsh.initContent = lib.mkIf cfg.enableZshIntegration ''
       # bare: switch this machine. with an arg: deploy to that host over ssh
