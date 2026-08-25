@@ -58,11 +58,11 @@
       routerIp = "192.168.1.1";
     };
     hosts = {
-      # harbor is the DHCP server and assigns its own static address (no lease)
+      # harbor is the DHCP server and assigns its own static address
       harbor = {
         lanIp = "192.168.1.2";
         enableSubdomains = true;
-        # harbor's main user is "pi" (see machines/harbor/default.nix), not my.user
+        # harbor's main user is "pi"
         sshUser = "pi";
       };
       hoard = {
@@ -87,16 +87,22 @@
         lanIp = "192.168.1.52";
         mac = "1C:AF:4A:0C:6E:76";
       };
-      p1s = {
-        lanIp = "192.168.1.53";
-        mac = "EC:DA:3B:99:80:E4";
-      };
 
       # ssh-only entries (not on the LAN / no static lease)
       iso = {
         sshUser = "nixos";
       };
       kodi = {
+        sshUser = "root";
+        sshSettings = {
+          ForwardAgent = false;
+          SetEnv.TERM = "xterm-256color";
+        };
+      };
+      # GL.iNet Mudi travel router. 192.168.8.1 is its own LAN address,
+      # reachable off-site through the 192.168.8.0/24 subnet route it advertises.
+      oasis = {
+        lanIp = "192.168.8.1";
         sshUser = "root";
         sshSettings = {
           ForwardAgent = false;
