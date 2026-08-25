@@ -86,7 +86,17 @@ printf '%s\n' /etc/sysupgrade.conf /etc/tailnet-home-routes.sh \
 /usr/bin/gl_tailscale restart
 ```
 
-## 4. Check
+## 4. Touchscreen wallpaper
+
+`gl_screen` reads `/etc/gl_screen/image/*.png` at runtime. Needs a 240x320 and a
+480x640 PNG, both 8-bit RGBA; the script keeps `*.orig` backups and registers
+all four paths in `/etc/sysupgrade.conf`.
+
+```sh
+scripts/mudi-wallpaper.sh <240x320.png> <480x640.png>
+```
+
+## 5. Check
 
 ```sh
 tailscale status | head -3                   # harbor active, exit node
