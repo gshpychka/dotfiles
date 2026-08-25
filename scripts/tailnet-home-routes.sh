@@ -14,28 +14,7 @@
 #
 # RANGES covers my.lan.cidr (modules/common/hosts.nix) and must follow it.
 #
-# Install:
-#   scp scripts/tailnet-home-routes.sh root@192.168.8.1:/etc/tailnet-home-routes.sh
-#   ssh root@192.168.8.1 chmod +x /etc/tailnet-home-routes.sh
-#   ssh root@192.168.8.1 'printf "%s\n" \
-#     "[ \"\$DEVICENAME\" = \"tailscale0\" ] && [ \"\$ACTION\" = \"add\" ] && sh /etc/tailnet-home-routes.sh" \
-#     > /etc/hotplug.d/net/99-tailnet-home-routes'
-#   ssh root@192.168.8.1 'printf "%s\n" \
-#     "[ \"\$ACTION\" = \"ifup\" ] && sh /etc/tailnet-home-routes.sh" \
-#     > /etc/hotplug.d/iface/99-tailnet-home-routes'
-#
-# The net hook covers tailscaled recreating the device, since `gl_tailscale
-# restart` runs `tailscaled --cleanup`. The iface hook covers moving to a new
-# upstream network.
-#
-# /etc/hotplug.d is outside the sysupgrade keep list (only /etc/config is in
-# it), and /etc/sysupgrade.conf is not kept either, so it has to list itself
-# alongside the three paths to survive a firmware upgrade:
-#   /etc/sysupgrade.conf
-#   /etc/tailnet-home-routes.sh
-#   /etc/hotplug.d/net/99-tailnet-home-routes
-#   /etc/hotplug.d/iface/99-tailnet-home-routes
-# `sysupgrade -l` prints what would actually be carried over.
+# Deployment lives in scripts/mudi-runbook.md.
 
 RANGES="192.168.1.0/25 192.168.1.128/25"
 TS=tailscale0

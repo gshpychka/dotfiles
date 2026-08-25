@@ -12,6 +12,7 @@ Personal dotfiles managed with Nix flakes for multiple machines (eve, harbor, re
 - `packages/` - Custom package definitions
 - `secrets/` - SOPS encrypted secrets
 - `infra/` - Terraform for cloud infrastructure (GCP VM for buoy, Cloudflare DNS) and the bootstrap GCE image under `infra/nixos/`
+- `scripts/` - Artifacts for devices outside the flake (the GL.iNet travel router), with `mudi-runbook.md` as their deployment path
 
 ## Standards
 - As much as possible should be declarative
