@@ -13,11 +13,10 @@
     taps = {
       "homebrew/homebrew-core" = inputs.homebrew-core;
       "homebrew/homebrew-cask" = inputs.homebrew-cask;
-      "dagger/homebrew-tap" = inputs.homebrew-dagger;
     };
     trust = {
       formulae = [
-        "dagger/tap/dagger"
+        # formulae go here
       ];
     };
     mutableTaps = false;
@@ -137,7 +136,7 @@
     ];
     brews = [
       "mas"
-      "dagger/tap/dagger"
+      "dagger"
     ];
     masApps = {
       "Dark Reader for Safari" = 1438243180;
