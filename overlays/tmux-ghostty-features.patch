@@ -11,7 +11,7 @@
  	free(c->term_type);
 --- a/tty-features.c
 +++ b/tty-features.c
-@@ -543,6 +543,18 @@
+@@ -543,6 +543,19 @@
  			      "focus,"
  			      "usstyle"
  		},
@@ -21,6 +21,7 @@
 +			      "cstyle,"
 +			      "extkeys,"
 +			      "focus,"
++			      "overline,"
 +			      "hyperlinks,"
 +			      "osc7,"
 +			      "sync,"
