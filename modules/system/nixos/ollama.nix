@@ -48,7 +48,7 @@ in
       enable = true;
       recommendedProxySettings = lib.mkForce false; # Ollama chokes otherwise
 
-      virtualHosts."default".locations."/ollama/" = {
+      virtualHosts."default".locations.${cfg.proxyPath} = {
         proxyPass = "http://${config.services.ollama.host}:${toString config.services.ollama.port}/";
         proxyWebsockets = true;
       };

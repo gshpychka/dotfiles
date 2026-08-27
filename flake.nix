@@ -88,6 +88,7 @@
           shfmt
           taplo
           ruff
+          biome
         ];
     in
     {
@@ -217,6 +218,7 @@
             system:
             let
               pkgs = nixpkgs.legacyPackages.${system};
+              piExtensionTypes = pkgs.callPackage ./packages/pi-extension-types.nix { };
             in
             {
               statix = pkgs.runCommand "check-statix" { nativeBuildInputs = [ pkgs.statix ]; } ''
@@ -239,6 +241,20 @@
                 ruff check --config ${self}/ruff.toml ${self}
                 touch $out
               '';
+              # the store copy has no .git for biome to read ignores from
+              biome = pkgs.runCommand "check-biome" { nativeBuildInputs = [ pkgs.biome ]; } ''
+                biome check --config-path ${self}/biome.json --vcs-enabled=false ${self}
+                touch $out
+              '';
+              # pi extensions typecheck against the vendored API declarations
+              pi-extensions =
+                pkgs.runCommand "check-pi-extensions" { nativeBuildInputs = [ pkgs.typescript ]; }
+                  ''
+                    cp -r --no-preserve=mode,ownership ${self}/modules/home-manager/pi/config src
+                    ln -s ${piExtensionTypes} src/node_modules
+                    tsc -p src/tsconfig.json
+                    touch $out
+                  '';
             }
           );
         in
@@ -268,9 +284,24 @@
             system:
             let
               pkgs = nixpkgs.legacyPackages.${system};
+              piExtensionTypes = pkgs.callPackage ./packages/pi-extension-types.nix { };
             in
             {
-              default = pkgs.mkShell { buildInputs = [ pkgs.sops ]; };
+              default = pkgs.mkShell {
+                buildInputs = [
+                  pkgs.sops
+                  pkgs.typescript
+                  pkgs.biome
+                ];
+                # the pi extension sources resolve the pi API through this link, which
+                # keeps tsserver and tsc working in editor sessions outside the shell
+                shellHook = ''
+                  config_dir="$(git rev-parse --show-toplevel)/modules/home-manager/pi/config"
+                  if [ -L "$config_dir/node_modules" ] || [ ! -e "$config_dir/node_modules" ]; then
+                    ln -sfn ${piExtensionTypes} "$config_dir/node_modules"
+                  fi
+                '';
+              };
               infra = import ./infra/shell.nix { inherit nixpkgs system; };
             };
         in

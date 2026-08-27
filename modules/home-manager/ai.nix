@@ -39,7 +39,6 @@ in
         claude-code
         ccusage
         codex
-        pi
         # gemini-cli
         # opencode
         # amp

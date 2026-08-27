@@ -1,4 +1,4 @@
-{ lib, ... }:
+{ config, lib, ... }:
 # Global configuration options and values.
 # Identity values shared with non-module Nix live in values.nix.
 let
@@ -78,6 +78,21 @@ in
       default = { };
       description = "Build server configurations";
     };
+    ollama = {
+      host = lib.mkOption {
+        type = lib.types.str;
+        description = "Fleet host serving the ollama API";
+      };
+      proxyPath = lib.mkOption {
+        type = lib.types.str;
+        description = "nginx location proxying the ollama API root; the trailing slash drives proxy_pass path rewriting";
+      };
+      baseUrl = lib.mkOption {
+        type = lib.types.str;
+        default = "https://${config.my.ollama.host}.${config.my.domain}${config.my.ollama.proxyPath}v1";
+        description = "OpenAI-compatible API root, reachable from the LAN and the tunnels routed into it";
+      };
+    };
   };
   config = {
     my.sshKeys = {
@@ -89,6 +104,10 @@ in
       eve = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIP7jjV4iQfoCWZYWw2Q1bdsNg6PBc4U2SclLE2Wil0b9 nixbuild-eve@eve";
       hoard = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFy/oQXrAZW1aGN6w9RpXBREZ7jvZid2hO508mw8x0yT nixbuild-hoard@hoard";
       harbor = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIABSB7E2A8KEVWo5u+fDHa74I16/1UcukAZps6902H3r nixbuild-harbor@harbor";
+    };
+    my.ollama = {
+      host = "reaper";
+      proxyPath = "/ollama/";
     };
     my.buildServers = {
       reaper = {

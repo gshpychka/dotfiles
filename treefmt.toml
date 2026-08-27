@@ -20,3 +20,8 @@ includes = ["*.toml"]
 command = "ruff"
 options = ["format"]
 includes = ["*.py"]
+
+[formatter.biome]
+command = "biome"
+options = ["format", "--write", "--no-errors-on-unmatched"]
+includes = ["*.ts", "*.js"]

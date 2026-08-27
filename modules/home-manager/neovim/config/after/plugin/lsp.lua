@@ -54,15 +54,16 @@ vim.lsp.config("*", {
         callback = vim.lsp.buf.clear_references,
       })
     end
-    if client.server_capabilities.documentFormattingProvider then
-      vim.api.nvim_create_autocmd({ "BufWritePre" }, {
-        desc = "LSP formatting on write",
-        callback = function()
+    vim.api.nvim_create_autocmd({ "BufWritePre" }, {
+      desc = "LSP formatting on write",
+      callback = function()
+        -- formatting can be registered dynamically, after attach
+        if client:supports_method("textDocument/formatting") then
           vim.lsp.buf.format({ bufnr = bufnr, name = client.name })
-        end,
-        buffer = bufnr,
-      })
-    end
+        end
+      end,
+      buffer = bufnr,
+    })
   end,
 })
 local default_on_attach = vim.lsp.config["*"].on_attach

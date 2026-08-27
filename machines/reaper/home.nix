@@ -21,6 +21,7 @@
           gpg.enable = true;
           neovim.enable = true;
           nh.enable = true;
+          pi.enable = true;
           ssh.enable = true;
           tmux.enable = true;
           tools.enable = true;

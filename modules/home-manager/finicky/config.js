@@ -1,14 +1,14 @@
 export default {
   defaultBrowser: () => ({
     name: "Google Chrome",
-  }), 
+  }),
   options: {
-    checkForUpdate: false
+    checkForUpdate: false,
   },
   handlers: [
     {
       match: (url, { opener }) => {
-        const basedOnOpener =  [
+        const basedOnOpener = [
           "Teams",
           "Leapp",
           "Ghostty",
@@ -21,17 +21,13 @@ export default {
           "Linear",
           "Twingate",
           "Zoom",
-        ].some(
-          appName => {
-            try {
-              return opener.path.toLowerCase().includes(
-                appName.toLowerCase()
-              )
-            } catch {
-              return false;
-            }
+        ].some((appName) => {
+          try {
+            return opener.path.toLowerCase().includes(appName.toLowerCase());
+          } catch {
+            return false;
           }
-        );
+        });
         const basedOnUrl = [
           "aws.amazon.com",
           "amazonaws.com",
@@ -47,22 +43,18 @@ export default {
           "mcp.notion.com",
           "twingate.com",
           "okta.com",
-        ].some(
-          targetHostName => {
-            try {
-              return url.host.toLowerCase().includes(
-                targetHostName.toLowerCase()
-              )
-            } catch {
-              return false;
-            }
+        ].some((targetHostName) => {
+          try {
+            return url.host.toLowerCase().includes(targetHostName.toLowerCase());
+          } catch {
+            return false;
           }
-        );
+        });
         return basedOnOpener || basedOnUrl;
       },
       browser: () => ({
         name: "Firefox",
       }),
     },
-  ]
-}
+  ],
+};
