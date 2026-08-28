@@ -7,7 +7,6 @@
 }:
 let
   cfg = config.my.pi;
-  configDir = "${config.xdg.configHome}/pi/agent";
 in
 {
   options.my.pi = {
@@ -19,31 +18,44 @@ in
       enable = true;
       # llm-agents.nix tracks pi releases closely; nixpkgs lags
       package = pkgs.pi;
-      inherit configDir;
 
       # store-owned: pi's own writes via /settings, `pi install`, and `pi config` are dropped
       settings = {
         defaultProvider = "anthropic";
         defaultModel = "claude-opus-5";
         defaultThinkingLevel = "medium";
+        warnings.anthropicExtraUsage = false;
         theme = "gruvbox-dark";
-        # conversations are state; configDir holds credentials, trust decisions, and caches
-        sessionDir = "${config.xdg.stateHome}/pi/sessions";
+        packages = with pkgs.piPackages.sources; [
+          pi-lens
+          pi-mcp-adapter
+          pi-web-access
+          pi-subagents
+          pi-plan-mode
+          pi-rewind
+          pi-permission-system
+          pi-todo
+          pi-ask-user-question
+          pi-statusline
+        ];
+        # resource paths rather than symlinks under configDir, which packages
+        # write into: pi-permission-system keeps its logs in extensions/
+        extensions = [ "${./config/extensions}" ];
+        prompts = [ "${./config/prompts}" ];
+        themes = [ "${./config/themes}" ];
         # ctrl+P cycles through these
         enabledModels = [
           "anthropic/claude-opus-5"
           "anthropic/claude-sonnet-5"
           "openai-codex/*" # ChatGPT subscription
-          "openai/gpt-5.4*" # OPENAI_API_KEY
           "ollama/*"
         ];
       };
 
-      # pi ships no bindings for these session actions
       keybindings = {
         "app.session.new" = "alt+n";
         "app.session.resume" = "alt+r";
-        "app.session.tree" = "alt+t";
+        "app.session.fork" = "alt+f";
       };
 
       models.providers.ollama = {
@@ -62,13 +74,6 @@ in
       };
 
       context = ./config/AGENTS.md;
-    };
-
-    # convention directories pi discovers under configDir
-    home.file = {
-      "${configDir}/extensions".source = ./config/extensions;
-      "${configDir}/prompts".source = ./config/prompts;
-      "${configDir}/themes".source = ./config/themes;
     };
   };
 }

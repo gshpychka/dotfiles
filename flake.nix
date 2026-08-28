@@ -278,6 +278,19 @@
         }
       );
 
+      apps = lib.genAttrs systems (
+        system:
+        let
+          piPackages = nixpkgs.legacyPackages.${system}.callPackage ./packages/pi-packages { };
+        in
+        {
+          update-pi-packages = {
+            type = "app";
+            program = lib.getExe piPackages.updateScript;
+          };
+        }
+      );
+
       devShells =
         let
           mkShell =
@@ -289,9 +302,11 @@
             {
               default = pkgs.mkShell {
                 buildInputs = [
+                  pkgs.nixd
                   pkgs.sops
                   pkgs.typescript
                   pkgs.biome
+                  pkgs.nodejs
                 ];
                 # the pi extension sources resolve the pi API through this link, which
                 # keeps tsserver and tsc working in editor sessions outside the shell
