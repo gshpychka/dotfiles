@@ -109,7 +109,6 @@
         name = "bambu-studio";
         greedy = true;
       }
-      "orcaslicer"
       # -- communication --
       "telegram"
       "signal"
