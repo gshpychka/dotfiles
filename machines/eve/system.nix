@@ -102,6 +102,14 @@
 
       LaunchServices.LSQuarantine = false;
       spaces.spans-displays = false;
+      CustomUserPreferences = {
+        "com.microsoft.Excel" = {
+          AppleLocale = "uk_UA";
+        };
+        "com.microsoft.Word" = {
+          AppleLocale = "uk_UA";
+        };
+      };
     };
     keyboard = {
       enableKeyMapping = true;
