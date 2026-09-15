@@ -62,7 +62,6 @@
       "insta360-link-controller"
       "dropbox"
       "google-drive"
-      "onedrive"
       {
         name = "cyberduck";
         greedy = true;
@@ -73,10 +72,6 @@
       }
       {
         name = "rustdesk";
-        greedy = true;
-      }
-      {
-        name = "yubico-authenticator";
         greedy = true;
       }
       "trezor-suite"
@@ -122,16 +117,12 @@
         greedy = false;
       }
       "firefox"
-      "slack"
       "linear"
       "twingate"
-      "okta-verify"
       {
         name = "zoom";
         greedy = true;
       }
-      "microsoft-excel"
-      "microsoft-word"
       "cursor"
     ];
     brews = [
