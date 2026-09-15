@@ -111,7 +111,6 @@
       "element"
 
       # -- work --
-      # fails to install - installing manually instead
       {
         name = "datagrip";
         greedy = false;
