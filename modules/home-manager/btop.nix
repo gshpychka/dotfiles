@@ -6,6 +6,7 @@
 }:
 let
   cfg = config.my.btop;
+  themeName = "gruvbox_dark_v2";
 in
 {
   options.my.btop = {
@@ -13,10 +14,14 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    # btop resolves color_theme names against this directory.
+    xdg.configFile."btop/themes/${themeName}.theme".source =
+      "${pkgs.btop}/share/btop/themes/${themeName}.theme";
+
     programs.btop = {
       enable = true;
       settings = {
-        color_theme = "${pkgs.btop}/share/btop/themes/gruvbox_dark_v2.theme";
+        color_theme = themeName;
         vim_keys = true;
         update_ms = 100;
         proc_tree = true;
