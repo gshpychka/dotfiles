@@ -1,6 +1,7 @@
 keys:
-  # YubiKey OpenPGP fingerprint (gpg --card-status)
+  # YubiKey OpenPGP encryption subkey fingerprints (gpg --card-status)
   - &yubikey_alpha 7A5FB73E81C9215C692D994349E1D3136F71FED7
+  - &yubikey_nano 3F55FF0BC1C244EE8E2598C30FA346486D90222C
     # nix-shell -p ssh-to-age --run 'ssh-keyscan reaper | ssh-to-age'
   - &reaper_host age1d3hhj0tzjrqt7w5nzqx86fha5cemmgdn99n5v2aw76ut7ucp8vyqspxyhn
     # nix-shell -p ssh-to-age --run 'ssh-keyscan hoard | ssh-to-age'
@@ -28,6 +29,7 @@ creation_rules:
           - *glib_op
         pgp:
           - *yubikey_alpha
+          - *yubikey_nano
   - path_regex: secrets/reaper/.*
     key_groups:
       - age:
@@ -40,6 +42,7 @@ creation_rules:
           - *glib_op
         pgp:
           - *yubikey_alpha
+          - *yubikey_nano
   - path_regex: secrets/harbor/.*
     key_groups:
       - age:
@@ -47,6 +50,7 @@ creation_rules:
           - *glib_op
         pgp:
           - *yubikey_alpha
+          - *yubikey_nano
   - path_regex: secrets/eve/.*
     key_groups:
       - age:
@@ -54,6 +58,7 @@ creation_rules:
           - *glib_op
         pgp:
           - *yubikey_alpha
+          - *yubikey_nano
   - path_regex: secrets/buoy/.*
     key_groups:
       - age:
@@ -61,6 +66,7 @@ creation_rules:
           - *glib_op
         pgp:
           - *yubikey_alpha
+          - *yubikey_nano
   - path_regex: secrets/infra/.*
     key_groups:
       - age:
@@ -69,3 +75,4 @@ creation_rules:
           - *glib_op
         pgp:
           - *yubikey_alpha
+          - *yubikey_nano
