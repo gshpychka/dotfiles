@@ -51,6 +51,14 @@ in
           };
           trust = 5; # ultimate
         }
+        {
+          # Yubikey Nano
+          source = pkgs.fetchurl {
+            url = "https://keys.openpgp.org/vks/v1/by-fingerprint/96A629239BD3D32B046D04956AC5798AC4C11E5E";
+            hash = "sha256-hghRILwoPCHh4sJl5ItksPjvOCf5cyujNMp1qVtjJPI=";
+          };
+          trust = 5; # ultimate
+        }
       ];
     };
 
