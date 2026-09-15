@@ -135,17 +135,8 @@
       "cursor"
     ];
     brews = [
-      "mas"
       "dagger"
     ];
-    masApps = {
-      "Dark Reader for Safari" = 1438243180;
-      "WiFi Signal" = 525912054;
-      "Xcode" = 497799835;
-      "Flow - Focus & Pomodoro Timer" = 1423210932;
-      "WhatsApp Messenger" = 310633997;
-      "Tailscale" = 1475387142;
-    };
   };
   # https://github.com/zhaofengli/nix-homebrew/issues/3#issuecomment-1622240992
   system.activationScripts.fixHomebrewPermissions.text = lib.mkOrder 1501 (
@@ -167,7 +158,7 @@
   system.activationScripts.postActivation.text = ''
     if [ -f "${config.homebrew.prefix}/bin/brew" ]; then
       echo >&2 "Homebrew cleanup (zap)..."
-      PATH="${config.homebrew.prefix}/bin:${lib.makeBinPath [ pkgs.mas ]}:$PATH" \
+      PATH="${config.homebrew.prefix}/bin:$PATH" \
       sudo --preserve-env=PATH --user=${lib.escapeShellArg config.homebrew.user} --set-home \
         brew bundle cleanup --zap --force --file=${pkgs.writeText "Brewfile" config.homebrew.brewfile}
     fi

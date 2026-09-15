@@ -11,12 +11,8 @@
       _1password-cli
     ];
   };
-  homebrew = {
-    casks = [ "1password" ];
-    masApps = {
-      "1Password for Safari" = 1569813296;
-    };
-  };
+  homebrew.casks = [ "1password" ];
+  programs.mas.packages."1Password for Safari" = 1569813296;
   home-manager.users.${config.system.primaryUser} =
     let
       hmConfig = config.home-manager.users.${config.system.primaryUser};

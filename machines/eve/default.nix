@@ -21,6 +21,8 @@
     ./system.nix
     ./window-management.nix
     ./homebrew.nix
+    ./mas.nix
+    ./xcode.nix
     ./nix.nix
     ./1password.nix
     ./home.nix
