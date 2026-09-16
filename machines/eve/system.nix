@@ -102,14 +102,21 @@
 
       LaunchServices.LSQuarantine = false;
       spaces.spans-displays = false;
-      CustomUserPreferences = {
-        "com.microsoft.Excel" = {
-          AppleLocale = "uk_UA";
+      CustomUserPreferences =
+        let
+          home = config.users.users.${config.my.user}.home;
+          # the sandboxed App Store builds read preferences from their container
+          officeDomain =
+            app: "${home}/Library/Containers/com.microsoft.${app}/Data/Library/Preferences/com.microsoft.${app}";
+        in
+        {
+          ${officeDomain "Excel"} = {
+            AppleLocale = "uk_UA";
+          };
+          ${officeDomain "Word"} = {
+            AppleLocale = "uk_UA";
+          };
         };
-        "com.microsoft.Word" = {
-          AppleLocale = "uk_UA";
-        };
-      };
     };
     keyboard = {
       enableKeyMapping = true;
