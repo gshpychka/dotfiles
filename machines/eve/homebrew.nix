@@ -109,6 +109,7 @@
       "signal"
       "discord"
       "element"
+      "viber"
 
       # -- work --
       {
