@@ -10,6 +10,14 @@ in
 {
   options.my.tailscale = {
     enable = lib.mkEnableOption "Tailscale integration";
+    authKeySopsFile = lib.mkOption {
+      type = lib.types.nullOr lib.types.path;
+      default = null;
+      description = ''
+        sops file holding this host's own single-use auth key under
+        `tailscale-auth-key` (null = the host is enrolled already).
+      '';
+    };
     magicDns = lib.mkOption {
       type = lib.types.bool;
       default = false;
@@ -29,10 +37,12 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    sops.secrets."tailscale-auth-key" = {
-      sopsFile = ../../../secrets/common/tailscale.yaml;
-      key = "tailscale-auth-key";
-      restartUnits = [ config.systemd.services.tailscaled-autoconnect.name ];
+    sops.secrets = lib.optionalAttrs (cfg.authKeySopsFile != null) {
+      "tailscale-auth-key" = {
+        sopsFile = cfg.authKeySopsFile;
+        key = "tailscale-auth-key";
+        restartUnits = [ config.systemd.services.tailscaled-autoconnect.name ];
+      };
     };
 
     services.tailscale = {
@@ -43,7 +53,8 @@ in
         "--advertise-routes"
         "${lib.concatStringsSep "," cfg.advertiseRoutes}"
       ];
-      authKeyFile = config.sops.secrets."tailscale-auth-key".path;
+      authKeyFile =
+        if cfg.authKeySopsFile != null then config.sops.secrets."tailscale-auth-key".path else null;
     };
 
     # Enable IP forwarding for exit node functionality and subnet routing
