@@ -15,6 +15,8 @@ let
   leaseHosts = lib.filterAttrs (_: h: h.mac != null) lanHosts;
   # hosts that need wildcard sub-domains (e.g. foo.reaper → reaper’s IP)
   subdomainHosts = lib.filterAttrs (_: h: h.enableSubdomains) lanHosts;
+  # subset that is on the tailnet
+  tailnetHosts = lib.filterAttrs (_: h: h.tailscaleIp != null) config.my.hosts;
   # every LAN host except ourselves (we are covered by expand-hosts)
   otherLanHosts = lib.filterAttrs (name: _: name != config.networking.hostName) lanHosts;
 in
@@ -172,9 +174,14 @@ in
       # allows us to use subdomains
       # dnsmasq cannot alias wildcard to another name, so we have to specify the IPs
       # this is why we use static leases at all
-      address = lib.mapAttrsToList (
-        name: h: "/" + name + "." + config.networking.domain + "/" + h.lanIp
-      ) subdomainHosts;
+      address =
+        lib.mapAttrsToList (
+          name: h: "/" + name + "." + config.networking.domain + "/" + h.lanIp
+        ) subdomainHosts
+        # wildcard A records resolving <name>-ts to the host's tailnet address
+        ++ lib.mapAttrsToList (
+          name: h: "/" + name + "-ts." + config.networking.domain + "/" + h.tailscaleIp
+        ) tailnetHosts;
 
       # upstream
       server = [ "127.0.0.1#${toString config.services.adguardhome.settings.dns.port}" ];
