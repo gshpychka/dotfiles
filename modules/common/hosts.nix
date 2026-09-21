@@ -26,6 +26,11 @@
               default = null;
               description = "Static LAN address (null = dynamic or not on the LAN)";
             };
+            tailscaleIp = lib.mkOption {
+              type = lib.types.nullOr lib.types.str;
+              default = null;
+              description = "Tailnet address, per `tailscale ip -4` (null = not a tailnet node)";
+            };
             mac = lib.mkOption {
               type = lib.types.nullOr lib.types.str;
               default = null;
@@ -61,6 +66,7 @@
       # harbor is the DHCP server and assigns its own static address
       harbor = {
         lanIp = "192.168.1.2";
+        tailscaleIp = "100.113.82.84";
         enableSubdomains = true;
         # harbor's main user is "pi"
         sshUser = "pi";
