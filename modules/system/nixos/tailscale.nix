@@ -47,6 +47,9 @@ in
 
     services.tailscale = {
       enable = true;
+      # enrol from default prefs, so any left in tailscaled.state give way to
+      # the flags below
+      extraUpFlags = [ "--reset" ];
       extraSetFlags = [ (if cfg.magicDns then "--accept-dns" else "--accept-dns=false") ]
       ++ [ (if cfg.exitNode then "--advertise-exit-node" else "--advertise-exit-node=false") ]
       ++ [
