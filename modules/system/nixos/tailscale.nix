@@ -10,11 +10,6 @@ in
 {
   options.my.tailscale = {
     enable = lib.mkEnableOption "Tailscale integration";
-    ssh = lib.mkOption {
-      type = lib.types.bool;
-      default = false;
-      description = "Enable Tailscale SSH support";
-    };
     magicDns = lib.mkOption {
       type = lib.types.bool;
       default = false;
@@ -42,10 +37,7 @@ in
 
     services.tailscale = {
       enable = true;
-      extraSetFlags = [
-        (if cfg.ssh then "--ssh" else "--ssh=false")
-      ]
-      ++ [ (if cfg.magicDns then "--accept-dns" else "--accept-dns=false") ]
+      extraSetFlags = [ (if cfg.magicDns then "--accept-dns" else "--accept-dns=false") ]
       ++ [ (if cfg.exitNode then "--advertise-exit-node" else "--advertise-exit-node=false") ]
       ++ [
         "--advertise-routes"
@@ -71,9 +63,5 @@ in
         iptables -A FORWARD -o ${config.services.tailscale.interfaceName} -j ACCEPT
       '';
     };
-
-    networking.firewall.interfaces.${config.services.tailscale.interfaceName}.allowedTCPPorts =
-      # only affects the tailscale interface
-      lib.mkIf cfg.ssh [ 22 ];
   };
 }

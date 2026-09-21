@@ -47,7 +47,6 @@
 
   my.tailscale = {
     enable = true;
-    ssh = true;
     magicDns = false;
     exitNode = true;
     advertiseRoutes = [ config.my.lan.cidr ];
