@@ -34,17 +34,32 @@ in
           let
             # Tailscale MagicDNS names take the form <host>.<tailnet>.ts.net
             tailnetSuffix = "ts.net";
-            fleetBlocks = lib.mapAttrs (
-              name: h:
-              lib.hm.dag.entryBefore [ "local" ] (
+            hostBlock =
+              h: extra:
+              lib.hm.dag.entryBefore [ "local" "remote" ] (
                 {
-                  header = "Match final host ${name},${name}.${domain},${name}.*.${tailnetSuffix}";
                   User = if h.sshUser != null then h.sshUser else osConfig.my.user;
                   ForwardAgent = true;
                 }
+                // extra
                 // h.sshSettings
-              )
+              );
+            fleetBlocks = lib.mapAttrs (
+              name: h:
+              hostBlock h {
+                header = "Match final host ${name},${name}.${domain},${name}.*.${tailnetSuffix}";
+              }
             ) osConfig.my.hosts;
+
+            # HostName carries the tailnet address, so <name>-ts works with any
+            # resolver.
+            tailnetBlocks = lib.mapAttrs' (
+              name: h:
+              lib.nameValuePair "${name}-ts" (hostBlock h {
+                header = "Match final host ${name}-ts,${name}-ts.${domain}";
+                HostName = h.tailscaleIp;
+              })
+            ) (lib.filterAttrs (_: h: h.tailscaleIp != null) osConfig.my.hosts);
           in
           # order matters for SSH, since the first value wins (no overrides later)
           # The order of the attrs specified here has no effect on the resulting file
@@ -52,6 +67,7 @@ in
           # Short attr names are used (rather than literal `Match ...` keys) so the DAG
           # references stay stable and readable.
           fleetBlocks
+          // tailnetBlocks
           // {
 
             local = {
