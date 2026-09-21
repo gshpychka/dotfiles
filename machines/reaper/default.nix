@@ -117,6 +117,12 @@
 
   my.opkssh.enable = true;
 
+  my.tailscale = {
+    enable = true;
+    magicDns = false;
+    authKeySopsFile = ../../secrets/reaper/tailscale.yaml;
+  };
+
   virtualisation = {
     docker = {
       enable = true;
