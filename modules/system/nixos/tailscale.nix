@@ -47,6 +47,7 @@ in
 
     services.tailscale = {
       enable = true;
+      openFirewall = true;
       extraSetFlags = [ (if cfg.magicDns then "--accept-dns" else "--accept-dns=false") ]
       ++ [ (if cfg.exitNode then "--advertise-exit-node" else "--advertise-exit-node=false") ]
       ++ [
