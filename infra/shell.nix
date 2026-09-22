@@ -17,6 +17,14 @@ let
     p.clementblaise_age
     p.tailscale_tailscale
   ]);
+  # sops exec-env takes one command string, which a shell re-parses, so each
+  # argument is requoted with printf %q
+  sopsExecEnv =
+    name: package:
+    pkgs.writeShellScriptBin name ''
+      ${lib.getExe pkgs.sops} exec-env "$REPO_ROOT/secrets/infra/terraform.env" \
+        "${lib.getExe package} $(printf '%q ' "$@")"
+    '';
 in
 pkgs.mkShell {
   buildInputs = [
@@ -25,12 +33,8 @@ pkgs.mkShell {
     pkgs.sops
     pkgs.age
     pkgs.terragrunt
-    (pkgs.writeShellScriptBin "tf" ''
-      ${lib.getExe pkgs.sops} exec-env "$REPO_ROOT/secrets/infra/terraform.env" "${lib.getExe terraform} $*"
-    '')
-    (pkgs.writeShellScriptBin "tg" ''
-      ${lib.getExe pkgs.sops} exec-env "$REPO_ROOT/secrets/infra/terraform.env" "${lib.getExe pkgs.terragrunt} $*"
-    '')
+    (sopsExecEnv "tf" terraform)
+    (sopsExecEnv "tg" pkgs.terragrunt)
   ];
   shellHook = ''
     export REPO_ROOT=$(git rev-parse --show-toplevel)
