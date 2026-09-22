@@ -78,6 +78,7 @@
       };
       reaper = {
         lanIp = "192.168.1.4";
+        tailscaleIp = "100.76.49.76";
         mac = "C8:7F:54:0B:FB:8C";
         enableSubdomains = true;
       };
