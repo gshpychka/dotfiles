@@ -1,7 +1,5 @@
-local agitator = require("agitator")
-
 vim.keymap.set("n", "<leader>tm", function()
-  agitator.git_time_machine({
+  require("agitator").git_time_machine({
     use_current_win = true,
     set_custom_shortcuts = function(bufnr)
       vim.keymap.set("n", "J", function()

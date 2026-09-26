@@ -1,8 +1,19 @@
-local Hydra = require("hydra")
-local agitator = require("agitator")
 local gitsigns = require("gitsigns")
 
-Hydra({
+-- builds the hydra on first use of its body key
+local function lazy_hydra(spec)
+  local hydra
+  vim.keymap.set(spec.mode, spec.body, function()
+    if not hydra then
+      local opts = vim.tbl_extend("force", {}, spec)
+      opts.body = nil
+      hydra = require("hydra")(opts)
+    end
+    hydra:activate()
+  end, { desc = spec.name })
+end
+
+lazy_hydra({
   name = "Git",
   config = {
     color = "pink",
@@ -19,7 +30,7 @@ Hydra({
       gitsigns.toggle_deleted(false)
 
       -- wrapping in pcall to suppress the error if there is no blame window open
-      pcall(agitator.git_blame_close)
+      pcall(require("agitator").git_blame_close)
     end,
   },
   mode = { "n", "x", "v" },
@@ -71,7 +82,7 @@ Hydra({
     {
       "b",
       function()
-        agitator.git_blame_toggle({
+        require("agitator").git_blame_toggle({
           sidebar_width = 40,
           formatter = function(commit)
             return commit.date.day
@@ -98,7 +109,7 @@ Hydra({
   },
 })
 
-Hydra({
+lazy_hydra({
   name = "WindowManage",
   config = {
     color = "pink",

@@ -6,6 +6,14 @@
 }:
 let
   cfg = config.my.neovim;
+  cacheDir = "${config.xdg.cacheHome}/nvim";
+  # vim.loader keys its bytecode cache on path, mtime and size; store files
+  # all carry mtime 1, so a changed config or plugin set must drop the cache
+  luacStamp = pkgs.writeText "nvim-luac-stamp" (
+    lib.concatStringsSep "\n" (
+      [ "${./config}" ] ++ map (p: "${p.plugin or p}") config.programs.neovim.plugins
+    )
+  );
 in
 {
   options.my.neovim = {
@@ -13,9 +21,12 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    # clear neovim cache on activation to ensure config changes take effect
-    home.activation.clearNeovimCache = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-      run rm -rf ${config.xdg.cacheHome}/nvim
+    home.activation.clearNeovimLuaCache = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+      if [ "$(readlink ${cacheDir}/luac.stamp)" != "${luacStamp}" ]; then
+        run rm -rf ${cacheDir}/luac
+        run mkdir -p ${cacheDir}
+        run ln -sfn ${luacStamp} ${cacheDir}/luac.stamp
+      fi
     '';
 
     programs.neovim = {

@@ -8,8 +8,14 @@ vim.api.nvim_create_autocmd("FileType", {
     if not (lang and vim.treesitter.language.add(lang)) then
       return
     end
-    vim.treesitter.start(ev.buf, lang)
-    vim.bo[ev.buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+    -- query compilation costs tens of ms per language; running it after the
+    -- first redraw keeps it off the path to a visible buffer
+    vim.schedule(function()
+      if vim.api.nvim_buf_is_valid(ev.buf) and vim.bo[ev.buf].filetype == ev.match then
+        vim.treesitter.start(ev.buf, lang)
+        vim.bo[ev.buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+      end
+    end)
   end,
 })
 
