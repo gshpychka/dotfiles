@@ -16,8 +16,8 @@
 
 set -euo pipefail
 
-SMALL=${1:?usage: mudi-wallpaper.sh <240x320.png> <480x640.png> [host]}
-LARGE=${2:?usage: mudi-wallpaper.sh <240x320.png> <480x640.png> [host]}
+SMALL=${1:?usage: wallpaper.sh <240x320.png> <480x640.png> [host]}
+LARGE=${2:?usage: wallpaper.sh <240x320.png> <480x640.png> [host]}
 HOST=${3:-192.168.8.1}
 
 IMG=/etc/gl_screen/image

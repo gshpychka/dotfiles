@@ -57,8 +57,8 @@ in
         nvim-lspconfig
         nvim-lint
         flash-nvim
-        # markdown preview via the glow cli
-        glow-nvim
+        # in-buffer markdown rendering, uses the markdown treesitter parsers
+        render-markdown-nvim
         (nvim-treesitter.withPlugins (
           p: with p; [
             bash
@@ -122,7 +122,6 @@ in
         deadnix
 
         ripgrep
-        glow # markdown renderer used by glow-nvim
       ];
     };
     xdg.configFile.nvim = {

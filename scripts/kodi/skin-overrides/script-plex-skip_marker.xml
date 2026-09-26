@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Netflix-style skip button for PlexKodiConnect's skip intro/credits/commercial
+  dialog. Kodi looks up this window in the active skin before falling back to
+  PKC's default, so kodi-bingie-customize.sh copies it into skin.bingie/1080i.
+  Deployment: scripts/kodi/runbook.md.
+
+  The button is the only control and always has focus, so the focused state is
+  the one on screen: translucent black box, thin white outline, white text.
+  Textures and fonts come from Bingie. The fill is a separate image because a
+  button draws one texture per state, which fixes the width at 300.
+-->
+<window>
+    <defaultcontrol always="true">3002</defaultcontrol>
+    <onload>Dialog.Close(fullscreeninfo,true)</onload>
+    <onload>Dialog.Close(videoosd,true)</onload>
+    <controls>
+        <control type="group">
+            <animation type="WindowOpen" reversible="false">
+                <effect type="fade" start="0" end="100" time="300"/>
+            </animation>
+            <animation type="WindowClose" reversible="false">
+                <effect type="fade" start="100" end="0" time="300"/>
+            </animation>
+            <right>90</right>
+            <bottom>150</bottom>
+            <width>300</width>
+            <height>70</height>
+            <control type="image">
+                <texture colordiffuse="99000000">colors/color_white.png</texture>
+            </control>
+            <control type="grouplist" id="3001">
+                <control type="button" id="3002">
+                    <label>$INFO[Window.Property(marker_message)]</label>
+                    <width>300</width>
+                    <height>70</height>
+                    <font>Bold28</font>
+                    <textcolor>b3ffffff</textcolor>
+                    <focusedcolor>ffffffff</focusedcolor>
+                    <shadowcolor>00000000</shadowcolor>
+                    <aligny>center</aligny>
+                    <align>center</align>
+                    <texturefocus border="10" colordiffuse="ffffffff">diffuse/thinborder.png</texturefocus>
+                    <texturenofocus border="10" colordiffuse="80ffffff">diffuse/thinborder.png</texturenofocus>
+                </control>
+            </control>
+        </control>
+    </controls>
+</window>

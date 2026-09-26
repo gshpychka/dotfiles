@@ -1,0 +1,12 @@
+[Unit]
+Description=Reapply Bingie skin customizations after a skin update
+
+[Path]
+# systemd also watches the parent directories, so this still fires when a skin
+# update deletes and re-extracts the whole addon directory. The script's own
+# write triggers one more run, which finds nothing to do.
+PathChanged=/storage/.kodi/addons/skin.bingie/1080i/IncludesBingie.xml
+Unit=kodi-bingie-customize.service
+
+[Install]
+WantedBy=multi-user.target

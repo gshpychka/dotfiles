@@ -14,7 +14,7 @@
 #
 # RANGES covers my.lan.cidr (modules/common/hosts.nix) and must follow it.
 #
-# Deployment lives in scripts/mudi-runbook.md.
+# Deployment lives in scripts/mudi/runbook.md.
 
 RANGES="192.168.1.0/25 192.168.1.128/25"
 TS=tailscale0

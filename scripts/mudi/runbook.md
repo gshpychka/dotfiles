@@ -20,7 +20,7 @@ The router has no sftp-server, so scp does not work.
 
 ```sh
 ssh root@192.168.8.1 'cat > /etc/tailnet-home-routes.sh; chmod +x /etc/tailnet-home-routes.sh' \
-  < scripts/tailnet-home-routes.sh
+  < scripts/mudi/tailnet-home-routes.sh
 ```
 
 ## 3. On the router
@@ -93,7 +93,7 @@ printf '%s\n' /etc/sysupgrade.conf /etc/tailnet-home-routes.sh \
 all four paths in `/etc/sysupgrade.conf`.
 
 ```sh
-scripts/mudi-wallpaper.sh <240x320.png> <480x640.png>
+scripts/mudi/wallpaper.sh <240x320.png> <480x640.png>
 ```
 
 ## 5. Check
