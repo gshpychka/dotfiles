@@ -10,7 +10,7 @@
 #
 # Imperative, one-time without trustedProxy: a browser reaching the Control UI
 # through a reverse proxy is a remote device and must be paired from the host:
-#   sudo -u openclaw openclaw-cli devices list / devices approve <id>
+#   openclaw devices list / openclaw devices approve <id>
 {
   config,
   lib,
@@ -137,21 +137,24 @@ let
     CONTAINERS_CONF_OVERRIDE = "${containersConf}";
   };
 
-  # The operator CLI: `sudo -u openclaw openclaw-cli <command>`.
+  # The operator CLI, run as the gateway user with the gateway's environment.
   cli = pkgs.writeShellApplication {
-    name = "openclaw-cli";
-    runtimeInputs = [
-      gw.package
-      podman
-    ];
+    name = "openclaw";
+    runtimeInputs = [ podman ];
     text = ''
+      if [ "$(id -un)" != ${gw.user} ]; then
+        exec sudo -u ${gw.user} -- "$0" "$@"
+      fi
+      # Node fails to spawn children (ffmpeg, podman) from a working directory
+      # the gateway user cannot enter
+      [ -x . ] || cd ${gw.stateDir}
       ${lib.toShellVars gatewayEnv}
       export ${lib.concatStringsSep " " (lib.attrNames gatewayEnv)}
       set -a
       # shellcheck disable=SC1091
       . ${config.sops.templates."openclaw.env".path}
       set +a
-      exec openclaw "$@"
+      exec ${lib.getExe' gw.package "openclaw"} "$@"
     '';
   };
 
