@@ -73,7 +73,11 @@ class Config:
     mcp_servers: list[McpServer]
 
 
-def _header_value(value: str | dict[str, str]) -> str:
+def _maybe_secret(value: str | dict[str, str]) -> str:
+    """A literal, or {"file": path, "prefix": str} for values that are credentials.
+
+    URLs can be credentials too: ha-mcp authenticates by a secret URL path.
+    """
     if isinstance(value, str):
         return value
     return value.get("prefix", "") + _read_secret(value["file"])
@@ -84,8 +88,8 @@ def _mcp_server(raw: dict[str, Any]) -> McpServer:
     match transport["type"]:
         case "http":
             parsed: HttpServer | StdioServer = HttpServer(
-                url=transport["url"],
-                headers={k: _header_value(v) for k, v in transport.get("headers", {}).items()},
+                url=_maybe_secret(transport["url"]),
+                headers={k: _maybe_secret(v) for k, v in transport.get("headers", {}).items()},
             )
         case "stdio":
             parsed = StdioServer(
