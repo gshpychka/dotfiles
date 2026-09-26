@@ -7,4 +7,5 @@
     ts-error-translator-nvim = pkgs.callPackage ./ts-error-translator-nvim.nix { };
   };
   piPackages = pkgs.callPackage ./pi-packages { };
+  realtime-voice = pkgs.callPackage ./realtime-voice { };
 }

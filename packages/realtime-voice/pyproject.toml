@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools", "pybind11"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "realtime-voice"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+  "mcp",
+  "numpy",
+  "onnxruntime",
+  "openai",
+  "soxr",
+  "websockets",
+]
+
+[project.scripts]
+realtime-voice = "realtime_voice.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 120
