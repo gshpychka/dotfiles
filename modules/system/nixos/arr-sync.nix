@@ -188,12 +188,16 @@ in
       lib.nameValuePair "arr-sync-${tname}" {
         description = "Converge ${tname} cross-service wiring";
         after = [ ownUnit ] ++ t.afterUnits;
-        wants = [ ownUnit ];
-        wantedBy = [ "multi-user.target" ];
+        # converges only while the app runs, and again each time it starts
+        wantedBy = [
+          "multi-user.target"
+          ownUnit
+        ];
         # Spec/engine live in the store, so a changed wiring re-runs this on switch.
         serviceConfig = {
           Type = "oneshot";
           RemainAfterExit = true;
+          ExecCondition = "${lib.getExe' pkgs.systemd "systemctl"} is-active --quiet ${ownUnit}";
           ExecStart = "${lib.getExe' engine "arr-sync"} ${specFile tname t}";
           # Reads SOPS secret files; only talks to localhost APIs.
           NoNewPrivileges = true;

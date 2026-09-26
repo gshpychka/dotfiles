@@ -9,6 +9,23 @@ let
   inherit (import ./disks.nix) arrayMembers;
 
   deviceUnit = path: "${utils.escapeSystemdPath path}.device";
+
+  arrayMountPoint = config.fileSystems."/mnt/hoard".mountPoint;
+  arrayMountUnit = "${utils.escapeSystemdPath arrayMountPoint}.mount";
+  # Services whose data lives on the array. With the enclosure absent they are
+  # skipped, and they start once the array mounts and stop if it goes away.
+  arrayServices = [
+    "plex"
+    "jellyfin"
+    "sonarr"
+    "radarr"
+    "lidarr"
+    "bazarr"
+    # completed downloads land on the array
+    "qbittorrent"
+    "sabnzbd"
+    "samba-smbd"
+  ];
 in
 {
   boot = {
@@ -147,18 +164,27 @@ in
     };
   };
 
-  systemd.services.reboot-if-hoard-is-borked = rec {
-    unitConfig = {
-      ConditionPathIsMountPoint = config.fileSystems."/mnt/hoard".mountPoint;
+  systemd.services =
+    lib.genAttrs arrayServices (_: {
+      unitConfig.ConditionPathIsMountPoint = arrayMountPoint;
+      after = [ arrayMountUnit ];
+      partOf = [ arrayMountUnit ];
+      wantedBy = [ arrayMountUnit ];
+    })
+    // {
+      reboot-if-hoard-is-borked = rec {
+        unitConfig = {
+          ConditionPathIsMountPoint = config.fileSystems."/mnt/hoard".mountPoint;
+        };
+        serviceConfig.Type = "oneshot";
+        script = ''
+          if ! ${pkgs.coreutils}/bin/touch ${unitConfig.ConditionPathIsMountPoint}/.health-check 2>/dev/null; then
+            echo "Filesystem not healthy, rebooting"
+            ${pkgs.systemd}/bin/systemctl --no-block reboot
+          fi
+        '';
+      };
     };
-    serviceConfig.Type = "oneshot";
-    script = ''
-      if ! ${pkgs.coreutils}/bin/touch ${unitConfig.ConditionPathIsMountPoint}/.health-check 2>/dev/null; then
-        echo "Filesystem not healthy, rebooting"
-        ${pkgs.systemd}/bin/systemctl --no-block reboot
-      fi
-    '';
-  };
 
   systemd.timers.reboot-if-hoard-is-borked =
     let

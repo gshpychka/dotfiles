@@ -11,12 +11,6 @@ in
           IOAccounting = "yes";
           IODeviceWeight = weight 1000;
         };
-        unitConfig = {
-          RequiresMountsFor = [
-            "/mnt/oasis"
-            "/mnt/hoard"
-          ];
-        };
       };
       media-bulk = {
         sliceConfig = {
@@ -27,11 +21,6 @@ in
       };
       system-samba = {
         # extend existing slice
-        unitConfig = {
-          RequiresMountsFor = [
-            "/mnt/hoard"
-          ];
-        };
         sliceConfig = {
           IOAccounting = "yes";
           IODeviceWeight = weight 100;
