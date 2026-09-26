@@ -24,7 +24,8 @@ let
   inherit (pkgs.stdenv.hostPlatform) system;
   podman = config.virtualisation.podman.package;
 
-  configFile = config.environment.etc.${lib.removePrefix "/etc/" gw.configPath}.source;
+  configEtcPath = lib.removePrefix "/etc/" gw.configPath;
+  configFile = config.environment.etc.${configEtcPath}.source;
   unit = "${gw.unitName}.service";
 
   sopsKey = key: "openclaw/${key}";
@@ -435,6 +436,12 @@ in
       environmentFiles = [ config.sops.templates."openclaw.env".path ];
       servicePath = [ podman ];
       execStartPre = [ "${loadSandboxImage}" ];
+    };
+
+    # only the gateway user reads its config
+    environment.etc.${configEtcPath} = {
+      mode = lib.mkForce "0400";
+      inherit (gw) user group;
     };
 
     users.users.${gw.user}.autoSubUidGidRange = true;
