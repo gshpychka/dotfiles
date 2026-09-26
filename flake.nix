@@ -287,6 +287,7 @@
           update-pi-packages = {
             type = "app";
             program = lib.getExe piPackages.updateScript;
+            inherit (piPackages.updateScript) meta;
           };
         }
       );

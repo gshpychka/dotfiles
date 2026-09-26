@@ -50,6 +50,7 @@ in
 
   updateScript = writeShellApplication {
     name = "update-pi-packages";
+    meta.description = "Regenerate the pi-packages package-lock.json";
     runtimeInputs = [
       nodejs
       git
