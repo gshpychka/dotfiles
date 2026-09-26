@@ -1,5 +1,4 @@
-_:
-{
+_: {
   my.rustdesk-server = {
     enable = false;
     # This address is handed to clients verbatim, and the firewall only

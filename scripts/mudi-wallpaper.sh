@@ -23,7 +23,10 @@ HOST=${3:-192.168.8.1}
 IMG=/etc/gl_screen/image
 
 for f in "$SMALL" "$LARGE"; do
-    [ -f "$f" ] || { echo "no such file: $f" >&2; exit 1; }
+  [ -f "$f" ] || {
+    echo "no such file: $f" >&2
+    exit 1
+  }
 done
 
 # the router has no sftp-server, so scp is out
@@ -31,8 +34,8 @@ ssh "root@$HOST" "cd $IMG && for f in wallpaper.png wallpaper_home_style_default
     [ -f \"\$f.orig\" ] || cp \"\$f\" \"\$f.orig\"
 done"
 
-ssh "root@$HOST" "cat > $IMG/wallpaper.png" < "$SMALL"
-ssh "root@$HOST" "cat > $IMG/wallpaper_home_style_default.png" < "$LARGE"
+ssh "root@$HOST" "cat > $IMG/wallpaper.png" <"$SMALL"
+ssh "root@$HOST" "cat > $IMG/wallpaper_home_style_default.png" <"$LARGE"
 
 ssh "root@$HOST" "
 for p in $IMG/wallpaper.png $IMG/wallpaper_home_style_default.png \

@@ -107,7 +107,8 @@
           home = config.users.users.${config.my.user}.home;
           # the sandboxed App Store builds read preferences from their container
           officeDomain =
-            app: "${home}/Library/Containers/com.microsoft.${app}/Data/Library/Preferences/com.microsoft.${app}";
+            app:
+            "${home}/Library/Containers/com.microsoft.${app}/Data/Library/Preferences/com.microsoft.${app}";
         in
         {
           ${officeDomain "Excel"} = {

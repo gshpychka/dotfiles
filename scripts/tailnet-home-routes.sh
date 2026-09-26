@@ -24,17 +24,17 @@ STATE=/tmp/tailnet-home-routes.gw
 
 # withdraw exemptions belonging to a previous upstream
 if [ -f "$STATE" ]; then
-    while read -r old; do
-        [ -n "$old" ] && ip route del "$old/32" 2>/dev/null
-    done < "$STATE"
-    rm -f "$STATE"
+  while read -r old; do
+    [ -n "$old" ] && ip route del "$old/32" 2>/dev/null
+  done <"$STATE"
+  rm -f "$STATE"
 fi
 
 # the default route can lag ifup by a moment
 i=0
 while [ "$i" -lt 5 ] && [ -z "$(ip route show table main default)" ]; do
-    i=$((i + 1))
-    sleep 1
+  i=$((i + 1))
+  sleep 1
 done
 
 # exempt every upstream gateway inside the range, before diverting anything
@@ -48,14 +48,14 @@ ip route show table main default | awk '
         if (gw != "" && dev != "") print gw, dev
     }
 ' | while read -r gw dev; do
-    case "$gw" in
-        192.168.1.*)
-            ip route replace "$gw/32" dev "$dev" scope link
-            echo "$gw" >> "$STATE"
-            ;;
-    esac
+  case "$gw" in
+  192.168.1.*)
+    ip route replace "$gw/32" dev "$dev" scope link
+    echo "$gw" >>"$STATE"
+    ;;
+  esac
 done
 
 for r in $RANGES; do
-    ip route replace "$r" dev "$TS"
+  ip route replace "$r" dev "$TS"
 done

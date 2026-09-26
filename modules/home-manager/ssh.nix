@@ -55,10 +55,12 @@ in
             # resolver.
             tailnetBlocks = lib.mapAttrs' (
               name: h:
-              lib.nameValuePair "${name}-ts" (hostBlock h {
-                header = "Match final host ${name}-ts,${name}-ts.${domain}";
-                HostName = h.tailscaleIp;
-              })
+              lib.nameValuePair "${name}-ts" (
+                hostBlock h {
+                  header = "Match final host ${name}-ts,${name}-ts.${domain}";
+                  HostName = h.tailscaleIp;
+                }
+              )
             ) (lib.filterAttrs (_: h: h.tailscaleIp != null) osConfig.my.hosts);
           in
           # order matters for SSH, since the first value wins (no overrides later)
