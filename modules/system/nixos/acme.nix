@@ -49,6 +49,8 @@ with lib;
       defaults = {
         email = "acme@${cfg.domain}";
         dnsProvider = "cloudflare";
+        # the LAN resolver shadows each machine's subdomains with local records
+        dnsResolver = "1.1.1.1:53";
         environmentFile = config.sops.templates."acme.env".path;
         reloadServices = lib.mkIf config.services.nginx.enable [ "nginx" ];
         group = "acme";
