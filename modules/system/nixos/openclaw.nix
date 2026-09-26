@@ -116,24 +116,12 @@ let
     TELEGRAM_BOT_TOKEN = "telegram-bot-token";
     TELEGRAM_OWNER_ID = "telegram-owner-id";
   }
-  // lib.optionalAttrs cfg.anthropic.enable {
-    ANTHROPIC_API_KEY = "anthropic-api-key";
-  };
+  // cfg.providerKeys;
   envRef = id: {
     source = "env";
     provider = "default";
     inherit id;
   };
-
-  ollamaModelRef = model: "ollama/${model}";
-  primaryModel =
-    if cfg.anthropic.enable then
-      "anthropic/${cfg.anthropic.model}"
-    else
-      ollamaModelRef (lib.head cfg.ollama.models);
-  fallbackModels = map ollamaModelRef (
-    if cfg.anthropic.enable then cfg.ollama.models else lib.tail cfg.ollama.models
-  );
 
   publicOrigin = "https://${cfg.publicHost}";
 
@@ -225,31 +213,11 @@ let
       restart = false;
     };
 
-    models = {
-      catalogRefresh.enabled = false;
-      providers.ollama = {
-        # the native API root: its /v1 OpenAI-compatible surface breaks tool calls
-        inherit (cfg.ollama) baseUrl;
-        api = "ollama";
-        # OpenClaw requires a key for hosts outside its local-address heuristic;
-        # the endpoint ignores it.
-        apiKey = "keyless";
-        timeoutSeconds = 300;
-        models = map (id: {
-          inherit id;
-          name = id;
-          inherit (cfg.ollama) contextWindow;
-          # the native API sends only an explicit num_ctx
-          params.num_ctx = cfg.ollama.contextWindow;
-          maxTokens = 8192;
-        }) cfg.ollama.models;
-      };
-    };
+    models.catalogRefresh.enabled = false;
 
     agents.defaults = {
       model = {
-        primary = primaryModel;
-        fallbacks = fallbackModels;
+        inherit (cfg.model) primary fallbacks;
       };
       workspace = "${gw.stateDir}/workspace";
       userTimezone = config.time.timeZone;
@@ -267,6 +235,9 @@ let
         };
         browser.enabled = false;
       };
+    }
+    // lib.optionalAttrs (cfg.model.utility != null) {
+      utilityModel = cfg.model.utility;
     };
 
     tools = {
@@ -279,9 +250,6 @@ let
         "bundle-mcp"
         "web_fetch"
       ];
-      # small local models are the weaker prompt-injection target, so they get
-      # no untrusted web content while holding the MCP tools
-      byProvider.ollama.deny = [ "web_fetch" ];
       media = {
         audio.enabled = true;
         models = [
@@ -307,14 +275,7 @@ let
 
     mcp.servers = lib.mapAttrs (_: server: server.settings) enabledMcpServers;
 
-    tts = lib.optionalAttrs (cfg.speech.tts != null) {
-      provider = "openai";
-      providers.openai = {
-        inherit (cfg.speech.tts) baseUrl model voice;
-        # the self-hosted endpoint takes no key; the provider requires one
-        apiKey = "keyless";
-      };
-    };
+    inherit (cfg) tts;
   };
 
   # The gateway refuses to start on unknown or legacy keys in a read-only
@@ -348,8 +309,8 @@ in
       description = ''
         SOPS file holding flat keys gateway-token, plus telegram-bot-token and
         telegram-owner-id (a numeric Telegram user id) with telegram.enable,
-        anthropic-api-key with anthropic.enable, and every key an enabled MCP
-        server's secrets name.
+        and every key named by providerKeys and by an enabled MCP server's
+        secrets.
       '';
     };
 
@@ -375,32 +336,38 @@ in
 
     telegram.enable = lib.mkEnableOption "the Telegram channel, answering DMs from the owner only";
 
-    anthropic = {
-      enable = lib.mkEnableOption "Anthropic as the primary model provider";
-      model = lib.mkOption {
+    model = {
+      primary = lib.mkOption {
         type = lib.types.str;
-        default = "claude-sonnet-5";
-        description = "Anthropic model id.";
+        example = "openai/gpt-6-astra";
+        description = "Model answering every turn, as provider/model.";
+      };
+      fallbacks = lib.mkOption {
+        type = lib.types.listOf lib.types.str;
+        default = [ ];
+        description = "Models tried in order when the primary fails, as provider/model.";
+      };
+      utility = lib.mkOption {
+        type = lib.types.nullOr lib.types.str;
+        default = null;
+        description = ''
+          Model for short internal tasks such as titles and progress
+          narration, as provider/model; null takes the primary provider's
+          small model.
+        '';
       };
     };
 
-    ollama = {
-      baseUrl = lib.mkOption {
-        type = lib.types.str;
-        description = "Native Ollama API root.";
+    providerKeys = lib.mkOption {
+      type = lib.types.attrsOf lib.types.str;
+      default = { };
+      example = {
+        OPENAI_API_KEY = "openai-api-key";
       };
-      models = lib.mkOption {
-        type = lib.types.nonEmptyListOf lib.types.str;
-        description = ''
-          Ollama models, in fallback order. The first is primary while
-          Anthropic is off.
-        '';
-      };
-      contextWindow = lib.mkOption {
-        type = lib.types.ints.positive;
-        default = 32768;
-        description = "Context window requested from Ollama for every model.";
-      };
+      description = ''
+        Provider credentials by the environment variable OpenClaw reads for
+        them, each set from the named sopsFile key.
+      '';
     };
 
     mcpServers = lib.mkOption {
@@ -434,27 +401,14 @@ in
       );
     };
 
-    speech.tts = lib.mkOption {
-      default = null;
-      description = "OpenAI-compatible text-to-speech endpoint for spoken replies.";
-      type = lib.types.nullOr (
-        lib.types.submodule {
-          options = {
-            baseUrl = lib.mkOption {
-              type = lib.types.str;
-              description = "API root, ending in /v1.";
-            };
-            model = lib.mkOption {
-              type = lib.types.str;
-              description = "Model name.";
-            };
-            voice = lib.mkOption {
-              type = lib.types.str;
-              description = "Voice name.";
-            };
-          };
-        }
-      );
+    tts = lib.mkOption {
+      type = (pkgs.formats.json { }).type;
+      default = { };
+      example = {
+        provider = "elevenlabs";
+        auto = "inbound";
+      };
+      description = "Text-to-speech settings (https://docs.openclaw.ai/tools/tts).";
     };
   };
 
