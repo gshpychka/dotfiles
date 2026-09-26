@@ -12,7 +12,7 @@ Personal dotfiles managed with Nix flakes for multiple machines (eve, harbor, re
 - `packages/` - Custom package definitions
 - `secrets/` - SOPS encrypted secrets
 - `infra/` - Terraform for cloud infrastructure (GCP VM for buoy, Cloudflare DNS) and the bootstrap GCE image under `infra/nixos/`
-- `scripts/` - Artifacts for devices outside the flake, one folder per device with a `runbook.md` as its deployment path: `mudi/` (GL.iNet travel router) and `kodi/` (CoreELEC Kodi box)
+- `scripts/` - Artifacts for devices outside the flake, one folder per device with a `runbook.md` as its deployment path: `mudi/` (GL.iNet travel router), `kodi/` (CoreELEC Kodi box) and `voice-pe/` (kitchen Home Assistant Voice PE firmware)
 
 ## Standards
 - As much as possible should be declarative

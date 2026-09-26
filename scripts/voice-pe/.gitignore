@@ -1,0 +1,3 @@
+# written from sops by the runbook, never committed
+secrets.yaml
+.esphome/
