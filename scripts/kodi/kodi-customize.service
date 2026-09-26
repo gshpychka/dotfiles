@@ -1,0 +1,11 @@
+[Unit]
+Description=Apply Kodi addon customizations
+# At boot, patch before Kodi loads the addons.
+Before=kodi.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh /storage/.config/kodi-customize/kodi-customize.sh
+
+[Install]
+WantedBy=kodi.service

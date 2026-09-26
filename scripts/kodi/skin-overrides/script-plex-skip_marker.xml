@@ -2,7 +2,7 @@
 <!--
   Netflix-style skip button for PlexKodiConnect's skip intro/credits/commercial
   dialog. Kodi looks up this window in the active skin before falling back to
-  PKC's default, so kodi-bingie-customize.sh copies it into skin.bingie/1080i.
+  PKC's default, so kodi-customize.sh copies it into skin.bingie/1080i.
   Deployment: scripts/kodi/runbook.md.
 
   The button is the only control and always has focus, so the focused state is

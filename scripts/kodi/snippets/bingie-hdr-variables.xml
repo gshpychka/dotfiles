@@ -1,0 +1,26 @@
+<!-- kodi-customize: labels for the HDR types written by snippets/pkc-hdr.py -->
+<variable name="KodiCustomizeDvProfile">
+	<value condition="String.Contains(ListItem.HdrType,-p10.0)">P10.0</value>
+	<value condition="String.Contains(ListItem.HdrType,-p10.1)">P10.1</value>
+	<value condition="String.Contains(ListItem.HdrType,-p10.2)">P10.2</value>
+	<value condition="String.Contains(ListItem.HdrType,-p10.4)">P10.4</value>
+	<value condition="String.Contains(ListItem.HdrType,-p8.1)">P8.1</value>
+	<value condition="String.Contains(ListItem.HdrType,-p8.2)">P8.2</value>
+	<value condition="String.Contains(ListItem.HdrType,-p8.4)">P8.4</value>
+	<value condition="String.Contains(ListItem.HdrType,-p7)">P7</value>
+	<value condition="String.Contains(ListItem.HdrType,-p5)">P5</value>
+	<value condition="String.Contains(ListItem.HdrType,-p4)">P4</value>
+</variable>
+<variable name="KodiCustomizeHdrLabel">
+	<value condition="String.StartsWith(ListItem.HdrType,dolbyvision) + String.EndsWith(ListItem.HdrType,-hdr10plus)">DV $VAR[KodiCustomizeDvProfile] · HDR10+</value>
+	<value condition="String.StartsWith(ListItem.HdrType,dolbyvision)">DV $VAR[KodiCustomizeDvProfile]</value>
+	<value condition="String.IsEqual(ListItem.HdrType,hdr10plus)">HDR10+</value>
+	<value>$VAR[VideoHDRVar]</value>
+</variable>
+<!-- Bingie has flag images for dolbyvision and hdr10 only -->
+<variable name="KodiCustomizeHdrFlag">
+	<value condition="String.StartsWith(ListItem.HdrType,dolbyvision)">dolbyvision</value>
+	<value condition="String.StartsWith(ListItem.HdrType,hdr10)">hdr10</value>
+	<value>$INFO[ListItem.HdrType]</value>
+</variable>
+<!-- kodi-customize: end -->
