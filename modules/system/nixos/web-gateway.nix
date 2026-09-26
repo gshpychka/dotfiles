@@ -4,7 +4,8 @@
 # vhost <name>.<fqdn> backed by the machine's wildcard ACME certificate. With
 # `sso.enable`, Authelia (portal at auth.<fqdn>, single sign-on across the
 # vhosts) authorizes every request to services with `auth = "gateway"` through
-# nginx's auth_request; the service's own login is expected to be off.
+# nginx's auth_request and passes the signed-in identity in Remote-* headers;
+# the service's own login is expected to be off.
 # Services with `auth = "native"` authenticate every request themselves and
 # are proxied untouched. With the SSO layer off, every vhost is a plain TLS
 # proxy and nothing else of the gateway exists on the machine.
@@ -12,8 +13,9 @@
 # Programmatic access model: declared apiBypassPrefixes skip the portal and
 # answer to the service's own API-key check, and a loopback firewall gate
 # limits direct connections to gateway-auth ports to declared static clients
-# and the host's systemd DynamicUser class, so delegating a service's login to
-# the gateway does not open that service to arbitrary local processes.
+# and the host's systemd DynamicUser class, or to a service's own client list,
+# so delegating a service's login to the gateway does not open that service to
+# arbitrary local processes.
 #
 # nginx wiring follows https://www.authelia.com/integration/proxies/nginx/.
 { config, lib, ... }:
@@ -59,6 +61,15 @@ let
 
   delegatesAuth = svc: ssoOn && svc.auth == "gateway";
 
+  # Identity Authelia's authz endpoint returns for a signed-in request
+  # (https://www.authelia.com/integration/proxies/nginx/), keyed by header.
+  identityHeaders = {
+    ${cfg.sso.identityHeader} = "$authelia_user";
+    Remote-Groups = "$authelia_groups";
+    Remote-Email = "$authelia_email";
+    Remote-Name = "$authelia_name";
+  };
+
   mkServiceVhost = name: svc: {
     serverName = serviceDomain name;
     useACMEHost = fqdn;
@@ -66,14 +77,25 @@ let
     locations = {
       "/" = {
         proxyPass = "http://127.0.0.1:${toString svc.port}";
+        proxyWebsockets = svc.websockets;
       }
       // lib.optionalAttrs (delegatesAuth svc) {
         # On 401 the authz endpoint's Location header points at the portal
-        # with the original URL as the post-login redirect.
+        # with the original URL as the post-login redirect. On 200 it names the
+        # signed-in user; proxy_set_header replaces any client-sent copy of
+        # those headers, and an empty value (bypassed paths) drops them.
         extraConfig = ''
           auth_request ${authzPath};
           auth_request_set $redirection_url $upstream_http_location;
           error_page 401 =302 $redirection_url;
+          ${lib.concatStrings (
+            lib.mapAttrsToList (header: variable: ''
+              auth_request_set ${variable} $upstream_http_${
+                lib.toLower (lib.replaceStrings [ "-" ] [ "_" ] header)
+              };
+              proxy_set_header ${header} ${variable};
+            '') identityHeaders
+          )}
         '';
       };
     }
@@ -153,6 +175,31 @@ let
       "$iptables_cmd" -w -X ${gateChain} 2>/dev/null || true
     done
   '';
+  # Services naming their own loopback clients get port-specific rules ahead of
+  # the machine-wide allow-list, so that list never reaches their ports.
+  exclusiveGateServices = lib.filterAttrs (_: s: s.loopbackClients != null) gatewayAuthServices;
+  exclusiveGateRules = lib.concatStrings (
+    lib.mapAttrsToList (
+      _: svc:
+      lib.concatMapStrings
+        (user: ''
+          ip46tables -A ${gateChain} -p tcp --dport ${toString svc.port} -m owner --uid-owner ${user} -j RETURN
+        '')
+        (
+          lib.unique (
+            [
+              "root"
+              config.services.nginx.user
+            ]
+            ++ svc.loopbackClients
+          )
+        )
+      + ''
+        ip46tables -A ${gateChain} -p tcp --dport ${toString svc.port} -j REJECT --reject-with tcp-reset
+      ''
+    ) exclusiveGateServices
+  );
+
   # Keep the global OUTPUT hook fixed and put the mutable port policy inside
   # the module-owned chain, mirroring NixOS's own INPUT -> nixos-fw shape.
   # Start from the same configuration-independent teardown used on disable,
@@ -160,6 +207,7 @@ let
   gateInstall = ''
     ${gateTeardown}
     ip46tables -N ${gateChain}
+    ${exclusiveGateRules}
     ${lib.concatMapStrings (user: ''
       ip46tables -A ${gateChain} -m owner --uid-owner ${user} -j RETURN
     '') allowedUsers}
@@ -196,6 +244,21 @@ in
                 front, the service's own login off) or the service itself
                 (multi-user identity lives in the app).
               '';
+            };
+            loopbackClients = lib.mkOption {
+              type = lib.types.nullOr (lib.types.listOf lib.types.str);
+              default = null;
+              description = ''
+                Users whose processes may open direct loopback connections to
+                this gateway-auth service's port, replacing loopbackGate.clients
+                and the DynamicUser class for it; root and nginx are always
+                admitted. Null applies the machine-wide allow-list.
+              '';
+            };
+            websockets = lib.mkOption {
+              type = lib.types.bool;
+              default = false;
+              description = "Forward WebSocket upgrades to the service.";
             };
             apiBypassPrefixes = lib.mkOption {
               type = lib.types.listOf lib.types.str;
@@ -237,6 +300,15 @@ in
     };
 
     sso = {
+      identityHeader = lib.mkOption {
+        type = lib.types.str;
+        readOnly = true;
+        default = "Remote-User";
+        description = ''
+          Request header carrying the signed-in user's name to gateway-auth
+          services; the gateway sets it on every proxied request.
+        '';
+      };
       enable = lib.mkOption {
         type = lib.types.bool;
         default = false;
@@ -318,6 +390,20 @@ in
         {
           assertion = lib.all (u: config.users.users ? ${u}) cfg.loopbackGate.clients;
           message = "my.webGateway.loopbackGate.clients must name existing users.users entries.";
+        }
+        {
+          assertion = lib.all (s: s.loopbackClients == null || s.auth == "gateway") (
+            lib.attrValues cfg.services
+          );
+          message = "my.webGateway.services: loopbackClients only applies to auth = \"gateway\" services.";
+        }
+        {
+          assertion = lib.all (u: config.users.users ? ${u}) (
+            lib.concatMap (s: lib.optionals (s.loopbackClients != null) s.loopbackClients) (
+              lib.attrValues cfg.services
+            )
+          );
+          message = "my.webGateway.services.*.loopbackClients must name existing users.users entries.";
         }
         {
           assertion = !gateOn || iptablesFirewall;
