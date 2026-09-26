@@ -37,6 +37,7 @@
     ./io-scheduling.nix
     ./docker.nix
     ./home.nix
+    ./openclaw.nix
   ];
 
   nixpkgs.hostPlatform = "x86_64-linux";

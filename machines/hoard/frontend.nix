@@ -79,6 +79,11 @@ in
         port = ports.jellyfin;
         auth = "native";
       };
+      openclaw = {
+        port = ports.openclaw;
+        websockets = true;
+        loopbackClients = [ config.services.openclaw-gateway.user ];
+      };
     };
     loopbackGate.clients = [
       config.services.sonarr.user

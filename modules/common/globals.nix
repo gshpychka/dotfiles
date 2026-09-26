@@ -87,9 +87,14 @@ in
         type = lib.types.str;
         description = "nginx location proxying the ollama API root; the trailing slash drives proxy_pass path rewriting";
       };
+      nativeUrl = lib.mkOption {
+        type = lib.types.str;
+        default = "https://${config.my.ollama.host}.${config.my.domain}${lib.removeSuffix "/" config.my.ollama.proxyPath}";
+        description = "Native Ollama API root (serving /api/*), reachable from the LAN and the tunnels routed into it";
+      };
       baseUrl = lib.mkOption {
         type = lib.types.str;
-        default = "https://${config.my.ollama.host}.${config.my.domain}${config.my.ollama.proxyPath}v1";
+        default = "${config.my.ollama.nativeUrl}/v1";
         description = "OpenAI-compatible API root, reachable from the LAN and the tunnels routed into it";
       };
     };

@@ -19,6 +19,7 @@
     seerr = config.services.seerr.port;
     maintainerr = 6246;
     tautulli = config.services.tautulli.port;
+    openclaw = config.services.openclaw-gateway.port;
     # fixed upstream
     plex = 32400;
     # Jellyfin's default HTTP port; not exposed as a module option
