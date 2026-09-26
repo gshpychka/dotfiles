@@ -15,7 +15,7 @@
       userHeader = config.my.webGateway.sso.identityHeader;
       users = [ config.my.user ];
     };
-    telegram.enable = false;
+    telegram.enable = true;
 
     model.primary = "openai/gpt-6-astra";
     providerKeys = {
