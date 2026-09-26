@@ -21,6 +21,8 @@ let
     "radarr"
     "lidarr"
     "bazarr"
+    # its only clients are the arrs above
+    "prowlarr"
     # completed downloads land on the array
     "qbittorrent"
     "sabnzbd"
