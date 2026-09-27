@@ -244,7 +244,8 @@
                 touch $out
               '';
               ruff = pkgs.runCommand "check-ruff" { nativeBuildInputs = [ pkgs.ruff ]; } ''
-                ruff check --config ${self}/ruff.toml ${self}
+                cd ${self}
+                ruff check --no-cache --config ruff.toml .
                 touch $out
               '';
               # the store copy has no .git for biome to read ignores from

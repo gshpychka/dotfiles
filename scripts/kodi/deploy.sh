@@ -12,7 +12,7 @@ UNITS=(kodi-customize.service kodi-customize.path)
 tar -C "$HERE" -cf - kodi-customize.sh skin-overrides snippets |
   ssh "$HOST" "rm -rf $REMOTE && mkdir $REMOTE && tar -C $REMOTE -xf -"
 for unit in "${UNITS[@]}"; do
-  ssh "$HOST" "cat > /storage/.config/system.d/$unit" < "$HERE/$unit"
+  ssh "$HOST" "cat > /storage/.config/system.d/$unit" <"$HERE/$unit"
 done
 ssh "$HOST" "systemctl daemon-reload &&
   systemctl enable ${UNITS[*]} &&

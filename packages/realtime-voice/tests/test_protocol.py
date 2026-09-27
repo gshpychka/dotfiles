@@ -1,5 +1,4 @@
 import pytest
-
 from realtime_voice.protocol import (
     ControlType,
     Kind,

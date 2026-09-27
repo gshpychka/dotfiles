@@ -37,13 +37,12 @@ from openai.resources.realtime.realtime import AsyncRealtimeConnection
 from websockets.exceptions import ConnectionClosed
 
 from ._aec import EchoCanceller
-from .alignment import Aligner, AlignedBlock
+from .alignment import AlignedBlock, Aligner
 from .bargein import BargeInDetector
 from .config import Config
 from .dsp import SileroVad, mic_to_speaker_rate, speaker_to_mic_rate
 from .mcp_hub import McpHub
 from .protocol import (
-    MIC_RATE,
     SPEAKER_RATE,
     ControlType,
     MicFrame,
@@ -304,7 +303,9 @@ class Conversation:
                 # Finished playing without interruption.
                 self._barge_in.reset()
                 self._last_activity = time.monotonic()
-                await self._set_phase(Phase.THINKING if self._turn.response_id or self._tools_running else Phase.LISTENING)
+                await self._set_phase(
+                    Phase.THINKING if self._turn.response_id or self._tools_running else Phase.LISTENING
+                )
 
     def _take_pending(self, n: int) -> np.ndarray:
         parts = []

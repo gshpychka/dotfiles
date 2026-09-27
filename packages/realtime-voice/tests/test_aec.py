@@ -2,7 +2,6 @@
 
 import numpy as np
 from conftest import speechlike
-
 from realtime_voice._aec import EchoCanceller
 from realtime_voice.dsp import rms_dbfs
 from realtime_voice.protocol import MIC_RATE

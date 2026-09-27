@@ -1,7 +1,6 @@
 """The aligner must put played audio at the mic sample where the DAC emitted it."""
 
 import numpy as np
-
 from realtime_voice.alignment import BLOCK, Aligner
 from realtime_voice.protocol import MIC_RATE, SPEAKER_RATE, MicFrame, PlayedReport
 
@@ -30,7 +29,11 @@ def run(aligner: Aligner, played_at_mic: int, audio16: np.ndarray, report_jitter
         played16 = min(len(audio16), max(0, now_mic - played_at_mic))
         played_speaker = played16 * SPEAKER_RATE // MIC_RATE
         if played_speaker > reported:
-            dac_us = T0 + (played_at_mic + played16) * US // MIC_RATE + int(rng.integers(-report_jitter_us, report_jitter_us + 1))
+            dac_us = (
+                T0
+                + (played_at_mic + played16) * US // MIC_RATE
+                + int(rng.integers(-report_jitter_us, report_jitter_us + 1))
+            )
             aligner.add_played(PlayedReport(played_speaker - reported, dac_us))
             reported = played_speaker
         blocks.extend(aligner.blocks())

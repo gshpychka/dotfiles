@@ -19,7 +19,10 @@ GUISETTINGS=/storage/.kodi/userdata/guisettings.xml
 SUBTITLES_ALIGN_MANUAL=0
 SUBTITLES_POSITION_1080=1080
 
-log() { logger -t kodi-customize "$1"; echo "$1"; }
+log() {
+  logger -t kodi-customize "$1"
+  echo "$1"
+}
 
 status=0
 reload_skin=0
@@ -44,7 +47,7 @@ insert_before() {
       inblock { if (/kodi-customize: end/) inblock = 0; next }
       { print }
       END { exit inblock ? 2 : 0 }
-    ' "$file" > "$file.tmp.$$"; then
+    ' "$file" >"$file.tmp.$$"; then
       rm -f "$file.tmp.$$"
       log "block in $file has no end marker, left untouched; restore the addon's file"
       status=1
@@ -64,7 +67,7 @@ insert_before() {
       while ((getline line < snippet) > 0) print (line == "" ? "" : indent line)
     }
     { print }
-  ' "$file" > "$file.tmp.$$"
+  ' "$file" >"$file.tmp.$$"
   mv "$file.tmp.$$" "$file"
 }
 
@@ -87,7 +90,7 @@ hide_profile() {
     armed { armed-- }
     { print }
     END { exit done ? 0 : 2 }
-  ' "$file" > "$file.tmp.$$"; then
+  ' "$file" >"$file.tmp.$$"; then
     rm -f "$file.tmp.$$"
     log "profile switcher anchor not found, skin layout changed; update this script"
     status=1
@@ -106,7 +109,7 @@ pkc_hdr() {
   [ -f "$PKC_MEDIA" ] || return 0
   cp "$PKC_MEDIA" "$PKC_MEDIA.orig.$$"
   if insert_before "$PKC_MEDIA" "videotracks.append(track)" "$HERE/snippets/pkc-hdr.py"; then
-    if python3 -m py_compile "$PKC_MEDIA" 2> /dev/null; then
+    if python3 -m py_compile "$PKC_MEDIA" 2>/dev/null; then
       log "PKC HDR details patched; restart Kodi to load it"
     else
       mv "$PKC_MEDIA.orig.$$" "$PKC_MEDIA"
@@ -168,8 +171,8 @@ kodi_settings() {
       next
     }
     { print }
-  ' "$GUISETTINGS" > "$GUISETTINGS.tmp.$$"
-  if [ "$(md5sum < "$GUISETTINGS.tmp.$$")" = "$(md5sum < "$GUISETTINGS")" ]; then
+  ' "$GUISETTINGS" >"$GUISETTINGS.tmp.$$"
+  if [ "$(md5sum <"$GUISETTINGS.tmp.$$")" = "$(md5sum <"$GUISETTINGS")" ]; then
     rm -f "$GUISETTINGS.tmp.$$"
     return 0
   fi
@@ -184,7 +187,7 @@ install_overrides() {
   for src in "$HERE"/skin-overrides/*.xml; do
     [ -f "$src" ] || continue
     dst="$SKIN/$(basename "$src")"
-    if [ -f "$dst" ] && [ "$(md5sum < "$src")" = "$(md5sum < "$dst")" ]; then
+    if [ -f "$dst" ] && [ "$(md5sum <"$src")" = "$(md5sum <"$dst")" ]; then
       continue
     fi
     cp "$src" "$dst"
@@ -204,6 +207,6 @@ if [ -d "$SKIN" ]; then
 fi
 
 if [ "$reload_skin" = 1 ] && systemctl -q is-active kodi.service; then
-  kodi-send --action="ReloadSkin()" > /dev/null
+  kodi-send --action="ReloadSkin()" >/dev/null
 fi
 exit "$status"

@@ -23,7 +23,7 @@ class Recorder:
     def __init__(self, directory: Path) -> None:
         directory.mkdir(parents=True, exist_ok=True)
         stamp = time.strftime("%Y%m%d-%H%M%S")
-        self._wav = wave.open(str(directory / f"{stamp}.wav"), "wb")
+        self._wav = wave.open(str(directory / f"{stamp}.wav"), "wb")  # noqa: SIM115 - held open until close()
         self._wav.setnchannels(3)
         self._wav.setsampwidth(2)
         self._wav.setframerate(MIC_RATE)

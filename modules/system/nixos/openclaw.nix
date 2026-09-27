@@ -386,7 +386,7 @@ in
               description = "Whether the server is connected; its secrets must exist in sopsFile while it is.";
             };
             settings = lib.mkOption {
-              type = (pkgs.formats.json { }).type;
+              inherit (pkgs.formats.json { }) type;
               description = ''
                 The server's mcp.servers entry (https://docs.openclaw.ai/tools/mcp),
                 a url or a command. Strings reference secrets as ''${NAME}.
@@ -406,7 +406,7 @@ in
     };
 
     tts = lib.mkOption {
-      type = (pkgs.formats.json { }).type;
+      inherit (pkgs.formats.json { }) type;
       default = { };
       example = {
         provider = "elevenlabs";

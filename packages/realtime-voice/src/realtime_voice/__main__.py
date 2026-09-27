@@ -15,8 +15,8 @@ from websockets.asyncio.server import Server, ServerConnection, serve
 from websockets.http11 import Request, Response
 
 from . import config as config_module
-from .config import Config
 from ._aec import EchoCanceller
+from .config import Config
 from .conversation import Conversation, openai_connector
 from .mcp_hub import McpHub
 from .protocol import MIC_RATE

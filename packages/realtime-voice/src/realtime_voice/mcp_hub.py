@@ -89,7 +89,9 @@ class McpHub:
     def __init__(self, servers: list[McpServer]) -> None:
         for server in servers:
             if SEPARATOR in server.name or not _VALID_NAME.match(server.name):
-                raise ValueError(f"MCP server name {server.name!r} must match {_VALID_NAME.pattern} without {SEPARATOR!r}")
+                raise ValueError(
+                    f"MCP server name {server.name!r} must match {_VALID_NAME.pattern} without {SEPARATOR!r}"
+                )
         self._connections = {s.name: _Connection(s) for s in servers}
         self._tasks: list[asyncio.Task[None]] = []
 

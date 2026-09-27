@@ -5,7 +5,6 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-
 from realtime_voice.config import BargeIn, Config
 
 
@@ -20,22 +19,22 @@ def vad_model() -> Path:
 @pytest.fixture
 def make_config(tmp_path: Path):
     def make(vad_model: Path = Path("/nonexistent"), **overrides) -> Config:
-        fields = dict(
-            listen_host="127.0.0.1",
-            listen_port=0,
-            device_token="token",
-            openai_api_key="key",
-            model="gpt-realtime-2",
-            voice="marin",
-            instructions="",
-            transcription_model=None,
-            vad_model=vad_model,
-            barge_in=BargeIn(vad_threshold=0.5, min_speech_ms=96, min_level_dbfs=-50.0, preroll_ms=300),
-            idle_timeout_s=1.0,
-            max_conversation_s=30.0,
-            recordings_dir=None,
-            mcp_servers=[],
-        )
+        fields = {
+            "listen_host": "127.0.0.1",
+            "listen_port": 0,
+            "device_token": "token",
+            "openai_api_key": "key",
+            "model": "gpt-realtime-2",
+            "voice": "marin",
+            "instructions": "",
+            "transcription_model": None,
+            "vad_model": vad_model,
+            "barge_in": BargeIn(vad_threshold=0.5, min_speech_ms=96, min_level_dbfs=-50.0, preroll_ms=300),
+            "idle_timeout_s": 1.0,
+            "max_conversation_s": 30.0,
+            "recordings_dir": None,
+            "mcp_servers": [],
+        }
         fields.update(overrides)
         return Config(**fields)
 

@@ -14,9 +14,8 @@ from types import SimpleNamespace
 
 import numpy as np
 import pytest
-from conftest import speechlike
-
 import realtime_voice.conversation as conversation_module
+from conftest import speechlike
 from realtime_voice._aec import EchoCanceller
 from realtime_voice.conversation import Conversation, EndReason
 from realtime_voice.dsp import rms_dbfs
