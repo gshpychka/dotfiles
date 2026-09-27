@@ -30,7 +30,6 @@
   sops.templates."ntfy.env" = {
     content = ''
       NTFY_AUTH_USERS=admin:${config.sops.placeholder.ntfy-admin-password-hash}:admin,gatus:${config.sops.placeholder.ntfy-gatus-password-hash}:user,reader:${config.sops.placeholder.ntfy-reader-password-hash}:user
-      NTFY_AUTH_ACCESS=gatus:${config.services.gatus.settings.alerting.ntfy.topic}:write-only,reader:${config.services.gatus.settings.alerting.ntfy.topic}:read-only
       NTFY_AUTH_TOKENS=admin:${config.sops.placeholder.ntfy-admin-token},gatus:${config.sops.placeholder.ntfy-gatus-token}
     '';
     restartUnits = [ "ntfy-sh.service" ];

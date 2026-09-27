@@ -3,30 +3,47 @@
   ...
 }:
 let
-  # Alerts post directly to the Telegram Bot API through Gatus's custom provider,
-  # so the message body is entirely ours. Each endpoint carries its own
-  # triggered/resolved copy via the [ALERT_TRIGGERED_OR_RESOLVED] placeholder,
-  # which Gatus substitutes into the body as a raw string. Each message is
-  # toJSON-encoded (quotes included) and placed unquoted in the body, so any
-  # quotes or newlines in the copy stay valid JSON.
+  ntfyTopic = "buoy-status";
+
+  # Gatus's ntfy provider writes its own message text, so ntfy alerts override the custom
+  # provider's request with a plain-text publish. [ALERT_TRIGGERED_OR_RESOLVED] is substituted
+  # raw, so each alert encodes the copy for its own body.
+  #
+  # Gatus keys persisted alert state by type and description, so each alert of the pair
+  # carries a distinct description.
   #
   # os.ExpandEnv runs over the whole config, so a literal "$" in a message must be
   # written as "$$".
-  mkTelegramAlert =
+  mkAlerts =
     { triggered, resolved }:
-    {
-      type = "custom";
-      send-on-resolved = true;
-      provider-override.placeholders.ALERT_TRIGGERED_OR_RESOLVED = {
-        TRIGGERED = builtins.toJSON triggered;
-        RESOLVED = builtins.toJSON resolved;
-      };
-    };
-
-  ntfyAlert = {
-    type = "ntfy";
-    send-on-resolved = true;
-  };
+    [
+      {
+        type = "custom";
+        description = "telegram";
+        send-on-resolved = true;
+        provider-override.placeholders.ALERT_TRIGGERED_OR_RESOLVED = {
+          TRIGGERED = builtins.toJSON triggered;
+          RESOLVED = builtins.toJSON resolved;
+        };
+      }
+      {
+        type = "custom";
+        description = "ntfy";
+        send-on-resolved = true;
+        provider-override = {
+          url = "http://${config.services.ntfy-sh.settings.listen-http}/${ntfyTopic}";
+          headers = {
+            Authorization = "Bearer \${NTFY_TOKEN}";
+            Priority = "4";
+          };
+          body = "[ALERT_TRIGGERED_OR_RESOLVED]";
+          placeholders.ALERT_TRIGGERED_OR_RESOLVED = {
+            TRIGGERED = triggered;
+            RESOLVED = resolved;
+          };
+        };
+      }
+    ];
 in
 {
   services.gatus = {
@@ -38,12 +55,6 @@ in
       storage = {
         type = "sqlite";
         path = "/var/lib/gatus/data.db";
-      };
-      alerting.ntfy = {
-        url = "http://${config.services.ntfy-sh.settings.listen-http}";
-        topic = "buoy-status";
-        token = "\${NTFY_TOKEN}";
-        priority = 4;
       };
       alerting.custom = {
         url = "https://api.telegram.org/bot\${TELEGRAM_BOT_TOKEN}/sendMessage";
@@ -65,13 +76,10 @@ in
           interval = "30s";
           ui.hide-hostname = true;
           conditions = [ "[CONNECTED] == true" ];
-          alerts = [
-            (mkTelegramAlert {
-              triggered = "🔴 Інтернет зник.";
-              resolved = "🟢 Інтернет знову є.";
-            })
-            ntfyAlert
-          ];
+          alerts = mkAlerts {
+            triggered = "🔴 Інтернет зник.";
+            resolved = "🟢 Інтернет знову є.";
+          };
         }
         {
           name = "Seerr";
@@ -81,13 +89,10 @@ in
             "[STATUS] == 200"
             "[RESPONSE_TIME] < 10000"
           ];
-          alerts = [
-            (mkTelegramAlert {
-              triggered = "🔴 Seerr недоступний.";
-              resolved = "🟢 Seerr знову доступний.";
-            })
-            ntfyAlert
-          ];
+          alerts = mkAlerts {
+            triggered = "🔴 Seerr недоступний.";
+            resolved = "🟢 Seerr знову доступний.";
+          };
         }
         {
           name = "Plex";
@@ -101,17 +106,19 @@ in
             "[STATUS] == 200"
             "[RESPONSE_TIME] < 10000"
           ];
-          alerts = [
-            (mkTelegramAlert {
-              triggered = "🔴 Plex недоступний.";
-              resolved = "🟢 Plex знову доступний.";
-            })
-            ntfyAlert
-          ];
+          alerts = mkAlerts {
+            triggered = "🔴 Plex недоступний.";
+            resolved = "🟢 Plex знову доступний.";
+          };
         }
       ];
     };
   };
+
+  services.ntfy-sh.settings.auth-access = [
+    "gatus:${ntfyTopic}:write-only"
+    "reader:${ntfyTopic}:read-only"
+  ];
 
   sops.secrets.gatus-env = {
     sopsFile = ../../secrets/buoy/gatus.env;
