@@ -7,3 +7,13 @@ resource "cloudflare_dns_record" "vm" {
   proxied = false
   comment = "GCP VM static IP for SSH access"
 }
+
+resource "cloudflare_dns_record" "status" {
+  zone_id = var.cloudflare_zone_id
+  name    = "status.${var.domain_name}"
+  content = "${cloudflare_zero_trust_tunnel_cloudflared.buoy.id}.cfargotunnel.com"
+  type    = "CNAME"
+  ttl     = 1
+  proxied = true
+  comment = "Gatus status page via buoy-tunnel"
+}
