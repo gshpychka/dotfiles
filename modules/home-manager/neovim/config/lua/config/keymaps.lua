@@ -58,7 +58,7 @@ vim.keymap.set({ "n" }, "<leader>fo", function()
     async = true,
     timeout_ms = 10000,
     filter = function(client)
-      return client.name ~= "typescript-tools"
+      return client.name ~= "tsc"
     end,
   })
 end, { desc = "LSP formatting" })

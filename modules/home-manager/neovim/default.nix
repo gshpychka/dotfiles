@@ -109,14 +109,15 @@ in
         telescope-nvim
         telescope-fzf-native-nvim
         telescope-ui-select-nvim
-        typescript-tools-nvim
         tsc-nvim
         ts-error-translator-nvim
         snacks-nvim
       ];
       extraPackages = with pkgs; [
         # LSP servers
-        typescript-language-server
+        typescript
+        # extraPackages sit last on PATH, behind any project tsc; lspconfig's tsc server also accepts `tsgo`
+        (writeShellScriptBin "tsgo" ''exec ${typescript}/bin/tsc "$@"'')
         pyright
         nixd
         lua-language-server

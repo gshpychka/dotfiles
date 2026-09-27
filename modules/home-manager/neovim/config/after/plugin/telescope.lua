@@ -46,8 +46,16 @@ end, { desc = "Telescope live grep relative to a directory" })
 
 vim.keymap.set("n", "<leader>b", builtin.buffers, { desc = "Telescope buffers" })
 vim.keymap.set("n", "<leader>fr", function()
-  builtin.lsp_references({ include_declaration = false, reuse_win = true })
-end, { desc = "Telescope LSP references" })
+  local opts = { include_declaration = false, reuse_win = true }
+  local make_quickfix_entry = require("telescope.make_entry").gen_from_quickfix(opts)
+  -- an entry_maker returning nil skips the entry
+  opts.entry_maker = function(item)
+    if not item.text:match("^import") then
+      return make_quickfix_entry(item)
+    end
+  end
+  builtin.lsp_references(opts)
+end, { desc = "Telescope LSP references, excluding imports" })
 vim.keymap.set("n", "gd", builtin.lsp_definitions, { desc = "Go to definition" })
 vim.keymap.set("n", "<leader>fts", builtin.treesitter, { desc = "Telescope Treesitter" })
 
