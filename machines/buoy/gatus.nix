@@ -1,6 +1,5 @@
 {
   config,
-  lib,
   ...
 }:
 let
@@ -24,19 +23,15 @@ let
       };
     };
 
-  # ntfy runs alongside Telegram (see the alerting.ntfy provider below). Unlike
-  # the custom Telegram provider, the native ntfy provider builds the message
-  # itself and appends TRIGGERED/RESOLVED, so each alert only supplies a short
-  # description for context.
-  mkNtfyAlert = description: {
+  ntfyAlert = {
     type = "ntfy";
-    inherit description;
     send-on-resolved = true;
   };
 in
 {
   services.gatus = {
     enable = true;
+    environmentFile = config.sops.secrets.gatus-env.path;
     settings = {
       ui.custom-css = builtins.readFile ./gatus-gruvbox.css;
       web.address = "127.0.0.1";
@@ -44,13 +39,8 @@ in
         type = "sqlite";
         path = "/var/lib/gatus/data.db";
       };
-      # Self-hosted ntfy on this same host (see ntfy.nix). The server is
-      # deny-all, so Gatus publishes with the gatus write-only token. Gatus
-      # runs os.ExpandEnv over the whole config, so ${NTFY_TOKEN} (rendered
-      # into gatus-ntfy.env below from the same secret ntfy.nix provisions) is
-      # substituted at load time, matching the Telegram token.
       alerting.ntfy = {
-        url = "https://ntfy.${config.my.domain}";
+        url = "http://${config.services.ntfy-sh.settings.listen-http}";
         topic = "buoy-status";
         token = "\${NTFY_TOKEN}";
         priority = 4;
@@ -80,7 +70,7 @@ in
               triggered = "🔴 Інтернет зник.";
               resolved = "🟢 Інтернет знову є.";
             })
-            (mkNtfyAlert "Інтернет")
+            ntfyAlert
           ];
         }
         {
@@ -96,7 +86,7 @@ in
               triggered = "🔴 Seerr недоступний.";
               resolved = "🟢 Seerr знову доступний.";
             })
-            (mkNtfyAlert "Overseerr")
+            ntfyAlert
           ];
         }
         {
@@ -116,17 +106,13 @@ in
               triggered = "🔴 Plex недоступний.";
               resolved = "🟢 Plex знову доступний.";
             })
-            (mkNtfyAlert "Plex")
+            ntfyAlert
           ];
         }
       ];
     };
   };
 
-  # Telegram credentials (existing) stay in gatus.env; the ntfy publish token is
-  # the same secret ntfy.nix provisions, rendered into its own file so it has a
-  # single source of truth. gatus's module takes one environmentFile, so load
-  # both via systemd instead (mkForce replaces the module's single-file list).
   sops.secrets.gatus-env = {
     sopsFile = ../../secrets/buoy/gatus.env;
     format = "dotenv";
@@ -135,8 +121,8 @@ in
     content = "NTFY_TOKEN=${config.sops.placeholder.ntfy-gatus-token}";
     restartUnits = [ "gatus.service" ];
   };
-  systemd.services.gatus.serviceConfig.EnvironmentFile = lib.mkForce [
-    config.sops.secrets.gatus-env.path
+  # systemd list options concatenate, so this adds to the module's environmentFile
+  systemd.services.gatus.serviceConfig.EnvironmentFile = [
     config.sops.templates."gatus-ntfy.env".path
   ];
 }
