@@ -16,6 +16,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/nix-installer-action@main
+      # workaround: nix-openclaw reads "${../npm/openclaw}/package-lock.json", which
+      # read-only eval (flake check --no-build) cannot copy into the store
+      - run: nix eval --raw .#nixosConfigurations.hoard.config.services.openclaw-gateway.package.drvPath
       # Fleet-wide eval: all systems, no machine builds.
       - run: nix flake check --all-systems --no-build
       # --no-build skips the check derivations, so build the lint/format checks to run them.
