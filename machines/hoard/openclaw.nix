@@ -17,7 +17,7 @@
     };
     telegram.enable = true;
 
-    model.primary = "openai/gpt-6-astra";
+    model.primary = "openai/gpt-5.6-sol";
     providerKeys = {
       OPENAI_API_KEY = "openai-api-key";
       ELEVENLABS_API_KEY = "elevenlabs-api-key";
@@ -26,7 +26,15 @@
     tts = {
       provider = "elevenlabs";
       auto = "inbound";
+      providers.elevenlabs.modelId = "eleven_v3";
     };
+    transcription = [
+      {
+        provider = "elevenlabs";
+        model = "scribe_v2";
+        capabilities = [ "audio" ];
+      }
+    ];
 
     # HA's MCP Server integration: the Assist API over the entities exposed
     # to it, as a dedicated HA user

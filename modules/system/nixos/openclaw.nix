@@ -94,12 +94,6 @@ let
       | xargs --no-run-if-empty ${lib.getExe podman} rmi --force
   '';
 
-  # whisper.cpp defaults to English; auto-detection covers other languages.
-  whisperModel = pkgs.fetchurl {
-    url = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small-q5_1.bin";
-    hash = "sha256-roXkqTXXpWe9EC/lWvwWu1lb22GOEbL8dZG8CBIEEbs=";
-  };
-
   enabledMcpServers = lib.filterAttrs (_: server: server.enable) cfg.mcpServers;
   mcpSecrets = lib.concatMapAttrs (_: server: server.secrets) enabledMcpServers;
 
@@ -255,25 +249,9 @@ let
         "web_fetch"
       ];
       media = {
-        audio.enabled = true;
-        models = [
-          {
-            type = "cli";
-            capabilities = [ "audio" ];
-            command = lib.getExe' pkgs.whisper-cpp "whisper-cli";
-            args = [
-              "-m"
-              "${whisperModel}"
-              "-l"
-              "auto"
-              "-otxt"
-              "-of"
-              "{{OutputBase}}"
-              "-nt"
-              "{{AttachmentPath}}"
-            ];
-          }
-        ];
+        # an empty model list otherwise falls through to auto-detection
+        audio.enabled = cfg.transcription != [ ];
+        models = cfg.transcription;
       };
     };
 
@@ -413,6 +391,19 @@ in
         auto = "inbound";
       };
       description = "Text-to-speech settings (https://docs.openclaw.ai/tools/tts).";
+    };
+
+    transcription = lib.mkOption {
+      type = lib.types.listOf (pkgs.formats.json { }).type;
+      default = [ ];
+      example = [
+        {
+          provider = "elevenlabs";
+          model = "scribe_v2";
+          capabilities = [ "audio" ];
+        }
+      ];
+      description = "tools.media.models entries that transcribe inbound audio (https://docs.openclaw.ai/nodes/audio).";
     };
   };
 
