@@ -39,13 +39,12 @@ in
           pi-subagents
           pi-plan-mode
           pi-rewind
-          pi-permission-system
+          pi-automode
           pi-todo
           pi-ask-user-question
           pi-statusline
         ];
-        # resource paths rather than symlinks under configDir, which packages
-        # write into: pi-permission-system keeps its logs in extensions/
+        # resource paths leave configDir/extensions to per-package config such as pi-automode's
         extensions = [ "${./config/extensions}" ];
         prompts = [ "${./config/prompts}" ];
         themes = [ "${./config/themes}" ];
@@ -80,5 +79,17 @@ in
 
       context = ./config/AGENTS.md;
     };
+
+    # store-owned: `/automode model` cannot save here, so the classifier is picked below
+    # https://github.com/czottmann/pi-automode/blob/main/docs/configuration.md
+    home.file."${config.programs.pi-coding-agent.configDir}/extensions/pi-automode/config.json".text =
+      builtins.toJSON
+        {
+          autoMode = {
+            classifierModel = "anthropic/claude-haiku-4-5";
+            # in-tree file tools skip the classifier; protected paths (.git, .pi, dotfiles) still reach it
+            allowInsideWorkingDirectory = true;
+          };
+        };
   };
 }

@@ -12,9 +12,9 @@ let
   # attribute name -> npm package, since scoped names collide across publishers
   packages = {
     pi-ask-user-question = "@juicesharp/rpiv-ask-user-question";
+    pi-automode = "@czottmann/pi-automode";
     pi-lens = "pi-lens";
     pi-mcp-adapter = "pi-mcp-adapter";
-    pi-permission-system = "@gotgenes/pi-permission-system";
     pi-plan-mode = "@narumitw/pi-plan-mode";
     pi-rewind = "pi-rewind";
     pi-statusline = "@narumitw/pi-statusline";
