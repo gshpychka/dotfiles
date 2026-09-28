@@ -4,8 +4,36 @@
   pkg-config,
   webrtc-audio-processing,
   fetchurl,
+  fetchPypi,
 }:
 let
+  # The Live API client (gpt-live-1) starts at openai 3.x.
+  openai = python3Packages.buildPythonPackage rec {
+    pname = "openai";
+    version = "3.16.2";
+    format = "wheel";
+    src = fetchPypi {
+      inherit pname version format;
+      dist = "py3";
+      python = "py3";
+      hash = "sha256-Zgp/gwfmYFNCroT/RCVBLnzRnl6bKY+XVQLfKhqaXV8=";
+    };
+    dependencies = with python3Packages; [
+      anyio
+      httpx2
+      jiter
+      pydantic
+      sniffio
+      typing-extensions
+    ];
+    # openai calls only jiter.from_json, which nixpkgs' jiter provides.
+    pythonRelaxDeps = [ "jiter" ];
+    pythonImportsCheck = [
+      "openai"
+      "openai.resources.live"
+    ];
+  };
+
   # Only the ONNX graph is needed; the silero-vad Python package would pull
   # torch into the closure.
   vadModel = fetchurl {
@@ -35,14 +63,16 @@ python3Packages.buildPythonApplication {
   nativeBuildInputs = [ pkg-config ];
   buildInputs = [ webrtc-audio-processing ];
 
-  dependencies = with python3Packages; [
+  dependencies = [
+    openai
+  ]
+  ++ (with python3Packages; [
     mcp
     numpy
     onnxruntime
-    openai
     soxr
     websockets
-  ];
+  ]);
 
   nativeCheckInputs = [ python3Packages.pytestCheckHook ];
   # Tests run the real VAD model.

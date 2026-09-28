@@ -1,4 +1,4 @@
-"""Connections to the configured MCP servers, exposed as Realtime function tools.
+"""Connections to the configured MCP servers, exposed as OpenAI function tools.
 
 Each server's tools are published as `<server>__<tool>` so tools from
 different servers can't collide.
@@ -27,7 +27,7 @@ from .config import HttpServer, McpServer, StdioServer
 log = logging.getLogger(__name__)
 
 SEPARATOR = "__"
-# Realtime function names must match this.
+# OpenAI function names must match this.
 _VALID_NAME = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 _RECONNECT_DELAY_S = 5
 _CALL_TIMEOUT_S = 30
@@ -106,7 +106,7 @@ class McpHub:
             task.cancel()
         await asyncio.gather(*self._tasks, return_exceptions=True)
 
-    def realtime_tools(self) -> list[dict[str, Any]]:
+    def function_tools(self) -> list[dict[str, Any]]:
         tools = []
         for conn in self._connections.values():
             if conn.session is None:
@@ -114,7 +114,7 @@ class McpHub:
             for tool in conn.tools:
                 name = f"{conn.config.name}{SEPARATOR}{tool.name}"
                 if not _VALID_NAME.match(name):
-                    log.warning("mcp %s: skipping tool %r, name not allowed by Realtime", conn.config.name, tool.name)
+                    log.warning("mcp %s: skipping tool %r, name not allowed by OpenAI", conn.config.name, tool.name)
                     continue
                 tools.append(
                     {
@@ -146,7 +146,9 @@ class McpHub:
             log.warning("mcp %s: %s failed: %r", server, tool, e)
             conn.mark_broken()
             return json.dumps({"error": f"{qualified_name} failed: {e!r}"})
-        return _result_text(result)
+        text = _result_text(result)
+        log.info("tool %s %s -> %s", qualified_name, arguments_json, text)
+        return text
 
 
 def _result_text(result: types.CallToolResult) -> str:

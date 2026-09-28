@@ -52,7 +52,7 @@ def test_tools_are_namespaced_and_filtered(server_script):
         hub = McpHub([stdio("home", server_script), stdio("notes", server_script, frozenset({"echo"}))])
         await hub.start()
         try:
-            names = sorted(t["name"] for t in hub.realtime_tools())
+            names = sorted(t["name"] for t in hub.function_tools())
             assert names == ["home__echo", "home__secret", "notes__echo"]
             assert await hub.call("notes__echo", json.dumps({"text": "hi"})) == "notes:hi"
             assert await hub.call("home__echo", json.dumps({"text": "yo"})) == "home:yo"

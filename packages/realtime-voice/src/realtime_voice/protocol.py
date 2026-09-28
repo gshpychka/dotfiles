@@ -47,7 +47,7 @@ class Kind(enum.IntEnum):
 
 class ControlType(enum.StrEnum):
     # device -> broker
-    START = "start"  # {"wake_word": str}
+    START = "start"  # {"wake_word": str, "backend": Backend}; always the first frame
     STOP = "stop"  # user ended the conversation (button or wake word)
     FLUSHED = "flushed"  # the playback queue is empty after a FLUSH
     # broker -> device
@@ -56,10 +56,23 @@ class ControlType(enum.StrEnum):
     END = "end"  # conversation over; device closes the socket
 
 
+class Backend(enum.StrEnum):
+    """The OpenAI model family a conversation runs on."""
+
+    REALTIME = "realtime"
+    LIVE = "live"
+
+
 class Phase(enum.StrEnum):
     LISTENING = "listening"
     THINKING = "thinking"
     REPLYING = "replying"
+
+
+@dataclass(frozen=True, slots=True)
+class Start:
+    wake_word: str
+    backend: Backend
 
 
 @dataclass(frozen=True, slots=True)
@@ -113,6 +126,18 @@ def parse_control(text: str) -> tuple[ControlType, dict[str, object]]:
         return ControlType(msg["type"]), msg
     except (ValueError, KeyError, TypeError) as e:
         raise ProtocolError(f"bad control frame: {text[:80]!r}") from e
+
+
+def parse_start(message: str | bytes) -> Start:
+    if not isinstance(message, str):
+        raise ProtocolError(f"expected {ControlType.START}, got a binary frame")
+    kind, fields = parse_control(message)
+    if kind != ControlType.START:
+        raise ProtocolError(f"expected {ControlType.START}, got {kind}")
+    try:
+        return Start(str(fields.get("wake_word", "")), Backend(str(fields["backend"])))
+    except (ValueError, KeyError) as e:
+        raise ProtocolError(f"bad start frame: {message[:80]!r}") from e
 
 
 def encode_mic(first_sample: int, capture_us: int, pcm: bytes) -> bytes:

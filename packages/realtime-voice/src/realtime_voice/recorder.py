@@ -1,7 +1,7 @@
 """Optional per-conversation recordings for tuning barge-in.
 
-Each conversation writes `<stamp>.wav` (16 kHz, three channels: raw mic, the
-aligned far-end reference, echo-cancelled mic) and `<stamp>.jsonl` with the
+Each conversation writes `<stamp>-<device>.wav` (16 kHz, three channels: raw
+mic, the aligned far-end reference, echo-cancelled mic) and a `.jsonl` with the
 barge-in decisions and AEC statistics, so thresholds can be tuned offline
 against what actually happened in the room.
 """
@@ -20,9 +20,9 @@ from .protocol import MIC_RATE
 
 
 class Recorder:
-    def __init__(self, directory: Path) -> None:
+    def __init__(self, directory: Path, device: str) -> None:
         directory.mkdir(parents=True, exist_ok=True)
-        stamp = time.strftime("%Y%m%d-%H%M%S")
+        stamp = f"{time.strftime('%Y%m%d-%H%M%S')}-{device}"
         self._wav = wave.open(str(directory / f"{stamp}.wav"), "wb")  # noqa: SIM115 - held open until close()
         self._wav.setnchannels(3)
         self._wav.setsampwidth(2)

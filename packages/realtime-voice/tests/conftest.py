@@ -5,7 +5,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from realtime_voice.config import BargeIn, Config
+from realtime_voice.config import BargeIn, Config, Delegation, Live, Realtime
 
 
 @pytest.fixture
@@ -24,12 +24,22 @@ def make_config(tmp_path: Path):
             "listen_port": 0,
             "device_token": "token",
             "openai_api_key": "key",
-            "model": "gpt-realtime-2",
-            "voice": "marin",
-            "instructions": "",
-            "transcription_model": None,
-            "vad_model": vad_model,
-            "barge_in": BargeIn(vad_threshold=0.5, min_speech_ms=96, min_level_dbfs=-50.0, preroll_ms=300),
+            "devices": [],
+            "realtime": Realtime(
+                model="gpt-realtime-2",
+                voice="marin",
+                instructions="",
+                turn_eagerness="auto",
+                transcription_model=None,
+                vad_model=vad_model,
+                barge_in=BargeIn(vad_threshold=0.5, min_speech_ms=96, min_level_dbfs=-50.0, preroll_ms=300),
+            ),
+            "live": Live(
+                model="gpt-live-1",
+                voice="marin",
+                instructions="",
+                delegation=Delegation(model="gpt-6-luna", instructions="", reasoning_effort="low"),
+            ),
             "idle_timeout_s": 1.0,
             "max_conversation_s": 30.0,
             "recordings_dir": None,

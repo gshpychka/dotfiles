@@ -1,5 +1,6 @@
 import pytest
 from realtime_voice.protocol import (
+    Backend,
     ControlType,
     Kind,
     MicFrame,
@@ -11,6 +12,7 @@ from realtime_voice.protocol import (
     encode_played,
     parse_binary,
     parse_control,
+    parse_start,
 )
 
 
@@ -44,3 +46,22 @@ def test_malformed_binary(data):
 def test_malformed_control():
     with pytest.raises(ProtocolError):
         parse_control('{"type": "nope"}')
+
+
+def test_start_names_the_backend():
+    start = parse_start(encode_control(ControlType.START, wake_word="Okay Nabu", backend="live"))
+    assert start.wake_word == "Okay Nabu" and start.backend == Backend.LIVE
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        encode_control(ControlType.START, wake_word="Okay Nabu"),
+        encode_control(ControlType.START, wake_word="Okay Nabu", backend="gemini"),
+        encode_control(ControlType.STOP),
+        encode_mic(0, 0, b"\x01\x00"),
+    ],
+)
+def test_malformed_start(message):
+    with pytest.raises(ProtocolError):
+        parse_start(message)
