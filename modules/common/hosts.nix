@@ -51,6 +51,11 @@
               default = { };
               description = "Extra ssh_config keys merged into this host's Match block";
             };
+            voiceArea = lib.mkOption {
+              type = lib.types.nullOr lib.types.str;
+              default = null;
+              description = "Home Assistant area of this Voice PE (null = not a Voice PE)";
+            };
           };
         }
       );
@@ -94,10 +99,16 @@
         lanIp = "192.168.1.52";
         mac = "1C:AF:4A:0C:6E:76";
       };
-      # Home Assistant Voice PE
+      # Home Assistant Voice PEs
       kitchen-assistant = {
         lanIp = "192.168.1.53";
         mac = "20:F8:3B:09:E1:BB";
+        voiceArea = "Kitchen";
+      };
+      room-assistant = {
+        lanIp = "192.168.1.54";
+        mac = "20:F8:3B:09:14:CC";
+        voiceArea = "Room";
       };
 
       # ssh-only entries (not on the LAN / no static lease)
