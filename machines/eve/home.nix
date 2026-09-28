@@ -23,7 +23,10 @@
           neovim.enable = true;
           nh.enable = true;
           npm.enable = true;
-          pi.enable = true;
+          pi = {
+            enable = true;
+            pituitary.enable = true;
+          };
           ssh = {
             enable = true;
             opkssh.enable = true;

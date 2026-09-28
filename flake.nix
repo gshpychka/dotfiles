@@ -46,6 +46,11 @@
       # not following our nixpkgs: more cache hits that way
       url = "github:numtide/llm-agents.nix";
     };
+    pituitary = {
+      url = "git+ssh://git@github.com/gshpychka/pituitary";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.home-manager.follows = "home-manager";
+    };
     nix-openclaw = {
       # not following our nixpkgs: its pinned pnpm dependency hashes are
       # computed against its own nixpkgs

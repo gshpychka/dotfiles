@@ -3,17 +3,23 @@
   lib,
   pkgs,
   osConfig,
+  inputs,
   ...
 }:
 let
   cfg = config.my.pi;
 in
 {
+  imports = [ inputs.pituitary.homeManagerModules.default ];
+
   options.my.pi = {
     enable = lib.mkEnableOption "pi coding agent";
+    pituitary.enable = lib.mkEnableOption "pituitary, the OpenTUI frontend for pi";
   };
 
   config = lib.mkIf cfg.enable {
+    programs.pituitary.enable = cfg.pituitary.enable;
+
     programs.pi-coding-agent = {
       enable = true;
       # llm-agents.nix tracks pi releases closely; nixpkgs lags
