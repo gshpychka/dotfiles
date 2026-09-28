@@ -51,8 +51,7 @@ in
         themes = [ "${./config/themes}" ];
         # ctrl+P cycles through these
         enabledModels = [
-          "anthropic/claude-opus-5"
-          "anthropic/claude-sonnet-5"
+          "anthropic/*"
           "openai-codex/*" # ChatGPT subscription
           "ollama/*"
         ];
