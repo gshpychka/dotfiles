@@ -10,6 +10,7 @@ AUTO_LOAD = ["audio", "json", "ring_buffer"]
 
 CONF_TOKEN = "token"
 CONF_WAKE_WORD = "wake_word"
+CONF_BACKEND = "backend"
 CONF_ON_PHASE = "on_phase"
 CONF_ON_END = "on_end"
 CONF_ON_ERROR = "on_error"
@@ -25,6 +26,8 @@ StopAction = realtime_voice_ns.class_(
 IsRunningCondition = realtime_voice_ns.class_(
     "IsRunningCondition", automation.Condition, cg.Parented.template(RealtimeVoice)
 )
+Backend = realtime_voice_ns.namespace("protocol").enum("Backend", is_class=True)
+BACKENDS = {"realtime": Backend.REALTIME, "live": Backend.LIVE}
 
 CONFIG_SCHEMA = cv.Schema(
     {
@@ -96,6 +99,7 @@ ACTION_SCHEMA = maybe_simple_id({cv.GenerateID(): cv.use_id(RealtimeVoice)})
         {
             cv.GenerateID(): cv.use_id(RealtimeVoice),
             cv.Optional(CONF_WAKE_WORD, default=""): cv.templatable(cv.string),
+            cv.Required(CONF_BACKEND): cv.enum(BACKENDS, lower=True),
         }
     ),
     synchronous=True,
@@ -105,6 +109,7 @@ async def start_to_code(config, action_id, template_arg, args):
     await cg.register_parented(var, config[CONF_ID])
     wake_word = await cg.templatable(config[CONF_WAKE_WORD], args, cg.std_string)
     cg.add(var.set_wake_word(wake_word))
+    cg.add(var.set_backend(config[CONF_BACKEND]))
     return var
 
 

@@ -13,6 +13,8 @@
 //   mic task     microphone callback: frames mic audio into io_queue_
 //   audio task   speaker output callback: frames PLAYED reports into io_queue_
 
+#include "protocol.h"
+
 #include "esphome/components/microphone/microphone_source.h"
 #include "esphome/components/ring_buffer/ring_buffer.h"
 #include "esphome/components/speaker/speaker.h"
@@ -25,8 +27,10 @@
 #include <freertos/queue.h>
 
 #include <atomic>
+#include <initializer_list>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace esphome::realtime_voice {
@@ -50,7 +54,7 @@ class RealtimeVoice : public Component {
   Trigger<> *get_error_trigger() { return &this->error_trigger_; }
 
   // Opens a conversation; no-op if one is running.
-  void start(const std::string &wake_word);
+  void start(const std::string &wake_word, protocol::Backend backend);
   // Ends the conversation from the device side (button, wake word).
   void stop();
   bool is_running() const { return this->state_ != State::IDLE; }
@@ -90,7 +94,7 @@ class RealtimeVoice : public Component {
 
   void post_event_(Event::Type type, uint32_t generation, Phase phase = Phase::LISTENING);
   bool queue_io_(IoItem::Op op, uint8_t *data = nullptr, size_t len = 0);
-  void queue_control_(const char *type, const char *key = nullptr, const std::string &value = "");
+  void queue_control_(const char *type, std::initializer_list<std::pair<const char *, std::string>> fields = {});
   void feed_speaker_();
   void teardown_();
 
@@ -105,6 +109,7 @@ class RealtimeVoice : public Component {
 
   State state_{State::IDLE};
   std::string wake_word_;
+  protocol::Backend backend_{protocol::Backend::REALTIME};
   // Bumped per conversation; io items and events from older ones are dropped.
   std::atomic<uint32_t> generation_{0};
   // Mic and speaker callbacks only produce frames while this is set.
@@ -139,7 +144,11 @@ class RealtimeVoice : public Component {
 template<typename... Ts> class StartAction : public Action<Ts...>, public Parented<RealtimeVoice> {
  public:
   TEMPLATABLE_VALUE(std::string, wake_word)
-  void play(const Ts &...x) override { this->parent_->start(this->wake_word_.value(x...)); }
+  void set_backend(protocol::Backend backend) { this->backend_ = backend; }
+  void play(const Ts &...x) override { this->parent_->start(this->wake_word_.value(x...), this->backend_); }
+
+ protected:
+  protocol::Backend backend_{protocol::Backend::REALTIME};
 };
 
 template<typename... Ts> class StopAction : public Action<Ts...>, public Parented<RealtimeVoice> {

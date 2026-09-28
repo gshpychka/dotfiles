@@ -4,6 +4,7 @@
 // docstring of packages/realtime-voice/src/realtime_voice/protocol.py; keep
 // these constants in sync with it.
 
+#include <cstddef>
 #include <cstdint>
 
 namespace esphome::realtime_voice::protocol {
@@ -27,6 +28,11 @@ static constexpr const char *FLUSHED = "flushed";
 static constexpr const char *PHASE = "phase";
 static constexpr const char *FLUSH = "flush";
 static constexpr const char *END = "end";
+
+// START's "backend" field: the OpenAI model family the conversation runs on.
+enum class Backend : uint8_t { REALTIME, LIVE };
+
+inline const char *backend_name(Backend backend) { return backend == Backend::LIVE ? "live" : "realtime"; }
 
 inline void put_u32(uint8_t *p, uint32_t v) {
   for (int i = 0; i < 4; i++)

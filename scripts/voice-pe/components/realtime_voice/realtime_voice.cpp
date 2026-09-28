@@ -50,10 +50,11 @@ void RealtimeVoice::dump_config() {
 
 // -- session state machine (main loop) ----------------------------------------
 
-void RealtimeVoice::start(const std::string &wake_word) {
+void RealtimeVoice::start(const std::string &wake_word, protocol::Backend backend) {
   if (this->state_ != State::IDLE)
     return;
   this->wake_word_ = wake_word;
+  this->backend_ = backend;
   this->generation_++;
   this->state_ = State::CONNECTING;
   this->high_freq_.start();
@@ -96,7 +97,8 @@ void RealtimeVoice::loop() {
           break;
         this->state_ = State::ACTIVE;
         this->mic_samples_ = 0;
-        this->queue_control_(protocol::START, "wake_word", this->wake_word_);
+        this->queue_control_(protocol::START,
+                             {{"wake_word", this->wake_word_}, {"backend", protocol::backend_name(this->backend_)}});
         this->streaming_ = true;
         this->mic_source_->start();
         break;
@@ -186,10 +188,11 @@ bool RealtimeVoice::queue_io_(IoItem::Op op, uint8_t *data, size_t len) {
   return true;
 }
 
-void RealtimeVoice::queue_control_(const char *type, const char *key, const std::string &value) {
+void RealtimeVoice::queue_control_(const char *type,
+                                   std::initializer_list<std::pair<const char *, std::string>> fields) {
   std::string text = json::build_json([&](JsonObject root) {
     root["type"] = type;
-    if (key != nullptr)
+    for (const auto &[key, value] : fields)
       root[key] = value;
   });
   uint8_t *data = alloc_frame(text.size());

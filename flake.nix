@@ -288,13 +288,28 @@
       apps = lib.genAttrs systems (
         system:
         let
-          piPackages = nixpkgs.legacyPackages.${system}.callPackage ./packages/pi-packages { };
+          pkgs = nixpkgs.legacyPackages.${system};
+          piPackages = pkgs.callPackage ./packages/pi-packages { };
+          flashVoicePe = pkgs.writeShellApplication {
+            name = "flash-voice-pe";
+            runtimeInputs = [
+              pkgs.esphome
+              pkgs.sops
+              pkgs.git
+            ];
+            text = lib.removePrefix "#!/usr/bin/env bash\n" (builtins.readFile ./scripts/voice-pe/flash.sh);
+          };
         in
         {
           update-pi-packages = {
             type = "app";
             program = lib.getExe piPackages.updateScript;
             inherit (piPackages.updateScript) meta;
+          };
+          flash-voice-pe = {
+            type = "app";
+            program = lib.getExe flashVoicePe;
+            meta.description = "Build the Voice PE firmware and flash it to every Voice PE";
           };
         }
       );

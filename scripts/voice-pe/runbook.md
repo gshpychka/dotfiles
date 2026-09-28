@@ -1,15 +1,24 @@
 # Voice PE runbook
 
-The kitchen Voice PE (`kitchen-assistant` in `modules/common/hosts.nix`) runs
-the stock Home Assistant Voice firmware with one addition: a **Voice backend**
-select. "Home Assistant" is the stock Assist path, still switched between
-pipelines by the Assistant selects. "Realtime" hands the conversation to the
-realtime-voice broker on reaper (`machines/reaper/realtime-voice.nix`),
-which talks to the OpenAI Realtime API and lets you interrupt the reply by
-just talking.
+The Voice PEs (the hosts with a `voiceArea` in `modules/common/hosts.nix`) run
+one firmware, `voice-pe.yaml`: the stock Home
+Assistant Voice firmware with one addition, a **Voice backend** select. "Home Assistant" is the stock Assist path, still switched between
+pipelines by the Assistant selects. "Realtime" and "Live" hand the
+conversation to the realtime-voice broker on reaper
+(`machines/reaper/realtime-voice.nix`):
 
-While a Realtime conversation runs, the wake word ends it. The center button
-keeps its stock behavior (it starts Assist), so use the wake word instead.
+- Realtime runs on the OpenAI Realtime API. It takes turns, and the broker
+  stops the reply when you talk over it.
+- Live runs on GPT-Live, which listens while it speaks and decides itself
+  when to answer, yield or keep going. Home control goes through a delegated
+  Responses model.
+
+Both reach the home through Home Assistant's Assist API, the same entities and
+intents a stock Assist satellite gets. A request that names no place is about
+the PE's `voiceArea`.
+
+While a broker conversation runs, the wake word or a press of the center
+button ends it.
 A Home Assistant announcement that arrives mid-conversation shares the
 speaker with it.
 
@@ -23,13 +32,11 @@ speaker with it.
    generated:
 
    ```sh
-   nix run nixpkgs#sops -- secrets/reaper/realtime-voice.yaml
+   nix develop -c sops secrets/reaper/realtime-voice.yaml
    ```
 
-   - `openai-api-key`: an OpenAI API key with Realtime access
+   - `openai-api-key`: an OpenAI API key with Realtime and Live access
    - `ha-token`: the token from step 2
-   - `ha-mcp-url`: the ha-mcp add-on's full URL, secret path included
-     (`http://homeassistant.glib.sh:9583/private_…`)
 
 4. Deploy harbor (static lease) and reaper (broker):
 
@@ -38,43 +45,44 @@ speaker with it.
    nixos-rebuild switch --flake .#reaper --target-host reaper --sudo
    ```
 
-   Restart the Voice PE from Home Assistant so it picks up 192.168.1.53; the
-   broker's firewall only accepts that address. Home Assistant finds it again
+   Restart each Voice PE from Home Assistant so it picks up its static lease;
+   the broker only accepts those addresses. Home Assistant finds them again
    through zeroconf.
 
 ## Flashing
 
-From `scripts/voice-pe/`, over the air:
+Over the air, one build for every PE, or only the ones named:
 
 ```sh
-nix run nixpkgs#sops -- -d --extract '["device-token"]' ../../secrets/reaper/realtime-voice.yaml \
-  | sed 's/^/realtime_voice_token: /' > secrets.yaml
-nix run nixpkgs#esphome -- run kitchen-assistant.yaml --device kitchen-assistant.glib.sh
-rm secrets.yaml
+nix run .#flash-voice-pe [pe...]
 ```
+
+`flash.sh` does it with the flake's ESPHome and sops. It needs to decrypt the
+secrets file, so run it where a sops key is available.
 
 Wi-Fi credentials and the Home Assistant API key live in the device's flash
 and survive the reflash, so the device stays adopted. The first build
 downloads the ESP-IDF toolchain into `.esphome/` and takes a while.
 
 This build has no firmware update entity, so Home Assistant no longer offers
-upstream releases for the device. To pick one up, bump `ref` in
-`kitchen-assistant.yaml` and reflash.
+upstream releases for the devices. To pick one up, bump `ref` in
+`voice-pe.yaml` and reflash.
 
 ## Using it
 
-Set **Voice backend** to Realtime on the device page. Watch the broker with
+Set **Voice backend** to Realtime or Live on the device page. Watch the broker with
 `ssh reaper journalctl -fu realtime-voice`.
 
 ## Tuning barge-in
 
-Interruptions are decided on reaper from echo-cancelled mic audio, with the
-thresholds in `barge_in` in `machines/reaper/realtime-voice.nix`. To tune them:
+In Realtime conversations, interruptions are decided on reaper from
+echo-cancelled mic audio, with the thresholds in `realtime.barge_in` in
+`machines/reaper/realtime-voice.nix`. To tune them:
 
 1. Set `record = true` there and deploy reaper.
 2. Have a few conversations: talk over replies, and also let replies play out
    while the room is noisy (music, dishes).
-3. Each conversation leaves `<stamp>.wav` and `<stamp>.jsonl` in
+3. Each conversation leaves `<stamp>-<pe>.wav` and `.jsonl` in
    `/var/lib/private/realtime-voice/recordings/`. The WAV is 16 kHz with three
    channels: the raw mic, what the speaker played (aligned to the mic), and the
    echo-cancelled mic. The JSONL has every barge-in with its level, VAD
