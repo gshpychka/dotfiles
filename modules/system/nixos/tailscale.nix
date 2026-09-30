@@ -49,6 +49,7 @@ in
     services.tailscale = {
       enable = true;
       openFirewall = true;
+      port = lib.mkIf (hostPort != null) hostPort;
       extraSetFlags = [
         (if cfg.magicDns then "--accept-dns" else "--accept-dns=false")
       ]
@@ -56,10 +57,6 @@ in
       ++ [
         "--advertise-routes"
         "${lib.concatStringsSep "," cfg.advertiseRoutes}"
-      ]
-      ++ lib.optionals (hostPort != null) [
-        "--port"
-        (toString hostPort)
       ];
       authKeyFile =
         if cfg.authKeySopsFile != null then config.sops.secrets."tailscale-auth-key".path else null;
