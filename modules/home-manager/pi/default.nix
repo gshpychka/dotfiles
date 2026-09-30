@@ -28,8 +28,8 @@ in
       # store-owned: pi's own writes via /settings, `pi install`, and `pi config` are dropped
       settings = {
         defaultProvider = "anthropic";
-        defaultModel = "claude-opus-5";
-        defaultThinkingLevel = "medium";
+        defaultModel = "claude-opus-5-5";
+        defaultThinkingLevel = "xhigh";
         warnings.anthropicExtraUsage = false;
         theme = "gruvbox-dark";
         packages = with pkgs.piPackages.sources; [
