@@ -6,6 +6,7 @@
 
 let
   cfg = config.my.tailscale;
+  hostPort = (config.my.hosts.${config.networking.hostName} or { }).tailscalePort or null;
 in
 {
   options.my.tailscale = {
@@ -55,6 +56,10 @@ in
       ++ [
         "--advertise-routes"
         "${lib.concatStringsSep "," cfg.advertiseRoutes}"
+      ]
+      ++ lib.optionals (hostPort != null) [
+        "--port"
+        (toString hostPort)
       ];
       authKeyFile =
         if cfg.authKeySopsFile != null then config.sops.secrets."tailscale-auth-key".path else null;

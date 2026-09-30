@@ -1,4 +1,4 @@
-{ lib, ... }:
+{ lib, config, ... }:
 # Fleet registry: the single source of truth for the LAN layout and per-host
 # SSH access data. Consumed by harbor's dnsmasq/DHCP setup
 # (machines/harbor/networking.nix) and the SSH client config
@@ -56,6 +56,11 @@
               default = null;
               description = "Home Assistant area of this Voice PE (null = not a Voice PE)";
             };
+            tailscalePort = lib.mkOption {
+              type = lib.types.nullOr lib.types.port;
+              default = null;
+              description = "Fixed local UDP port for this host's Tailscale daemon (null = default, chosen dynamically)";
+            };
           };
         }
       );
@@ -75,6 +80,7 @@
         enableSubdomains = true;
         # harbor's main user is "pi"
         sshUser = "pi";
+        tailscalePort = 41641;
       };
       hoard = {
         lanIp = "192.168.1.3";
@@ -86,6 +92,7 @@
         tailscaleIp = "100.76.49.76";
         mac = "C8:7F:54:0B:FB:8C";
         enableSubdomains = true;
+        tailscalePort = 41642;
       };
       switch-alpha = {
         lanIp = "192.168.1.5";
@@ -134,4 +141,17 @@
       };
     };
   };
+
+  config.assertions =
+    let
+      hostsWithPort = lib.filterAttrs (_: h: h.tailscalePort != null) config.my.hosts;
+      namesByPort = lib.groupBy (name: toString hostsWithPort.${name}.tailscalePort) (
+        lib.attrNames hostsWithPort
+      );
+      duplicates = lib.filterAttrs (_: names: lib.length names > 1) namesByPort;
+    in
+    lib.mapAttrsToList (port: names: {
+      assertion = false;
+      message = "my.hosts.*.tailscalePort ${port} is used by multiple hosts: ${lib.concatStringsSep ", " names}";
+    }) duplicates;
 }
