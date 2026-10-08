@@ -8,4 +8,5 @@
   };
   piPackages = pkgs.callPackage ./pi-packages { };
   realtime-voice = pkgs.callPackage ./realtime-voice { };
+  datameter = pkgs.callPackage ./datameter.nix { };
 }
