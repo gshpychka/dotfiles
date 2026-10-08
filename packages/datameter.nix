@@ -8,14 +8,14 @@
   darwinMinVersionHook,
 }:
 
-# Upstream builds with XcodeGen + xcodebuild, neither of which runs in the Nix
-# sandbox, so the three modules (GRDB, DataMeterCore, the app) are compiled with
-# swiftc directly and the .app bundle is assembled by hand.
+# Upstream builds with XcodeGen + xcodebuild, which require Xcode.
 let
-  # Upstream pins GRDB 7.x, which needs Swift 6. nixpkgs ships Swift 5.10, so this
-  # uses the last GRDB release that supports Swift 5. DataMeterCore only touches
-  # DatabaseQueue, DatabaseMigrator, Configuration and Row.fetchAll, which are
-  # source-compatible across both majors.
+  # Upstream's MACOSX_DEPLOYMENT_TARGET
+  deploymentTarget = "14.0";
+
+  # 6.29.3 is the last GRDB release that builds with nixpkgs' Swift 5.10; upstream
+  # pins 7.x, which requires Swift 6. DataMeterCore's GRDB surface (DatabaseQueue,
+  # DatabaseMigrator, Configuration, Row.fetchAll) is source-compatible across both.
   grdb = fetchFromGitHub {
     owner = "groue";
     repo = "GRDB.swift";
@@ -38,13 +38,11 @@ stdenv.mkDerivation {
   buildInputs = [
     apple-sdk_14
     sqlite
-    # SwiftUI Table, MenuBarExtra and SMAppService need macOS 13+; upstream
-    # targets 14.0
-    (darwinMinVersionHook "14.0")
+    (darwinMinVersionHook deploymentTarget)
   ];
 
-  # openSettings and appearsActive are declared in the macOS 15 SDK (back-deployed
-  # to 14), which needs Swift 6. These swap in the macOS 14 SDK equivalents.
+  # openSettings and appearsActive are declared in the macOS 15 SDK, which requires
+  # Swift 6. SettingsLink and controlActiveState are their macOS 14 SDK equivalents.
   postPatch = ''
     substituteInPlace DataMeterApp/Features/MenuBar/MenuBarRootView.swift \
       --replace-fail '@Environment(\.openSettings) private var openSettings' "" \
@@ -62,12 +60,12 @@ stdenv.mkDerivation {
 
     mkdir build
 
-    # nixpkgs strips sqlite3.h from the SDK, so the SDK's SQLite3 module can't
-    # build. SWIFT_PACKAGE makes GRDB import its CSQLite shim module, which
-    # includes <sqlite3.h> from nixpkgs sqlite. SQLITE_ENABLE_FTS5 matches
-    # GRDB's Package.swift.
+    # nixpkgs' apple-sdk omits sqlite3.h; GRDB's CSQLite shim module includes it
+    # from nixpkgs sqlite
     csqlite="-I ${grdb}/Sources/CSQLite -Xcc -I${lib.getDev sqlite}/include"
 
+    # SWIFT_PACKAGE: GRDB imports the CSQLite shim module
+    # SQLITE_ENABLE_FTS5: matches GRDB's Package.swift
     swiftc -O -parse-as-library -module-name GRDB \
       -D SWIFT_PACKAGE -D SQLITE_ENABLE_FTS5 $csqlite \
       -emit-module -emit-module-path build/GRDB.swiftmodule \
@@ -95,18 +93,19 @@ stdenv.mkDerivation {
     mkdir -p $app/MacOS $app/Resources
 
     install -m755 build/DataMeter $app/MacOS/DataMeter
-    # The asset catalog needs actool (Xcode only); upstream's post-build step
-    # overwrites the catalog's icon with this .icns anyway
+    # Upstream's post-build step installs this .icns as the app icon; the asset
+    # catalog requires Xcode's actool
     cp scripts/assets/AppIcon.icns $app/Resources/AppIcon.icns
 
-    # Fill in the build-setting placeholders xcodebuild would expand
+    # xcodebuild expands these build-setting placeholders and actool adds
+    # CFBundleIconFile
     substitute DataMeterApp/App/Info.plist $app/Info.plist \
       --replace-fail '$(DEVELOPMENT_LANGUAGE)' en \
       --replace-fail '$(EXECUTABLE_NAME)' DataMeter \
       --replace-fail '$(PRODUCT_BUNDLE_IDENTIFIER)' com.emmanuelchucks.DataMeter \
       --replace-fail '$(PRODUCT_NAME)' DataMeter \
       --replace-fail '$(PRODUCT_BUNDLE_PACKAGE_TYPE)' APPL \
-      --replace-fail '$(MACOSX_DEPLOYMENT_TARGET)' 14.0 \
+      --replace-fail '$(MACOSX_DEPLOYMENT_TARGET)' ${deploymentTarget} \
       --replace-fail '</dict>' '<key>CFBundleIconFile</key><string>AppIcon</string></dict>'
 
     runHook postInstall
