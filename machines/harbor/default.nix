@@ -21,6 +21,7 @@
     ./users.nix
     ./nginx.nix
     ./rustdesk.nix
+    ./syslog-receiver.nix
     ./home.nix
   ];
 
