@@ -29,6 +29,7 @@
     ./ntfy.nix
     ./cloudflare-tunnel.nix
     ./metadata-server.nix
+    ./oidc-discovery.nix
   ];
 
   networking.hostName = "buoy";
