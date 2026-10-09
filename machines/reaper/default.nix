@@ -41,6 +41,8 @@
     ./gpu-ai-slice.nix
     ./tty.nix
     ./oidc-issuer
+    ./spire
+    ./cloudflare-tunnel.nix
     # ./comfyui.nix
   ];
   networking.hostName = "reaper";
@@ -124,6 +126,13 @@
     # kid printed by `sudo oidc-issuer-keygen`; null until the first key is published
     activeKid = null;
     clients = [ config.my.user ];
+  };
+
+  my.spire = {
+    # off until bootstrapped: needs tpmEkHash and the reaper-tunnel
+    # credentials (see machines/reaper/spire/default.nix)
+    enable = false;
+    users = [ config.my.user ];
   };
 
   my.tailscale = {
