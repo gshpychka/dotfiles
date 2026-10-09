@@ -93,6 +93,19 @@ let
   # the `spire-server entry create|update -data` format
   entriesFile = pkgs.writeText "spire-entries.json" (builtins.toJSON { inherit entries; });
 
+  # SPIRE has no readiness notification, so dependents poll its healthcheck.
+  # Bounded, so a broken server fails them (systemd retries) instead of
+  # holding up boot: multi-user.target waits for their start jobs.
+  waitForServer = pkgs.writeShellScript "spire-wait-for-server" ''
+    export SPIRE_SERVER_PRIVATE_SOCKET=${server.settings.server.socket_path}
+    for _ in $(seq 30); do
+      ${lib.getExe' server.package "spire-server"} healthcheck >/dev/null 2>&1 && exit 0
+      sleep 1
+    done
+    echo "spire-server is not healthy" >&2
+    exit 1
+  '';
+
   reconcileEntries = pkgs.writeShellApplication {
     name = "spire-entries";
     runtimeInputs = [
@@ -103,7 +116,7 @@ let
     excludeShellChecks = [ "SC2016" ];
     text = ''
       export SPIRE_SERVER_PRIVATE_SOCKET=${server.settings.server.socket_path}
-      until spire-server healthcheck >/dev/null 2>&1; do sleep 1; done
+      ${waitForServer}
 
       have=$(spire-server entry show -output json \
         | jq -c '[.entries[]?.id | select(startswith("${entryPrefix}"))]')
@@ -341,8 +354,9 @@ in
       serviceConfig = hardening // {
         # root, outside the sandbox: the server's admin socket is root-only
         ExecStartPre = "+${pkgs.writeShellScript "spire-agent-bootstrap-bundle" ''
+          set -e
           export SPIRE_SERVER_PRIVATE_SOCKET=${server.settings.server.socket_path}
-          until ${lib.getExe' server.package "spire-server"} healthcheck >/dev/null 2>&1; do sleep 1; done
+          ${waitForServer}
           ${lib.getExe' server.package "spire-server"} bundle show > "$STATE_DIRECTORY/${bootstrapBundle}"
           # systemd made the state directory the agent user's
           chown --reference="$STATE_DIRECTORY" "$STATE_DIRECTORY/${bootstrapBundle}"
@@ -363,7 +377,8 @@ in
         Type = "oneshot";
         RemainAfterExit = true;
         ExecStart = lib.getExe reconcileEntries;
-        TimeoutStartSec = 120;
+        Restart = "on-failure";
+        RestartSec = 10;
       };
     };
 
