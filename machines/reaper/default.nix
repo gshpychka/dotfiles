@@ -40,6 +40,7 @@
     ./openwebui.nix
     ./gpu-ai-slice.nix
     ./tty.nix
+    ./oidc-issuer
     # ./comfyui.nix
   ];
   networking.hostName = "reaper";
@@ -117,6 +118,13 @@
   my.acme.enable = true;
 
   my.opkssh.enable = true;
+
+  my.oidcIssuer = {
+    enable = true;
+    # kid printed by `sudo oidc-issuer-keygen`; null until the first key is published
+    activeKid = null;
+    clients = [ config.my.user ];
+  };
 
   my.tailscale = {
     enable = true;

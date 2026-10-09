@@ -27,3 +27,13 @@ resource "cloudflare_dns_record" "ntfy" {
   proxied = true
   comment = "ntfy via buoy-tunnel"
 }
+
+resource "cloudflare_dns_record" "tokens" {
+  zone_id = var.cloudflare_zone_id
+  name    = "tokens.${var.domain_name}"
+  content = "${cloudflare_zero_trust_tunnel_cloudflared.buoy.id}.cfargotunnel.com"
+  type    = "CNAME"
+  ttl     = 1
+  proxied = true
+  comment = "OIDC issuer discovery documents (my.oidcIssuer) via buoy-tunnel"
+}

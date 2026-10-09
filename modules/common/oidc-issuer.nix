@@ -24,7 +24,7 @@ in
       default = "https://${cfg.host}";
       description = ''
         Issuer identifier: the `iss` claim, and the provider URL AWS is
-        configured with. AWS fetches `<url>/.well-known/openid-configuration`.
+        configured with. AWS fetches `<url>` + `discoveryPath`.
       '';
     };
     audience = lib.mkOption {
@@ -34,6 +34,13 @@ in
       default = "sts.amazonaws.com";
       description = "`aud` claim of every token; the client ID registered with the AWS OIDC provider.";
     };
+    discoveryPath = lib.mkOption {
+      type = lib.types.str;
+      readOnly = true;
+      # fixed by OIDC Discovery; AWS appends it to the issuer URL
+      default = "/.well-known/openid-configuration";
+      description = "URL path of the discovery document.";
+    };
     jwksPath = lib.mkOption {
       type = lib.types.str;
       readOnly = true;
@@ -41,7 +48,6 @@ in
       description = "URL path of the JSON Web Key Set.";
     };
     publicKeys = lib.mkOption {
-      default = [ ];
       description = ''
         Public halves of the signing keys, published in the JWKS. Entries are
         printed by `sudo oidc-issuer-keygen` on reaper. Keep a retired key
@@ -103,10 +109,15 @@ in
     };
   };
 
-  config.assertions = [
-    {
-      assertion = lib.allUnique (map (key: key.kid) cfg.publicKeys);
-      message = "my.oidcIssuer.publicKeys: every kid must be unique.";
-    }
-  ];
+  config = {
+    # Paste entries printed by `sudo oidc-issuer-keygen` on reaper here.
+    my.oidcIssuer.publicKeys = [ ];
+
+    assertions = [
+      {
+        assertion = lib.allUnique (map (key: key.kid) cfg.publicKeys);
+        message = "my.oidcIssuer.publicKeys: every kid must be unique.";
+      }
+    ];
+  };
 }

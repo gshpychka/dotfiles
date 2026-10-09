@@ -16,6 +16,7 @@ import json
 import re
 import socket
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -31,10 +32,22 @@ STS_NAMESPACES = {"sts": f"https://sts.amazonaws.com/doc/{STS_VERSION}/"}
 # RoleSessionName allows [\w+=,.@-]{2,64}
 SESSION_NAME_DISALLOWED = re.compile(r"[^\w+=,.@-]")
 SESSION_NAME_MAX = 64
+# STS errors a retry can clear: the provider's keys could not be fetched
+# (IDPCommunicationError), or concurrent calls raced STS's first fetch of them
+# (InvalidIdentityToken, https://gitlab.com/gitlab-org/gitlab/-/issues/374001).
+# The token stays valid for minutes, so retries reuse it.
+RETRIABLE_STS_CODES = {"IDPCommunicationError", "InvalidIdentityToken"}
+STS_ATTEMPTS = 3
 
 
 class Failure(Exception):
     pass
+
+
+class StsError(Failure):
+    def __init__(self, code: str | None, description: str):
+        super().__init__(description)
+        self.code = code
 
 
 def fetch_token() -> str:
@@ -76,14 +89,27 @@ def decode_claims(token: str) -> dict:
     return json.loads(base64.urlsafe_b64decode(payload + "=" * (-len(payload) % 4)))
 
 
-def sts_error(document: ET.Element, claims: dict) -> Failure:
+def sts_error(document: ET.Element, claims: dict) -> StsError:
     code = document.findtext("sts:Error/sts:Code", namespaces=STS_NAMESPACES)
     message = document.findtext("sts:Error/sts:Message", namespaces=STS_NAMESPACES)
     hint = {
         "InvalidIdentityToken": f"AWS could not fetch or match the signing key: is {claims['iss']}/.well-known/openid-configuration reachable, and is the key published?",
         "AccessDenied": f"the role's trust policy must allow sts:AssumeRoleWithWebIdentity for aud={claims['aud']} sub={claims['sub']}",
     }.get(code or "")
-    return Failure(f"STS {code}: {message}" + (f"\n  {hint}" if hint else ""))
+    return StsError(code, f"STS {code}: {message}" + (f"\n  {hint}" if hint else ""))
+
+
+def call_sts(request: urllib.request.Request, claims: dict) -> ET.Element:
+    try:
+        with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:
+            return ET.fromstring(response.read())
+    except urllib.error.HTTPError as error:
+        try:
+            raise sts_error(ET.fromstring(error.read()), claims) from None
+        except ET.ParseError:
+            raise Failure(f"STS answered HTTP {error.code}") from None
+    except urllib.error.URLError as error:
+        raise Failure(f"could not reach {request.full_url}: {error.reason}") from None
 
 
 def assume_role(
@@ -120,16 +146,14 @@ def assume_role(
         data=body,
         headers={"Content-Type": "application/x-www-form-urlencoded"},
     )
-    try:
-        with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:
-            document = ET.fromstring(response.read())
-    except urllib.error.HTTPError as error:
+    for attempt in range(1, STS_ATTEMPTS + 1):
         try:
-            raise sts_error(ET.fromstring(error.read()), claims) from None
-        except ET.ParseError:
-            raise Failure(f"STS answered HTTP {error.code}") from None
-    except urllib.error.URLError as error:
-        raise Failure(f"could not reach {endpoint}: {error.reason}") from None
+            document = call_sts(request, claims)
+            break
+        except StsError as error:
+            if error.code not in RETRIABLE_STS_CODES or attempt == STS_ATTEMPTS:
+                raise
+            time.sleep(attempt)
 
     credentials = document.find(
         "sts:AssumeRoleWithWebIdentityResult/sts:Credentials", STS_NAMESPACES

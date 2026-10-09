@@ -15,6 +15,7 @@
         "status.${config.my.domain}" =
           "http://localhost:${toString config.services.gatus.settings.web.port}";
         "ntfy.${config.my.domain}" = "http://${config.services.ntfy-sh.settings.listen-http}";
+        # oidc-discovery.nix adds the OIDC issuer's host
       };
     };
   };
