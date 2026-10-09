@@ -8,16 +8,18 @@
 #   user can get that user's token.
 # - Access: only users in my.oidcIssuer.clients. The socket is restricted to
 #   their group, and issuer.py checks the list again.
-# - Key: ES256, generated on reaper and sealed with systemd-creds (the host key
-#   in /var/lib/systemd, plus the TPM2 when there is one), so the sealed file
-#   only decrypts here. It is never in git, a sops file or the Nix store;
+# - Key: ES256, generated on reaper and sealed with systemd-creds to both the
+#   TPM2 and the host key in /var/lib/systemd, so the sealed file only
+#   decrypts on this machine. It is never in git, a sops file or the Nix store;
 #   systemd decrypts it into each short-lived, sandboxed minting process.
+#   (`oidc-issuer-keygen --no-tpm` seals with the host key alone, for a
+#   machine without a TPM2.)
 # - Publishing: reaper serves nothing publicly. buoy serves the discovery
 #   document and JWKS, built from my.oidcIssuer.publicKeys
 #   (machines/buoy/oidc-discovery.nix).
 #
 # Bootstrap and key rotation:
-#   ssh reaper sudo oidc-issuer-keygen   # seals a new key, prints its public half
+#   ssh reaper sudo oidc-issuer-keygen   # seals a new key to the TPM2, prints its public half
 #   add the printed entry to my.oidcIssuer.publicKeys (modules/common/oidc-issuer.nix)
 #   set my.oidcIssuer.activeKid (machines/reaper/default.nix) to the printed kid
 #   deploy buoy first (publishes the key), then reaper (signs with it)
@@ -175,7 +177,9 @@ in
             StandardOutput = "journal";
             StandardError = "journal";
             LoadCredentialEncrypted = "${credentialName}:${stateDirectory}/${cfg.activeKid}.cred";
-            RuntimeMaxSec = 10;
+            # bounds a stuck instance; a normal one answers in well under a
+            # second, but a slow firmware TPM can take seconds to unseal
+            RuntimeMaxSec = 30;
 
             DynamicUser = true;
             # No PrivateUsers=: inside a user namespace every caller's UID
