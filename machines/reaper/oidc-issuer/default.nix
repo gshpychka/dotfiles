@@ -22,7 +22,8 @@
 #   ssh reaper sudo oidc-issuer-keygen   # seals a new key to the TPM2, prints its public half
 #   add the printed entry to my.oidcIssuer.publicKeys (modules/common/oidc-issuer.nix)
 #   set my.oidcIssuer.activeKid (machines/reaper/default.nix) to the printed kid
-#   deploy buoy first (publishes the key), then reaper (signs with it)
+#   deploy buoy (publishes the key), wait my.oidcIssuer.jwksCacheSeconds so
+#   relying parties' cached key sets include it, then deploy reaper (signs with it)
 #   after a rotation, once my.oidcIssuer.tokenLifetime has passed, drop the old
 #   entry and delete /var/lib/oidc-issuer/<old kid>.cred
 #
@@ -61,6 +62,7 @@ let
       subjectPrefix = config.networking.hostName;
       tokenLifetimeSeconds = cfg.tokenLifetime;
       activeKey = if activeKey == null then null else { inherit (activeKey) kid x y; };
+      inherit (cfg) jwksCacheSeconds;
       inherit stateDirectory credentialName;
       systemdCreds = lib.getExe' config.systemd.package "systemd-creds";
     }
