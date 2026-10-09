@@ -47,6 +47,17 @@ in
       default = "/.well-known/jwks.json";
       description = "URL path of the JSON Web Key Set.";
     };
+    jwksCacheSeconds = lib.mkOption {
+      type = lib.types.ints.positive;
+      readOnly = true;
+      # AWS caches a JWKS for as long as its response allows
+      default = 300;
+      description = ''
+        How long relying parties may cache the published JWKS. A newly
+        published key is only safe to sign with once this has passed since
+        the deploy that published it.
+      '';
+    };
     publicKeys = lib.mkOption {
       description = ''
         Public halves of the signing keys, published in the JWKS. Entries are
