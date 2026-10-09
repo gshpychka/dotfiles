@@ -19,7 +19,8 @@ in
           ${spire.issuerHost} = {
             service = "http://${spire.discovery.address}";
             path = "^(${lib.concatMapStringsSep "|" lib.escapeRegex spire.discovery.paths})$";
-            # the provider answers only for hosts in its `domains`
+            # the provider serves its discovery document only for hosts in
+            # its `domains`
             originRequest.httpHostHeader = spire.issuerHost;
           };
         };
