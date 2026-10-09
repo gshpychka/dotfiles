@@ -17,7 +17,10 @@ let
   senders = {
     # ASUS web UI (imperative):
     #   System Log → General Log → Remote Log Server = 192.168.1.2, port 514
+    # Mesh nodes take the remote log setting from the router
     router = config.my.lan.routerIp;
+    zenwifi-cc10 = config.my.hosts.zenwifi-cc10.lanIp;
+    zenwifi-e288 = config.my.hosts.zenwifi-e288.lanIp;
   };
 in
 {

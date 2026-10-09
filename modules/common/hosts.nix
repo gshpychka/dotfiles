@@ -98,6 +98,15 @@
         lanIp = "192.168.1.5";
         mac = "98:BA:5F:46:87:00";
       };
+      # ASUS ZenWiFi ET8 mesh nodes, named by MAC suffix like the ASUS UI
+      zenwifi-cc10 = {
+        lanIp = "192.168.1.6";
+        mac = "04:42:1A:C8:CC:10";
+      };
+      zenwifi-e288 = {
+        lanIp = "192.168.1.7";
+        mac = "7C:10:C9:E7:E2:88";
+      };
       air-conditioner = {
         lanIp = "192.168.1.51";
         mac = "08:BC:20:04:48:5A";
