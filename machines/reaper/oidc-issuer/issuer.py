@@ -57,6 +57,7 @@ class Config(TypedDict):
     stateDirectory: str
     credentialName: str
     systemdCreds: str
+    jwksCacheSeconds: int
 
 
 class IssuerError(Exception):
@@ -210,7 +211,8 @@ Publish it by adding this entry to my.oidcIssuer.publicKeys:
   }}
 
 then sign with it by setting my.oidcIssuer.activeKid = "{public["kid"]}";
-and deploy buoy (publishes the key) and reaper (signs with it).""")
+and deploy: buoy first (publishes the key), then, after waiting
+{config["jwksCacheSeconds"]} seconds for cached key sets to pick it up, reaper (signs with it).""")
     return 0
 
 

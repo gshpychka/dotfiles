@@ -46,7 +46,7 @@ in
       };
       extraConfig = ''
         default_type application/json;
-        add_header Cache-Control "public, max-age=300" always;
+        add_header Cache-Control "public, max-age=${toString cfg.jwksCacheSeconds}" always;
       '';
     };
   };
