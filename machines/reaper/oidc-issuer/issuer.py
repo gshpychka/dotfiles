@@ -160,7 +160,7 @@ def serve(config: Config) -> int:
     return 0
 
 
-def keygen(config: Config) -> int:
+def keygen(config: Config, use_tpm: bool) -> int:
     if os.geteuid() != 0:
         log(
             "oidc-issuer-keygen: run as root; systemd-creds seals with the root-only host key"
@@ -174,20 +174,31 @@ def keygen(config: Config) -> int:
         serialization.PrivateFormat.PKCS8,
         serialization.NoEncryption(),
     )
-    # --with-key=auto seals with the host key in /var/lib/systemd plus the TPM2
-    # when there is one; the embedded name must match LoadCredentialEncrypted=.
-    subprocess.run(
+    # host+tpm2 needs both this machine's TPM2 and the root-only host key in
+    # /var/lib/systemd to unseal. Not "auto": that silently drops the TPM2 when
+    # it is missing. The embedded name must match LoadCredentialEncrypted=.
+    seal = "host+tpm2" if use_tpm else "host"
+    sealed = subprocess.run(
         [
             config["systemdCreds"],
             "encrypt",
-            "--with-key=auto",
+            f"--with-key={seal}",
             f"--name={config['credentialName']}",
             "-",
             str(path),
         ],
         input=pem,
-        check=True,
+        check=False,
     )
+    if sealed.returncode != 0:
+        hint = "; without a usable TPM2, rerun with --no-tpm" if use_tpm else ""
+        log(f"oidc-issuer-keygen: systemd-creds could not seal with {seal}{hint}")
+        return 1
+    if not use_tpm:
+        log(
+            "oidc-issuer-keygen: sealed with the host key only: anyone who can read "
+            "/var/lib/systemd/credential.secret (root, or the disk) can unseal it"
+        )
     print(f"""Sealed a new signing key into {path}.
 
 Publish it by adding this entry to my.oidcIssuer.publicKeys:
@@ -207,9 +218,16 @@ def main() -> int:
     parser = argparse.ArgumentParser(prog="oidc-issuer")
     parser.add_argument("command", choices=["serve", "keygen"])
     parser.add_argument("config", type=Path, help="JSON config written by Nix")
+    parser.add_argument(
+        "--no-tpm",
+        action="store_true",
+        help="keygen: seal with the host key alone, for a machine without a TPM2",
+    )
     args = parser.parse_args()
     config: Config = json.loads(args.config.read_text())
-    return serve(config) if args.command == "serve" else keygen(config)
+    if args.command == "serve":
+        return serve(config)
+    return keygen(config, use_tpm=not args.no_tpm)
 
 
 if __name__ == "__main__":
