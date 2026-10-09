@@ -13,6 +13,7 @@ let
   packages = {
     pi-ask-user-question = "@juicesharp/rpiv-ask-user-question";
     pi-automode = "@czottmann/pi-automode";
+    pi-claude-agent-sdk = "pi-claude-agent-sdk";
     pi-lens = "pi-lens";
     pi-mcp-adapter = "pi-mcp-adapter";
     pi-plan-mode = "@narumitw/pi-plan-mode";

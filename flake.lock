@@ -212,11 +212,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1791306979,
-        "narHash": "sha256-KuLePuhwJM9NLt/gTLHzXaOoSZKGoB3m7NfXjiQ98HY=",
+        "lastModified": 1791484883,
+        "narHash": "sha256-iKxFHJrg7Sltwhq3ssCZYQ4CFEDVvReVVuVuO9dj3sE=",
         "owner": "nix-community",
         "repo": "home-manager",
-        "rev": "fae6e9e42c3b762ab47635cddcfaf6f52374a61b",
+        "rev": "dfadbe5162d5e86bc0808badec8f346f81b4b3f0",
         "type": "github"
       },
       "original": {
@@ -228,11 +228,11 @@
     "homebrew-cask": {
       "flake": false,
       "locked": {
-        "lastModified": 1791455569,
-        "narHash": "sha256-5OKVMBLwSRAcztR12dAQTbaySQHoZgzGlB5YfBPuQB4=",
+        "lastModified": 1791566490,
+        "narHash": "sha256-KpyOoJ2pyEexR29WOMnuosSSbyVtYGJ68sWl78L1JnA=",
         "owner": "homebrew",
         "repo": "homebrew-cask",
-        "rev": "5d85c12777fef737512cf6ff9974e7e3babbd3ee",
+        "rev": "4f5dc24ec34aad3af2e2cbc008be6ab7738a7be7",
         "type": "github"
       },
       "original": {
@@ -244,11 +244,11 @@
     "homebrew-core": {
       "flake": false,
       "locked": {
-        "lastModified": 1791452044,
-        "narHash": "sha256-JXfZGyGrrLr3Jmevy3zv3G3bd8iVLehPJ6vsx+p8X5o=",
+        "lastModified": 1791567548,
+        "narHash": "sha256-FSbL+4JlEZ1JOzNmpUU2OaGSyoD3kl1UqrImRcMvszQ=",
         "owner": "homebrew",
         "repo": "homebrew-core",
-        "rev": "3580efd52d92c2e3c3da5b9c79553f6e88002426",
+        "rev": "7fe15da84dbbf9fd348a084d60f9bf75467564d3",
         "type": "github"
       },
       "original": {
@@ -280,11 +280,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1791445133,
-        "narHash": "sha256-eUDmKF3hegZbLER1E2PeZVXDdUvMedFA/3WgFxX45vk=",
+        "lastModified": 1791547659,
+        "narHash": "sha256-TfKn7sJjC7TLyYQiW+jrqLjP6CSv3nHhIy7ZmgBlWxE=",
         "owner": "Jovian-Experiments",
         "repo": "Jovian-NixOS",
-        "rev": "ad20f4914e7e8d9d1168c643904282dee78141be",
+        "rev": "083389179fe1dad7877636af231c9c54238915b0",
         "type": "github"
       },
       "original": {
@@ -325,11 +325,11 @@
         "treefmt-nix": "treefmt-nix"
       },
       "locked": {
-        "lastModified": 1791440787,
-        "narHash": "sha256-nRO1wEJmb4wjz+0Mhpg5VWURTqZRBZq3MvMjtPkKuAI=",
+        "lastModified": 1791522838,
+        "narHash": "sha256-Q6VbwYvayJgN/7x4jI7KnSkd5NGyUwfUw57Dho4jJAE=",
         "owner": "numtide",
         "repo": "llm-agents.nix",
-        "rev": "2109db8971dc18137ff1ac9393627c761609600d",
+        "rev": "4bb57cff45b5554a02dba0cf7a8c7f4f010a864d",
         "type": "github"
       },
       "original": {
@@ -345,11 +345,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1791413849,
-        "narHash": "sha256-f8kM+b5Y1etS4XrIMky5dgja1Sw61Y5xnW1kfWwot24=",
+        "lastModified": 1791517436,
+        "narHash": "sha256-9WXOn/l1HeeZ8iiOuecRXrUnyMwJzuWQRDqzV2C6Z68=",
         "owner": "natsukium",
         "repo": "mcp-servers-nix",
-        "rev": "a823d0c5e552511cb3dbbb5a86eb2fe399fc50d7",
+        "rev": "e83025295abcb387d9e632cc6d405460d9b31e41",
         "type": "github"
       },
       "original": {
@@ -469,11 +469,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1791357977,
-        "narHash": "sha256-qw5USO4kNwnsRqu/geBFXFUK6B1vsoA6mu+qD0YYOvY=",
+        "lastModified": 1791483049,
+        "narHash": "sha256-UzdZ64pDgqXUvy/p4mdaesTdAePQJe9XlxDC3DbvyvQ=",
         "owner": "nixified-ai",
         "repo": "flake",
-        "rev": "f224a424b1de2c7b539a960cc16f8bc1a353e54b",
+        "rev": "5895893f1590197df646f833c8f633d2517e3d8b",
         "type": "github"
       },
       "original": {
@@ -593,11 +593,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1790672817,
-        "narHash": "sha256-gQJiLSW0GFbKvtCCeoRbmXCQZmIIpP/MB3Albjn2KNo=",
+        "lastModified": 1791568107,
+        "narHash": "sha256-luH2X0XTwQP7y7sRIoQmh24FF1x81eel5vnXXq4cODM=",
         "ref": "refs/heads/main",
-        "rev": "55837d1816be88ea9e73d1efa822e16e2eb55067",
-        "revCount": 52,
+        "rev": "a0ebe85eccfe7192ae80b91f7c8ca16898d9aeaf",
+        "revCount": 53,
         "type": "git",
         "url": "ssh://git@github.com/gshpychka/pituitary"
       },
@@ -755,11 +755,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1791203292,
-        "narHash": "sha256-vuzVwvjeucSnwKwMBpyP8r5IzdrMKCHEdwTrRFwUN7I=",
+        "lastModified": 1791490544,
+        "narHash": "sha256-qScE7Wz6Zg7eg8ItUpnkmKgst8weWschGe0E8jM4rj4=",
         "owner": "numtide",
         "repo": "treefmt-nix",
-        "rev": "03d8ee1bcbc8f9638907bb79edb9673151d0e22b",
+        "rev": "4cfe8d7065cc8ca91c0a50361b6dd74920eeb1f5",
         "type": "github"
       },
       "original": {

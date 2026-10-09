@@ -43,6 +43,7 @@ in
           pi-todo
           pi-ask-user-question
           pi-statusline
+          pi-claude-agent-sdk
         ];
         # resource paths leave configDir/extensions to per-package config such as pi-automode's
         extensions = [ "${./config/extensions}" ];
@@ -51,6 +52,7 @@ in
         # ctrl+P cycles through these
         enabledModels = [
           "anthropic/*"
+          "claude-bridge/*" # Claude Code through pi-claude-agent-sdk
           "openai-codex/*" # ChatGPT subscription
           "ollama/*"
         ];
@@ -86,10 +88,18 @@ in
       builtins.toJSON
         {
           autoMode = {
-            classifierModel = "anthropic/claude-haiku-4-5";
+            classifierModel = "anthropic/claude-haiku-5-5";
+            fastClassifierMaxTokens = 1024;
             # in-tree file tools skip the classifier; protected paths (.git, .pi, dotfiles) still reach it
             allowInsideWorkingDirectory = true;
           };
         };
+
+    # https://pi.dev/packages/pi-claude-agent-sdk
+    home.file."${config.programs.pi-coding-agent.configDir}/claude-bridge.json".text = builtins.toJSON {
+      # set explicitly, which also silences the startup notice asking for it
+      plan = "max";
+      pathToClaudeCodeExecutable = lib.getExe pkgs.claude-code;
+    };
   };
 }
