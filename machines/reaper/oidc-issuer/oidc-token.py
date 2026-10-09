@@ -26,7 +26,9 @@ import xml.etree.ElementTree as ET
 SOCKET_PATH = "@socketPath@"
 ISSUER_UNIT = "@issuerUnit@"
 
-TIMEOUT_SECONDS = 30
+# longer than the issuer's RuntimeMaxSec, so a slow issuer is reported, not cut off
+ISSUER_TIMEOUT_SECONDS = 60
+STS_TIMEOUT_SECONDS = 30
 STS_VERSION = "2011-06-15"
 STS_NAMESPACES = {"sts": f"https://sts.amazonaws.com/doc/{STS_VERSION}/"}
 # RoleSessionName allows [\w+=,.@-]{2,64}
@@ -54,7 +56,7 @@ def fetch_token() -> str:
     # The issuer identifies this process by its UID; there is nothing to send.
     try:
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as conn:
-            conn.settimeout(TIMEOUT_SECONDS)
+            conn.settimeout(ISSUER_TIMEOUT_SECONDS)
             conn.connect(SOCKET_PATH)
             chunks = []
             while chunk := conn.recv(4096):
@@ -101,7 +103,7 @@ def sts_error(document: ET.Element, claims: dict) -> StsError:
 
 def call_sts(request: urllib.request.Request, claims: dict) -> ET.Element:
     try:
-        with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:
+        with urllib.request.urlopen(request, timeout=STS_TIMEOUT_SECONDS) as response:
             return ET.fromstring(response.read())
     except urllib.error.HTTPError as error:
         try:
