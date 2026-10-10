@@ -63,8 +63,12 @@ let
   bootstrapBundle = "bootstrap-bundle.pem";
   awsTokenFile = "aws.jwt";
 
-  # Entries spire-entries owns carry this ID prefix (IDs allow [A-Za-z0-9._-]).
+  # Entries spire-entries owns carry this ID prefix.
   entryPrefix = "nix-";
+  # The only characters a SPIFFE ID path segment and an entry ID both allow
+  # (https://github.com/spiffe/spiffe/blob/main/standards/SPIFFE-ID.md#22-path).
+  # User and unit names become both, so e.g. a template instance's "@" is out.
+  validName = name: builtins.match "[A-Za-z0-9._-]+" name != null;
   selector = type: value: { inherit type value; };
   entries = [
     {
@@ -274,6 +278,10 @@ in
           cfg.users ++ lib.mapAttrsToList (_: service: service.user) cfg.services
         );
         message = "my.spire.users and my.spire.services.*.user must name users.users entries.";
+      }
+      {
+        assertion = lib.all validName (cfg.users ++ lib.attrNames cfg.services);
+        message = "my.spire.users and my.spire.services names may only contain [A-Za-z0-9._-]: they become SPIFFE ID path segments.";
       }
     ];
 
