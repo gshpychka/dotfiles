@@ -38,6 +38,8 @@ in
         DHCP = "ipv4";
         IPv6AcceptRA = false;
       };
+      # bare LAN host names resolve through the DHCP search domain
+      dhcpV4Config.UseDomains = true;
     };
 
     links."10-primary" = {
