@@ -171,8 +171,12 @@ in
   systemd.tmpfiles.settings.realtime-voice."/var/lib/private/${recordingsDir}".e.age =
     recordingRetention;
 
+  # extraInputRules take effect only with the nftables firewall
+  networking.nftables.enable = true;
   # Only the Voice PEs may open conversations: every one is billed to the OpenAI key.
-  networking.firewall.extraCommands = lib.concatMapStrings (host: ''
-    iptables -A nixos-fw -p tcp --dport ${toString port} -s ${host.lanIp} -j nixos-fw-accept
-  '') (lib.attrValues voicePes);
+  networking.firewall.extraInputRules = lib.optionalString (voicePes != { }) ''
+    ip saddr { ${
+      lib.concatMapStringsSep ", " (host: host.lanIp) (lib.attrValues voicePes)
+    } } tcp dport ${toString port} accept
+  '';
 }

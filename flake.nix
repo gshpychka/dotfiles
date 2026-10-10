@@ -52,6 +52,10 @@
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.home-manager.follows = "home-manager";
     };
+    bay = {
+      url = "git+ssh://git@github.com/gshpychka/bay";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     nix-openclaw = {
       # not following our nixpkgs: its pinned pnpm dependency hashes are
       # computed against its own nixpkgs

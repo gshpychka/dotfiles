@@ -1,5 +1,25 @@
 {
   "nodes": {
+    "bay": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1791642445,
+        "narHash": "sha256-TKoBNUD16Sliw/hUsiYKJuJkIjJ1kiu462zyqQzFXCc=",
+        "ref": "refs/heads/main",
+        "rev": "c67d5151aa4059b61902516b05c333e907c4d8e9",
+        "revCount": 3,
+        "type": "git",
+        "url": "ssh://git@github.com/gshpychka/bay"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@github.com/gshpychka/bay"
+      }
+    },
     "brew-src": {
       "flake": false,
       "locked": {
@@ -656,6 +676,7 @@
     },
     "root": {
       "inputs": {
+        "bay": "bay",
         "darwin": "darwin",
         "home-manager": "home-manager",
         "homebrew-cask": "homebrew-cask",

@@ -41,6 +41,7 @@
     ./openwebui.nix
     ./gpu-ai-slice.nix
     ./tty.nix
+    ./bay.nix
     # ./comfyui.nix
   ];
   networking.hostName = "reaper";
@@ -108,6 +109,7 @@
 
   my.gaming.enable = false;
   my.open-webui.enable = false;
+  my.bay.enable = false;
 
   sops = {
     age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
