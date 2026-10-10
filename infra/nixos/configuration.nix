@@ -54,17 +54,34 @@ in
       RemainAfterExit = true;
     };
 
+    # The VM can only read the secret while grant_vm_sops_age_key_access is on
+    # (infra/buoy/sops.tf), which is only needed for a fresh data disk. On a
+    # plain instance replacement the fetch is denied and the key already on the
+    # data disk is kept.
     script = ''
       KEY_FILE="${config.fileSystems.data.mountPoint}/${ageKeySecretName}.txt"
+      TMP_FILE="$KEY_FILE.tmp"
+      # files are private from creation; the key is only replaced once a fetch succeeds
+      umask 077
 
       echo "Fetching SOPS age key '${ageKeySecretName}' from Secret Manager..."
-      ${pkgs.google-cloud-sdk}/bin/gcloud secrets versions access latest \
+      if ! ${pkgs.google-cloud-sdk}/bin/gcloud secrets versions access latest \
         --secret=${ageKeySecretName} \
         --project=${gcpProjectId} \
         --format='get(payload.data)' \
-        --out-file="$KEY_FILE"
+        --out-file="$TMP_FILE"; then
+        rm -f "$TMP_FILE"
+        if [ -s "$KEY_FILE" ]; then
+          echo "Could not fetch the SOPS age key; keeping the existing $KEY_FILE"
+          exit 0
+        fi
+        echo "Could not fetch the SOPS age key and $KEY_FILE doesn't exist:" \
+          "tg apply -var grant_vm_sops_age_key_access=true in infra/buoy," \
+          "then systemctl restart fetch-sops-age-key" >&2
+        exit 1
+      fi
 
-      chmod 600 "$KEY_FILE"
+      mv "$TMP_FILE" "$KEY_FILE"
       echo "SOPS age key successfully written to $KEY_FILE"
     '';
   };
