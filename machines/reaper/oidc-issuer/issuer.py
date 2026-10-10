@@ -111,22 +111,23 @@ def peer_credentials(conn: socket.socket) -> tuple[int, int]:
     return pid, uid
 
 
-def printable(text: str) -> str:
-    """Caller-controlled text with control characters escaped. A process can
-    name itself (comm) or its cgroup anything, including a newline that
-    journald would turn into a forged log line of its own."""
-    return text.encode("unicode_escape").decode("ascii")
+def read_proc(pid: int, name: str) -> str:
+    """A /proc file the caller controls, escaped like a bytes literal. A
+    process can name itself (comm) or its cgroup anything: invalid UTF-8, or
+    a newline that journald would turn into a forged log line of its own."""
+    raw = Path(f"/proc/{pid}/{name}").read_bytes().removesuffix(b"\n")
+    return repr(raw)[2:-1]
 
 
 def describe_process(pid: int) -> str:
     """Best effort, for the audit log only: by now the PID may be another process."""
     try:
-        command = Path(f"/proc/{pid}/comm").read_text().removesuffix("\n")
-        cgroup = Path(f"/proc/{pid}/cgroup").read_text().removesuffix("\n")
+        command = read_proc(pid, "comm")
+        cgroup = read_proc(pid, "cgroup")
     except OSError:
         return f"pid {pid}"
     # cgroup v2: a single "0::<path>" line
-    return f"pid {pid} {printable(command)} in {printable(cgroup.removeprefix('0::'))}"
+    return f"pid {pid} {command} in {cgroup.removeprefix('0::')}"
 
 
 def reply(conn: socket.socket, message: dict[str, str | int]) -> None:
@@ -185,13 +186,17 @@ def keygen(config: Config, use_tpm: bool) -> int:
     )
     # host+tpm2 needs both this machine's TPM2 and the root-only host key in
     # /var/lib/systemd to unseal. Not "auto": that silently drops the TPM2 when
-    # it is missing. The embedded name must match LoadCredentialEncrypted=.
-    seal = "host+tpm2" if use_tpm else "host"
+    # it is missing. PCR 7 holds the Secure Boot state, so the TPM2 refuses to
+    # unseal under any other boot chain: Windows on the same disk, or anything
+    # else Microsoft's CA (enrolled for Windows) lets boot. A Secure Boot key or
+    # dbx update changes PCR 7 too, and then the key needs regenerating. The
+    # embedded name must match LoadCredentialEncrypted=.
+    seal = ["--with-key=host+tpm2", "--tpm2-pcrs=7"] if use_tpm else ["--with-key=host"]
     sealed = subprocess.run(
         [
             config["systemdCreds"],
             "encrypt",
-            f"--with-key={seal}",
+            *seal,
             f"--name={config['credentialName']}",
             "-",
             str(path),
@@ -201,7 +206,9 @@ def keygen(config: Config, use_tpm: bool) -> int:
     )
     if sealed.returncode != 0:
         hint = "; without a usable TPM2, rerun with --no-tpm" if use_tpm else ""
-        log(f"oidc-issuer-keygen: systemd-creds could not seal with {seal}{hint}")
+        log(
+            f"oidc-issuer-keygen: systemd-creds could not seal ({' '.join(seal)}){hint}"
+        )
         return 1
     if not use_tpm:
         log(
