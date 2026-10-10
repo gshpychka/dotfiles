@@ -34,6 +34,9 @@ STS_NAMESPACES = {"sts": f"https://sts.amazonaws.com/doc/{STS_VERSION}/"}
 # RoleSessionName allows [\w+=,.@-]{2,64}
 SESSION_NAME_DISALLOWED = re.compile(r"[^\w+=,.@-]")
 SESSION_NAME_MAX = 64
+# a commercial AWS region, e.g. eu-central-1; it becomes part of the STS
+# hostname the token is sent to, so nothing else may get through
+REGION = re.compile(r"[a-z]{2}(-[a-z]+)+-[0-9]+")
 # STS errors a retry can clear: the provider's keys could not be fetched
 # (IDPCommunicationError), or concurrent calls raced STS's first fetch of them
 # (InvalidIdentityToken, https://gitlab.com/gitlab-org/gitlab/-/issues/374001).
@@ -44,6 +47,12 @@ STS_ATTEMPTS = 3
 
 class Failure(Exception):
     pass
+
+
+def region(value: str) -> str:
+    if not REGION.fullmatch(value):
+        raise argparse.ArgumentTypeError(f"not an AWS region: {value!r}")
+    return value
 
 
 class StsError(Failure):
@@ -200,7 +209,9 @@ def main() -> int:
         help="session seconds, at most the role's maximum (default: %(default)s)",
     )
     aws.add_argument(
-        "--region", help="use this region's STS endpoint (default: the global one)"
+        "--region",
+        type=region,
+        help="use this region's STS endpoint (default: the global one)",
     )
     args = parser.parse_args()
 

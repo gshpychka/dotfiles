@@ -111,14 +111,22 @@ def peer_credentials(conn: socket.socket) -> tuple[int, int]:
     return pid, uid
 
 
+def printable(text: str) -> str:
+    """Caller-controlled text with control characters escaped. A process can
+    name itself (comm) or its cgroup anything, including a newline that
+    journald would turn into a forged log line of its own."""
+    return text.encode("unicode_escape").decode("ascii")
+
+
 def describe_process(pid: int) -> str:
     """Best effort, for the audit log only: by now the PID may be another process."""
     try:
-        command = Path(f"/proc/{pid}/comm").read_text().strip()
-        cgroup = Path(f"/proc/{pid}/cgroup").read_text().strip().rpartition(":")[2]
+        command = Path(f"/proc/{pid}/comm").read_text().removesuffix("\n")
+        cgroup = Path(f"/proc/{pid}/cgroup").read_text().removesuffix("\n")
     except OSError:
         return f"pid {pid}"
-    return f"pid {pid} {command} in {cgroup}"
+    # cgroup v2: a single "0::<path>" line
+    return f"pid {pid} {printable(command)} in {printable(cgroup.removeprefix('0::'))}"
 
 
 def reply(conn: socket.socket, message: dict[str, str | int]) -> None:
