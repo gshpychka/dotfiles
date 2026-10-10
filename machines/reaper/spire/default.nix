@@ -381,6 +381,8 @@ in
           # /run is root's alone, so no one else can have created this
           install -d -m 0755 "$(dirname ${bootstrapBundle})"
           ${lib.getExe' server.package "spire-server"} bundle show > "${bootstrapBundle}.new"
+          # public CA certificates; the unit's UMask would leave them root-only
+          chmod 0644 "${bootstrapBundle}.new"
           mv "${bootstrapBundle}.new" "${bootstrapBundle}"
         ''}";
         DevicePolicy = "closed";
