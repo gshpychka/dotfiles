@@ -17,7 +17,7 @@ in
         ingress = {
           # each hostname needs a proxied CNAME to the tunnel in infra/reaper/dns.tf
           ${spire.issuerHost} = {
-            service = "http://${spire.discovery.address}";
+            service = "unix:${spire.discovery.socket}";
             path = "^(${lib.concatMapStringsSep "|" lib.escapeRegex spire.discovery.paths})$";
             # the provider serves its discovery document only for hosts in
             # its `domains`

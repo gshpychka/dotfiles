@@ -13,10 +13,10 @@
 #   matter), and identifies callers of its Workload API socket by Unix user
 #   and systemd unit.
 # - oidc-discovery-provider: serves the discovery document and live JWKS on
-#   loopback. machines/reaper/cloudflare-tunnel.nix publishes those two paths.
+#   a Unix socket. machines/reaper/cloudflare-tunnel.nix publishes those two
+#   paths.
 # - spire-entries: makes the server's registration entries (which caller gets
-#   which identity) match my.spire.{users,services}. Entries it did not create
-#   are left alone.
+#   which identity) match my.spire.{users,services}, deleting any other entry.
 # - spiffe-helper (user service): keeps a fresh token for AWS at
 #   $XDG_RUNTIME_DIR/spiffe/aws.jwt for every user in my.spire.users.
 #
@@ -60,10 +60,12 @@ let
 
   audience = "sts.amazonaws.com";
   serverPort = 8081;
-  bootstrapBundle = "bootstrap-bundle.pem";
+  # Root-owned: in the agent's own state directory the agent could plant a
+  # symlink there for the root ExecStartPre to write and chown through.
+  bootstrapBundle = "/run/spire-agent-bootstrap/bundle.pem";
   awsTokenFile = "aws.jwt";
 
-  # Entries spire-entries owns carry this ID prefix.
+  # IDs of the entries spire-entries writes, to tell them apart from SPIRE's own
   entryPrefix = "nix-";
   # The only characters a SPIFFE ID path segment and an entry ID both allow
   # (https://github.com/spiffe/spiffe/blob/main/standards/SPIFFE-ID.md#22-path).
@@ -122,9 +124,15 @@ let
       export SPIRE_SERVER_PRIVATE_SOCKET=${server.settings.server.socket_path}
       ${waitForServer}
 
-      have=$(spire-server entry show -output json \
-        | jq -c '[.entries[]?.id | select(startswith("${entryPrefix}"))]')
+      # Every entry on the server is managed here: one not in my.spire is
+      # deleted, so a mapping added by hand, or by someone with one-off admin
+      # access, does not survive the next start. Deletions go first, so a
+      # failing create cannot hold up a revocation.
+      have=$(spire-server entry show -output json | jq -c '[.entries[]?.id]')
       want=$(jq -c '[.entries[].entry_id]' ${entriesFile})
+      jq -r --argjson want "$want" '.[] | select(IN($want[]) | not)' <<<"$have" \
+        | while read -r stale; do spire-server entry delete -entryID "$stale"; done
+
       # the wanted entries the server does (true) or does not (false) have yet
       wanted() {
         jq --argjson have "$have" --argjson present "$1" \
@@ -139,16 +147,19 @@ let
       if [ "$(jq '.entries | length' <<<"$updated")" -gt 0 ]; then
         spire-server entry update -data - <<<"$updated"
       fi
-      jq -r --argjson want "$want" '.[] | select(IN($want[]) | not)' <<<"$have" \
-        | while read -r stale; do spire-server entry delete -entryID "$stale"; done
     '';
   };
 
-  discoveryAddress = "127.0.0.1:8089";
+  discoveryUnit = "spire-oidc-discovery-provider";
+  # In the provider's own runtime directory. Nobody else can create a file
+  # there, so nothing can stand in for the provider while it is down, as any
+  # local user could on a free loopback port.
+  discoverySocket = "/run/${discoveryUnit}/discovery.sock";
   discoveryConfig = (pkgs.formats.hcl1 { }).generate "oidc-discovery-provider.conf" {
     domains = [ cfg.issuerHost ];
     jwt_issuer = cfg.issuerUrl;
-    insecure_addr = discoveryAddress;
+    # the provider makes it world-connectable; it serves only public keys
+    listen_socket_path = discoverySocket;
     # AWS ignores it; it makes the published keys' purpose explicit
     set_key_use = true;
     workload_api = {
@@ -217,11 +228,11 @@ in
       description = "`iss` claim of every token; the provider URL AWS is configured with.";
     };
     discovery = {
-      address = lib.mkOption {
+      socket = lib.mkOption {
         type = lib.types.str;
         readOnly = true;
-        default = discoveryAddress;
-        description = "Loopback address of the discovery provider, for the tunnel.";
+        default = discoverySocket;
+        description = "Unix socket the discovery provider serves HTTP on, for the tunnel.";
       };
       paths = lib.mkOption {
         type = lib.types.listOf lib.types.str;
@@ -310,6 +321,8 @@ in
           agent_ttl = "24h";
           default_x509_svid_ttl = "1h";
           default_jwt_svid_ttl = "5m";
+          # JWT-SVID issuance is otherwise logged at debug level only
+          audit_log_enabled = true;
         };
         plugins = {
           KeyManager.disk.plugin_data.keys_path = "$STATE_DIRECTORY/keys.json";
@@ -340,7 +353,7 @@ in
           server_port = serverPort;
           # Written fresh from the server at every start (ExecStartPre below),
           # so a re-bootstrap after a CA rollover always trusts the current CA.
-          trust_bundle_path = "$STATE_DIRECTORY/${bootstrapBundle}";
+          trust_bundle_path = bootstrapBundle;
           trust_bundle_format = "pem";
           rebootstrap_mode = "auto";
           rebootstrap_delay = "1m";
@@ -365,9 +378,10 @@ in
           set -e
           export SPIRE_SERVER_PRIVATE_SOCKET=${server.settings.server.socket_path}
           ${waitForServer}
-          ${lib.getExe' server.package "spire-server"} bundle show > "$STATE_DIRECTORY/${bootstrapBundle}"
-          # systemd made the state directory the agent user's
-          chown --reference="$STATE_DIRECTORY" "$STATE_DIRECTORY/${bootstrapBundle}"
+          # /run is root's alone, so no one else can have created this
+          install -d -m 0755 "$(dirname ${bootstrapBundle})"
+          ${lib.getExe' server.package "spire-server"} bundle show > "${bootstrapBundle}.new"
+          mv "${bootstrapBundle}.new" "${bootstrapBundle}"
         ''}";
         DevicePolicy = "closed";
         DeviceAllow = [ "/dev/tpmrm0 rw" ];
@@ -390,7 +404,7 @@ in
       };
     };
 
-    systemd.services.spire-oidc-discovery-provider = {
+    systemd.services.${discoveryUnit} = {
       description = "SPIRE OIDC discovery provider";
       wants = [ "spire-agent.service" ];
       after = [ "spire-agent.service" ];
@@ -398,6 +412,11 @@ in
       serviceConfig = hardening // {
         ExecStart = "${lib.getExe' server.package.oidc "oidc-discovery-provider"} -config ${discoveryConfig}";
         DynamicUser = true;
+        RuntimeDirectory = discoveryUnit;
+        RuntimeDirectoryMode = "0755";
+        # Unix sockets only: the Workload API and its own listener
+        PrivateNetwork = true;
+        RestrictAddressFamilies = [ "AF_UNIX" ];
         PrivateDevices = true;
         Restart = "on-failure";
         RestartSec = 5;

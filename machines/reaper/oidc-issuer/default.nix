@@ -10,8 +10,10 @@
 #   their group, and issuer.py checks the list again.
 # - Key: ES256, generated on reaper and sealed with systemd-creds to both the
 #   TPM2 and the host key in /var/lib/systemd, so the sealed file only
-#   decrypts on this machine. It is never in git, a sops file or the Nix store;
-#   systemd decrypts it into each short-lived, sandboxed minting process.
+#   decrypts on this machine, booted through its own Secure Boot chain (PCR 7).
+#   It is never in git, a sops file or the Nix store; systemd decrypts it into
+#   each short-lived, sandboxed minting process. Root on the running machine
+#   can still read it, so a root compromise means rotating the key.
 #   (`oidc-issuer-keygen --no-tpm` seals with the host key alone, for a
 #   machine without a TPM2.)
 # - Publishing: reaper serves nothing publicly. buoy serves the discovery
@@ -20,6 +22,8 @@
 #
 # Bootstrap and key rotation:
 #   ssh reaper sudo oidc-issuer-keygen   # seals a new key to the TPM2, prints its public half
+#   (also after a Secure Boot key or dbx update, which leaves the sealed key
+#   unusable: it is bound to PCR 7)
 #   add the printed entry to my.oidcIssuer.publicKeys (modules/common/oidc-issuer.nix)
 #   set my.oidcIssuer.activeKid (machines/reaper/default.nix) to the printed kid
 #   deploy buoy (publishes the key), wait my.oidcIssuer.jwksCacheSeconds so

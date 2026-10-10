@@ -10,7 +10,9 @@
 }:
 let
   cfg = config.my.oidcIssuer;
-  port = 8180;
+  # Below 1024, so only root can bind it: no other local user can stand in
+  # for nginx (and serve its own JWKS to AWS) while nginx is down.
+  port = 80;
 
   # URL path -> document
   documents = {

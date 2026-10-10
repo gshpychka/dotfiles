@@ -129,6 +129,12 @@ in
         assertion = lib.allUnique (map (key: key.kid) cfg.publicKeys);
         message = "my.oidcIssuer.publicKeys: every kid must be unique.";
       }
+      {
+        # every published key can sign tokens AWS accepts, and an extra one
+        # is easy to miss in review; rotation needs at most the old and new
+        assertion = lib.length cfg.publicKeys <= 2;
+        message = "my.oidcIssuer.publicKeys: at most two keys (the active one and the one it replaces).";
+      }
     ];
   };
 }
