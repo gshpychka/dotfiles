@@ -300,15 +300,7 @@
         let
           pkgs = nixpkgs.legacyPackages.${system};
           piPackages = pkgs.callPackage ./packages/pi-packages { };
-          flashVoicePe = pkgs.writeShellApplication {
-            name = "flash-voice-pe";
-            runtimeInputs = [
-              pkgs.esphome
-              pkgs.sops
-              pkgs.git
-            ];
-            text = lib.removePrefix "#!/usr/bin/env bash\n" (builtins.readFile ./scripts/voice-pe/flash.sh);
-          };
+          flashVoicePe = pkgs.callPackage ./scripts/voice-pe/flash.nix { };
         in
         {
           update-pi-packages = {
@@ -319,7 +311,7 @@
           flash-voice-pe = {
             type = "app";
             program = lib.getExe flashVoicePe;
-            meta.description = "Build the Voice PE firmware and flash it to every Voice PE";
+            inherit (flashVoicePe) meta;
           };
         }
       );

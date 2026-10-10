@@ -129,9 +129,7 @@ in
       after = [ "network-online.target" ];
       serviceConfig = {
         ExecStart = "${lib.getExe pkgs.realtime-voice} --config ${json.generate "realtime-voice.json" cfg.settings}";
-        LoadCredential = map (
-          name: "${name}:${config.sops.secrets.${sopsName name}.path}"
-        ) credentialNames;
+        LoadCredential = map (name: "${name}:${config.sops.secrets.${sopsName name}.path}") credentialNames;
         DynamicUser = true;
         StateDirectory = stateDirectory;
         Restart = "on-failure";
