@@ -36,6 +36,7 @@
     ./whisper.nix
     ./realtime-voice.nix
     ./monitoring.nix
+    ./netconsole.nix
     ./home.nix
     ./openwebui.nix
     ./gpu-ai-slice.nix

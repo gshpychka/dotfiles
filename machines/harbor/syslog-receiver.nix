@@ -22,6 +22,12 @@ let
     zenwifi-cc10 = config.my.hosts.zenwifi-cc10.lanIp;
     zenwifi-e288 = config.my.hosts.zenwifi-e288.lanIp;
   };
+
+  # name (journal identifier) → source address, for hosts streaming their kernel
+  # log with netconsole (e.g. machines/reaper/netconsole.nix)
+  netconsoleSenders = {
+    reaper = config.my.hosts.reaper.lanIp;
+  };
 in
 {
   services.rsyslogd = {
@@ -57,6 +63,29 @@ in
         )}
         stop
       }
+
+      # netconsole sends bare kernel log lines with no syslog header, so the raw
+      # datagram is the message
+      input(type="imudp" port="${toString config.my.netconsole.port}" ruleset="netconsole")
+
+      template(name="netconsoleJournal" type="list") {
+        property(name="$!sender" outname="SYSLOG_IDENTIFIER")
+        constant(value="kernel" outname="REMOTE_PROGRAM")
+        property(name="$!message" outname="MESSAGE")
+      }
+
+      ruleset(name="netconsole" queue.type="LinkedList") {
+        ${lib.concatStrings (
+          lib.mapAttrsToList (name: address: ''
+            if $fromhost-ip == "${address}" then {
+              set $!sender = "${name}";
+              set $!message = "kernel: " & $rawmsg;
+              action(type="omjournal" template="netconsoleJournal")
+            }
+          '') netconsoleSenders
+        )}
+        stop
+      }
     '';
   };
 
@@ -64,5 +93,8 @@ in
   # here only receives from the network
   services.journald.settings.Journal.ForwardToSyslog = false;
 
-  networking.firewall.interfaces.${lanInterface}.allowedUDPPorts = [ syslogPort ];
+  networking.firewall.interfaces.${lanInterface}.allowedUDPPorts = [
+    syslogPort
+    config.my.netconsole.port
+  ];
 }

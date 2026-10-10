@@ -93,6 +93,16 @@ in
         description = "OpenAI-compatible API root, reachable from the LAN and the tunnels routed into it";
       };
     };
+    netconsole = {
+      host = lib.mkOption {
+        type = lib.types.str;
+        description = "Fleet host receiving kernel netconsole output";
+      };
+      port = lib.mkOption {
+        type = lib.types.port;
+        description = "UDP port the netconsole receiver listens on";
+      };
+    };
   };
   config = {
     my.sshKeys = {
@@ -127,6 +137,10 @@ in
         mandatoryFeatures = [ ];
         sshUser = "nixbuild";
       };
+    };
+    my.netconsole = {
+      host = "harbor";
+      port = 6666;
     };
     time.timeZone = "Europe/Kyiv";
   };
