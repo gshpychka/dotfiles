@@ -1,4 +1,6 @@
 # Only root may open TCP connections to the GCE metadata server.
+# Shared by the runtime config (./default.nix) and the bootstrap image
+# (infra/nixos/configuration.nix), which runs while the age key grant is on.
 #
 # The metadata server hands an access token for the VM's service account to any
 # local process that asks (its only check is a Metadata-Flavor header). While
@@ -14,7 +16,7 @@
 # - everything that needs the metadata API runs as root: google-guest-agent and
 #   google-{startup,shutdown}-scripts (their units set no User=). OS Login would
 #   need more, since its NSS module queries the metadata server from whichever
-#   process looks up a user, but it is forced off in ./default.nix.
+#   process looks up a user, but both configs force it off.
 #
 # meta skuid is the socket owner's uid in the initial user namespace, so being
 # "root" inside an unprivileged user namespace doesn't get past it.

@@ -34,9 +34,11 @@ resource "google_secret_manager_secret_version" "sops_age_key" {
 # Turn it on when the bootstrap image has to fetch the key: a fresh data disk
 # (new project, lost disk) or a rotated key. In infra/buoy:
 #   tg apply -var grant_vm_sops_age_key_access=true
+#     rotating: also -replace=age_secret_key.sops -replace=google_compute_instance.vm
+#     (only the bootstrap image has fetch-sops-age-key, and only a new VM boots it)
 #   if the bootstrap image booted before the grant took effect (IAM can take a
 #   minute or two), on buoy: systemctl restart fetch-sops-age-key
-#   deploy buoy (runbook in machines/buoy/default.nix)
+#   deploy buoy (runbook in machines/buoy/default.nix; rekey if buoy_host changed)
 #   tg apply   # revokes the grant
 resource "google_secret_manager_secret_iam_member" "sops_age_key" {
   count = var.grant_vm_sops_age_key_access ? 1 : 0
