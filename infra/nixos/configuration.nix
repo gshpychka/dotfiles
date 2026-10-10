@@ -19,6 +19,8 @@ in
   imports = [
     "${modulesPath}/virtualisation/google-compute-image.nix"
     ../../machines/buoy/data-disk.nix
+    # this image runs while the VM can read the age key; fetch-sops-age-key runs as root
+    ../../machines/buoy/metadata-server.nix
   ];
 
   virtualisation.googleComputeImage.efi = true;
