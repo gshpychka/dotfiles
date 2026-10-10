@@ -16,6 +16,10 @@ let
   # echo-cancelled audio lands in /var/lib/realtime-voice/recordings. That is
   # household audio, so leave it off otherwise.
   record = true;
+  # The daily systemd-tmpfiles-clean deletes recordings older than this, whether or not record is on.
+  recordingRetention = "7d";
+  stateDirectory = "realtime-voice";
+  recordingsDir = "${stateDirectory}/recordings";
 
   # Keys in secrets/reaper/realtime-voice.yaml, handed to the service as
   # systemd credentials under the same names.
@@ -102,7 +106,7 @@ let
     };
     idle_timeout_s = 8;
     max_conversation_s = 600;
-    recordings_dir = if record then "/var/lib/realtime-voice/recordings" else null;
+    recordings_dir = if record then "/var/lib/${recordingsDir}" else null;
     mcp_servers = [
       {
         # HA's built-in MCP Server integration: the Assist API over exposed entities
@@ -139,7 +143,7 @@ in
         name: _: "${name}:${config.sops.secrets.${sopsName name}.path}"
       ) credentials;
       DynamicUser = true;
-      StateDirectory = "realtime-voice";
+      StateDirectory = stateDirectory;
       Restart = "on-failure";
       RestartSec = 5;
       # Audio processing is latency-sensitive; keep it ahead of batch work.
@@ -162,6 +166,10 @@ in
       SystemCallArchitectures = "native";
     };
   };
+
+  # DynamicUser state lives under /var/lib/private; /var/lib/${stateDirectory} is a symlink to it.
+  systemd.tmpfiles.settings.realtime-voice."/var/lib/private/${recordingsDir}".e.age =
+    recordingRetention;
 
   # Only the Voice PEs may open conversations: every one is billed to the OpenAI key.
   networking.firewall.extraCommands = lib.concatMapStrings (host: ''
