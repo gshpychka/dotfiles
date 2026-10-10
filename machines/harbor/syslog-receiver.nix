@@ -2,8 +2,10 @@
 # stores it in harbor's journal so the logs survive the device crashing or
 # rebooting. Retention and rotation follow harbor's journald limits.
 #
-# Each sender's messages carry its name as the syslog identifier:
+# Each sender's messages carry its name as the syslog identifier, and the
+# sending program in REMOTE_PROGRAM:
 #   journalctl -t router
+#   journalctl -t router REMOTE_PROGRAM=dnsmasq
 {
   config,
   lib,
@@ -28,6 +30,17 @@ let
   netconsoleSenders = {
     reaper = config.my.hosts.reaper.lanIp;
   };
+
+  # one omjournal action per sender, matched on its source address
+  senderRules =
+    templatePrefix: senderSet:
+    lib.concatStrings (
+      lib.mapAttrsToList (name: address: ''
+        if $fromhost-ip == "${address}" then {
+          action(type="omjournal" template="${templatePrefix}-${name}")
+        }
+      '') senderSet
+    );
 in
 {
   services.rsyslogd = {
@@ -39,51 +52,43 @@ in
       module(load="omjournal")
 
       input(type="imudp" port="${toString syslogPort}" ruleset="remote")
+      input(type="imudp" port="${toString config.my.netconsole.port}" ruleset="netconsole")
 
-      # the journal's MESSAGE field carries "<program>: <text>"; the sender's
-      # program name is also kept in its own field for filtering
-      template(name="remoteJournal" type="list") {
-        property(name="$!sender" outname="SYSLOG_IDENTIFIER")
-        property(name="syslogseverity" outname="PRIORITY")
-        property(name="programname" outname="REMOTE_PROGRAM")
-        property(name="$!message" outname="MESSAGE")
-      }
+      # Template fields that read a variable ($!x, $.x) get their outname
+      # lowercased, and journald rejects lowercase field names, so each sender
+      # has its own template carrying its name as a constant
+      ${lib.concatStrings (
+        lib.mapAttrsToList (name: _: ''
+          template(name="remote-${name}" type="list") {
+            constant(value="${name}" outname="SYSLOG_IDENTIFIER")
+            property(name="syslogseverity" outname="PRIORITY")
+            property(name="programname" outname="REMOTE_PROGRAM")
+            property(name="msg" outname="MESSAGE")
+          }
+        '') senders
+      )}
 
-      # UDP syslog is unauthenticated; only datagrams from a listed sender
-      # address are kept, everything else is dropped
+      # netconsole sends bare kernel log lines with no syslog header, so the
+      # datagram is the message
+      ${lib.concatStrings (
+        lib.mapAttrsToList (name: _: ''
+          template(name="netconsole-${name}" type="list") {
+            constant(value="${name}" outname="SYSLOG_IDENTIFIER")
+            constant(value="kernel" outname="REMOTE_PROGRAM")
+            property(name="rawmsg" outname="MESSAGE" droplastlf="on")
+          }
+        '') netconsoleSenders
+      )}
+
+      # UDP is unauthenticated; only datagrams from a listed sender address are
+      # kept, everything else is dropped
       ruleset(name="remote" queue.type="LinkedList") {
-        ${lib.concatStrings (
-          lib.mapAttrsToList (name: address: ''
-            if $fromhost-ip == "${address}" then {
-              set $!sender = "${name}";
-              set $!message = $programname & ":" & $msg;
-              action(type="omjournal" template="remoteJournal")
-            }
-          '') senders
-        )}
+        ${senderRules "remote" senders}
         stop
       }
 
-      # netconsole sends bare kernel log lines with no syslog header, so the raw
-      # datagram is the message
-      input(type="imudp" port="${toString config.my.netconsole.port}" ruleset="netconsole")
-
-      template(name="netconsoleJournal" type="list") {
-        property(name="$!sender" outname="SYSLOG_IDENTIFIER")
-        constant(value="kernel" outname="REMOTE_PROGRAM")
-        property(name="$!message" outname="MESSAGE")
-      }
-
       ruleset(name="netconsole" queue.type="LinkedList") {
-        ${lib.concatStrings (
-          lib.mapAttrsToList (name: address: ''
-            if $fromhost-ip == "${address}" then {
-              set $!sender = "${name}";
-              set $!message = "kernel: " & $rawmsg;
-              action(type="omjournal" template="netconsoleJournal")
-            }
-          '') netconsoleSenders
-        )}
+        ${senderRules "netconsole" netconsoleSenders}
         stop
       }
     '';
