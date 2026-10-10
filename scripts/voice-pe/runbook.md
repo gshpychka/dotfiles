@@ -4,8 +4,8 @@ The Voice PEs (the hosts with a `voiceArea` in `modules/common/hosts.nix`) run
 one firmware, `voice-pe.yaml`: the stock Home
 Assistant Voice firmware with one addition, a **Voice backend** select. "Home Assistant" is the stock Assist path, still switched between
 pipelines by the Assistant selects. "Realtime" and "Live" hand the
-conversation to the realtime-voice broker on reaper
-(`machines/reaper/realtime-voice.nix`):
+conversation to the realtime-voice broker on hoard
+(`machines/hoard/realtime-voice.nix`):
 
 - Realtime runs on the OpenAI Realtime API. It takes turns, and the broker
   stops the reply when you talk over it.
@@ -32,17 +32,17 @@ speaker with it.
    generated:
 
    ```sh
-   nix develop -c sops secrets/reaper/realtime-voice.yaml
+   nix develop -c sops secrets/hoard/realtime-voice.yaml
    ```
 
    - `openai-api-key`: an OpenAI API key with Realtime and Live access
    - `ha-token`: the token from step 2
 
-4. Deploy harbor (static lease) and reaper (broker):
+4. Deploy harbor (static lease) and hoard (broker):
 
    ```sh
    nixos-rebuild switch --flake .#harbor --target-host harbor --sudo
-   nixos-rebuild switch --flake .#reaper --target-host reaper --sudo
+   nixos-rebuild switch --flake .#hoard --target-host hoard --sudo
    ```
 
    Restart each Voice PE from Home Assistant so it picks up its static lease;
@@ -71,15 +71,15 @@ upstream releases for the devices. To pick one up, bump `ref` in
 ## Using it
 
 Set **Voice backend** to Realtime or Live on the device page. Watch the broker with
-`ssh reaper journalctl -fu realtime-voice`.
+`ssh hoard journalctl -fu realtime-voice`.
 
 ## Tuning barge-in
 
-In Realtime conversations, interruptions are decided on reaper from
-echo-cancelled mic audio, with the thresholds in `realtime.barge_in` in
-`machines/reaper/realtime-voice.nix`. To tune them:
+In Realtime conversations, interruptions are decided on hoard from
+echo-cancelled mic audio, with the thresholds in `settings.realtime.barge_in` in
+`machines/hoard/realtime-voice.nix`. To tune them:
 
-1. Set `record = true` there and deploy reaper.
+1. Set `recordings.enable = true` there and deploy hoard.
 2. Have a few conversations: talk over replies, and also let replies play out
    while the room is noisy (music, dishes).
 3. Each conversation leaves `<stamp>-<pe>.wav` and `.jsonl` in
@@ -89,7 +89,7 @@ echo-cancelled mic audio, with the thresholds in `realtime.barge_in` in
    probability and AEC statistics.
 4. False interruptions: raise `min_level_dbfs` or `min_speech_ms`. Missed
    ones: lower them. `vad_threshold` is Silero's speech probability.
-5. Set `record = false`, delete the recordings, deploy.
+5. Set `recordings.enable = false`, delete the recordings, deploy.
 
 If the echo-cancelled channel still carries clear speaker audio, check the
 AEC `delay_ms` statistic in the JSONL. A reference that isn't lined up

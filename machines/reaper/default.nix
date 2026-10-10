@@ -34,7 +34,6 @@
     ./jovian
     ./kokoro.nix
     ./whisper.nix
-    ./realtime-voice.nix
     ./monitoring.nix
     ./netconsole.nix
     ./home.nix

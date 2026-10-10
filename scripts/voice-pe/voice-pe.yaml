@@ -6,8 +6,8 @@
 # routing between them. Deployment: runbook.md.
 
 substitutions:
-  # packages/realtime-voice on reaper; the port is set in machines/reaper/realtime-voice.nix
-  realtime_voice_url: ws://reaper.glib.sh:10310
+  # packages/realtime-voice on hoard; the port is my.realtime-voice.port
+  realtime_voice_url: ws://hoard.glib.sh:10310
 
 packages:
   voice_pe:

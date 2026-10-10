@@ -7,7 +7,7 @@ set -euo pipefail
 repo=$(git rev-parse --show-toplevel)
 cd "$repo/scripts/voice-pe"
 
-flake="$repo#nixosConfigurations.reaper.config.my"
+flake="$repo#nixosConfigurations.hoard.config.my"
 domain=$(nix eval --raw "$flake.domain")
 if (($# > 0)); then
   pes=("$@")
@@ -21,7 +21,7 @@ fi
 trap 'rm -f secrets.yaml' EXIT
 (
   umask 077
-  sops -d --extract '["device-token"]' "$repo/secrets/reaper/realtime-voice.yaml" |
+  sops -d --extract '["device-token"]' "$repo/secrets/hoard/realtime-voice.yaml" |
     sed 's/^/realtime_voice_token: /' >secrets.yaml
 )
 
