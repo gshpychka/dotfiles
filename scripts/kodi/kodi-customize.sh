@@ -15,9 +15,11 @@ GUISETTINGS=/storage/.kodi/userdata/guisettings.xml
 # film in the library has its letterbox bars baked into a 16:9 frame, so Kodi's
 # "bottom of video, outside" places them over the picture. Kodi keeps the
 # position per display mode; every mode whose GUI is 1080 lines tall gets the
-# same one, low enough for two lines to fit in a 2.39:1 bar.
+# same one, low enough for two lines to fit in a 2.39:1 bar. The vertical
+# margin is a percentage of the screen height.
 SUBTITLES_ALIGN_MANUAL=0
 SUBTITLES_POSITION_1080=1080
+SUBTITLES_MARGIN_VERTICAL=2
 
 log() {
   logger -t kodi-customize "$1"
@@ -152,12 +154,36 @@ bingie_hdr() {
   fi
 }
 
+# Bingie's progress-under-title mode (skin setting MovieDetailsHome) swaps an
+# in-progress item's details, plot and extra info for a progress row, and
+# slides the header down 130px into the gap. These edits keep the details for
+# every item, drop the slide, hide the Continue Watching episode label that
+# duplicates the regular one, and seat the progress row under the details row.
+bingie_progress() {
+  for file in "$SKIN/IncludesBingie.xml" "$SKIN/IncludesHomeBingie.xml"; do
+    grep -qE '!Integer\.IsGreater\(ListItem\.PercentPlayed,1\)|end="0,130".*PercentPlayed' "$file" || continue
+    sed -i \
+      -e '/end="0,130".*PercentPlayed/d' \
+      -e 's/!Integer\.IsGreater(ListItem\.PercentPlayed,1)/true/g' \
+      -e 's#<visible>!\[Integer\.IsGreater(ListItem\.PercentPlayed,1) | .*\]\]</visible>#<visible>true</visible>#' \
+      -e '/Seasons and Episodes for Continue Watching -->/,/<\/control>/s#<visible>Skin\.HasSetting(MovieDetailsHome)</visible>#<visible>false</visible>#' \
+      -e '/Movie and TV Show Continue Watching -->/,/<\/control>/s#<top>39</top>#<top>20</top>#' \
+      "$file"
+    log "Bingie progress row placed under the details in $(basename "$file")"
+    reload_skin=1
+  done
+}
+
 # Kodi rewrites guisettings.xml from memory when it exits, so this only runs
 # while Kodi is stopped, i.e. at boot before kodi.service.
 kodi_settings() {
-  awk -v align="$SUBTITLES_ALIGN_MANUAL" -v pos="$SUBTITLES_POSITION_1080" '
+  awk -v align="$SUBTITLES_ALIGN_MANUAL" -v pos="$SUBTITLES_POSITION_1080" \
+    -v margin="$SUBTITLES_MARGIN_VERTICAL" '
     /<setting id="subtitles.align"/ {
       sub(/<setting id="subtitles.align"[^>]*>[0-9]+</, "<setting id=\"subtitles.align\">" align "<")
+    }
+    /<setting id="subtitles.marginvertical"/ {
+      sub(/<setting id="subtitles.marginvertical"[^>]*>[0-9.]+</, "<setting id=\"subtitles.marginvertical\">" margin "<")
     }
     /<resolution>/ { inres = 1; buf = "" }
     inres {
@@ -203,6 +229,7 @@ fi
 if [ -d "$SKIN" ]; then
   hide_profile
   bingie_hdr
+  bingie_progress
   install_overrides
 fi
 

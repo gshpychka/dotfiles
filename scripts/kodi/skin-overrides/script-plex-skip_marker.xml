@@ -7,8 +7,10 @@
 
   The button is the only control and always has focus, so the focused state is
   the one on screen: translucent black box, thin white outline, white text.
-  Textures and fonts come from Bingie. The fill is a separate image because a
-  button draws one texture per state, which fixes the width at 300.
+  Textures and fonts come from Bingie. osd_panel.png is thinborder.png's filled
+  shape, so at the same border the fill and outline share rounded corners. The
+  fill is a separate image because a button draws one texture per state, which
+  fixes the size; 260 fits PKC's longest label, "Skip commercial", in Bold28.
 -->
 <window>
     <defaultcontrol always="true">3002</defaultcontrol>
@@ -24,16 +26,16 @@
             </animation>
             <right>90</right>
             <bottom>150</bottom>
-            <width>300</width>
-            <height>70</height>
+            <width>260</width>
+            <height>56</height>
             <control type="image">
-                <texture colordiffuse="99000000">colors/color_white.png</texture>
+                <texture border="10" colordiffuse="99000000">diffuse/osd_panel.png</texture>
             </control>
             <control type="grouplist" id="3001">
                 <control type="button" id="3002">
                     <label>$INFO[Window.Property(marker_message)]</label>
-                    <width>300</width>
-                    <height>70</height>
+                    <width>260</width>
+                    <height>56</height>
                     <font>Bold28</font>
                     <textcolor>b3ffffff</textcolor>
                     <focusedcolor>ffffffff</focusedcolor>
