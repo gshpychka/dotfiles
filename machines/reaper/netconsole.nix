@@ -41,8 +41,12 @@ in
       ping -c 1 -W 2 ${receiverIp} > /dev/null
       mac=$(ip -j neigh show ${receiverIp} dev ${interface} | jq -er '.[0].lladdr')
 
+      # a target only accepts settings while disabled, and rejects disabling
+      # when it is already off
       mkdir -p ${target}
-      echo 0 > ${target}/enabled
+      if [ "$(cat ${target}/enabled)" = 1 ]; then
+        echo 0 > ${target}/enabled
+      fi
       echo ${interface} > ${target}/dev_name
       echo ${localIp} > ${target}/local_ip
       echo ${receiverIp} > ${target}/remote_ip
@@ -50,14 +54,14 @@ in
       echo "$mac" > ${target}/remote_mac
       echo 1 > ${target}/enabled
 
-      # netconsole only receives messages below the console log level.
-      # boot.consoleLogLevel = 3 keeps boot quiet; once booted, the level goes to 7
-      # so warnings such as NVMe timeouts and controller resets reach the receiver.
-      # The local console prints them too.
+      # netconsole receives only messages below the console log level. Level 7
+      # passes everything except debug, to the local console as well.
       echo 7 > /proc/sys/kernel/printk
     '';
     preStop = ''
-      echo 0 > ${target}/enabled
+      if [ "$(cat ${target}/enabled)" = 1 ]; then
+        echo 0 > ${target}/enabled
+      fi
     '';
   };
 }
