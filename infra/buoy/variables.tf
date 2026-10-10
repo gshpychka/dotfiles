@@ -43,3 +43,9 @@ variable "nixos_image_path" {
   type        = string
   default     = "../result"
 }
+
+variable "grant_vm_sops_age_key_access" {
+  description = "Let the VM's service account read the sops age key from Secret Manager. Only needed while the bootstrap image fetches it onto a fresh data disk; see sops.tf"
+  type        = bool
+  default     = false
+}

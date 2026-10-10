@@ -69,7 +69,12 @@ resource "google_compute_instance" "vm" {
   }
 
   service_account {
-    email  = google_service_account.vm.email
+    email = google_service_account.vm.email
+    # Secret Manager only accepts the cloud-platform scope, and the bootstrap
+    # fetch of the sops age key needs it (sops.tf). Scopes only cap a token on
+    # top of IAM, and the account's only grant here is that optional read, so
+    # a narrower scope would protect nothing more. Tying the scope to
+    # grant_vm_sops_age_key_access instead would stop the VM on every toggle.
     scopes = ["cloud-platform"]
   }
 
