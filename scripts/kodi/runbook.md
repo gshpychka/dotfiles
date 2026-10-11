@@ -55,6 +55,9 @@ profile 7 FEL. CPM publishes no builds.
 
 - `local-demux-replay-seek.patch` drops the packets the startup probes queue
   when playback seeks, so a resumed movie starts with audio and picture in sync
+- `local-window-close-message-flags.patch` reads a cross-thread window close's
+  force and sound flags from the field the sender fills, so the OSD and seek
+  bar finish closing when CPM's overlay worker closes them
 
 Build on reaper. The first build takes a few hours; a Kodi-only change takes
 minutes:

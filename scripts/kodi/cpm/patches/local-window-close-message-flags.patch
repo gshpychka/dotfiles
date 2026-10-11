@@ -1,0 +1,14 @@
+diff --git a/xbmc/guilib/GUIWindowManager.cpp b/xbmc/guilib/GUIWindowManager.cpp
+--- a/xbmc/guilib/GUIWindowManager.cpp
++++ b/xbmc/guilib/GUIWindowManager.cpp
+@@ -1270,8 +1270,9 @@
+   case TMSG_GUI_WINDOW_CLOSE:
+   {
+     CGUIWindow *window = static_cast<CGUIWindow *>(pMsg->lpVoid);
++    // param1 is the next window's ID, param2 the force (0x1) and sound (0x2) flags.
+     if (window)
+-      window->Close((pMsg->param1 & 0x1) ? true : false, pMsg->param1, (pMsg->param1 & 0x2) ? true : false);
++      window->Close((pMsg->param2 & 0x1) != 0, pMsg->param1, (pMsg->param2 & 0x2) != 0);
+   }
+   break;
+ 
