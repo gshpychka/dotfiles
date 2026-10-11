@@ -24,6 +24,7 @@ let
     "device-token"
   ];
   openclawCredential = "openclaw-secret";
+  identityCredential = "identity";
   credential = name: "/run/credentials/voice-broker.service/${name}";
   # sops-nix secret names are host-global, so they carry the service name
   sopsName = name: "voice-broker/${name}";
@@ -53,6 +54,17 @@ in
         default = "7d";
         description = "systemd-tmpfiles age past which recordings are deleted, whether or not recording is on.";
       };
+    };
+
+    identityFile = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = "${openclaw.workspace}/IDENTITY.md";
+      defaultText = lib.literalExpression ''"''${config.my.openclaw.workspace}/IDENTITY.md"'';
+      description = ''
+        The assistant's description of itself, read at each broker start to
+        lead the Live instructions. The instructions stand alone while it is
+        missing or empty, and with null.
+      '';
     };
 
     settings = lib.mkOption {
@@ -90,6 +102,9 @@ in
         url = openclaw.localUrl;
         token_file = credential openclawCredential;
       };
+      live = lib.optionalAttrs (cfg.identityFile != null) {
+        identity_file = credential identityCredential;
+      };
     };
 
     sops.secrets = lib.listToAttrs (
@@ -118,7 +133,11 @@ in
         ExecStart = "${lib.getExe pkgs.voice-broker} --config ${json.generate "voice-broker.json" cfg.settings}";
         LoadCredential =
           map (name: "${name}:${config.sops.secrets.${sopsName name}.path}") credentialNames
-          ++ [ "${openclawCredential}:${openclaw.secretFile}" ];
+          ++ [ "${openclawCredential}:${openclaw.secretFile}" ]
+          ++ lib.optional (cfg.identityFile != null) "${identityCredential}:${cfg.identityFile}";
+        # the identity while identityFile is missing; a LoadCredential= that
+        # finds no file falls back to it (systemd.exec(5), SetCredential=)
+        SetCredential = lib.optional (cfg.identityFile != null) "${identityCredential}:";
         User = user;
         Group = user;
         StateDirectory = stateDirectory;
