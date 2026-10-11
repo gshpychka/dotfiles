@@ -10,14 +10,14 @@
 #   my.openclaw.github = { appId = ...; slug = "..."; installationId = ...; botUserId = ...; };
 { config, ... }:
 {
-  # Trusted-proxy auth admits any loopback connection that names a proxied
-  # user. The web gateway's loopback gate (frontend.nix) admits only root,
-  # nginx and the gateway user to its port, keeping out Claude Code sessions
-  # and the nix build users they can start.
   assertions = [
     {
-      assertion = !config.my.openclaw.trustedProxy.enable || config.my.webGateway.loopbackGate.enable;
-      message = "my.openclaw.trustedProxy on hoard needs my.webGateway.loopbackGate to keep other local users off the gateway port.";
+      assertion =
+        let
+          wg = config.my.webGateway;
+        in
+        !config.my.openclaw.trustedProxy.enable || (wg.enable && wg.sso.enable && wg.loopbackGate.enable);
+      message = "my.openclaw.trustedProxy on hoard needs my.webGateway's loopback gate to keep other local users off the gateway port.";
     }
   ];
 
