@@ -268,10 +268,15 @@ let
 
     models.catalogRefresh.enabled = false;
 
+    auth.order = cfg.model.authOrder;
+
     agents.defaults = {
       model = {
         inherit (cfg.model) primary fallbacks;
       };
+      # OpenClaw's own runtime, which runs host commands through
+      # hostExec.allowlist; in auto mode the Codex harness claims openai/* routes
+      models."openai/*".agentRuntime.id = "openclaw";
       inherit (cfg) workspace;
       userTimezone = config.time.timeZone;
       heartbeat.every = "0m";
@@ -409,6 +414,17 @@ in
           Model for short internal tasks such as titles and progress
           narration, as provider/model; null takes the primary provider's
           small model.
+        '';
+      };
+      authOrder = lib.mkOption {
+        type = lib.types.attrsOf (lib.types.listOf lib.types.str);
+        default = { };
+        example = {
+          openai = [ "openai:chatgpt" ];
+        };
+        description = ''
+          Auth profiles model calls try, in order, by provider; a profile
+          comes from `openclaw models auth login --profile-id <id>`.
         '';
       };
     };

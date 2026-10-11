@@ -32,7 +32,13 @@
     };
     telegram.enable = true;
 
-    model.primary = "openai/gpt-5.6-sol";
+    model = {
+      primary = "openai/gpt-6-astra";
+      # the owner's ChatGPT subscription; OpenClaw's runtime takes OPENAI_API_KEY
+      # without an auth order. Sign in once, from a terminal on eve:
+      #   ssh -t hoard openclaw models auth login --provider openai --device-code --profile-id openai:chatgpt
+      authOrder.openai = [ "openai:chatgpt" ];
+    };
     providerKeys = {
       OPENAI_API_KEY = "openai-api-key";
       ELEVENLABS_API_KEY = "elevenlabs-api-key";
