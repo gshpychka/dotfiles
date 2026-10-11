@@ -61,6 +61,13 @@ in
         ExecStart = "${onedrive} --monitor";
         Restart = "on-failure";
         RestartSec = "5min";
+        # the client's exit statuses for a required --resync (126 through 2.5.11,
+        # 78 on upstream's master); recover with `openclaw-onedrive --sync --resync`
+        # and a restart
+        RestartPreventExitStatus = [
+          78
+          126
+        ];
         UMask = "0077";
       };
     };
