@@ -67,6 +67,11 @@ in `cpm/patches/`, one directory per package:
   context, and Kodi's GUI renderer keeps its shaders, matrices and viewport as
   state both contexts share, so the worker's output comes out invisible or
   mirrored
+- `linux/local-dv-hdmi-pkt-cache-reset.patch` clears the Dolby Vision driver's
+  record of the HDMI packets it sent when Dolby Vision turns off. The driver
+  skips a packet identical to the recorded one, and other drivers set the
+  packets while Dolby Vision is off, so each Dolby Vision playback sends its
+  HDR10 and BT.2020 signalling
 - `linux/local-dv-ll-brightness-reset.patch` clears the Dolby Vision brightness
   adjustment when Dolby Vision turns off. The adjustment sits in the video
   post-processing every output passes through, so HDR10, HDR10+ and SDR

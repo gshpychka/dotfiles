@@ -1,0 +1,22 @@
+diff --git a/drivers/amlogic/media/enhancement/amdolby_vision/amdolby_vision.c b/drivers/amlogic/media/enhancement/amdolby_vision/amdolby_vision.c
+--- a/drivers/amlogic/media/enhancement/amdolby_vision/amdolby_vision.c
++++ b/drivers/amlogic/media/enhancement/amdolby_vision/amdolby_vision.c
+@@ -1785,6 +1785,8 @@
+ 	VSYNC_WR_DV_REG_BITS(VPP_DOLBY_CTRL, !bypass, 12, 1);
+ }
+ 
++static void invalidate_hdmi_pkt_cache(void);
++
+ void enable_dolby_vision(int enable)
+ {
+ 	bool core1 = (dolby_vision_mask & 1) && dovi_setting_video_flag;
+@@ -1984,6 +1986,9 @@
+ 		// clean mute flag for next time dv on
+ 		dolby_vision_flags &= ~FLAG_MUTE;
+ 
++		// Other drivers set the HDMI packets while DV is off.
++		invalidate_hdmi_pkt_cache();
++
+ 		hdr_osd_off();
+ 		hdr_vd1_off();
+ 	}
