@@ -1,0 +1,20 @@
+diff --git a/xbmc/cores/VideoPlayer/DVDDemuxers/DVDDemux.cpp b/xbmc/cores/VideoPlayer/DVDDemuxers/DVDDemux.cpp
+--- a/xbmc/cores/VideoPlayer/DVDDemuxers/DVDDemux.cpp
++++ b/xbmc/cores/VideoPlayer/DVDDemuxers/DVDDemux.cpp
+@@ -52,13 +52,16 @@
+     return m_demux->Read();
+   }
+ 
++  // Queued replay packets come from the stream position before the seek.
+   bool SeekTime(double time, bool backwards = false, double* startpts = nullptr) override
+   {
++    ClearReplay();
+     return m_demux->SeekTime(time, backwards, startpts);
+   }
+ 
+   bool SeekChapter(int chapter, double* startpts = nullptr) override
+   {
++    ClearReplay();
+     return m_demux->SeekChapter(chapter, startpts);
+   }
+ 

@@ -17,6 +17,8 @@ reapplies these at boot and after each Bingie or PKC update:
   Netflix-style PKC skip intro/credits button
 - shows the Dolby Vision profile and HDR10+ from Plex in Bingie's HDR badge,
   e.g. "DV P8.1 · HDR10+" (`snippets/`)
+- keeps an in-progress item's rating, year, HDR badges and plot on screen, with
+  the progress bar under them
 
 Deploy from eve:
 
@@ -40,3 +42,51 @@ If an addon release moves something a patch anchors on, the script logs
 To undo: disable both units, delete them and `/storage/.config/kodi-customize`,
 then reinstall Bingie and PKC from their repositories to restore the original
 files. The settings stay until changed in Kodi.
+
+## CoreELEC build
+
+The box runs CPM's CoreELEC fork with Kodi 22, built from source. CPM's Kodi
+does player-led Dolby Vision: the box runs the Dolby Vision processing and
+sends HDR10, which is how the Samsung S95C, a TV without Dolby Vision, shows
+profile 7 FEL. CPM publishes no builds.
+
+`cpm/build.sh` pins `cpm-code/CoreELEC`, which in turn pins its Kodi
+(`cpm-code/xbmc`), and adds the Kodi patches in `cpm/patches/`:
+
+- `local-demux-replay-seek.patch` drops the packets the startup probes queue
+  when playback seeks, so a resumed movie starts with audio and picture in sync
+
+Build on reaper. The first build takes a few hours; a Kodi-only change takes
+minutes:
+
+```sh
+scripts/kodi/cpm/build.sh > ~/build/cpm-build.log 2>&1
+```
+
+Install from reaper. The script backs the box up to `~/build/kodi-backup-<time>`
+first, then reboots it into the update:
+
+```sh
+scripts/kodi/cpm/flash.sh ~/build/cpm-coreelec/target/CoreELEC-Amlogic-ng.aarch64-<version>.tar
+```
+
+`ssh kodi grep VERSION= /etc/os-release` shows the running build. To roll back
+(untested): unpack the backup's `flash.tar` over `/flash` after
+`mount -o remount,rw /flash`, and reboot. `storage.tar` holds Kodi's state,
+with the databases in `.dbbackup/`.
+
+These live in Kodi's own settings and survive updates:
+
+- Settings > System > CoreELEC > Dolby Vision: mode On demand, type Player-led
+  (HDR), VS10 for SDR and HDR10 sources set to Dolby Vision, dual-layer
+  priority HDR10+, DV-LL limit "Min PQ 20 and limit max"
+- the injected VSVDB describes the S95C: BT.2020, 0 to 1252 cd/m², payload
+  `4903885698A953`; RTINGS measures its peak at about 1,200–1,230 cd/m²
+- the injected HDR InfoFrame payload
+  `3421AA9B9619FC08488A0839133D4240B0040100CE04EA00` declares BT.2020, mastering
+  1200 cd/m², MaxCLL 1230, MaxFALL 234
+- Skin Shortcuts is pinned at 2.1.0, the pin Kodi records when an add-on is
+  downgraded; 3.x refuses Bingie
+
+The CoreELEC settings pages for Network and Bluetooth fail to load: PyGObject
+calls `pkgutil.get_loader`, which Python 3.14 removed.
