@@ -25,6 +25,7 @@
     ./xcode.nix
     ./nix.nix
     ./1password.nix
+    ./menu-bar.nix
     ./home.nix
     ./secrets.nix
   ];
