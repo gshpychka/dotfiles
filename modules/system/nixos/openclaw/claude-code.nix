@@ -1,15 +1,11 @@
 # Claude Code sessions the agent starts, steers and checks on through ACP
 # (https://docs.openclaw.ai/tools/acp-agents), on the owner's personal Claude
-# plan. A finished session is announced back to the session that started it.
+# plan.
 #
-# Sessions run as their own user. The gateway's ACP adapter (bundled acpx)
-# starts `claude` through CLAUDE_CODE_EXECUTABLE, which this module points at
-# sudo: sudo drops the gateway's environment, so a session sees none of the
-# gateway's tokens, its state directory or its age key. Inside that user a
-# session runs every tool without asking (acpx approve-all), and the user is
-# the boundary: it reaches the network, its own home, the nix daemon (whose
-# builds go to the distributed builders) and the GitHub App if set
-# (github.nix).
+# Sessions run as their own user, which is their boundary: it holds none of the
+# gateway's environment, state directory or age key, and reaches the network,
+# its own home and the nix daemon. Inside it a session runs every tool without
+# asking.
 #
 # Imperative, one-time: sign in to the personal Claude plan as that user, then
 # restart the gateway so its ACP startup probe passes:
@@ -25,26 +21,23 @@ let
   cfg = config.my.openclaw.claudeCode;
   gw = config.services.openclaw-gateway;
   inherit (cfg) user home;
-  # sessions start here unless the agent passes a cwd
+  # the sessions' default working directory
   workDir = "${home}/work";
   outputChain = "openclaw-code-out";
 
-  # Claude Code as the sessions' user, with their PATH. Also the command the
-  # owner signs in with.
+  # Claude Code with the sessions' home and PATH.
   session = pkgs.writeShellApplication {
     name = "openclaw-claude";
     text = ''
       export HOME=${home}
       export PATH=${lib.makeBinPath cfg.tools}:/run/current-system/sw/bin
-      # the gateway user, in this user's group, reads session files; never ~/.claude
+      # group-readable, for the gateway user in this user's group
       umask 0027
       exec ${lib.getExe pkgs.claude-code} "$@"
     '';
   };
 
-  # CLAUDE_CODE_EXECUTABLE for the gateway's ACP adapter. sudo keeps the
-  # working directory and, of the environment, only what the adapter sets up
-  # for the CLI (CLAUDE_*; see security.sudo below).
+  # Claude Code as the sessions' user, in the adapter's working directory.
   executable = pkgs.writeShellScript "openclaw-claude-as-${user}" ''
     exec ${config.security.wrapperDir}/sudo -n -u ${user} -- ${lib.getExe session} "$@"
   '';
@@ -134,10 +127,9 @@ in
         # nix builds in sessions; the daemon admits only listed users
         nix.settings.allowed-users = [ user ];
 
-        # The gateway trusts any loopback connection that names a proxied
-        # user (trustedProxy.allowLoopback in gateway.nix), so sessions must
-        # not reach its port, or they could act as the owner. The ACP adapter
-        # connects to the gateway as the gateway user.
+        # The gateway's trusted-proxy auth admits any loopback connection naming
+        # a proxied user, so sessions stay off its port; the ACP adapter
+        # connects as the gateway user.
         networking.firewall.extraCommands = lib.mkIf (!config.networking.nftables.enable) ''
           for ipt in iptables ${lib.optionalString config.networking.enableIPv6 "ip6tables"}; do
             $ipt -w -N ${outputChain} 2>/dev/null || true
@@ -171,13 +163,13 @@ in
           config.plugins.entries.acpx = {
             enabled = true;
             config = {
-              # a failed startup probe leaves ACP unusable until a restart
+              # the agent whose startup probe gates the whole ACP backend
               probeAgent = "claude";
-              # Sessions the agent starts without a cwd: OpenClaw tries
-              # <workspace>/claude first, which doesn't exist (and the sessions'
-              # user couldn't enter), then falls back to this.
+              # cwd of sessions started without one; OpenClaw's own choice,
+              # <workspace>/claude when it exists, is closed to the sessions'
+              # user
               cwd = workDir;
-              # no one is at a terminal to approve tools; the user is the boundary
+              # sessions run unattended; the sessions' user is the boundary
               permissionMode = "approve-all";
             };
           };

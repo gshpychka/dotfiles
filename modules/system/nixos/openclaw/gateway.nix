@@ -4,11 +4,10 @@
 # Trust boundaries:
 #   - the gateway runs as its own system user and reads secrets from files
 #     rendered by sops; openclaw.json carries only env references;
-#   - the owner's main session (the Telegram DM) runs unsandboxed, because only
-#     an unsandboxed session may start Claude Code (claude-code.nix). Its file
-#     tools stay inside the workspace, and its commands run on this host as the
-#     gateway user against an allowlist (hostExec.allowlist): anything else
-#     waits for the owner's approval in the Telegram DM;
+#   - the owner's main session (the Telegram DM) runs on this host as the
+#     gateway user. Its file tools stay inside the workspace, and its commands
+#     run against an allowlist (hostExec.allowlist), anything else waiting for
+#     the owner's approval in the Telegram DM;
 #   - every other session (automations, Control UI sessions) runs its tools in
 #     rootless Podman containers owned by that user, with no network and only
 #     the workspace.
@@ -17,9 +16,8 @@
 # through a reverse proxy is a remote device and must be paired from the host:
 #   openclaw devices list / openclaw devices approve <id>
 #
-# The agent's own age key (ageKeyFile) is generated on first start and never
-# leaves this host. To let it decrypt secrets, add its public key to .sops.yaml
-# (the commented `openclaw` entry there):
+# Imperative, one-time: for the agent to decrypt secrets, add the public key of
+# its age key (ageKeyFile) to .sops.yaml:
 #   sudo grep '^# public key' /var/lib/openclaw/age-key.txt
 {
   config,
@@ -93,7 +91,7 @@ let
   sandboxRepository = "localhost/${sandboxImage.imageName}";
   sandboxImageRef = "${sandboxRepository}:${sandboxImage.imageTag}";
 
-  # The agent's own age key, created once; the private key never leaves this host.
+  # the private key exists only on this host
   generateAgeKey = pkgs.writeShellScript "openclaw-generate-age-key" ''
     set -euo pipefail
     [ -e ${cfg.ageKeyFile} ] || ${lib.getExe' pkgs.age "age-keygen"} -o ${cfg.ageKeyFile}
@@ -136,13 +134,11 @@ let
 
   publicOrigin = "https://${cfg.publicHost}";
 
-  # Commands the main session's host exec finds first on PATH.
   hostTools = pkgs.buildEnv {
     name = "openclaw-host-tools";
     paths = cfg.hostTools;
   };
 
-  # Skills telling the agent about its host commands, one directory each.
   skillsDir = pkgs.runCommand "openclaw-skills" { } (
     lib.concatStrings (
       lib.mapAttrsToList (name: skill: ''
@@ -157,10 +153,8 @@ let
     )
   );
 
-  # Host exec approvals for the main session. The gateway keeps them in its
-  # SQLite state, not in openclaw.json, so ExecStartPre replaces them from this
-  # file on every start: an "allow always" given in chat lasts until the next
-  # restart. Commands off the allowlist wait for the owner's approval.
+  # the main session's host exec approvals, which the gateway keeps in its
+  # SQLite state, outside openclaw.json
   approvalsFile = pkgs.writeText "openclaw-exec-approvals.json" (
     builtins.toJSON {
       version = 1;
@@ -186,8 +180,7 @@ let
     SOPS_AGE_KEY_FILE = cfg.ageKeyFile;
   };
 
-  # The operator CLI, run as the gateway user with the gateway's environment,
-  # including what other modules add to services.openclaw-gateway.environment.
+  # The operator CLI, run as the gateway user with the unit's environment.
   cli = pkgs.writeShellApplication {
     name = "openclaw";
     runtimeInputs = [ podman ];
@@ -283,7 +276,7 @@ let
       userTimezone = config.time.timeZone;
       heartbeat.every = "0m";
       sandbox = {
-        # the main session is unsandboxed; see the trust boundaries above
+        # OpenClaw starts ACP sessions only from an unsandboxed session
         mode = "non-main";
         backend = "podman";
         scope = "agent";
@@ -309,17 +302,16 @@ let
         mode = "ask";
         pathPrepend = [
           "${hostTools}/bin"
-          # setuid wrappers such as sudo; the login-shell PATH OpenClaw merges
-          # in has them too, but it is dropped when OpenClaw's probe fails
+          # setuid wrappers such as sudo; OpenClaw's login-shell PATH merge
+          # is best-effort
           config.security.wrapperDir
         ];
       };
       # sandboxed sessions never reach the host
       elevated.enabled = false;
       fs.workspaceOnly = true;
-      # Tools sandboxed sessions get beyond the core file/exec set. MCP tools
-      # belong to the bundle-mcp plugin id; web_search is OpenAI's hosted search
-      # while tools.web.search.provider is unset and the model is openai/*.
+      # Tools sandboxed sessions get beyond the core file/exec set; MCP tools
+      # belong to the bundle-mcp plugin id.
       sandbox.tools.alsoAllow = [
         "bundle-mcp"
         "web_fetch"
@@ -476,9 +468,8 @@ in
       default = "${gw.stateDir}/age-key.txt";
       readOnly = true;
       description = ''
-        The agent's own age key, which sops in its host commands decrypts
-        with. Created on the gateway's first start; .sops.yaml lists its public
-        key as `openclaw` for the files the agent may read.
+        The agent's own age key, generated on this host; sops in the agent's
+        host commands decrypts with it.
       '';
     };
 
@@ -586,8 +577,7 @@ in
       execStartPre = [
         "${loadSandboxImage}"
         "${generateAgeKey}"
-        # Not fatal: without it the host approvals stay at their default, under
-        # which tools.exec.mode alone applies and every host command asks.
+        # non-fatal: OpenClaw's default approvals ask for every host command
         "-${lib.getExe' gw.package "openclaw"} approvals set --file ${approvalsFile}"
       ];
     };
@@ -642,11 +632,11 @@ in
         StandardError = lib.mkForce "journal";
         RuntimeDirectory = gw.unitName;
         UMask = "0077";
-        # No filesystem sandboxing: the main session runs `sudo nixos-rebuild`
-        # here (rebuild.nix), which writes /nix, /etc and /root.
-        # No NoNewPrivileges, and no seccomp-backed directives, which imply it
-        # for a non-root User= (context_has_seccomp, src/core/exec-invoke.c):
-        # sudo and rootless Podman's newuidmap/newgidmap are setuid.
+        # No filesystem sandboxing: host commands share this unit's mount
+        # namespace, and root ones through sudo write /nix, /etc and /root.
+        # No NoNewPrivileges, nor seccomp-backed directives, which imply it for
+        # a non-root User= (context_has_seccomp, src/core/exec-invoke.c): sudo
+        # and rootless Podman's newuidmap/newgidmap are setuid.
         MemoryMax = "6G";
         TasksMax = 1024;
       };
