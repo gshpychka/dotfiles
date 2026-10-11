@@ -8,7 +8,7 @@ units.
 ## Customizations
 
 Kodi overwrites an addon's directory on every update, so `kodi-customize.sh`
-reapplies these at boot and after each Bingie or PKC update:
+reapplies these at boot and after each Bingie, Bingie Widgets or PKC update:
 
 - subtitles at a fixed spot in the bottom letterbox bar, the same in every
   display mode (applied at boot only, while Kodi is stopped)
@@ -19,6 +19,8 @@ reapplies these at boot and after each Bingie or PKC update:
   e.g. "DV P8.1 · HDR10+" (`snippets/`)
 - keeps an in-progress item's rating, year, HDR badges and plot on screen, with
   the progress bar under them
+- lists files without subtitles in Bingie's widgets, e.g. Continue Watching
+  (`snippets/`)
 
 Deploy from eve:
 
@@ -40,8 +42,8 @@ If an addon release moves something a patch anchors on, the script logs
 `ssh kodi journalctl -t kodi-customize`.
 
 To undo: disable both units, delete them and `/storage/.config/kodi-customize`,
-then reinstall Bingie and PKC from their repositories to restore the original
-files. The settings stay until changed in Kodi.
+then reinstall Bingie, Bingie Widgets and PKC from their repositories to
+restore the original files. The settings stay until changed in Kodi.
 
 ## CoreELEC build
 
@@ -94,6 +96,10 @@ These live in Kodi's own settings and survive updates:
   1200 cd/m², MaxCLL 1230, MaxFALL 234
 - Skin Shortcuts is pinned at 2.1.0, the pin Kodi records when an add-on is
   downgraded; 3.x refuses Bingie
+- InfoTagger is 0.0.9 from
+  [its author](https://github.com/jurialmunkey/script.module.infotagger/tree/c6272475996215648d19fd030dd12b3cadc1bd23),
+  unpacked over `addons/script.module.infotagger`. Kodi's repository has 0.0.8,
+  which drops every video stream carrying Kodi 22's `hdrdetail` field
 
 The CoreELEC settings pages for Network and Bluetooth fail to load: PyGObject
 calls `pkgutil.get_loader`, which Python 3.14 removed.

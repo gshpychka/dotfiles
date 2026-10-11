@@ -9,6 +9,7 @@ HERE=$(dirname "$(readlink -f "$0")")
 ADDONS=/storage/.kodi/addons
 SKIN=$ADDONS/skin.bingie/1080i
 PKC_MEDIA=$ADDONS/plugin.video.plexkodiconnect/resources/lib/plex_api/media.py
+WIDGETS_KODIDB=$ADDONS/script.bingie.widgets/resources/lib/helpers/kodidb.py
 GUISETTINGS=/storage/.kodi/userdata/guisettings.xml
 
 # Subtitles sit at a fixed spot near the bottom of the screen. Almost every
@@ -73,6 +74,24 @@ insert_before() {
   mv "$file.tmp.$$" "$file"
 }
 
+# insert_before for a Python FILE, which stays unchanged when the result does
+# not compile.
+insert_before_python() {
+  py=$1
+  cp "$py" "$py.orig.$$"
+  if insert_before "$@"; then
+    if python3 -m py_compile "$py" 2>/dev/null; then
+      rm -f "$py.orig.$$"
+      return 0
+    fi
+    mv "$py.orig.$$" "$py"
+    log "patch to $py does not compile, reverted; update this script"
+    status=1
+  fi
+  rm -f "$py.orig.$$"
+  return 1
+}
+
 # Hide the profile switcher at the top of the side menu; Bingie has no setting
 # for it. It is the group right after the "Logo / user profile button" comment
 # in BingieSideBladeMainMenu. Setting its <visible> to false also makes its
@@ -109,17 +128,19 @@ hide_profile() {
 # restarts, and existing items only change on a PKC "repair" sync.
 pkc_hdr() {
   [ -f "$PKC_MEDIA" ] || return 0
-  cp "$PKC_MEDIA" "$PKC_MEDIA.orig.$$"
-  if insert_before "$PKC_MEDIA" "videotracks.append(track)" "$HERE/snippets/pkc-hdr.py"; then
-    if python3 -m py_compile "$PKC_MEDIA" 2>/dev/null; then
-      log "PKC HDR details patched; restart Kodi to load it"
-    else
-      mv "$PKC_MEDIA.orig.$$" "$PKC_MEDIA"
-      log "PKC HDR patch does not compile, reverted; update this script"
-      status=1
-    fi
+  if insert_before_python "$PKC_MEDIA" "videotracks.append(track)" "$HERE/snippets/pkc-hdr.py"; then
+    log "PKC HDR details patched; restart Kodi to load it"
   fi
-  rm -f "$PKC_MEDIA.orig.$$"
+}
+
+# Bingie's widgets hand InfoTagger an empty list in place of each stream type
+# an item's file lacks, which InfoTagger 0.0.9 rejects.
+bingie_widgets_streams() {
+  [ -f "$WIDGETS_KODIDB" ] || return 0
+  if insert_before_python "$WIDGETS_KODIDB" "info_tag.set_stream_details(stream_details)" \
+    "$HERE/snippets/bingie-widgets-streams.py"; then
+    log "Bingie widgets stream details patched"
+  fi
 }
 
 # Bingie compares the HDR type to exactly hdr10, dolbyvision and hlg. Prefix
@@ -223,6 +244,7 @@ install_overrides() {
 }
 
 pkc_hdr
+bingie_widgets_streams
 if [ -f "$GUISETTINGS" ] && ! systemctl -q is-active kodi.service; then
   kodi_settings
 fi
