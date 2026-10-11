@@ -1,12 +1,9 @@
 # The owner's OneDrive, synced both ways into the agent's workspace by the
-# OneDrive Client for Linux (https://github.com/abraunegg/onedrive), so the
-# agent's file tools and sandboxed sessions reach it like any other workspace
-# file. Local changes upload within seconds; online changes arrive by the next
-# monitor_interval (5 minutes by default).
+# OneDrive Client for Linux (https://github.com/abraunegg/onedrive), where the
+# agent's file tools and sandboxed sessions reach it.
 #
-# Imperative, one-time: sign in to the owner's Microsoft account. The command
-# prints an address to open in a browser and asks for the address the browser
-# ends on; then start the sync, whose first run downloads the whole drive:
+# Imperative, one-time: sign in to the owner's Microsoft account (open the
+# printed address, paste back the one the browser ends on), then start the sync:
 #   openclaw-onedrive --display-quota
 #   sudo systemctl start openclaw-onedrive
 {
@@ -22,18 +19,18 @@ let
   # client state: the sign-in (refresh_token) and the sync database
   confDir = "${gw.stateDir}/onedrive";
   syncDir = "${cfg.workspace}/onedrive";
-  # The client keeps a hash of its settings and wants a --resync when the
-  # sync directory changes, so every invocation passes the same ones.
+  # one set of settings for every invocation: the client demands a --resync
+  # when its sync directory changes
   onedrive = "${lib.getExe pkgs.onedrive} --confdir ${confDir} --syncdir ${syncDir}";
 
-  # The client as the gateway user, for the owner's sign-in and checks.
+  # The client, run as the gateway user.
   cli = pkgs.writeShellApplication {
     inherit name;
     text = ''
       if [ "$(id -un)" != ${gw.user} ]; then
         exec sudo -u ${gw.user} -- "$0" "$@"
       fi
-      # the caller's directory, such as a home, may be closed to the gateway user
+      # the caller's directory may be closed to the gateway user
       [ -x . ] || cd ${gw.stateDir}
       exec ${onedrive} "$@"
     '';
@@ -45,7 +42,7 @@ in
 
   config = lib.mkIf (cfg.enable && cfg.onedrive.enable) {
     systemd.tmpfiles.rules = [
-      # as the gateway creates it, so the rules below can't leave it to root
+      # tmpfiles creates a missing parent as root
       "d ${cfg.workspace} 0700 ${gw.user} ${gw.group} - -"
       "d ${confDir} 0700 ${gw.user} ${gw.group} - -"
       "d ${syncDir} 0700 ${gw.user} ${gw.group} - -"
@@ -56,7 +53,7 @@ in
       wantedBy = [ "multi-user.target" ];
       wants = [ "network-online.target" ];
       after = [ "network-online.target" ];
-      # until the owner signs in
+      # requires the owner's sign-in
       unitConfig.ConditionPathExists = "${confDir}/refresh_token";
       serviceConfig = {
         User = gw.user;

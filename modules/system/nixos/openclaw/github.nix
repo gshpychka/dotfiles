@@ -1,8 +1,7 @@
-# A GitHub App as the agent's GitHub identity, for the main session's host
-# commands and for its Claude Code sessions. Commits and pull requests show as
-# <slug>[bot], the App reaches only the repositories it is installed on, and
-# each token it mints expires within the hour. It never holds the owner's own
-# credentials: those reach organisations the owner belongs to.
+# A GitHub App as the agent's GitHub identity, <slug>[bot], for the main
+# session's host commands and its Claude Code sessions. The App reaches only
+# the repositories it is installed on, and each token it mints expires within
+# the hour.
 #
 # Imperative, one-time, on github.com signed in as the owner:
 #   1. Settings > Developer settings > GitHub Apps > New GitHub App: any
@@ -28,8 +27,9 @@ let
   group = "openclaw-github";
   keyPath = config.sops.secrets."openclaw/github-app-private-key".path;
 
-  # Prints an installation token: a JWT signed with the App's key, exchanged
-  # at GitHub. The JWT reaches curl on stdin, not in its arguments.
+  # Prints an installation token, exchanged at GitHub for a JWT signed with the
+  # App's key. The JWT goes to curl on stdin: process arguments are
+  # world-readable.
   token = pkgs.writeShellApplication {
     name = "openclaw-github-token";
     runtimeInputs = with pkgs; [

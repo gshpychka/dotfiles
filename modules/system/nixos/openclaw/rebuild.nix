@@ -1,12 +1,6 @@
-# Lets the OpenClaw agent rebuild this host the usual way, from its own
-# checkout and without asking: `sudo nixos-rebuild switch --flake .#hoard`.
-# This gives the agent root on this host.
-#
-# A switch may restart the gateway, killing the nixos-rebuild it started.
-# nixos-rebuild runs the activation in its own unit
-# (nixos-rebuild-switch-to-configuration), which carries on, but on the same
-# stdout and stderr: switch-to-configuration panics when a log line hits a
-# closed pipe, so the agent sends the output to a file.
+# Rebuilds of this host by the OpenClaw agent, from its own checkout and
+# without asking: `sudo nixos-rebuild switch --flake .#<host>`. This gives the
+# agent root on this host.
 {
   config,
   lib,
@@ -16,6 +10,9 @@ let
   cfg = config.my.openclaw;
   gw = config.services.openclaw-gateway;
   nixos-rebuild = "/run/current-system/sw/bin/nixos-rebuild";
+  # The activation runs in its own unit and outlives a gateway restart, on the
+  # caller's stdout and stderr; switch-to-configuration panics writing to a
+  # closed pipe.
   logFile = "${cfg.workspace}/nixos-rebuild.log";
 in
 {

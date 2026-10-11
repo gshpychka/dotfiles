@@ -5,9 +5,8 @@
 #   sops set secrets/hoard/openclaw.yaml '["telegram-owner-id"]' '"<numeric id, e.g. from @userinfobot>"'
 #   sops set secrets/hoard/openclaw.yaml '["home-assistant-token"]' '"<long-lived token of a dedicated HA user>"'
 #   sops set secrets/hoard/openclaw.yaml '["home-assistant-admin-mcp-path"]' '"<private_... path from the ha-mcp app log>"'
-#   sops set secrets/hoard/openclaw.yaml '["github-app-private-key"]' ... (see modules/system/nixos/openclaw/github.nix)
 #
-# Then the agent's GitHub App, once created (github.nix has the steps):
+# The agent's GitHub App (steps in modules/system/nixos/openclaw/github.nix):
 #   my.openclaw.github = { appId = ...; slug = "..."; installationId = ...; botUserId = ...; };
 { config, ... }:
 {
@@ -52,9 +51,8 @@
       };
       secrets.HOME_ASSISTANT_TOKEN = "home-assistant-token";
     };
-    # The ha-mcp app (https://homeassistant-ai.github.io/ha-mcp/): HA
-    # administration (automations, scripts, dashboards, config). Its URL path
-    # is its only credential, so the path lives in sops.
+    # The ha-mcp app (https://homeassistant-ai.github.io/ha-mcp/), for HA
+    # administration; its URL path is its only credential.
     mcpServers.home-assistant-admin = {
       enable = false;
       settings = {
