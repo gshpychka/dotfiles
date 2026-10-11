@@ -16,13 +16,18 @@ def _read_secret(path: str) -> str:
     return Path(path).read_text().strip()
 
 
+# Leads the identity file's text: the assistant's description of itself.
+_IDENTITY_LEAD = "Who you are, in your own words; the backend is your own memory and tools:"
+
+
 @dataclass(frozen=True, slots=True)
 class Live:
     """The full-duplex OpenAI Live backend."""
 
     model: str
     voice: str
-    # How the voice converses and when it delegates.
+    # How the voice converses and when it delegates, led by who it is when
+    # the identity file says so.
     instructions: str
 
 
@@ -69,6 +74,15 @@ class Config:
     recordings_dir: Path | None
 
 
+def _live(raw: dict[str, Any]) -> Live:
+    instructions = raw["instructions"]
+    identity_file = raw.get("identity_file")
+    identity = Path(identity_file).read_text().strip() if identity_file else ""
+    if identity:
+        instructions = f"{_IDENTITY_LEAD}\n{identity}\n\n{instructions}"
+    return Live(model=raw["model"], voice=raw["voice"], instructions=instructions)
+
+
 def _openclaw(raw: dict[str, Any]) -> OpenClaw:
     return OpenClaw(
         url=raw["url"],
@@ -80,14 +94,13 @@ def _openclaw(raw: dict[str, Any]) -> OpenClaw:
 
 def load(path: Path) -> Config:
     raw = json.loads(path.read_text())
-    live = raw["live"]
     return Config(
         listen_host=raw["listen_host"],
         listen_port=int(raw["listen_port"]),
         device_token=_read_secret(raw["device_token_file"]),
         openai_api_key=_read_secret(raw["openai_api_key_file"]),
         devices=[Device(d["name"], d["address"], d["area"]) for d in raw["devices"]],
-        live=Live(model=live["model"], voice=live["voice"], instructions=live["instructions"]),
+        live=_live(raw["live"]),
         openclaw=_openclaw(raw["openclaw"]),
         idle_timeout_s=float(raw["idle_timeout_s"]),
         max_conversation_s=float(raw["max_conversation_s"]),
