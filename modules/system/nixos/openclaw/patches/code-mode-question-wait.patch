@@ -1,0 +1,123 @@
+From 259d610a1372c8cc7f19b791678cffde48f1ae25 Mon Sep 17 00:00:00 2001
+From: Glib Shpychka <23005347+gshpychka@users.noreply.github.com>
+Date: Mon, 12 Oct 2026 00:06:09 +0300
+Subject: [PATCH] fix(code-mode): hold exec while a question waits for its
+ answer
+
+An ask_user or secrets request called from exec now requires completion,
+so exec returns the answer instead of a waiting handle.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01LNTt5yXBj4uDUwJmPGvXLd
+---
+ src/agents/code-mode-bridge.ts    | 24 +++++++++++--------
+ src/agents/code-mode.wait.test.ts | 39 +++++++++++++++++++++++++++++++
+ 2 files changed, 53 insertions(+), 10 deletions(-)
+
+diff --git a/src/agents/code-mode-bridge.ts b/src/agents/code-mode-bridge.ts
+index 3aa392e817c..f3534fa64c9 100644
+--- a/src/agents/code-mode-bridge.ts
++++ b/src/agents/code-mode-bridge.ts
+@@ -210,24 +210,28 @@ function requireCodeModeSwarmEnabled(ctx: ToolSearchToolContext): void {
+   }
+ }
+ 
+-/** Recognize explicit required intent only on the authorized core tool bindings. */
++/** Recognize core tool calls the exec holds until they settle: explicit required waits and questions. */
+ export function requiresCodeModeCompletion(
+   requests: readonly PendingBridgeRequest[],
+   catalogProjection: CodeModeCatalogProjection,
+ ): boolean {
+   return requests.some((request) => {
++    if (request.method !== "callValue" || typeof request.args[0] !== "string") {
++      return false;
++    }
++    const id = catalogProjection.byCallableName.get(request.args[0])?.id;
++    const input = isRecord(request.args[1]) ? request.args[1] : {};
++    // A parked cell closes with its turn, which cancels a question still waiting on its answer.
+     if (
+-      request.method !== "callValue" ||
+-      !isRecord(request.args[1]) ||
+-      request.args[1].awaitResults !== true
++      id === "openclaw:core:ask_user" ||
++      (id === "openclaw:core:secrets" && input.action === "request")
+     ) {
+-      return false;
++      return true;
+     }
+-    const binding =
+-      typeof request.args[0] === "string"
+-        ? catalogProjection.byCallableName.get(request.args[0])
+-        : undefined;
+-    return binding?.id === "openclaw:core:exec" || binding?.id === "openclaw:core:agents_wait";
++    return (
++      input.awaitResults === true &&
++      (id === "openclaw:core:exec" || id === "openclaw:core:agents_wait")
++    );
+   });
+ }
+ 
+diff --git a/src/agents/code-mode.wait.test.ts b/src/agents/code-mode.wait.test.ts
+index 0f1768fc656..5e041d8363e 100644
+--- a/src/agents/code-mode.wait.test.ts
++++ b/src/agents/code-mode.wait.test.ts
+@@ -1,3 +1,4 @@
++import { setTimeout as sleep } from "node:timers/promises";
+ import { expectDefined } from "@openclaw/normalization-core";
+ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+ import { runWithAgentToolExecutionContext } from "../../packages/agent-core/src/tool-execution-context.js";
+@@ -13,6 +14,7 @@ import * as codeModeState from "./code-mode-state.js";
+ import { applyCodeModeCatalog, createCodeModeTools } from "./code-mode.js";
+ import {
+   createCodeModeHarness,
++  fakeTool,
+   pluginTool,
+   pluginToolWithExecute,
+   resetCodeModeTestState,
+@@ -191,6 +193,43 @@ describe("Code Mode wait, scope, and suspended runs", () => {
+     }
+   });
+ 
++  const waits: [name: string, input: Record<string, unknown>, holds: boolean][] = [
++    ["ask_user", {}, true],
++    ["secrets", { action: "request" }, true],
++    ["secrets", { action: "list" }, false],
++  ];
++  it.each(waits)("holds the exec for %s %j while it waits: %s", async (name, input, holds) => {
++    const answered = createDeferred();
++    const question = fakeTool(name, "Waits on a person");
++    question.execute = vi.fn(async () => {
++      await answered.promise;
++      return jsonResult({ answer: "keep" });
++    });
++    const fixture = harness([question], { codeMode: { timeoutMs: 100 } });
++    const execution = fixture.exec.execute("question-wait", {
++      code: `return await ${name}(${JSON.stringify(input)});`,
++    });
++    try {
++      if (holds) {
++        // Ten exec budgets: an exec that does not hold has returned `waiting` by then.
++        const early = await Promise.race([execution, sleep(1_000).then(() => "held")]);
++        expect(early).toBe("held");
++        answered.resolve();
++        expect(resultDetails(await execution)).toMatchObject({
++          status: "completed",
++          value: { answer: "keep" },
++        });
++        expect(testing.activeRuns.size).toBe(0);
++      } else {
++        expect(resultDetails(await execution)).toMatchObject({ status: "waiting" });
++        expect(testing.activeRuns.size).toBe(1);
++      }
++    } finally {
++      answered.resolve();
++      await execution;
++    }
++  });
++
+   it("refuses an unfinished explicit yield for required work", async () => {
+     const fixture = harness([]);
+     expect(
+-- 
+2.55.0
+

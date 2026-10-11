@@ -48,6 +48,12 @@ let
       patches = [
         # questions asked after a subagent finishes accept answers from the chat that started it
         ./patches/delegated-completion-question-caller.patch
+        # the turn that reports a finished subagent can ask questions at all
+        ./patches/completion-turn-question-scope.patch
+        # a question asked from code mode keeps the turn open until it is answered
+        ./patches/code-mode-question-wait.patch
+        # the turn that reports a finished subagent shows its questions in the chat
+        ./patches/delivered-run-question-prompts.patch
       ];
     };
     # follows the source's pnpm-lock.yaml

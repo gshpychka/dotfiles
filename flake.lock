@@ -449,11 +449,11 @@
         "qmd": "qmd"
       },
       "locked": {
-        "lastModified": 1791749852,
-        "narHash": "sha256-b/eWkAywUP38ELHREwtC5IBUhr6BvyMRG0jYZbxB6DY=",
+        "lastModified": 1791749853,
+        "narHash": "sha256-9vNaFebnA6msl89FX73ca3jNCqDxHbPH9GRNPTq+7EA=",
         "owner": "gshpychka",
         "repo": "nix-openclaw",
-        "rev": "6b0e458371f0c4429298bc2eb31e661523c9259d",
+        "rev": "90cf7faf0e9dbd54f547e454ad9930a3ff58533a",
         "type": "github"
       },
       "original": {

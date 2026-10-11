@@ -1,0 +1,114 @@
+From 90925d622251a8a23e3328c616e6d997a8fb0ac6 Mon Sep 17 00:00:00 2001
+From: Glib Shpychka <23005347+gshpychka@users.noreply.github.com>
+Date: Sun, 11 Oct 2026 23:15:06 +0300
+Subject: [PATCH] fix(agents): let completion turns ask their requester
+ questions
+
+A subagent completion or settle turn is dispatched as a system caller with
+the default operator.write scope, and its tool calls stay within that
+ceiling. question.request needs operator.questions, so the ask falls back
+to session-scoped access, which requires a verified human profile that a
+channel-started run never has.
+
+The completion dispatch grants operator.questions alongside
+operator.write. Operator-started completions keep the operator's own
+scopes.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01LNTt5yXBj4uDUwJmPGvXLd
+---
+ .../subagent-announce-completion-delivery.ts  |  3 ++
+ ...n-in-process-dispatch.continuation.test.ts | 49 +++++++++++++++++++
+ 2 files changed, 52 insertions(+)
+
+diff --git a/src/agents/subagents/announce/subagent-announce-completion-delivery.ts b/src/agents/subagents/announce/subagent-announce-completion-delivery.ts
+index 2a43aae1f2f..b8553a10f18 100644
+--- a/src/agents/subagents/announce/subagent-announce-completion-delivery.ts
++++ b/src/agents/subagents/announce/subagent-announce-completion-delivery.ts
+@@ -9,6 +9,7 @@ import {
+ import type { RestartRecoveryTerminalDeliveryEvidence } from "../../../config/sessions/restart-recovery-types.js";
+ import type { SessionEntry } from "../../../config/sessions/types.js";
+ import type { OpenClawConfig } from "../../../config/types.openclaw.js";
++import { QUESTIONS_SCOPE, WRITE_SCOPE } from "../../../gateway/operator-scopes.js";
+ import { waitForGatewayDispatch } from "../../../gateway/server-in-process-dispatch.js";
+ import type { GatewayRecoveryTypingParams } from "../../../gateway/server-instance-runtime.types.js";
+ import { getGatewayRecoveryRuntime } from "../../../gateway/server-recovery-runtime-context.js";
+@@ -107,6 +108,8 @@ export async function runAnnounceAgentCall(params: {
+         params.agentParams.inputProvenance,
+       ),
+       operatorRoleActor: { kind: "system" },
++      // The completion turn's tool calls stay within these scopes, and it asks its requester questions.
++      syntheticScopes: [WRITE_SCOPE, QUESTIONS_SCOPE],
+       delegatedToolPolicyHandoff: params.delegatedToolPolicyHandoff,
+       signal: executionSignal,
+       ...(isSourceSessionAdmissionAllowed
+diff --git a/src/gateway/server-plugin-in-process-dispatch.continuation.test.ts b/src/gateway/server-plugin-in-process-dispatch.continuation.test.ts
+index 05557afa90b..e786ae7daf9 100644
+--- a/src/gateway/server-plugin-in-process-dispatch.continuation.test.ts
++++ b/src/gateway/server-plugin-in-process-dispatch.continuation.test.ts
+@@ -22,6 +22,7 @@ import {
+ } from "./device-revocation.js";
+ import { createGatewayMethodRegistry } from "./methods/registry.js";
+ import * as operatorCapture from "./operator-run-authority.js";
++import { authorizeGatewayMethod } from "./server-methods/method-authorization.js";
+ import type { GatewayRequestHandlerOptions } from "./server-methods/types.js";
+ import {
+   captureOperatorToolGatewayContinuationContext,
+@@ -451,6 +452,54 @@ describe("typed in-process agent continuation authorization", () => {
+     },
+   );
+ 
++  it("lets a channel-started settle wake ask its requester questions", async () => {
++    const { runAnnounceAgentCall } =
++      await import("../agents/subagents/announce/subagent-announce-completion-delivery.js");
++    const context = createContext();
++    const registry = createGatewayMethodRegistry([
++      {
++        name: "question.request",
++        scope: "operator.questions",
++        owner: { kind: "core", area: "questions" },
++        handler: vi.fn(),
++      },
++    ]);
++    const runId = "announce:channel-settle-wake";
++    const result = { runId, status: "ok" };
++    startTurn.mockImplementation(async ({ principal, io }) => {
++      expect(principal.connect.scopes).toContain("operator.questions");
++      expect(
++        authorizeGatewayMethod(
++          "question.request",
++          principal,
++          { sessionKey: "agent:main:main" },
++          registry,
++          context,
++        ),
++      ).toEqual({ error: null });
++      io.emitAcceptance([true, { runId, status: "accepted" }, undefined]);
++      io.emitFinal([true, result, undefined]);
++    });
++    await expect(
++      runAnnounceAgentCall({
++        agentParams: {
++          message: "Continue after the children settled",
++          sessionKey: "agent:main:main",
++          idempotencyKey: runId,
++          inputProvenance: {
++            kind: "inter_session",
++            sourceSessionKey: "agent:main:child",
++            sourceTool: "subagent_settle",
++          },
++        },
++        expectFinal: true,
++        isExecutionAllowed: () => true,
++        resolveGatewayContext: () => context,
++      }),
++    ).resolves.toEqual(result);
++    expect(startTurn).toHaveBeenCalledOnce();
++  });
++
+   it.each(["finished invocation", "revoked source", "retired cohort", "provenance only"] as const)(
+     "checks %s for a settle wake after the spawning tool ends",
+     async (state) => {
+-- 
+2.55.0
+
