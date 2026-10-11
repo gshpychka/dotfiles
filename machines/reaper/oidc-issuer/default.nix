@@ -8,28 +8,32 @@
 #   user can get that user's token.
 # - Access: only users in my.oidcIssuer.clients. The socket is restricted to
 #   their group, and issuer.py checks the list again.
-# - Key: ES256, generated on reaper and sealed with systemd-creds to both the
-#   TPM2 and the host key in /var/lib/systemd, so the sealed file only
-#   decrypts on this machine, booted through its own Secure Boot chain (PCR 7).
-#   It is never in git, a sops file or the Nix store; systemd decrypts it into
-#   each short-lived, sandboxed minting process. Root on the running machine
-#   can still read it, so a root compromise means rotating the key.
-#   (`oidc-issuer-keygen --no-tpm` seals with the host key alone, for a
-#   machine without a TPM2.)
+# - Key: ES256, generated inside reaper's TPM2, which refuses to export it or
+#   duplicate it to another TPM2. On disk are only the key wrapped by this
+#   TPM2's storage key, which nothing else can load, and the key's random auth
+#   value, sealed with systemd-creds to both the TPM2 and the host key in
+#   /var/lib/systemd: it only decrypts on this machine, booted through its own
+#   Secure Boot chain (PCR 7). Each short-lived, sandboxed minting process gets
+#   these from systemd and has the TPM2 sign (issuer.py, via tpm2-tools).
+#   Root on the running machine can sign too, but can't take the key away, so
+#   an attacker's signing ends with their access to reaper. Still rotate after
+#   a compromise: with copies of the files and the auth value, any later TPM2
+#   access on reaper is enough to sign again.
 # - Publishing: reaper serves nothing publicly. buoy serves the discovery
 #   document and JWKS, built from my.oidcIssuer.publicKeys
 #   (machines/buoy/oidc-discovery.nix).
 #
 # Bootstrap and key rotation:
-#   ssh reaper sudo oidc-issuer-keygen   # seals a new key to the TPM2, prints its public half
-#   (also after a Secure Boot key or dbx update, which leaves the sealed key
-#   unusable: it is bound to PCR 7)
+#   ssh reaper sudo oidc-issuer-keygen   # creates a new key in the TPM2, prints its public half
+#   (also after a Secure Boot key or dbx update, which leaves the sealed auth
+#   value unusable: it is bound to PCR 7; and after clearing the TPM2, which
+#   destroys the key)
 #   add the printed entry to my.oidcIssuer.publicKeys (modules/common/oidc-issuer.nix)
 #   set my.oidcIssuer.activeKid (machines/reaper/default.nix) to the printed kid
 #   deploy buoy (publishes the key), wait my.oidcIssuer.jwksCacheSeconds so
 #   relying parties' cached key sets include it, then deploy reaper (signs with it)
 #   after a rotation, once my.oidcIssuer.tokenLifetime has passed, drop the old
-#   entry and delete /var/lib/oidc-issuer/<old kid>.cred
+#   entry and delete /var/lib/oidc-issuer/<old kid>
 #
 # AWS side, once per account:
 #   aws iam create-open-id-connect-provider --url https://tokens.glib.sh --client-id-list sts.amazonaws.com
@@ -53,9 +57,19 @@ let
   stateDirectory = "/var/lib/${unitName}";
   socketPath = "/run/${unitName}/token.sock";
   clientGroup = "oidc-token";
-  # name sealed into every key file; systemd refuses to load a file sealed
-  # under a different name
-  credentialName = "signing-key";
+  # What oidc-issuer-keygen writes to ${stateDirectory}/<kid>/, each file
+  # handed to the minting process as the credential of the same name.
+  keyFiles = {
+    # the key's public area (TPM2B_PUBLIC)
+    public = "key.pub";
+    # the private key, encrypted by the TPM2's storage key (TPM2B_PRIVATE)
+    private = "key.priv";
+    # the auth value every use of the key needs, sealed with systemd-creds
+    # under this name; systemd refuses to load it under any other
+    auth = "key.auth";
+  };
+
+  tpmDevice = "/dev/tpmrm0";
 
   activeKey = lib.findFirst (key: key.kid == cfg.activeKid) null cfg.publicKeys;
 
@@ -67,17 +81,18 @@ let
       tokenLifetimeSeconds = cfg.tokenLifetime;
       activeKey = if activeKey == null then null else { inherit (activeKey) kid x y; };
       inherit (cfg) jwksCacheSeconds;
-      inherit stateDirectory credentialName;
+      inherit stateDirectory keyFiles;
       systemdCreds = lib.getExe' config.systemd.package "systemd-creds";
+      tpm2Tools = "${pkgs.tpm2-tools}/bin";
+      # the kernel's TPM2 resource manager, which flushes whatever a process
+      # loaded into the TPM2 when it exits
+      tcti = "device:${tpmDevice}";
     }
   );
 
   # ruff format owns line width, so flake8's E501 is ignored.
   issuer = pkgs.writers.writePython3Bin unitName {
-    libraries = ps: [
-      ps.cryptography
-      ps.pyjwt
-    ];
+    libraries = ps: [ ps.cryptography ];
     flakeIgnore = [ "E501" ];
   } (builtins.readFile ./issuer.py);
 
@@ -150,75 +165,92 @@ in
           mode = "0700";
         };
         users.groups.${clientGroup}.members = cfg.clients;
+        # makes ${tpmDevice} accessible to its group, tssGroup
+        security.tpm2.enable = true;
       }
 
-      (lib.mkIf (cfg.activeKid != null) {
-        # One sandboxed process per connection, so no process holds the key
-        # between requests.
-        systemd.sockets.${unitName} = {
-          description = "OIDC token issuer";
-          wantedBy = [ "sockets.target" ];
-          socketConfig = {
-            ListenStream = socketPath;
-            Accept = true;
-            SocketUser = "root";
-            SocketGroup = clientGroup;
-            SocketMode = "0660";
-            # bounds the instances a looping client can spawn; on a Unix
-            # socket the per-source limit applies per peer UID
-            MaxConnections = 16;
-            MaxConnectionsPerSource = 4;
-            RemoveOnStop = true;
+      (lib.mkIf (cfg.activeKid != null) (
+        let
+          keyDirectory = "${stateDirectory}/${cfg.activeKid}";
+        in
+        {
+          # One sandboxed process per connection, so no process holds the auth
+          # value between requests.
+          systemd.sockets.${unitName} = {
+            description = "OIDC token issuer";
+            wantedBy = [ "sockets.target" ];
+            socketConfig = {
+              ListenStream = socketPath;
+              Accept = true;
+              SocketUser = "root";
+              SocketGroup = clientGroup;
+              SocketMode = "0660";
+              # bounds the instances a looping client can spawn; on a Unix
+              # socket the per-source limit applies per peer UID
+              MaxConnections = 16;
+              MaxConnectionsPerSource = 4;
+              RemoveOnStop = true;
+            };
           };
-        };
 
-        systemd.services."${unitName}@" = {
-          description = "OIDC token issuer, one connection";
-          # instances of failed refusals would otherwise pile up in `systemctl --failed`
-          unitConfig.CollectMode = "inactive-or-failed";
-          serviceConfig = {
-            ExecStart = "${lib.getExe issuer} serve ${issuerConfig}";
-            StandardInput = "socket";
-            # logs go to the journal, never down the connection
-            StandardOutput = "journal";
-            StandardError = "journal";
-            LoadCredentialEncrypted = "${credentialName}:${stateDirectory}/${cfg.activeKid}.cred";
-            # bounds a stuck instance; a normal one answers in well under a
-            # second, but a slow firmware TPM can take seconds to unseal
-            RuntimeMaxSec = 30;
+          systemd.services."${unitName}@" = {
+            description = "OIDC token issuer, one connection";
+            # instances of failed refusals would otherwise pile up in `systemctl --failed`
+            unitConfig.CollectMode = "inactive-or-failed";
+            serviceConfig = {
+              ExecStart = "${lib.getExe issuer} serve ${issuerConfig}";
+              StandardInput = "socket";
+              # logs go to the journal, never down the connection
+              StandardOutput = "journal";
+              StandardError = "journal";
+              LoadCredential = map (name: "${name}:${keyDirectory}/${name}") [
+                keyFiles.public
+                keyFiles.private
+              ];
+              LoadCredentialEncrypted = "${keyFiles.auth}:${keyDirectory}/${keyFiles.auth}";
+              # bounds a stuck instance; a normal one answers in about a second,
+              # but a slow TPM2 can take several
+              RuntimeMaxSec = 30;
 
-            DynamicUser = true;
-            # No PrivateUsers=: inside a user namespace every caller's UID
-            # reads as nobody, and SO_PEERCRED would identify no one.
-            PrivateNetwork = true;
-            IPAddressDeny = "any";
-            RestrictAddressFamilies = "AF_UNIX";
-            CapabilityBoundingSet = "";
-            NoNewPrivileges = true;
-            PrivateDevices = true;
-            ProtectSystem = "strict";
-            ProtectHome = true;
-            ProtectClock = true;
-            ProtectHostname = true;
-            ProtectKernelLogs = true;
-            ProtectKernelModules = true;
-            ProtectKernelTunables = true;
-            ProtectControlGroups = true;
-            ProcSubset = "pid";
-            LockPersonality = true;
-            MemoryDenyWriteExecute = true;
-            RestrictNamespaces = true;
-            RestrictRealtime = true;
-            RestrictSUIDSGID = true;
-            SystemCallArchitectures = "native";
-            SystemCallFilter = [
-              "@system-service"
-              "~@privileged @resources"
-            ];
-            UMask = "0077";
+              DynamicUser = true;
+              # No PrivateUsers=: inside a user namespace every caller's UID
+              # reads as nobody, and SO_PEERCRED would identify no one.
+              PrivateNetwork = true;
+              IPAddressDeny = "any";
+              RestrictAddressFamilies = "AF_UNIX";
+              CapabilityBoundingSet = "";
+              NoNewPrivileges = true;
+              # The TPM2 resource manager is the only device, reached through its
+              # group. The group grants the whole TPM2 (other keys, extending
+              # PCRs), which is why nothing a caller sends is ever read.
+              PrivateDevices = true;
+              BindPaths = [ tpmDevice ];
+              DeviceAllow = [ "${tpmDevice} rw" ];
+              SupplementaryGroups = [ config.security.tpm2.tssGroup ];
+              ProtectSystem = "strict";
+              ProtectHome = true;
+              ProtectClock = true;
+              ProtectHostname = true;
+              ProtectKernelLogs = true;
+              ProtectKernelModules = true;
+              ProtectKernelTunables = true;
+              ProtectControlGroups = true;
+              ProcSubset = "pid";
+              LockPersonality = true;
+              MemoryDenyWriteExecute = true;
+              RestrictNamespaces = true;
+              RestrictRealtime = true;
+              RestrictSUIDSGID = true;
+              SystemCallArchitectures = "native";
+              SystemCallFilter = [
+                "@system-service"
+                "~@privileged @resources"
+              ];
+              UMask = "0077";
+            };
           };
-        };
-      })
+        }
+      ))
     ]
   );
 }
