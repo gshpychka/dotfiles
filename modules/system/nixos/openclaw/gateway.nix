@@ -6,9 +6,10 @@
 #     rendered by sops; openclaw.json carries only env references;
 #   - every session runs its tools on this host as the gateway user. File tools
 #     stay inside the workspace, and commands run against an allowlist
-#     (hostExec.allowlist), anything else waiting for the owner's approval in
-#     the Telegram DM. OpenClaw checks a DM's sandbox policy under a per-peer
-#     key, so its non-main sandbox mode covers the owner's DM as well.
+#     (hostExec.allowlist); a reviewer model runs any other command once,
+#     denies it, or asks the owner in the Telegram DM. OpenClaw checks a DM's
+#     sandbox policy under a per-peer key, so its non-main sandbox mode covers
+#     the owner's DM as well.
 #
 # Imperative, one-time without trustedProxy: a browser reaching the Control UI
 # through a reverse proxy is a remote device and must be paired from the host:
@@ -226,8 +227,10 @@ let
     tools = {
       exec = {
         host = "gateway";
-        # host commands: the allowlist runs, anything else asks the owner
-        mode = "ask";
+        # host commands: the allowlist runs; the reviewer model runs any other
+        # command once, denies it, or asks the owner
+        mode = "auto";
+        reviewer = lib.filterAttrs (_: value: value != null) cfg.hostExec.reviewer;
         pathPrepend = [
           "${hostTools}/bin"
           # setuid wrappers such as sudo; OpenClaw's login-shell PATH merge
@@ -462,11 +465,34 @@ in
       );
       default = [ ];
       description = ''
-        Host commands the main session runs without asking
-        (https://docs.openclaw.ai/tools/exec-approvals). Any other host
-        command waits for the owner's approval.
+        Host commands the main session runs without review
+        (https://docs.openclaw.ai/tools/exec-approvals). The reviewer model
+        runs any other host command once, denies it, or asks the owner.
       '';
       apply = map (lib.filterAttrs (_: value: value != null));
+    };
+
+    hostExec.reviewer = {
+      model = lib.mkOption {
+        type = lib.types.nullOr lib.types.str;
+        default = null;
+        example = "openai/gpt-5.6-terra";
+        description = "Model reviewing host commands outside the allowlist, as provider/model; null takes the primary.";
+      };
+      thinking = lib.mkOption {
+        type = lib.types.nullOr (
+          lib.types.enum [
+            "minimal"
+            "low"
+            "medium"
+            "high"
+            "xhigh"
+            "max"
+          ]
+        );
+        default = null;
+        description = "Reasoning effort of the reviewer model; null takes the provider default.";
+      };
     };
 
     skills = lib.mkOption {
@@ -568,9 +594,9 @@ in
           - `sops set secrets/openclaw/<file> '["<key>"]' '"<value>"'` adds or
             changes a value.
 
-          Every sops command asks the owner first. A decrypted value enters
-          your context and goes to the model provider: decrypt only what the
-          task needs, and never repeat a secret value in a reply.
+          A decrypted value enters your context and goes to the model
+          provider: decrypt only what the task needs, and never repeat a
+          secret value in a reply.
         '';
       };
     };
