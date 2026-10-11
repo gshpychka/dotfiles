@@ -24,7 +24,6 @@ let
   cfg = config.my.openclaw;
   app = cfg.github;
   gw = config.services.openclaw-gateway;
-  group = "openclaw-github";
   keyPath = config.sops.secrets."openclaw/github-app-private-key".path;
 
   # Prints an installation token, exchanged at GitHub for a JWT signed with the
@@ -82,9 +81,6 @@ let
       url."https://github.com/".insteadOf = "git@github.com:";
     }
   );
-
-  # homes of the users that act as the agent on GitHub
-  homes = [ gw.stateDir ] ++ lib.optional cfg.claudeCode.enable cfg.claudeCode.home;
 in
 {
   options.my.openclaw.github = lib.mkOption {
@@ -118,26 +114,13 @@ in
     sops.secrets."openclaw/github-app-private-key" = {
       inherit (cfg) sopsFile;
       key = "github-app-private-key";
-      inherit group;
-      mode = "0440";
+      owner = gw.user;
     };
 
-    users.groups.${group} = { };
-    users.users = {
-      ${gw.user}.extraGroups = [ group ];
-    }
-    // lib.optionalAttrs cfg.claudeCode.enable {
-      ${cfg.claudeCode.user}.extraGroups = [ group ];
-    };
-
-    systemd.tmpfiles.rules = map (home: "L+ ${home}/.gitconfig - - - - ${gitConfig}") homes;
+    systemd.tmpfiles.rules = [ "L+ ${gw.stateDir}/.gitconfig - - - - ${gitConfig}" ];
 
     my.openclaw = {
       hostTools = [
-        token
-        gh
-      ];
-      claudeCode.tools = lib.mkIf cfg.claudeCode.enable [
         token
         gh
       ];

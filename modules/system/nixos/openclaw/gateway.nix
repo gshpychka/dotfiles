@@ -476,7 +476,7 @@ in
     hostTools = lib.mkOption {
       type = lib.types.listOf lib.types.package;
       default = [ ];
-      description = "Packages first on PATH for the main session's host commands.";
+      description = "Packages on PATH for the agent's commands.";
     };
 
     hostExec.allowlist = lib.mkOption {
@@ -589,6 +589,8 @@ in
     };
 
     users.users.${gw.user}.autoSubUidGidRange = true;
+    # for tmpfiles rules inside it: tmpfiles creates a missing parent as root
+    systemd.tmpfiles.rules = [ "d ${cfg.workspace} 0700 ${gw.user} ${gw.group} - -" ];
     virtualisation.podman.enable = true;
 
     my.openclaw = {
