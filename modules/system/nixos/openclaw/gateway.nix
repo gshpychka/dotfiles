@@ -630,15 +630,11 @@ in
         StandardError = lib.mkForce "journal";
         RuntimeDirectory = gw.unitName;
         UMask = "0077";
-        # No seccomp-backed directives: systemd then implies NoNewPrivileges for
-        # a non-root User= (context_has_seccomp, src/core/exec-invoke.c), and
-        # rootless Podman needs the setuid newuidmap/newgidmap.
-        ProtectSystem = "strict";
-        ReadWritePaths = [ gw.stateDir ];
-        ProtectHome = true;
-        PrivateTmp = true;
-        ProtectControlGroups = true;
-        ProtectProc = "invisible";
+        # No filesystem sandboxing: the main session runs `sudo nixos-rebuild`
+        # here (rebuild.nix), which writes /nix, /etc and /root.
+        # No NoNewPrivileges, and no seccomp-backed directives, which imply it
+        # for a non-root User= (context_has_seccomp, src/core/exec-invoke.c):
+        # sudo and rootless Podman's newuidmap/newgidmap are setuid.
         MemoryMax = "6G";
         TasksMax = 1024;
       };

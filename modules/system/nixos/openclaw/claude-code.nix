@@ -9,8 +9,7 @@
 # session runs every tool without asking (acpx approve-all), and the user is
 # the boundary: it reaches the network, its own home, the nix daemon (whose
 # builds go to the distributed builders) and the GitHub App if set
-# (github.nix). The gateway unit's sandboxing applies too: it writes only to
-# its home and to the gateway's private /tmp.
+# (github.nix).
 #
 # Imperative, one-time: sign in to the personal Claude plan as that user, then
 # restart the gateway so its ACP startup probe passes:
@@ -159,8 +158,6 @@ in
             };
           };
         };
-
-        systemd.services.${gw.unitName}.serviceConfig.ReadWritePaths = [ home ];
 
         my.openclaw.skills.claude-code = {
           description = "Start, steer and check on Claude Code sessions for coding work in git repositories.";
