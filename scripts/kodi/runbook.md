@@ -67,6 +67,11 @@ in `cpm/patches/`, one directory per package:
   context, and Kodi's GUI renderer keeps its shaders, matrices and viewport as
   state both contexts share, so the worker's output comes out invisible or
   mirrored
+- `kodi/local-aml-decoder-timeout-paused.patch` suspends the Amlogic
+  decoder's 6 s stall timeout while playback is paused. Paused playback holds the
+  decoder's output buffers, and the timeout restarts the decoder at a later
+  keyframe, so a pause after a frame step keeps the picture in sync with the
+  audio
 - `linux/local-dv-hdmi-pkt-cache-reset.patch` clears the Dolby Vision driver's
   record of the HDMI packets it sent when Dolby Vision turns off. The driver
   skips a packet identical to the recorded one, and other drivers set the

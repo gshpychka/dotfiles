@@ -1,0 +1,14 @@
+diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLCodec.cpp b/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLCodec.cpp
+--- a/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLCodec.cpp
++++ b/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLCodec.cpp
+@@ -2494,7 +2494,9 @@
+   if (buffer_level > (IsDecStreamTypeStream() ? 100.0f : 10.0f))
+     return CDVDVideoCodec::VC_NONE;
+ 
+-  if (elapsed_since_last_frame > std::chrono::seconds(m_decoder_timeout))
++  // Paused playback holds the decoder's output buffers, so the decoder produces no frames.
++  if (m_speed != DVD_PLAYSPEED_PAUSE &&
++      elapsed_since_last_frame > std::chrono::seconds(m_decoder_timeout))
+   {
+     logM(LOGERROR, "decoder timeout - elf:[{:d}ms]", elapsed_since_last_frame.count());
+     ResetFrameTimeoutClock();
