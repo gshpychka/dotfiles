@@ -1,0 +1,900 @@
+From 1cd17b731f62ef5fcb799f9f91ba39c14bb1e6b8 Mon Sep 17 00:00:00 2001
+From: Glib Shpychka <23005347+gshpychka@users.noreply.github.com>
+Date: Sun, 11 Oct 2026 21:54:02 +0300
+Subject: [PATCH] fix(agents): accept answers from the requester's chat after a
+ subagent finishes
+
+When a subagent finishes, OpenClaw continues the requester's session in an
+internal turn. A question that turn asks only accepts answers from a caller
+with the internal turn's authority, so a reply from the chat that started the
+subagent is refused.
+
+sessions_spawn records the requesting chat turn's caller facts on the subagent
+run. The completion handoff carries the caller that every finished run shares,
+and a verified handoff checks answers against that caller. Replies from other
+senders, unverified handoffs, and revoked settle batches are still refused.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01LNTt5yXBj4uDUwJmPGvXLd
+---
+ .../tool-authority.delegated-question.test.ts | 265 ++++++++++++++++++
+ src/agents/harness/tool-authority.runtime.ts  |  37 ++-
+ .../subagent-announce-direct-delivery.ts      |   6 +
+ .../announce/subagent-announce-handoff.ts     |   4 +
+ ...nt-announce.requester-settle-state.test.ts |  46 +++
+ ...ubagent-announce.requester-settle-state.ts |  18 ++
+ ...subagent-announce.requester-settle-wake.ts |   5 +-
+ .../subagents/announce/subagent-announce.ts   |   3 +
+ ...ent-registry-lifecycle-announce-cleanup.ts |   1 +
+ .../subagent-registry-run-launch-record.ts    |   2 +
+ .../registry/subagent-registry.types.ts       |   3 +
+ .../spawn/subagent-spawn-contract.ts          |   3 +
+ src/agents/subagents/spawn/subagent-spawn.ts  |   1 +
+ src/agents/tools/gateway-caller-context.ts    |   9 +-
+ src/agents/tools/sessions-spawn-tool.ts       |   1 +
+ .../reply/reply-run-registry.contracts.ts     |  18 ++
+ .../reply/reply-run-registry.operation.ts     |   3 +
+ .../reply-run-registry.tool-authority.ts      |   4 +
+ src/auto-reply/reply/reply-tool-authority.ts  |  56 ++++
+ .../subagent-completion-tool-handoff.ts       |   2 +
+ 20 files changed, 482 insertions(+), 5 deletions(-)
+ create mode 100644 src/agents/harness/tool-authority.delegated-question.test.ts
+ create mode 100644 src/agents/subagents/announce/subagent-announce.requester-settle-state.test.ts
+
+diff --git a/src/agents/harness/tool-authority.delegated-question.test.ts b/src/agents/harness/tool-authority.delegated-question.test.ts
+new file mode 100644
+index 00000000000..f582a7539bb
+--- /dev/null
++++ b/src/agents/harness/tool-authority.delegated-question.test.ts
+@@ -0,0 +1,265 @@
++import path from "node:path";
++import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
++import type { ReplyToolAuthorityCaller } from "../../auto-reply/reply/reply-run-registry.contracts.js";
++import {
++  prepareReplyToolAuthority,
++  resolveInboundReplyToolAuthorityOverlay,
++} from "../../auto-reply/reply/reply-tool-authority.js";
++import type { RuntimeMsgContext } from "../../auto-reply/templating.js";
++import { replaceSessionEntry } from "../../config/sessions/session-accessor.js";
++import type { SessionEntry } from "../../config/sessions/types.js";
++import type { OpenClawConfig } from "../../config/types.openclaw.js";
++import {
++  consumeSubagentCompletionToolHandoff,
++  registerSubagentCompletionToolHandoff,
++} from "../../gateway/subagent-completion-tool-handoff.js";
++import { useSessionStoreTempDirs } from "../../test-utils/session-state-cleanup.js";
++import {
++  createAdmittedRunOperatorAuthority,
++  createOperationalRunInstanceRef,
++  prepareAgentRunAdmission,
++} from "../admitted-run-context.js";
++import { prepareOperatorModelPolicy } from "../operator-model-policy.js";
++import { getGatewayToolCallerIdentity } from "../tools/gateway-caller-context.js";
++import type { AgentQuestionDispatcher } from "./gateway-question-dispatch.js";
++import {
++  claimPendingAgentQuestionAnswerFromCaller,
++  registerPendingAgentQuestion,
++} from "./gateway-question.js";
++import { withPreparedEmbeddedRunToolAuthority } from "./tool-authority.runtime.js";
++
++const requesterSessionKey = "agent:main:main";
++const requesterSessionId = "requester-session";
++const childSessionKey = "agent:main:subagent:child";
++const route = { provider: "openai", model: "gpt-test" };
++
++describe("delegated completion question authority", () => {
++  const sessionDirs = useSessionStoreTempDirs(afterAll, "openclaw-delegated-question-");
++  let tempDir: string;
++  let storePath: string;
++
++  beforeEach(async () => {
++    tempDir = sessionDirs.make();
++    storePath = path.join(tempDir, "sessions.json");
++    const child: SessionEntry = {
++      sessionId: "child-session",
++      updatedAt: Date.now(),
++      spawnedBy: requesterSessionKey,
++      spawnDepth: 1,
++      inheritedToolPolicyVersion: 1,
++      inheritedToolAllow: ["read", "exec"],
++      inheritedToolDeny: ["write"],
++    };
++    await replaceSessionEntry({ storePath, sessionKey: childSessionKey }, child);
++  });
++
++  function config(): OpenClawConfig {
++    return { session: { store: storePath } };
++  }
++
++  function telegramMessage(senderId: string): RuntimeMsgContext {
++    return {
++      OriginatingChannel: "telegram",
++      Provider: "telegram",
++      Surface: "telegram",
++      ChatType: "direct",
++      AccountId: "default",
++      SenderId: senderId,
++      SenderName: senderId,
++    };
++  }
++
++  function telegramReply(senderId: string, senderIsOwner: boolean) {
++    return resolveInboundReplyToolAuthorityOverlay({
++      ctx: telegramMessage(senderId),
++      senderIsOwner,
++      disableTools: false,
++    });
++  }
++
++  /** The caller facts a Telegram owner turn records when it spawns a child. */
++  function telegramRequesterCaller(): ReplyToolAuthorityCaller {
++    const caller = prepareReplyToolAuthority({
++      originatingChannel: "telegram",
++      disableTools: false,
++      run: {
++        config: config(),
++        sessionKey: requesterSessionKey,
++        sessionId: requesterSessionId,
++        sessionFile: path.join(tempDir, "requester.jsonl"),
++        workspaceDir: tempDir,
++        provider: route.provider,
++        model: route.model,
++        messageProvider: "telegram",
++        chatType: "direct",
++        agentAccountId: "default",
++        senderId: "owner",
++        senderName: "owner",
++        senderIsOwner: true,
++        traceAuthorized: true,
++      },
++    }).caller;
++    expect(caller).toBeDefined();
++    return caller!;
++  }
++
++  function consumeSettleHandoff(requesterCaller?: ReplyToolAuthorityCaller) {
++    const registration = {
++      sourceSessionKey: childSessionKey,
++      targetSessionKey: requesterSessionKey,
++      targetSessionId: requesterSessionId,
++      idempotencyKey: "announce:requester-settle:test",
++      settleBatch: { sourceSessionKeys: [childSessionKey], isCurrent: () => true },
++      ...(requesterCaller ? { requesterCaller } : {}),
++    };
++    const handoff = consumeSubagentCompletionToolHandoff({
++      ...registration,
++      handoffId: registerSubagentCompletionToolHandoff(registration),
++      sourceTool: "subagent_settle",
++      ...route,
++    });
++    expect(handoff).toBeDefined();
++    return handoff!;
++  }
++
++  async function withSettleRunQuestion(
++    trustedInternalHandoff: ReturnType<typeof consumeSettleHandoff>,
++    run: (answer: (caller: ReturnType<typeof telegramReply>) => Promise<boolean>) => Promise<void>,
++  ) {
++    const runId = "announce:requester-settle:test";
++    const admission = prepareAgentRunAdmission({
++      cfg: {},
++      operationalRunInstance: createOperationalRunInstanceRef(runId),
++      facts: {
++        agentId: "main",
++        runId,
++        ingress: { kind: "system", state: "present", boundary: "delegated-question-test" },
++      },
++    });
++    try {
++      const admittedRunContext = await admission.admit("embedded", "delegated-question-test");
++      await withPreparedEmbeddedRunToolAuthority(
++        { admittedRunContext },
++        {
++          sessionId: requesterSessionId,
++          sessionKey: requesterSessionKey,
++          runId,
++          agentId: "main",
++          config: config(),
++          sessionFile: path.join(tempDir, "requester.jsonl"),
++          workspaceDir: tempDir,
++          provider: route.provider,
++          modelId: route.model,
++          sandboxSessionKey: requesterSessionKey,
++          messageChannel: "telegram",
++          messageProvider: "telegram",
++          senderIsOwner: true,
++          inputProvenance: {
++            kind: "inter_session",
++            sourceTool: "subagent_settle",
++            sourceSessionKey: childSessionKey,
++          },
++          trustedInternalHandoff,
++        },
++        undefined,
++        async () => {
++          const question = registerPendingAgentQuestion({
++            questionId: "settle-question",
++            sessionKey: requesterSessionKey,
++            questions: [{ id: "choice", header: "Choice", question: "Apply the fix?" }],
++            gatewayCall: { version: 2, call: dispatch },
++            answer: Promise.resolve({ status: "pending" }),
++          });
++          question.attachRegistration(Promise.resolve({ id: "settle-question" }));
++          try {
++            await run((caller) =>
++              claimPendingAgentQuestionAnswerFromCaller({
++                sessionKey: requesterSessionKey,
++                text: "Approve",
++                caller,
++                assertSourceCurrent: () => {},
++              }),
++            );
++          } finally {
++            question.dispose();
++          }
++        },
++      );
++    } finally {
++      admission.close();
++    }
++  }
++
++  const dispatch = vi.fn<AgentQuestionDispatcher["call"]>(async ({ authority }) => {
++    if (authority.kind === "source-bound") {
++      authority.assertCurrent();
++    }
++    return { status: "answered" };
++  });
++
++  beforeEach(() => {
++    dispatch.mockClear();
++  });
++
++  it("accepts a settle-run answer from the delegating caller and refuses other senders", async () => {
++    await withSettleRunQuestion(consumeSettleHandoff(telegramRequesterCaller()), async (answer) => {
++      await expect(answer(telegramReply("mallory", false))).rejects.toThrow("caller policy");
++      expect(dispatch).not.toHaveBeenCalled();
++      await expect(answer(telegramReply("owner", true))).resolves.toBe(true);
++      expect(dispatch).toHaveBeenCalledOnce();
++    });
++  });
++
++  it("refuses channel answers when the settle run records no delegating caller", async () => {
++    await withSettleRunQuestion(consumeSettleHandoff(), async (answer) => {
++      await expect(answer(telegramReply("owner", true))).rejects.toThrow("caller policy");
++      expect(dispatch).not.toHaveBeenCalled();
++    });
++  });
++
++  it("refuses the delegating caller once the settle batch is revoked", async () => {
++    let current = true;
++    const handoff = consumeSettleHandoff(telegramRequesterCaller());
++    const revocable = {
++      ...handoff,
++      settleBatch: { ...handoff.settleBatch!, isCurrent: () => current },
++    };
++    current = false;
++    await withSettleRunQuestion(revocable, async (answer) => {
++      await expect(answer(telegramReply("owner", true))).rejects.toThrow("caller policy");
++      expect(dispatch).not.toHaveBeenCalled();
++    });
++  });
++
++  it("hands the delegating caller to work the settle run delegates", async () => {
++    const requesterCaller = telegramRequesterCaller();
++    await withSettleRunQuestion(consumeSettleHandoff(requesterCaller), async () => {
++      expect(getGatewayToolCallerIdentity()?.requesterCaller).toBe(requesterCaller);
++    });
++  });
++
++  it("records no durable caller for an operator-admitted turn", () => {
++    const operatorAuthority = createAdmittedRunOperatorAuthority({
++      profileId: "operator",
++      scopes: ["operator.read", "operator.write"],
++      gatewayAccessGrant: null,
++      modelPolicy: prepareOperatorModelPolicy({ cfg: {}, policy: {} }),
++      assertCurrent() {},
++    });
++    const snapshot = prepareReplyToolAuthority({
++      operatorAuthority,
++      run: {
++        config: config(),
++        sessionKey: requesterSessionKey,
++        sessionId: requesterSessionId,
++        sessionFile: path.join(tempDir, "requester.jsonl"),
++        workspaceDir: tempDir,
++        provider: route.provider,
++        model: route.model,
++        messageProvider: "webchat",
++        senderIsOwner: true,
++      },
++    });
++    expect(snapshot.caller).toBeUndefined();
++  });
++});
+diff --git a/src/agents/harness/tool-authority.runtime.ts b/src/agents/harness/tool-authority.runtime.ts
+index 309ad29b125..638addbc81b 100644
+--- a/src/agents/harness/tool-authority.runtime.ts
++++ b/src/agents/harness/tool-authority.runtime.ts
+@@ -1,8 +1,13 @@
++import type {
++  ReplyToolAuthorityCaller,
++  ReplyToolAuthorityRoute,
++} from "../../auto-reply/reply/reply-run-registry.contracts.js";
+ import { resolveActiveReplyOperationForSessionId } from "../../auto-reply/reply/reply-run-registry.js";
+ import { getAttachedBackend } from "../../auto-reply/reply/reply-run-registry.state.js";
+ import { createReplyTurnParticipants } from "../../auto-reply/reply/reply-run-registry.tool-authority.js";
+ import {
+   prepareReplyToolAuthority,
++  resolveDurableReplyToolAuthorityOverlay,
+   type ReplyToolAuthorityInput,
+ } from "../../auto-reply/reply/reply-tool-authority.js";
+ import { readChannelSourceTurnId } from "../../auto-reply/reply/source-turn-id.js";
+@@ -12,6 +17,7 @@ import {
+   resolveAdmittedRunActiveAssertion,
+ } from "../admitted-run-context.js";
+ import type { EmbeddedRunAttemptInternalParams } from "../embedded-agent-runner/run/internal-params.js";
++import { hasVerifiedRequesterCompletionHandoff } from "../requester-tool-policy.js";
+ import {
+   getGatewayToolCallerIdentity,
+   withGatewayToolCallerIdentity,
+@@ -87,6 +93,15 @@ export async function withPreparedEmbeddedRunToolAuthority<T, Attempt extends To
+     assertActive();
+   }
+   const fingerprint = operation ? operation.bindToolAuthorityRoute(route) : direct?.fingerprint();
++  // A verified completion continues the requester's turn, so its questions take answers
++  // from that turn's caller.
++  const delegatedCaller = direct ? readVerifiedDelegatedCaller(input, route) : undefined;
++  const questionFingerprint = delegatedCaller
++    ? direct?.project(resolveDurableReplyToolAuthorityOverlay(delegatedCaller, input.run), route)
++    : fingerprint;
++  const requesterCaller = operation
++    ? operation.toolAuthorityCaller
++    : (delegatedCaller ?? direct?.caller);
+   const personalToolParticipants = operation
+     ? operation.personalToolParticipants
+     : createReplyTurnParticipants(direct?.personalToolOwner);
+@@ -135,7 +150,7 @@ export async function withPreparedEmbeddedRunToolAuthority<T, Attempt extends To
+           ? createAgentQuestionAnswerAuthority({
+               sessionKey,
+               requesterProfileId: input.operatorAuthority?.profileId,
+-              fingerprint,
++              fingerprint: questionFingerprint,
+               project: (caller) =>
+                 operation
+                   ? operation.projectToolAuthorityFingerprint(caller)
+@@ -163,6 +178,7 @@ export async function withPreparedEmbeddedRunToolAuthority<T, Attempt extends To
+         sessionKey,
+         operationalRunInstance: instance,
+         personalToolParticipants,
++        requesterCaller,
+         embeddedRunToolAuthorityBinding: (registration) => {
+           assertActive();
+           const { handle } = registration;
+@@ -219,3 +235,22 @@ export async function withPreparedEmbeddedRunToolAuthority<T, Attempt extends To
+     }
+   }
+ }
++
++function readVerifiedDelegatedCaller(
++  input: ReplyToolAuthorityInput,
++  route: ReplyToolAuthorityRoute,
++): ReplyToolAuthorityCaller | undefined {
++  const handoff = input.run.trustedInternalHandoff;
++  return handoff?.requesterCaller &&
++    hasVerifiedRequesterCompletionHandoff({
++      config: input.run.config,
++      sessionKey: input.run.sessionKey,
++      sessionId: input.run.sessionId,
++      inputProvenance: input.run.inputProvenance,
++      trustedInternalHandoff: handoff,
++      modelProvider: route.provider,
++      modelId: route.model,
++    })
++    ? handoff.requesterCaller
++    : undefined;
++}
+diff --git a/src/agents/subagents/announce/subagent-announce-direct-delivery.ts b/src/agents/subagents/announce/subagent-announce-direct-delivery.ts
+index 9bd4982775c..864d8260d6b 100644
+--- a/src/agents/subagents/announce/subagent-announce-direct-delivery.ts
++++ b/src/agents/subagents/announce/subagent-announce-direct-delivery.ts
+@@ -1,6 +1,7 @@
+ import { asOptionalRecord } from "@openclaw/normalization-core/record-coerce";
+ import { normalizeOptionalLowercaseString } from "@openclaw/normalization-core/string-coerce";
+ import { completionRequiresMessageToolDelivery } from "../../../auto-reply/reply/completion-delivery-policy.js";
++import type { ReplyToolAuthorityCaller } from "../../../auto-reply/reply/reply-run-registry.contracts.js";
+ import { readSessionEntriesFromStoreInWorker } from "../../../config/sessions/session-entry-read-runtime.js";
+ import { bindInProcessSessionRun } from "../../../gateway/in-process-session-run.js";
+ import { stringifyRouteThreadId } from "../../../plugin-sdk/channel-route.js";
+@@ -94,6 +95,8 @@ export type SubagentAnnounceDirectParams = {
+   sourceSessionKey?: string;
+   sourceTool?: string;
+   settleWakeSourceSessionKeys?: readonly string[];
++  /** Durable caller facts shared by every completed run this delivery reports. */
++  requesterCaller?: ReplyToolAuthorityCaller;
+   isSourceSessionEffectsAllowed?: () => boolean;
+   sourceReceiptAdmission?: GatewayToolCallerReceiptAdmission;
+   /** Additional source guard released by the accepting Gateway or injection owner. */
+@@ -502,6 +505,9 @@ export async function sendSubagentAnnounceDirectly(
+                               },
+                             }
+                           : {}),
++                        ...(params.requesterCaller
++                          ? { requesterCaller: params.requesterCaller }
++                          : {}),
+                       }
+                     : undefined,
+                 expectFinal: true,
+diff --git a/src/agents/subagents/announce/subagent-announce-handoff.ts b/src/agents/subagents/announce/subagent-announce-handoff.ts
+index 04b054992a8..c3f62c3aa68 100644
+--- a/src/agents/subagents/announce/subagent-announce-handoff.ts
++++ b/src/agents/subagents/announce/subagent-announce-handoff.ts
+@@ -1,3 +1,4 @@
++import type { ReplyToolAuthorityCaller } from "../../../auto-reply/reply/reply-run-registry.contracts.js";
+ import type { InputProvenance } from "../../../sessions/input-provenance.js";
+ import { AGENT_INTERNAL_EVENT_TYPE_TASK_COMPLETION } from "../../internal-event-contract.js";
+ import type { AgentInternalEvent } from "../../internal-events.js";
+@@ -19,6 +20,8 @@ export type TrustedSubagentCompletionHandoff = {
+   provider: string;
+   model: string;
+   settleBatch?: SubagentSettleToolPolicyBatch;
++  /** Durable caller facts of the turn that delegated the completed work. */
++  requesterCaller?: ReplyToolAuthorityCaller;
+ };
+ 
+ export type SubagentCompletionToolHandoffRegistration = {
+@@ -28,6 +31,7 @@ export type SubagentCompletionToolHandoffRegistration = {
+   targetSessionId: string;
+   idempotencyKey: string;
+   settleBatch?: SubagentSettleToolPolicyBatch;
++  requesterCaller?: ReplyToolAuthorityCaller;
+ };
+ 
+ export function resolveExactSubagentCompletionEvent(params: {
+diff --git a/src/agents/subagents/announce/subagent-announce.requester-settle-state.test.ts b/src/agents/subagents/announce/subagent-announce.requester-settle-state.test.ts
+new file mode 100644
+index 00000000000..2c600e222a1
+--- /dev/null
++++ b/src/agents/subagents/announce/subagent-announce.requester-settle-state.test.ts
+@@ -0,0 +1,46 @@
++import { describe, expect, it } from "vitest";
++import type { SubagentRunRecord } from "../registry/subagent-registry.types.js";
++import { resolveSettledBatchSource } from "./subagent-announce.requester-settle-state.js";
++
++const owner = {
++  messageProvider: "telegram",
++  senderId: "owner",
++  senderIsOwner: true,
++  disableTools: false,
++  traceAuthorized: true,
++};
++
++function run(requesterCaller?: typeof owner): Pick<SubagentRunRecord, "requesterCaller"> {
++  return { requesterCaller };
++}
++
++describe("resolveSettledBatchSource", () => {
++  const keys = ["agent:main:subagent:a", "agent:main:subagent:b"];
++
++  it("reports the batch as one settle continuation", () => {
++    expect(resolveSettledBatchSource([run(owner)], keys)).toEqual({
++      sourceSessionKey: keys[0],
++      settleWakeSourceSessionKeys: keys,
++      sourceTool: "subagent_settle",
++      requesterCaller: owner,
++    });
++  });
++
++  it("keeps the caller every run recorded", () => {
++    expect(
++      resolveSettledBatchSource([run(owner), run({ ...owner })], keys).requesterCaller,
++    ).toEqual(owner);
++  });
++
++  it.each([
++    ["a different sender", run({ ...owner, senderId: "mallory" })],
++    ["no recorded caller", run()],
++  ])("leaves the caller unset when a run has %s", (_label, other) => {
++    expect(resolveSettledBatchSource([run(owner), other], keys)).not.toHaveProperty(
++      "requesterCaller",
++    );
++    expect(resolveSettledBatchSource([other, run(owner)], keys)).not.toHaveProperty(
++      "requesterCaller",
++    );
++  });
++});
+diff --git a/src/agents/subagents/announce/subagent-announce.requester-settle-state.ts b/src/agents/subagents/announce/subagent-announce.requester-settle-state.ts
+index 17c82f9e89d..17973413741 100644
+--- a/src/agents/subagents/announce/subagent-announce.requester-settle-state.ts
++++ b/src/agents/subagents/announce/subagent-announce.requester-settle-state.ts
+@@ -1,3 +1,4 @@
++import { stableStringify } from "@openclaw/normalization-core";
+ import type {
+   RequesterSettleWakeState,
+   SubagentRunRecord,
+@@ -86,6 +87,23 @@ export function startRequesterSettleWakeAttempt(
+   };
+ }
+ 
++/** Settled batch provenance, with the requester caller recorded by every run in the batch. */
++export function resolveSettledBatchSource(
++  batch: readonly Pick<SubagentRunRecord, "requesterCaller">[],
++  sourceSessionKeys: readonly string[],
++) {
++  const [requesterCaller, ...rest] = batch.map((entry) => entry.requesterCaller);
++  const key = requesterCaller && stableStringify(requesterCaller);
++  return {
++    sourceSessionKey: sourceSessionKeys[0],
++    settleWakeSourceSessionKeys: sourceSessionKeys,
++    sourceTool: "subagent_settle",
++    ...(requesterCaller && rest.every((caller) => caller && stableStringify(caller) === key)
++      ? { requesterCaller }
++      : {}),
++  };
++}
++
+ export function readSharedBatchState(
+   batch: readonly SubagentRunRecord[],
+ ): RequesterSettleWakeBatchState {
+diff --git a/src/agents/subagents/announce/subagent-announce.requester-settle-wake.ts b/src/agents/subagents/announce/subagent-announce.requester-settle-wake.ts
+index 27695ef8460..da924318554 100644
+--- a/src/agents/subagents/announce/subagent-announce.requester-settle-wake.ts
++++ b/src/agents/subagents/announce/subagent-announce.requester-settle-wake.ts
+@@ -55,6 +55,7 @@ import { buildRequesterSettleWakeMessage } from "./subagent-announce.requester-s
+ import { createRequesterSettleReceiptAdmission } from "./subagent-announce.requester-settle-receipt.js";
+ import {
+   readSharedBatchState,
++  resolveSettledBatchSource,
+   createRequesterSettleBatchClaim,
+   captureRequesterRunOwner,
+   resolvePrivateSettlePolicy,
+@@ -627,9 +628,7 @@ export async function maybeWakeRequesterAfterAllChildrenSettled(
+                 triggerMessage: wakeMessage,
+                 requesterSessionOrigin,
+                 directOrigin,
+-                sourceSessionKey: batchSessionKeys[0],
+-                settleWakeSourceSessionKeys: batchSessionKeys,
+-                sourceTool: "subagent_settle",
++                ...resolveSettledBatchSource(settledBatch, batchSessionKeys),
+                 targetRequesterSessionKey: requesterSessionKey,
+                 requesterIsSubagent: requesterDepth >= 1,
+                 expectsCompletionMessage: false,
+diff --git a/src/agents/subagents/announce/subagent-announce.ts b/src/agents/subagents/announce/subagent-announce.ts
+index cbf11bf94e8..4a36b2dc692 100644
+--- a/src/agents/subagents/announce/subagent-announce.ts
++++ b/src/agents/subagents/announce/subagent-announce.ts
+@@ -1,5 +1,6 @@
+ import { isRecord } from "@openclaw/normalization-core/record-coerce";
+ import { normalizeOptionalString } from "@openclaw/normalization-core/string-coerce";
++import type { ReplyToolAuthorityCaller } from "../../../auto-reply/reply/reply-run-registry.contracts.js";
+ import {
+   isSilentReplyText,
+   SILENT_REPLY_TOKEN,
+@@ -134,6 +135,7 @@ type SubagentAnnounceFlowParams = {
+   requesterSessionKey: string;
+   requesterAgentId?: string;
+   requesterOrigin?: DeliveryContext;
++  requesterCaller?: ReplyToolAuthorityCaller;
+   task: string;
+   timeoutMs: number;
+   cleanup: "delete" | "keep";
+@@ -602,6 +604,7 @@ async function runSubagentAnnounceFlowBound(
+       sourceSessionKey: params.childSessionKey,
+       sourceRunId: params.childRunId,
+       sourceTool: "subagent_announce",
++      requesterCaller: params.requesterCaller,
+       isSourceSessionEffectsAllowed: completionDeliveryAllowed,
+       isCompletionOwnedByRequesterYield: params.isCompletionOwnedByRequesterYield,
+       targetRequesterSessionKey,
+diff --git a/src/agents/subagents/registry/subagent-registry-lifecycle-announce-cleanup.ts b/src/agents/subagents/registry/subagent-registry-lifecycle-announce-cleanup.ts
+index 3903ba9fd2f..2911b0eac11 100644
+--- a/src/agents/subagents/registry/subagent-registry-lifecycle-announce-cleanup.ts
++++ b/src/agents/subagents/registry/subagent-registry-lifecycle-announce-cleanup.ts
+@@ -414,6 +414,7 @@ export const startSubagentAnnounceCleanupFlow = (
+     requesterSessionKey: pendingPayload.requesterSessionKey,
+     requesterAgentId: resolveSubagentRequesterAgentId(params.getRuntimeConfig(), entry),
+     requesterOrigin,
++    requesterCaller: entry.requesterCaller,
+     task: pendingPayload.task,
+     timeoutMs: params.subagentAnnounceTimeoutMs,
+     cleanup: suppressSessionEffects ? "keep" : cleanup,
+diff --git a/src/agents/subagents/registry/subagent-registry-run-launch-record.ts b/src/agents/subagents/registry/subagent-registry-run-launch-record.ts
+index ebb48ee8031..34d8f79b400 100644
+--- a/src/agents/subagents/registry/subagent-registry-run-launch-record.ts
++++ b/src/agents/subagents/registry/subagent-registry-run-launch-record.ts
+@@ -11,6 +11,7 @@ export type RegisterSubagentRunParams = {
+   controllerSessionKey?: string;
+   requesterSessionKey: string;
+   requesterOrigin?: SubagentRunRecord["requesterOrigin"];
++  requesterCaller?: SubagentRunRecord["requesterCaller"];
+   progressOrigin?: SubagentRunRecord["progressOrigin"];
+   requesterDisplayKey: string;
+   task: string;
+@@ -73,6 +74,7 @@ export function createSubagentRegistrationRecord(
+     controllerSessionKey,
+     requesterSessionKey,
+     requesterOrigin,
++    requesterCaller: registerParams.requesterCaller,
+     progressOrigin: registerParams.progressOrigin,
+     requesterDisplayKey: registerParams.requesterDisplayKey,
+     requesterAgentId: prepared.requesterAgentId,
+diff --git a/src/agents/subagents/registry/subagent-registry.types.ts b/src/agents/subagents/registry/subagent-registry.types.ts
+index 58a5864518a..411dfa18ae6 100644
+--- a/src/agents/subagents/registry/subagent-registry.types.ts
++++ b/src/agents/subagents/registry/subagent-registry.types.ts
+@@ -1,3 +1,4 @@
++import type { ReplyToolAuthorityCaller } from "../../../auto-reply/reply/reply-run-registry.contracts.js";
+ import type {
+   SessionEntryCurrentCheck,
+   SessionEntryCurrentFacts,
+@@ -182,6 +183,8 @@ export type SubagentRunRecord = Omit<SubagentRunReadRecord, "execution" | "colle
+   /** Completion-producing row retirement deferred until requesterTurnRunId settles. */
+   retireAfterRequesterTurn?: boolean;
+   requesterOrigin?: DeliveryContext;
++  /** Durable caller facts of the requester turn that spawned this run. */
++  requesterCaller?: ReplyToolAuthorityCaller;
+   /** Durable source locator for transport-neutral progress presentation. */
+   progressOrigin?: SubagentProgressOrigin;
+   requesterDisplayKey: string;
+diff --git a/src/agents/subagents/spawn/subagent-spawn-contract.ts b/src/agents/subagents/spawn/subagent-spawn-contract.ts
+index 9db6b3eeef1..c3e455b0962 100644
+--- a/src/agents/subagents/spawn/subagent-spawn-contract.ts
++++ b/src/agents/subagents/spawn/subagent-spawn-contract.ts
+@@ -1,3 +1,4 @@
++import type { ReplyToolAuthorityCaller } from "../../../auto-reply/reply/reply-run-registry.contracts.js";
+ import type { FastMode } from "../../../shared/fast-mode.js";
+ import type { SpawnedToolContext } from "../../spawned-context.js";
+ import type {
+@@ -51,6 +52,8 @@ export type SpawnSubagentContext = SpawnedToolContext & {
+   senderIsOwner?: boolean;
+   expectedParentSessionId?: string;
+   requesterTurnRunId?: string;
++  /** Durable caller facts of the requester turn. */
++  requesterCaller?: ReplyToolAuthorityCaller;
+   /** Separate key used only for completion routing, not sandbox policy. */
+   completionOwnerKey?: string;
+   /** Active requester sandbox classification, preserved separately from the durable lineage key.
+diff --git a/src/agents/subagents/spawn/subagent-spawn.ts b/src/agents/subagents/spawn/subagent-spawn.ts
+index 8639f9cb5d9..cb65e1f2b8a 100644
+--- a/src/agents/subagents/spawn/subagent-spawn.ts
++++ b/src/agents/subagents/spawn/subagent-spawn.ts
+@@ -549,6 +549,7 @@ export async function spawnSubagentDirect(
+           sessionEntry: childEntry,
+           requesterSessionKey: ownership.completionRequesterSessionKey,
+           requesterOrigin,
++          requesterCaller: ctx.requesterCaller,
+           progressOrigin,
+           requesterDisplayKey: ownership.completionRequesterDisplayKey,
+           task,
+diff --git a/src/agents/tools/gateway-caller-context.ts b/src/agents/tools/gateway-caller-context.ts
+index 04f5a698486..9369748a6cb 100644
+--- a/src/agents/tools/gateway-caller-context.ts
++++ b/src/agents/tools/gateway-caller-context.ts
+@@ -2,7 +2,10 @@
+ import { AsyncLocalStorage } from "node:async_hooks";
+ import { asNonArrayRecord } from "@openclaw/normalization-core/record-coerce";
+ import type { ExecutionIdentityAdmissionToken } from "../../audit/execution-identity-admission.js";
+-import type { ReplyTurnParticipants } from "../../auto-reply/reply/reply-run-registry.contracts.js";
++import type {
++  ReplyToolAuthorityCaller,
++  ReplyTurnParticipants,
++} from "../../auto-reply/reply/reply-run-registry.contracts.js";
+ import type { SessionEntriesCurrentCheck } from "../../config/sessions/session-entry-current.types.js";
+ import type { AgentRuntimeIdentity } from "../../gateway/agent-runtime-identity-token.js";
+ import type { CronCreatorAuthorityGrant } from "../../gateway/cron-creator-authority-grant.types.js";
+@@ -52,6 +55,8 @@ type GatewayToolCallerIdentity = {
+   fullPermission?: boolean;
+   operationalRunInstance?: OperationalRunInstanceRef;
+   embeddedRunToolAuthorityBinding?: EmbeddedRunToolAuthorityBinding;
++  /** Durable caller facts of the turn executing this tool. */
++  requesterCaller?: ReplyToolAuthorityCaller;
+   /** Exact run authority used to fence delegated system-agent approvals. */
+   approvalAuthority?: AgentRunDelegatedAuthority;
+   /** Original operator restriction, separate from this tool/turn's execution lifetime. */
+@@ -442,6 +447,7 @@ export async function withGatewayToolCallerIdentity<T>(
+     inheritedOwner?.operationalRunInstance ?? identity.operationalRunInstance;
+   const embeddedRunToolAuthorityBinding =
+     identity.embeddedRunToolAuthorityBinding ?? inheritedOwner?.embeddedRunToolAuthorityBinding;
++  const requesterCaller = inheritedOwner?.requesterCaller ?? identity.requesterCaller;
+   // Same-run wrappers can narrow a prepared posture, never erase a restriction.
+   const fullPermission =
+     inheritedOwner?.fullPermission === false || identity.fullPermission === false
+@@ -547,6 +553,7 @@ export async function withGatewayToolCallerIdentity<T>(
+       ...(fullPermission !== undefined ? { fullPermission } : {}),
+       ...(operationalRunInstance ? { operationalRunInstance } : {}),
+       ...(embeddedRunToolAuthorityBinding ? { embeddedRunToolAuthorityBinding } : {}),
++      ...(requesterCaller ? { requesterCaller } : {}),
+       ...(approvalAuthority ? { approvalAuthority } : {}),
+       ...(operatorAuthority ? { operatorAuthority } : {}),
+       ...(approvalAuthorityCheck ? { approvalAuthorityCheck } : {}),
+diff --git a/src/agents/tools/sessions-spawn-tool.ts b/src/agents/tools/sessions-spawn-tool.ts
+index 31557bd664c..3d7a8d31fa7 100644
+--- a/src/agents/tools/sessions-spawn-tool.ts
++++ b/src/agents/tools/sessions-spawn-tool.ts
+@@ -650,6 +650,7 @@ export function createSessionsSpawnTool(
+               workspaceDir: opts?.workspaceDir,
+               sessionPermissionPolicy: opts?.sessionPermissionPolicy,
+               requesterRunId: opts?.requesterRunId,
++              requesterCaller: getGatewayToolCallerIdentity()?.requesterCaller,
+             },
+             parentExecutionIdentityToken,
+           ),
+diff --git a/src/auto-reply/reply/reply-run-registry.contracts.ts b/src/auto-reply/reply/reply-run-registry.contracts.ts
+index 1188c0fbceb..d5f023c42a3 100644
+--- a/src/auto-reply/reply/reply-run-registry.contracts.ts
++++ b/src/auto-reply/reply/reply-run-registry.contracts.ts
+@@ -108,6 +108,20 @@ export type ReplyToolAuthorityOverlay = Readonly<{
+   toolBindings?: Readonly<Record<string, unknown>>;
+ }>;
+ 
++/** Caller facts of one turn that stay valid after the turn ends. */
++export type ReplyToolAuthorityCaller = Readonly<
++  Omit<
++    ReplyToolAuthorityOverlay,
++    | "operatorAuthority"
++    | "permissionMode"
++    | "toolOverrides"
++    | "spawnedBy"
++    | "trustedInternalHandoff"
++    | "scheduledToolPolicy"
++    | "runtimePluginToolGrant"
++  >
++>;
++
+ type ReplyTurnParticipantInput = Pick<
+   ReplyToolAuthorityOverlay,
+   "operatorAuthority" | "senderId" | "senderName" | "gatewayUiCommandTarget"
+@@ -115,6 +129,8 @@ type ReplyTurnParticipantInput = Pick<
+ 
+ export type ReplyToolAuthoritySnapshot = Readonly<{
+   personalToolOwner?: ReplyTurnParticipantInput;
++  /** Durable caller facts of the turn this snapshot was prepared from. */
++  caller?: ReplyToolAuthorityCaller;
+   /** Selection admitted before runtime fallback or hooks choose a concrete model. */
+   requestedRoute?: ReplyToolAuthorityRoute;
+   fingerprint(route?: ReplyToolAuthorityRoute): string;
+@@ -345,6 +361,8 @@ export type ReplyOperation = {
+   readonly sourceReplyDelivered: boolean;
+   /** Immutable tool authority accepted by the active backend for steered user turns. */
+   readonly toolAuthorityFingerprint?: string;
++  /** Durable caller facts of the admitted turn. */
++  readonly toolAuthorityCaller?: ReplyToolAuthorityCaller;
+   /** Initial selected model; a concrete attempt must not replace user intent. */
+   readonly requestedToolAuthorityRoute?: ReplyToolAuthorityRoute;
+   /** Current candidate proven automatic by the fallback owner; identity marks its attempt. */
+diff --git a/src/auto-reply/reply/reply-run-registry.operation.ts b/src/auto-reply/reply/reply-run-registry.operation.ts
+index f433cd1eddb..56bdf1feb2c 100644
+--- a/src/auto-reply/reply/reply-run-registry.operation.ts
++++ b/src/auto-reply/reply/reply-run-registry.operation.ts
+@@ -259,6 +259,9 @@ export function createReplyOperation(params: {
+     get toolAuthorityFingerprint() {
+       return toolAuthority.toolAuthorityFingerprint;
+     },
++    get toolAuthorityCaller() {
++      return toolAuthority.toolAuthorityCaller;
++    },
+     get personalToolParticipants() {
+       return toolAuthority.personalToolParticipants;
+     },
+diff --git a/src/auto-reply/reply/reply-run-registry.tool-authority.ts b/src/auto-reply/reply/reply-run-registry.tool-authority.ts
+index d1f9d598223..ef99afee551 100644
+--- a/src/auto-reply/reply/reply-run-registry.tool-authority.ts
++++ b/src/auto-reply/reply/reply-run-registry.tool-authority.ts
+@@ -126,6 +126,7 @@ export function createReplyTurnParticipants(
+ type OperationToolAuthority = Pick<
+   ReplyOperation,
+   | "toolAuthorityFingerprint"
++  | "toolAuthorityCaller"
+   | "toolAuthorityRoute"
+   | "requestedToolAuthorityRoute"
+   | "automaticFallbackRoute"
+@@ -157,6 +158,9 @@ export function createReplyOperationToolAuthority(lifecycle: {
+     get toolAuthorityFingerprint() {
+       return fingerprint;
+     },
++    get toolAuthorityCaller() {
++      return snapshot?.caller;
++    },
+     get toolAuthorityRoute() {
+       return route;
+     },
+diff --git a/src/auto-reply/reply/reply-tool-authority.ts b/src/auto-reply/reply/reply-tool-authority.ts
+index 99d54de62a3..7fe60086660 100644
+--- a/src/auto-reply/reply/reply-tool-authority.ts
++++ b/src/auto-reply/reply/reply-tool-authority.ts
+@@ -32,6 +32,7 @@ import type { RuntimeMsgContext } from "../templating.js";
+ import { resolveOriginMessageProvider } from "./origin-routing.js";
+ import type { FollowupRun } from "./queue/types.js";
+ import type {
++  ReplyToolAuthorityCaller,
+   ReplyToolAuthorityOverlay,
+   ReplyToolAuthorityRoute,
+   ReplyToolAuthoritySnapshot,
+@@ -413,6 +414,7 @@ export function prepareReplyToolAuthority(
+       senderName: snapshot.run.senderName,
+       gatewayUiCommandTarget: snapshot.run.gatewayUiCommandTarget,
+     },
++    caller: readReplyToolAuthorityCaller(snapshot),
+     requestedRoute: Object.freeze({ provider: snapshot.run.provider, model: snapshot.run.model }),
+     fingerprint: (route) => resolveFollowupRunToolAuthorityFingerprint(snapshot, route),
+     project: (overlay, route) => {
+@@ -426,3 +428,57 @@ export function prepareReplyToolAuthority(
+     },
+   };
+ }
++
++/** The overlay a durable caller's next inbound turn carries in the given session. */
++export function resolveDurableReplyToolAuthorityOverlay(
++  caller: ReplyToolAuthorityCaller,
++  session: Pick<ReplyToolAuthorityInput["run"], "permissionMode" | "toolOverrides" | "spawnedBy">,
++): ReplyToolAuthorityOverlay {
++  return {
++    ...caller,
++    permissionMode: session.permissionMode,
++    toolOverrides: session.toolOverrides,
++    spawnedBy: normalizeOptionalString(session.spawnedBy),
++  };
++}
++
++function readReplyToolAuthorityCaller(
++  snapshot: ReplyToolAuthorityInput,
++): ReplyToolAuthorityCaller | undefined {
++  const { run } = snapshot;
++  // Operator and internal grants are live authority that a durable caller cannot hold.
++  if (
++    snapshot.operatorAuthority ||
++    run.trustedInternalHandoff ||
++    run.scheduledToolPolicy ||
++    run.runtimePluginToolGrant
++  ) {
++    return undefined;
++  }
++  return Object.freeze(
++    structuredClone({
++      originatingChannel: snapshot.originatingChannel,
++      toolsAllow: snapshot.toolsAllow,
++      disableTools: snapshot.disableTools === true,
++      messageProvider: run.messageProvider,
++      chatType: run.chatType,
++      agentAccountId: run.agentAccountId,
++      conversationToolPolicy: run.conversationToolPolicy,
++      groupId: run.groupId,
++      groupChannel: run.groupChannel,
++      groupSpace: run.groupSpace,
++      memberRoleIds: run.memberRoleIds,
++      senderId: run.senderId,
++      senderName: run.senderName,
++      senderUsername: run.senderUsername,
++      senderE164: run.senderE164,
++      senderIsOwner: run.senderIsOwner === true,
++      inputProvenance: run.inputProvenance,
++      traceAuthorized: run.traceAuthorized === true,
++      approvalReviewerDeviceId: run.approvalReviewerDeviceId,
++      clientCaps: run.clientCaps,
++      gatewayUiCommandTarget: run.gatewayUiCommandTarget,
++      toolBindings: run.toolBindings,
++    }),
++  );
++}
+diff --git a/src/gateway/subagent-completion-tool-handoff.ts b/src/gateway/subagent-completion-tool-handoff.ts
+index b293db96206..00f4f6f0918 100644
+--- a/src/gateway/subagent-completion-tool-handoff.ts
++++ b/src/gateway/subagent-completion-tool-handoff.ts
+@@ -50,6 +50,7 @@ function normalizeRegistration(
+     ...(settleBatch
+       ? { settleBatch: { ...settleBatch, sourceSessionKeys: [...settleBatch.sourceSessionKeys] } }
+       : {}),
++    ...(params.requesterCaller ? { requesterCaller: params.requesterCaller } : {}),
+   };
+ }
+ 
+@@ -140,5 +141,6 @@ export function consumeSubagentCompletionToolHandoff(params: {
+     provider,
+     model,
+     ...(entry.settleBatch ? { settleBatch: entry.settleBatch } : {}),
++    ...(entry.requesterCaller ? { requesterCaller: entry.requesterCaller } : {}),
+   };
+ }
+-- 
+2.55.0
+

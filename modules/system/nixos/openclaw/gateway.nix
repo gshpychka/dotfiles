@@ -34,6 +34,26 @@ let
   configFile = config.environment.etc.${configEtcPath}.source;
   unit = "${gw.unitName}.service";
 
+  gatewayPackage = inputs.nix-openclaw.packages.${system}.openclaw-gateway.override (old: {
+    gatewaySrc = pkgs.applyPatches {
+      name = "openclaw-${old.sourceInfo.releaseVersion}-source";
+      src = pkgs.fetchFromGitHub {
+        inherit (old.sourceInfo)
+          owner
+          repo
+          rev
+          hash
+          ;
+      };
+      patches = [
+        # questions asked after a subagent finishes accept answers from the chat that started it
+        ./patches/delegated-completion-question-caller.patch
+      ];
+    };
+    # follows the source's pnpm-lock.yaml
+    pnpmDepsHash = "sha256-CO2ykEZhdyCVCgQQlNyFZl274VfGzgNl7TbJ6/gMRp8=";
+  });
+
   sopsKey = key: "openclaw/${key}";
   placeholder = name: config.sops.placeholder.${name};
 
@@ -216,6 +236,8 @@ let
       # The entry also leaves an OpenAI sign-in nothing to patch in openclaw.json,
       # a write Nix mode refuses.
       models."openai/*".agentRuntime.id = "openclaw";
+      # the models sessions may select
+      modelPolicy.allow = [ "openai/*" ];
       inherit (cfg) workspace;
       userTimezone = config.time.timeZone;
       heartbeat.every = "0m";
@@ -555,10 +577,7 @@ in
 
     services.openclaw-gateway = {
       enable = true;
-      package = import ../../../../packages/openclaw-approval-fix {
-        inherit inputs system;
-        approvalPatch = ../../../../packages/openclaw-approval-fix/approval-scope.patch;
-      };
+      package = gatewayPackage;
       config = openclawConfig;
       environment = gatewayEnv;
       environmentFiles = [ config.sops.templates."openclaw.env".path ];

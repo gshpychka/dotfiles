@@ -59,7 +59,7 @@
     nix-openclaw = {
       # not following our nixpkgs: its pinned pnpm dependency hashes are
       # computed against its own nixpkgs
-      url = "github:openclaw/nix-openclaw";
+      url = "github:gshpychka/nix-openclaw";
       inputs.home-manager.follows = "home-manager";
     };
     nixified-ai = {
