@@ -3,14 +3,24 @@
 #
 # Trust boundaries:
 #   - the gateway runs as its own system user and reads secrets from files
-#     rendered by sops; the world-readable openclaw.json carries only env
-#     references;
-#   - agent tool execution (exec, read, write, ...) runs in rootless Podman
-#     containers owned by that user, with no network and only the workspace.
+#     rendered by sops; openclaw.json carries only env references;
+#   - the owner's main session (the Telegram DM) runs unsandboxed, because only
+#     an unsandboxed session may start Claude Code (claude-code.nix). Its file
+#     tools stay inside the workspace, and its commands run on this host as the
+#     gateway user against an allowlist (hostExec.allowlist): anything else
+#     waits for the owner's approval in the Telegram DM;
+#   - every other session (automations, Control UI sessions) runs its tools in
+#     rootless Podman containers owned by that user, with no network and only
+#     the workspace.
 #
 # Imperative, one-time without trustedProxy: a browser reaching the Control UI
 # through a reverse proxy is a remote device and must be paired from the host:
 #   openclaw devices list / openclaw devices approve <id>
+#
+# The agent's own age key (ageKeyFile) is generated on first start and never
+# leaves this host. To let it decrypt secrets, add its public key to .sops.yaml
+# (the commented `openclaw` entry there):
+#   sudo grep '^# public key' /var/lib/openclaw/age-key.txt
 {
   config,
   lib,
@@ -83,6 +93,12 @@ let
   sandboxRepository = "localhost/${sandboxImage.imageName}";
   sandboxImageRef = "${sandboxRepository}:${sandboxImage.imageTag}";
 
+  # The agent's own age key, created once; the private key never leaves this host.
+  generateAgeKey = pkgs.writeShellScript "openclaw-generate-age-key" ''
+    set -euo pipefail
+    [ -e ${cfg.ageKeyFile} ] || ${lib.getExe' pkgs.age "age-keygen"} -o ${cfg.ageKeyFile}
+  '';
+
   # Loads the current image into the gateway user's store and drops earlier
   # tags and their containers.
   loadSandboxImage = pkgs.writeShellScript "openclaw-load-sandbox-image" ''
@@ -120,6 +136,44 @@ let
 
   publicOrigin = "https://${cfg.publicHost}";
 
+  # Commands the main session's host exec finds first on PATH.
+  hostTools = pkgs.buildEnv {
+    name = "openclaw-host-tools";
+    paths = cfg.hostTools;
+  };
+
+  # Skills telling the agent about its host commands, one directory each.
+  skillsDir = pkgs.runCommand "openclaw-skills" { } (
+    lib.concatStrings (
+      lib.mapAttrsToList (name: skill: ''
+        mkdir -p $out/${name}
+        cp ${pkgs.writeText "${name}-SKILL.md" ''
+          ---
+          name: ${name}
+          description: ${builtins.toJSON skill.description}
+          ---
+          ${skill.text}''} $out/${name}/SKILL.md
+      '') cfg.skills
+    )
+  );
+
+  # Host exec approvals for the main session. The gateway keeps them in its
+  # SQLite state, not in openclaw.json, so ExecStartPre replaces them from this
+  # file on every start: an "allow always" given in chat lasts until the next
+  # restart. Commands off the allowlist wait for the owner's approval.
+  approvalsFile = pkgs.writeText "openclaw-exec-approvals.json" (
+    builtins.toJSON {
+      version = 1;
+      defaults = {
+        security = "allowlist";
+        ask = "on-miss";
+        askFallback = "deny";
+        autoAllowSkills = false;
+      };
+      agents.main.allowlist = cfg.hostExec.allowlist;
+    }
+  );
+
   # Environment shared by the gateway and the operator CLI.
   gatewayEnv = {
     OPENCLAW_NIX_MODE = "1";
@@ -129,9 +183,11 @@ let
     HOME = gw.stateDir;
     XDG_RUNTIME_DIR = runtimeDir;
     CONTAINERS_CONF_OVERRIDE = "${containersConf}";
+    SOPS_AGE_KEY_FILE = cfg.ageKeyFile;
   };
 
-  # The operator CLI, run as the gateway user with the gateway's environment.
+  # The operator CLI, run as the gateway user with the gateway's environment,
+  # including what other modules add to services.openclaw-gateway.environment.
   cli = pkgs.writeShellApplication {
     name = "openclaw";
     runtimeInputs = [ podman ];
@@ -142,8 +198,8 @@ let
       # Node fails to spawn children (ffmpeg, podman) from a working directory
       # the gateway user cannot enter
       [ -x . ] || cd ${gw.stateDir}
-      ${lib.toShellVars gatewayEnv}
-      export ${lib.concatStringsSep " " (lib.attrNames gatewayEnv)}
+      ${lib.toShellVars gw.environment}
+      export ${lib.concatStringsSep " " (lib.attrNames gw.environment)}
       set -a
       # shellcheck disable=SC1091
       . ${config.sops.templates."openclaw.env".path}
@@ -189,7 +245,6 @@ let
     };
     discovery.mdns.mode = "off";
     browser.enabled = false;
-    acp.enabled = false;
 
     plugins.entries.telegram.enabled = cfg.telegram.enable;
     channels = lib.optionalAttrs cfg.telegram.enable {
@@ -200,6 +255,13 @@ let
         allowFrom = [ "\${TELEGRAM_OWNER_ID}" ];
         groupPolicy = "disabled";
         configWrites = false;
+        # host exec approvals from the main session, as buttons in the DM
+        execApprovals = {
+          enabled = true;
+          approvers = [ "\${TELEGRAM_OWNER_ID}" ];
+          target = "dm";
+        };
+        capabilities.inlineButtons = "dm";
       };
     };
     commands = {
@@ -221,7 +283,8 @@ let
       userTimezone = config.time.timeZone;
       heartbeat.every = "0m";
       sandbox = {
-        mode = "all";
+        # the main session is unsandboxed; see the trust boundaries above
+        mode = "non-main";
         backend = "podman";
         scope = "agent";
         workspaceAccess = "rw";
@@ -239,14 +302,25 @@ let
     };
 
     tools = {
-      exec.host = "sandbox";
+      exec = {
+        # the sandbox where the session has one, this host otherwise
+        host = "auto";
+        # host commands: the allowlist runs, anything else asks the owner
+        mode = "ask";
+        pathPrepend = [ "${hostTools}/bin" ];
+      };
+      # sandboxed sessions never reach the host
       elevated.enabled = false;
       fs.workspaceOnly = true;
-      # the sandbox allowlist is the core file/exec set; MCP tools belong to
-      # the bundle-mcp plugin id
+      # Tools sandboxed sessions get beyond the core file/exec set. MCP tools
+      # belong to the bundle-mcp plugin id; web_search is OpenAI's hosted search
+      # while tools.web.search.provider is unset and the model is openai/*.
       sandbox.tools.alsoAllow = [
         "bundle-mcp"
         "web_fetch"
+        "web_search"
+        "group:memory"
+        "message"
       ];
       media = {
         # an empty model list otherwise falls through to auto-detection
@@ -256,6 +330,8 @@ let
     };
 
     mcp.servers = lib.mapAttrs (_: server: server.settings) enabledMcpServers;
+
+    skills.load.extraDirs = [ "${skillsDir}" ];
 
     inherit (cfg) tts;
   };
@@ -291,8 +367,8 @@ in
       description = ''
         SOPS file holding flat keys gateway-token, plus telegram-bot-token and
         telegram-owner-id (a numeric Telegram user id) with telegram.enable,
-        and every key named by providerKeys and by an enabled MCP server's
-        secrets.
+        every key named by providerKeys and by an enabled MCP server's
+        secrets, and github-app-private-key with github set.
       '';
     };
 
@@ -383,6 +459,72 @@ in
       );
     };
 
+    ageKeyFile = lib.mkOption {
+      type = lib.types.str;
+      default = "${gw.stateDir}/age-key.txt";
+      readOnly = true;
+      description = ''
+        The agent's own age key, which sops in its host commands decrypts
+        with. Created on the gateway's first start; .sops.yaml lists its public
+        key as `openclaw` for the files the agent may read.
+      '';
+    };
+
+    hostTools = lib.mkOption {
+      type = lib.types.listOf lib.types.package;
+      default = [ ];
+      description = "Packages first on PATH for the main session's host commands.";
+    };
+
+    hostExec.allowlist = lib.mkOption {
+      type = lib.types.listOf (
+        lib.types.submodule {
+          options = {
+            pattern = lib.mkOption {
+              type = lib.types.str;
+              example = "openclaw-rebuild";
+              description = "Command name on PATH, or a glob of resolved binary paths.";
+            };
+            argPattern = lib.mkOption {
+              type = lib.types.nullOr lib.types.str;
+              default = null;
+              example = "^status$";
+              description = ''
+                ECMAScript regex the arguments, joined by single spaces, must
+                match; null admits any arguments.
+              '';
+            };
+          };
+        }
+      );
+      default = [ ];
+      description = ''
+        Host commands the main session runs without asking
+        (https://docs.openclaw.ai/tools/exec-approvals). Any other host
+        command waits for the owner's approval.
+      '';
+      apply = map (lib.filterAttrs (_: value: value != null));
+    };
+
+    skills = lib.mkOption {
+      default = { };
+      description = "Skills (https://docs.openclaw.ai/tools/skills) describing the agent's host commands, keyed by name.";
+      type = lib.types.attrsOf (
+        lib.types.submodule {
+          options = {
+            description = lib.mkOption {
+              type = lib.types.str;
+              description = "One line, under 160 characters, shown to the agent.";
+            };
+            text = lib.mkOption {
+              type = lib.types.lines;
+              description = "SKILL.md body: when and how to use the commands.";
+            };
+          };
+        }
+      );
+    };
+
     tts = lib.mkOption {
       inherit (pkgs.formats.json { }) type;
       default = { };
@@ -429,7 +571,13 @@ in
       environment = gatewayEnv;
       environmentFiles = [ config.sops.templates."openclaw.env".path ];
       servicePath = [ podman ];
-      execStartPre = [ "${loadSandboxImage}" ];
+      execStartPre = [
+        "${loadSandboxImage}"
+        "${generateAgeKey}"
+        # Not fatal: without it the host approvals stay at their default, under
+        # which tools.exec.mode alone applies and every host command asks.
+        "-${lib.getExe' gw.package "openclaw"} approvals set --file ${approvalsFile}"
+      ];
     };
 
     # only the gateway user reads its config
@@ -440,6 +588,32 @@ in
 
     users.users.${gw.user}.autoSubUidGidRange = true;
     virtualisation.podman.enable = true;
+
+    my.openclaw = {
+      # sops with the agent's own key (SOPS_AGE_KEY_FILE), for secrets encrypted to it
+      hostTools = with pkgs; [
+        sops
+        age
+        git
+      ];
+      skills.secrets = {
+        description = "Read and write sops secrets encrypted to your own age key, in a checkout of the owner's dotfiles.";
+        text = ''
+          `sops` decrypts with your own age key, which never leaves this host.
+          In a checkout of the owner's dotfiles, files under `secrets/openclaw/`
+          are encrypted to you and to the owner, and new files there get the
+          right keys from `.sops.yaml`:
+
+          - `sops decrypt secrets/openclaw/<file>` reads one;
+          - `sops set secrets/openclaw/<file> '["<key>"]' '"<value>"'` adds or
+            changes a value.
+
+          Every sops command asks the owner first. A decrypted value enters
+          your context and goes to the model provider: decrypt only what the
+          task needs, and never repeat a secret value in a reply.
+        '';
+      };
+    };
 
     environment.systemPackages = [
       cli
