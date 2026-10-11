@@ -15,11 +15,6 @@
 #      installation ID ends the installation's settings URL.
 #   4. Bot user ID, for commit attribution:
 #        curl -s 'https://api.github.com/users/<slug>%5Bbot%5D' | jq .id
-#   5. On each repository a rebuild flake (rebuild.nix) points at: Settings >
-#      Rules > Rulesets, targeting the default branch, restricting updates and
-#      requiring a pull request, with "Repository admin" as the only bypass.
-#      The App then lands changes there only through pull requests the owner
-#      merges.
 {
   config,
   lib,
@@ -153,9 +148,7 @@ in
           setup: credentials come from a helper. The App reaches only the
           repositories it is installed on; anything else answers 404.
 
-          Push work to a branch and open a pull request with `gh pr create`.
-          Default branches that NixOS rebuilds come from only accept pull
-          requests, which the owner merges.
+          Open pull requests with `gh pr create`.
         '';
       };
     };
