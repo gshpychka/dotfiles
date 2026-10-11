@@ -275,7 +275,9 @@ let
         inherit (cfg.model) primary fallbacks;
       };
       # OpenClaw's own runtime, which runs host commands through
-      # hostExec.allowlist; in auto mode the Codex harness claims openai/* routes
+      # hostExec.allowlist; in auto mode the Codex harness claims openai/* routes.
+      # The entry also leaves an OpenAI sign-in nothing to patch in openclaw.json,
+      # a write Nix mode refuses.
       models."openai/*".agentRuntime.id = "openclaw";
       inherit (cfg) workspace;
       userTimezone = config.time.timeZone;
