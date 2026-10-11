@@ -5,6 +5,7 @@ Reads "id value" lines from stdin, the value a JSON literal, skipping blank and
 for it, or "rejected <id>" when Kodi refuses it: Kodi refuses a setting it lacks
 and one that a setting it depends on hides.
 """
+
 import json
 import socket
 import sys
@@ -22,7 +23,10 @@ conn = socket.create_connection(("127.0.0.1", 9090), timeout=10)
 
 def call_batch(method, params):
     """Replies to one call of method per params entry, in order."""
-    batch = [{"jsonrpc": "2.0", "id": i, "method": method, "params": p} for i, p in enumerate(params)]
+    batch = [
+        {"jsonrpc": "2.0", "id": i, "method": method, "params": p}
+        for i, p in enumerate(params)
+    ]
     conn.sendall(json.dumps(batch).encode())
     received = b""
     while True:
@@ -45,9 +49,23 @@ def call_batch(method, params):
 
 
 current = call_batch("Settings.GetSettingValue", [{"setting": s} for s, _ in rows])
-changes = [(s, v) for (s, v), reply in zip(rows, current) if reply.get("result", {}).get("value") != v]
+changes = [
+    (s, v)
+    for (s, v), reply in zip(rows, current, strict=True)
+    if reply.get("result", {}).get("value") != v
+]
 # Kodi runs a batch's calls in order, so a setting takes effect before the ones
 # after it that depend on it.
-results = call_batch("Settings.SetSettingValue", [{"setting": s, "value": v} for s, v in changes]) if changes else []
-for (setting, value), reply in zip(changes, results):
-    print(f"changed {setting} {json.dumps(value)}" if reply.get("result") is True else f"rejected {setting}")
+results = (
+    call_batch(
+        "Settings.SetSettingValue", [{"setting": s, "value": v} for s, v in changes]
+    )
+    if changes
+    else []
+)
+for (setting, value), reply in zip(changes, results, strict=True):
+    print(
+        f"changed {setting} {json.dumps(value)}"
+        if reply.get("result") is True
+        else f"rejected {setting}"
+    )

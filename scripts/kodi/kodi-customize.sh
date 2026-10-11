@@ -318,8 +318,8 @@ settings_live() {
   fi
   printf '%s\n' "$out" | while read -r kind id value; do
     case $kind in
-      changed) log "Kodi setting $id set to $value" ;;
-      rejected) log "Kodi rejected setting $id: missing, or hidden by a setting before it; update this script" ;;
+    changed) log "Kodi setting $id set to $value" ;;
+    rejected) log "Kodi rejected setting $id: missing, or hidden by a setting before it; update this script" ;;
     esac
   done
   case $out in *rejected*) status=1 ;; esac
@@ -346,11 +346,11 @@ pin_skinshortcuts() {
   [ "$added" = 1 ] && log "Skin Shortcuts pinned"
   version=$(addon_version "$ADDONS/script.skinshortcuts")
   case $version in
-    2.*) ;;
-    *)
-      log "Skin Shortcuts ${version:-missing}, Bingie needs 2.1.0; install it from Kodi's add-on info"
-      status=1
-      ;;
+  2.*) ;;
+  *)
+    log "Skin Shortcuts ${version:-missing}, Bingie needs 2.1.0; install it from Kodi's add-on info"
+    status=1
+    ;;
   esac
 }
 
