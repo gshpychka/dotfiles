@@ -4,7 +4,7 @@
 #
 # Imperative, one-time: sign in to the owner's Microsoft account (open the
 # printed address, paste back the one the browser ends on), then start the sync:
-#   openclaw-onedrive --display-quota
+#   sudo -iu openclaw onedrive --display-quota
 #   sudo systemctl start openclaw-onedrive
 {
   config,
@@ -15,26 +15,16 @@
 let
   cfg = config.my.openclaw;
   gw = config.services.openclaw-gateway;
-  name = "openclaw-onedrive";
-  # client state: the sign-in (refresh_token) and the sync database
-  confDir = "${gw.stateDir}/onedrive";
+  home = config.users.users.${gw.user}.home;
+  # the client's default for the gateway user, holding the sign-in
+  # (refresh_token) and the sync database
+  confDir = "${home}/.config/onedrive";
   syncDir = "${cfg.workspace}/onedrive";
-  # one set of settings for every invocation: the client demands a --resync
-  # when its sync directory changes
-  onedrive = "${lib.getExe pkgs.onedrive} --confdir ${confDir} --syncdir ${syncDir}";
-
-  # The client, run as the gateway user.
-  cli = pkgs.writeShellApplication {
-    inherit name;
-    text = ''
-      if [ "$(id -un)" != ${gw.user} ]; then
-        exec sudo -u ${gw.user} -- "$0" "$@"
-      fi
-      # the caller's directory may be closed to the gateway user
-      [ -x . ] || cd ${gw.stateDir}
-      exec ${onedrive} "$@"
-    '';
-  };
+  # every run as the gateway user reads it: the client demands a --resync when
+  # its sync directory changes
+  clientConfig = pkgs.writeText "onedrive-config" ''
+    sync_dir = "${syncDir}"
+  '';
 in
 {
   options.my.openclaw.onedrive.enable =
@@ -42,13 +32,15 @@ in
 
   config = lib.mkIf (cfg.enable && cfg.onedrive.enable) {
     systemd.tmpfiles.rules = [
-      # tmpfiles creates a missing parent as root
-      "d ${cfg.workspace} 0700 ${gw.user} ${gw.group} - -"
+      "d ${home}/.config 0700 ${gw.user} ${gw.group} - -"
       "d ${confDir} 0700 ${gw.user} ${gw.group} - -"
+      "L+ ${confDir}/config - - - - ${clientConfig}"
       "d ${syncDir} 0700 ${gw.user} ${gw.group} - -"
     ];
 
-    systemd.services.${name} = {
+    users.users.${gw.user}.packages = [ pkgs.onedrive ];
+
+    systemd.services.openclaw-onedrive = {
       description = "OneDrive sync into the OpenClaw workspace";
       wantedBy = [ "multi-user.target" ];
       wants = [ "network-online.target" ];
@@ -58,12 +50,12 @@ in
       serviceConfig = {
         User = gw.user;
         Group = gw.group;
-        ExecStart = "${onedrive} --monitor";
+        ExecStart = "${lib.getExe pkgs.onedrive} --monitor";
         Restart = "on-failure";
         RestartSec = "5min";
         # the client's exit statuses for a required --resync (126 through 2.5.11,
-        # 78 on upstream's master); recover with `openclaw-onedrive --sync --resync`
-        # and a restart
+        # 78 on upstream's master); recover with
+        # `sudo -iu openclaw onedrive --sync --resync` and a restart
         RestartPreventExitStatus = [
           78
           126
@@ -71,8 +63,6 @@ in
         UMask = "0077";
       };
     };
-
-    environment.systemPackages = [ cli ];
 
     my.openclaw.skills.onedrive = {
       description = "The owner's OneDrive, synced both ways as onedrive/ in your workspace.";
