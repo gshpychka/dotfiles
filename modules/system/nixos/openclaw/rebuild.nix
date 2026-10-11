@@ -1,19 +1,30 @@
 # Rebuilds of this host by the OpenClaw agent, from its own checkout and
-# without asking: `sudo nixos-rebuild switch --flake .#<host>`. This gives the
+# without asking: `openclaw-rebuild switch --flake .#<host>`. This gives the
 # agent root on this host.
 {
   config,
   lib,
+  pkgs,
   ...
 }:
 let
   cfg = config.my.openclaw;
   gw = config.services.openclaw-gateway;
   nixos-rebuild = "/run/current-system/sw/bin/nixos-rebuild";
-  # The activation runs in its own unit and outlives a gateway restart, on the
-  # caller's stdout and stderr; switch-to-configuration panics writing to a
-  # closed pipe.
   logFile = "${cfg.workspace}/nixos-rebuild.log";
+
+  # A host command of its own: OpenClaw's allowlist matches neither sudo, an
+  # exec wrapper, nor a command with a redirect.
+  rebuild = pkgs.writeShellApplication {
+    name = "openclaw-rebuild";
+    text = ''
+      # The activation runs in its own unit and outlives a gateway restart, on
+      # this command's stdout and stderr; switch-to-configuration panics
+      # writing to a closed pipe.
+      exec >${logFile} 2>&1
+      exec ${config.security.wrapperDir}/sudo -n ${nixos-rebuild} "$@"
+    '';
+  };
 in
 {
   options.my.openclaw.rebuild.enable = lib.mkEnableOption ''
@@ -34,26 +45,21 @@ in
     ];
 
     my.openclaw = {
-      hostExec.allowlist = [
-        {
-          pattern = "sudo";
-          argPattern = "^nixos-rebuild( |$)";
-        }
-      ];
+      hostTools = [ rebuild ];
+      hostExec.allowlist = [ { pattern = "openclaw-rebuild"; } ];
       skills.nixos-rebuild = {
         description = "Rebuild and switch this host (${config.networking.hostName}) from a checkout of its NixOS config.";
         text = ''
-          In a checkout of the owner's dotfiles, with the output in a file:
+          In a checkout of the owner's dotfiles:
 
-              sudo nixos-rebuild switch --flake .#${config.networking.hostName} > ${logFile} 2>&1
+              openclaw-rebuild switch --flake .#${config.networking.hostName}
 
-          then read `nixos-rebuild.log` in your workspace. New files must be
-          `git add`ed before nix sees them.
+          It runs `sudo nixos-rebuild` with your arguments and writes all
+          output to `nixos-rebuild.log` in your workspace; read the log there.
+          New files must be `git add`ed before nix sees them.
 
-          Always send the output to a file: a switch may restart this gateway
-          mid-turn, and the activation, which carries on regardless, fails if
-          its output goes to a closed pipe. After such a restart the log shows
-          how the switch ended.
+          A switch may restart this gateway mid-turn. The switch carries on
+          regardless, and after the restart the log shows how it ended.
         '';
       };
     };

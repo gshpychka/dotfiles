@@ -491,7 +491,7 @@ in
             argPattern = lib.mkOption {
               type = lib.types.nullOr lib.types.str;
               default = null;
-              example = "^status$";
+              example = "^switch( |$)";
               description = ''
                 ECMAScript regex the arguments, joined by single spaces, must
                 match; null admits any arguments.
