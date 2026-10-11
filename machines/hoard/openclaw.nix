@@ -31,7 +31,7 @@
     responsesEndpoint.enable = true;
 
     model = {
-      primary = "openai/gpt-6-astra";
+      primary = "openai/gpt-6.1-sol";
       # the owner's ChatGPT subscription; OpenClaw's runtime takes OPENAI_API_KEY
       # without an auth order. Sign in once, from a terminal on eve:
       #   ssh -t hoard openclaw models auth login --provider openai --device-code --profile-id openai:chatgpt
