@@ -5,9 +5,6 @@
 #   sops set secrets/hoard/openclaw.yaml '["telegram-owner-id"]' '"<numeric id, e.g. from @userinfobot>"'
 #   sops set secrets/hoard/openclaw.yaml '["home-assistant-token"]' '"<long-lived token of a dedicated HA user>"'
 #   sops set secrets/hoard/openclaw.yaml '["home-assistant-admin-mcp-path"]' '"<private_... path from the ha-mcp app log>"'
-#
-# The agent's GitHub App (steps in modules/system/nixos/openclaw/github.nix):
-#   my.openclaw.github = { appId = ...; slug = "..."; installationId = ...; botUserId = ...; };
 { config, ... }:
 {
   assertions = [
@@ -76,6 +73,13 @@
         transport = "streamable-http";
       };
       secrets.HOME_ASSISTANT_ADMIN_MCP_PATH = "home-assistant-admin-mcp-path";
+    };
+
+    github = {
+      appId = 5273943;
+      slug = "calcifer-claw";
+      installationId = 170281690;
+      botUserId = 340989200;
     };
 
     claudeCode.enable = true;
