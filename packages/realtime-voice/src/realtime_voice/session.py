@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 from contextlib import AbstractAsyncContextManager
-from dataclasses import dataclass
-from typing import Any, Protocol
+from typing import Protocol
 
 import numpy as np
 
@@ -21,14 +20,6 @@ class SessionRefused(Exception):
     """OpenAI rejected the session before it started."""
 
 
-@dataclass(frozen=True, slots=True)
-class Heard:
-    """How much of an assistant item reached the room before playback stopped."""
-
-    item_id: str
-    audio_end_ms: int
-
-
 class Host(Protocol):
     """What a model session can do to the conversation it runs in."""
 
@@ -37,12 +28,8 @@ class Host(Protocol):
         """Assistant audio is queued or still leaving the speaker."""
         ...
 
-    def play(self, samples: np.ndarray, item_id: str | None) -> None:
-        """Queues SPEAKER_RATE audio; item_id names the assistant item it belongs to."""
-        ...
-
-    async def flush(self) -> Heard | None:
-        """Drops all queued and unplayed audio; reports the item it cut short."""
+    def play(self, samples: np.ndarray) -> None:
+        """Queues SPEAKER_RATE audio."""
         ...
 
     async def set_phase(self, phase: Phase) -> None: ...
@@ -50,8 +37,6 @@ class Host(Protocol):
     def mark_activity(self) -> None:
         """Someone is speaking or something is happening; restarts the idle timer."""
         ...
-
-    def record_event(self, kind: str, **fields: Any) -> None: ...
 
 
 class ModelSession(Protocol):

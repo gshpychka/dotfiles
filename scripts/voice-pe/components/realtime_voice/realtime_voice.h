@@ -2,7 +2,7 @@
 
 // Streams a conversation to the realtime-voice broker (packages/realtime-voice):
 // mic audio up, assistant audio down, and exact DAC timing of what was played
-// so the broker can cancel the speaker's echo and let the user interrupt.
+// so the broker can cancel the speaker's echo.
 //
 // Threads involved, and what each is allowed to touch:
 //   main loop    session state machine, speaker writes, automation triggers
@@ -54,7 +54,7 @@ class RealtimeVoice : public Component {
   Trigger<> *get_error_trigger() { return &this->error_trigger_; }
 
   // Opens a conversation; no-op if one is running.
-  void start(const std::string &wake_word, protocol::Backend backend);
+  void start(const std::string &wake_word);
   // Ends the conversation from the device side (button, wake word).
   void stop();
   bool is_running() const { return this->state_ != State::IDLE; }
@@ -70,7 +70,7 @@ class RealtimeVoice : public Component {
   };
 
   struct Event {
-    enum Type : uint8_t { CONNECTED, DISCONNECTED, FLUSH, END, PHASE } type;
+    enum Type : uint8_t { CONNECTED, DISCONNECTED, END, PHASE } type;
     uint32_t generation;
     Phase phase;
   };
@@ -109,14 +109,10 @@ class RealtimeVoice : public Component {
 
   State state_{State::IDLE};
   std::string wake_word_;
-  protocol::Backend backend_{protocol::Backend::REALTIME};
   // Bumped per conversation; io items and events from older ones are dropped.
   std::atomic<uint32_t> generation_{0};
   // Mic and speaker callbacks only produce frames while this is set.
   std::atomic<bool> streaming_{false};
-  // Set from FLUSH until the speaker has actually stopped; PLAYED reports for
-  // the audio being thrown away must not reach the broker.
-  std::atomic<bool> flushing_{false};
 
   QueueHandle_t io_queue_{nullptr};
   QueueHandle_t event_queue_{nullptr};
@@ -144,11 +140,7 @@ class RealtimeVoice : public Component {
 template<typename... Ts> class StartAction : public Action<Ts...>, public Parented<RealtimeVoice> {
  public:
   TEMPLATABLE_VALUE(std::string, wake_word)
-  void set_backend(protocol::Backend backend) { this->backend_ = backend; }
-  void play(const Ts &...x) override { this->parent_->start(this->wake_word_.value(x...), this->backend_); }
-
- protected:
-  protocol::Backend backend_{protocol::Backend::REALTIME};
+  void play(const Ts &...x) override { this->parent_->start(this->wake_word_.value(x...)); }
 };
 
 template<typename... Ts> class StopAction : public Action<Ts...>, public Parented<RealtimeVoice> {

@@ -24,15 +24,8 @@ static constexpr size_t PLAYED_SIZE = 1 + 4 + 8;
 // Control frames are JSON objects with a "type" field.
 static constexpr const char *START = "start";
 static constexpr const char *STOP = "stop";
-static constexpr const char *FLUSHED = "flushed";
 static constexpr const char *PHASE = "phase";
-static constexpr const char *FLUSH = "flush";
 static constexpr const char *END = "end";
-
-// START's "backend" field: the OpenAI model family the conversation runs on.
-enum class Backend : uint8_t { REALTIME, LIVE };
-
-inline const char *backend_name(Backend backend) { return backend == Backend::LIVE ? "live" : "realtime"; }
 
 inline void put_u32(uint8_t *p, uint32_t v) {
   for (int i = 0; i < 4; i++)

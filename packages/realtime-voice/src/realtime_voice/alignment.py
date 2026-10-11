@@ -34,7 +34,7 @@ BLOCK = MIC_RATE // 100  # AEC3 works on 10 ms frames
 _US = 1_000_000
 
 # A report that lands further than this from where the current run predicts
-# means playback stalled (underrun or flush); start a new run there.
+# means playback stalled; start a new run there.
 _RUN_BREAK_SAMPLES = MIC_RATE * 15 // 1000
 # Fraction of the prediction error folded in per report, to follow drift
 # without passing report jitter through.
@@ -82,9 +82,6 @@ class Aligner:
         # the reference but would skew these counts.
         self._sent_speaker = 0
         self._played_speaker = 0
-        # Between FLUSH and the device's FLUSHED ack, PLAYED reports describe
-        # audio being discarded; they are ignored.
-        self._flushing = False
 
         self._offsets: deque[float] = deque(maxlen=_ANCHOR_WINDOW)
         self._mic_offset_us: float | None = None
@@ -118,29 +115,12 @@ class Aligner:
     def played_speaker_samples(self) -> int:
         return self._played_speaker
 
-    @property
-    def flushing(self) -> bool:
-        return self._flushing
-
-    def begin_flush(self) -> None:
-        """FLUSH was sent: everything not yet played is gone."""
-        self._flushing = True
-        self._sent_speaker = self._played_speaker
-        self._sent.length = min(self._sent.length, self._played_speaker * MIC_RATE // SPEAKER_RATE)
-        self._run_stream_end = None
-
-    def end_flush(self) -> None:
-        """The device acknowledged the flush; new audio starts from here."""
-        self._flushing = False
-
     def abandon_in_flight(self) -> None:
         """The device stopped reporting; assume what was sent has played."""
         self._played_speaker = self._sent_speaker
         self._run_stream_end = None
 
     def add_played(self, report: PlayedReport) -> None:
-        if self._flushing:
-            return
         start16 = self._played_speaker * MIC_RATE // SPEAKER_RATE
         self._played_speaker = min(self._played_speaker + report.frames, self._sent_speaker)
         end16 = min(self._played_speaker * MIC_RATE // SPEAKER_RATE, self._sent.length)

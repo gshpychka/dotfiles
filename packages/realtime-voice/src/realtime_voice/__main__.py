@@ -23,9 +23,7 @@ from .config import Config, Device
 from .conversation import Conversation
 from .live import LiveSession, live_connector
 from .mcp_hub import McpHub
-from .protocol import MIC_RATE, Backend, ProtocolError, parse_start
-from .realtime import RealtimeSession, realtime_connector
-from .session import ModelSession
+from .protocol import MIC_RATE, ProtocolError, parse_start
 
 log = logging.getLogger("realtime_voice")
 
@@ -57,9 +55,7 @@ class Broker:
         self._config = config
         self._hub = McpHub(config.mcp_servers)
         self._devices = {d.address: _DeviceState(d, EchoCanceller(MIC_RATE)) for d in config.devices}
-        client = AsyncOpenAI(api_key=config.openai_api_key)
-        self._connect_realtime = realtime_connector(client, config.realtime.model)
-        self._connect_live = live_connector(client)
+        self._connect = live_connector(AsyncOpenAI(api_key=config.openai_api_key))
 
     def _authorize(self, connection: ServerConnection, request: Request) -> Response | None:
         if connection.remote_address[0] not in self._devices:
@@ -85,17 +81,10 @@ class Broker:
         except (TimeoutError, ProtocolError, ConnectionClosed) as e:
             log.warning("no valid start from %s: %r", device.remote_address, e)
             return
-        log.info("woken by %s, %s backend", start.wake_word, start.backend)
-        session = self._session(start.backend, state.device.area)
+        log.info("woken by %s", start.wake_word)
+        session = LiveSession(self._config.live, state.device.area, self._hub, self._connect)
         reason = await Conversation(self._config, state.device.name, device, session, state.aec).run()
         log.info("conversation over: %s", reason)
-
-    def _session(self, backend: Backend, area: str) -> ModelSession:
-        match backend:
-            case Backend.REALTIME:
-                return RealtimeSession(self._config.realtime, area, self._hub, self._connect_realtime)
-            case Backend.LIVE:
-                return LiveSession(self._config.live, area, self._hub, self._connect_live)
 
     async def run(self) -> None:
         await self._hub.start()

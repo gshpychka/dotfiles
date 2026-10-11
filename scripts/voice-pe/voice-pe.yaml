@@ -1,9 +1,9 @@
-# Firmware for every Voice PE in the house: the stock firmware plus switchable
-# OpenAI backends.
+# Firmware for every Voice PE in the house: the stock firmware plus OpenAI Live
+# through the realtime-voice broker.
 #
 # Everything stock comes from the upstream release below; this file only adds
 # the realtime_voice component, the "Voice backend" select and the wake word
-# routing between them. Deployment: runbook.md.
+# routing between the two. Deployment: runbook.md.
 
 substitutions:
   # packages/realtime-voice on hoard; the port is my.realtime-voice.port
@@ -35,7 +35,6 @@ select:
     restore_value: true
     options:
       - Home Assistant
-      - Realtime
       - Live
     initial_option: Home Assistant
 
@@ -95,8 +94,8 @@ binary_sensor:
             - lambda: id(color_changed) = false;
 
 micro_wake_word:
-  # Upstream's handler, with a Realtime branch: the wake word also ends a
-  # running Realtime conversation, the way it stops a running Assist pipeline.
+  # Upstream's handler, with a broker branch: the wake word also ends a
+  # running broker conversation, the way it stops a running Assist pipeline.
   # A mapping replaces upstream's action list, which a list here would
   # extend (packages concatenate lists).
   on_wake_word_detected:
@@ -145,7 +144,7 @@ micro_wake_word:
                                         condition:
                                           select.is:
                                             id: voice_backend
-                                            options: [Realtime, Live]
+                                            options: [Live]
                                         then:
                                           - mixer_speaker.apply_ducking:
                                               id: media_mixing_input
@@ -153,19 +152,8 @@ micro_wake_word:
                                               duration: 0.0s
                                           - lambda: id(voice_assistant_phase) = ${voice_assist_waiting_for_command_phase_id};
                                           - script.execute: control_leds
-                                          - if:
-                                              condition:
-                                                select.is:
-                                                  id: voice_backend
-                                                  options: [Live]
-                                              then:
-                                                - realtime_voice.start:
-                                                    wake_word: !lambda return wake_word;
-                                                    backend: live
-                                              else:
-                                                - realtime_voice.start:
-                                                    wake_word: !lambda return wake_word;
-                                                    backend: realtime
+                                          - realtime_voice.start:
+                                              wake_word: !lambda return wake_word;
                                         else:
                                           - voice_assistant.start:
                                               wake_word: !lambda return wake_word;

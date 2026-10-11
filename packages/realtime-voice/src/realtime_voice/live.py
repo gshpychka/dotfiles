@@ -127,7 +127,7 @@ class LiveSession:
             match event.type:
                 case "session.output_audio.delta":
                     samples = np.frombuffer(base64.b64decode(event.delta), dtype="<i2").astype(np.int16)
-                    self._host.play(samples, None)
+                    self._host.play(samples)
                 case "session.input_transcript.delta":
                     self._host.mark_activity()
                     if self._assistant_said:

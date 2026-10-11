@@ -32,7 +32,7 @@ import struct
 from dataclasses import dataclass
 
 MIC_RATE = 16000
-SPEAKER_RATE = 24000  # OpenAI Realtime's only PCM rate
+SPEAKER_RATE = 24000  # OpenAI Live's highest PCM rate
 SAMPLE_BYTES = 2
 
 _MIC_HEADER = struct.Struct("<BIq")
@@ -47,20 +47,11 @@ class Kind(enum.IntEnum):
 
 class ControlType(enum.StrEnum):
     # device -> broker
-    START = "start"  # {"wake_word": str, "backend": Backend}; always the first frame
+    START = "start"  # {"wake_word": str}; always the first frame
     STOP = "stop"  # user ended the conversation (button or wake word)
-    FLUSHED = "flushed"  # the playback queue is empty after a FLUSH
     # broker -> device
     PHASE = "phase"  # {"phase": Phase}
-    FLUSH = "flush"  # drop everything queued for playback, immediately
     END = "end"  # conversation over; device closes the socket
-
-
-class Backend(enum.StrEnum):
-    """The OpenAI model family a conversation runs on."""
-
-    REALTIME = "realtime"
-    LIVE = "live"
 
 
 class Phase(enum.StrEnum):
@@ -72,7 +63,6 @@ class Phase(enum.StrEnum):
 @dataclass(frozen=True, slots=True)
 class Start:
     wake_word: str
-    backend: Backend
 
 
 @dataclass(frozen=True, slots=True)
@@ -134,10 +124,7 @@ def parse_start(message: str | bytes) -> Start:
     kind, fields = parse_control(message)
     if kind != ControlType.START:
         raise ProtocolError(f"expected {ControlType.START}, got {kind}")
-    try:
-        return Start(str(fields.get("wake_word", "")), Backend(str(fields["backend"])))
-    except (ValueError, KeyError) as e:
-        raise ProtocolError(f"bad start frame: {message[:80]!r}") from e
+    return Start(str(fields.get("wake_word", "")))
 
 
 def encode_mic(first_sample: int, capture_us: int, pcm: bytes) -> bytes:

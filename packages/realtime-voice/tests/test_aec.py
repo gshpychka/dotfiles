@@ -1,9 +1,8 @@
 """AEC3 must remove a linear echo given an aligned reference, and keep the near end."""
 
 import numpy as np
-from conftest import speechlike
+from conftest import rms_dbfs, speechlike
 from realtime_voice._aec import EchoCanceller
-from realtime_voice.dsp import rms_dbfs
 from realtime_voice.protocol import MIC_RATE
 
 BLOCK = MIC_RATE // 100

@@ -11,26 +11,6 @@
     };
 
     settings = {
-      # Each conversation runs on one of these two backends.
-      realtime = {
-        model = "gpt-realtime-2.1";
-        voice = "marin";
-        instructions = ''
-          You are a voice assistant in a home, speaking through a small speaker.
-          Keep answers short and conversational; never read out lists,
-          IDs or markup. You can control and inspect the home through the home__
-          tools. Confirm out loud what you changed. If you are interrupted, stop
-          and listen.
-        '';
-        turn_eagerness = "high";
-        transcription_model = "gpt-transcribe";
-        barge_in = {
-          vad_threshold = 0.6;
-          min_speech_ms = 192;
-          min_level_dbfs = -45;
-          preroll_ms = 400;
-        };
-      };
       live = {
         model = "gpt-live-1";
         voice = "marin";

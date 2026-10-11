@@ -50,11 +50,10 @@ void RealtimeVoice::dump_config() {
 
 // -- session state machine (main loop) ----------------------------------------
 
-void RealtimeVoice::start(const std::string &wake_word, protocol::Backend backend) {
+void RealtimeVoice::start(const std::string &wake_word) {
   if (this->state_ != State::IDLE)
     return;
   this->wake_word_ = wake_word;
-  this->backend_ = backend;
   this->generation_++;
   this->state_ = State::CONNECTING;
   this->high_freq_.start();
@@ -71,7 +70,6 @@ void RealtimeVoice::stop() {
 
 void RealtimeVoice::teardown_() {
   this->streaming_ = false;
-  this->flushing_ = false;
   this->mic_source_->stop();
   this->speaker_->stop();
   this->playback_->reset();
@@ -97,8 +95,7 @@ void RealtimeVoice::loop() {
           break;
         this->state_ = State::ACTIVE;
         this->mic_samples_ = 0;
-        this->queue_control_(protocol::START,
-                             {{"wake_word", this->wake_word_}, {"backend", protocol::backend_name(this->backend_)}});
+        this->queue_control_(protocol::START, {{"wake_word", this->wake_word_}});
         this->streaming_ = true;
         this->mic_source_->start();
         break;
@@ -111,13 +108,6 @@ void RealtimeVoice::loop() {
         break;
       case Event::END:
         this->teardown_();
-        break;
-      case Event::FLUSH:
-        this->flushing_ = true;
-        this->playback_->reset();
-        this->play_holdover_.clear();
-        this->play_holdover_offset_ = 0;
-        this->speaker_->stop();
         break;
       case Event::PHASE:
         switch (event.phase) {
@@ -137,15 +127,6 @@ void RealtimeVoice::loop() {
 
   if (this->state_ != State::ACTIVE)
     return;
-  if (this->flushing_) {
-    // Only once the speaker is really stopped can no more PLAYED reports for
-    // the discarded audio arrive.
-    if (this->speaker_->is_stopped()) {
-      this->flushing_ = false;
-      this->queue_control_(protocol::FLUSHED);
-    }
-    return;
-  }
   this->feed_speaker_();
 }
 
@@ -226,7 +207,7 @@ void RealtimeVoice::on_mic_data_(const std::vector<uint8_t> &data) {
 }
 
 void RealtimeVoice::on_audio_output_(uint32_t frames, int64_t timestamp_us) {
-  if (!this->streaming_ || this->flushing_ || frames == 0)
+  if (!this->streaming_ || frames == 0)
     return;
   uint8_t *frame = alloc_frame(protocol::PLAYED_SIZE);
   if (frame == nullptr)
@@ -385,9 +366,7 @@ void RealtimeVoice::on_control_(uint32_t generation, const std::string &text) {
     const char *type = root["type"];
     if (type == nullptr)
       return false;
-    if (std::strcmp(type, protocol::FLUSH) == 0) {
-      this->post_event_(Event::FLUSH, generation);
-    } else if (std::strcmp(type, protocol::END) == 0) {
+    if (std::strcmp(type, protocol::END) == 0) {
       this->post_event_(Event::END, generation);
     } else if (std::strcmp(type, protocol::PHASE) == 0) {
       const char *phase = root["phase"];

@@ -6,8 +6,7 @@ Audio path, device mic to OpenAI:
 
 Audio path, OpenAI to device speaker:
     model audio -> pending queue -> paced to the device so at most
-    PLAYBACK_LEAD is buffered there. Keeping the device buffer short makes a
-    flush instant and keeps the "what was heard" position accurate.
+    PLAYBACK_LEAD is buffered there.
 """
 
 from __future__ import annotations
@@ -18,8 +17,7 @@ import logging
 import time
 from collections import deque
 from collections.abc import AsyncIterator
-from dataclasses import dataclass
-from typing import Any, Protocol
+from typing import Protocol
 
 import numpy as np
 from websockets.exceptions import ConnectionClosed
@@ -41,7 +39,7 @@ from .protocol import (
     parse_control,
 )
 from .recorder import NullRecorder, Recorder
-from .session import Heard, ModelSession, SessionRefused
+from .session import ModelSession, SessionRefused
 
 log = logging.getLogger(__name__)
 
@@ -63,14 +61,6 @@ class EndReason(enum.StrEnum):
     IDLE = "idle"
     MAX_DURATION = "max duration"
     OPENAI_GONE = "openai disconnected"
-
-
-@dataclass
-class _AssistantItem:
-    item_id: str
-    # Position in the sent stream (SPEAKER_RATE samples) of this item's first sample.
-    stream_start: int
-    samples: int = 0
 
 
 class DeviceSocket(Protocol):
@@ -101,11 +91,9 @@ class Conversation:
         self._pending: deque[np.ndarray] = deque()  # SPEAKER_RATE audio not yet sent
         self._pending_samples = 0
         self._sent_samples = 0  # SPEAKER_RATE samples sent this conversation
-        self._item: _AssistantItem | None = None
         # Stream position just past the last queued audio that carries sound.
         self._sound_end: int | None = None
         self._phase: Phase | None = None
-        self._mic_index = 0
         self._last_activity = time.monotonic()
         self._last_played = time.monotonic()
         self._ended = asyncio.Event()
@@ -163,31 +151,11 @@ class Conversation:
             return False
         return self._aligner.played_speaker_samples < self._sound_end + _SOUND_HANGOVER
 
-    def play(self, samples: np.ndarray, item_id: str | None) -> None:
-        if item_id is not None:
-            if self._item is None or self._item.item_id != item_id:
-                self._item = _AssistantItem(item_id, stream_start=self._sent_samples + self._pending_samples)
-            self._item.samples += len(samples)
+    def play(self, samples: np.ndarray) -> None:
         if len(samples) and (samples.max() > _SILENCE_PEAK or samples.min() < -_SILENCE_PEAK):
             self._sound_end = self._sent_samples + self._pending_samples + len(samples)
         self._pending.append(samples)
         self._pending_samples += len(samples)
-
-    async def flush(self) -> Heard | None:
-        await self._device.send(encode_control(ControlType.FLUSH))
-        self._pending.clear()
-        self._pending_samples = 0
-        played = self._aligner.played_speaker_samples
-        self._aligner.begin_flush()
-        # The device drops unplayed audio, so the stream resumes from what was played.
-        self._sent_samples = played
-        self._to_mic_rate = speaker_to_mic_rate()
-        self._sound_end = None
-        item, self._item = self._item, None
-        if item is None:
-            return None
-        heard = min(max(0, played - item.stream_start), item.samples)
-        return Heard(item.item_id, heard * 1000 // SPEAKER_RATE)
 
     async def set_phase(self, phase: Phase) -> None:
         if phase != self._phase:
@@ -197,9 +165,6 @@ class Conversation:
 
     def mark_activity(self) -> None:
         self._last_activity = time.monotonic()
-
-    def record_event(self, kind: str, **fields: Any) -> None:
-        self._recorder.event(self._mic_index, kind, aec=self._aec.stats(), **fields)
 
     # -- device side ---------------------------------------------------------
 
@@ -212,9 +177,6 @@ class Conversation:
                     if kind == ControlType.STOP:
                         self._end(EndReason.DEVICE_STOP)
                         return
-                    if kind == ControlType.FLUSHED:
-                        self._aligner.end_flush()
-                        continue
                     log.warning("unexpected control from device: %s", kind)
                     continue
                 try:
@@ -238,7 +200,6 @@ class Conversation:
         self._aec.process_reverse(block.reference)
         cleaned = np.frombuffer(self._aec.process_capture(block.mic), dtype=np.int16)
         self._recorder.block(block.mic, block.reference, cleaned)
-        self._mic_index = block.mic_index
         if self.assistant_audible:
             self.mark_activity()
         await self._session.on_mic(cleaned)
@@ -253,7 +214,7 @@ class Conversation:
                 log.warning("device stopped reporting playback with %d samples in flight", in_flight)
                 self._aligner.abandon_in_flight()
                 in_flight = 0
-            while self._pending and in_flight < PLAYBACK_LEAD and not self._aligner.flushing:
+            while self._pending and in_flight < PLAYBACK_LEAD:
                 chunk = self._take_pending(_SEND_CHUNK)
                 self._aligner.add_sent(len(chunk), self._to_mic_rate(chunk))
                 self._sent_samples += len(chunk)

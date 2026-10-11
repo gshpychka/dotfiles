@@ -86,17 +86,3 @@ def test_mic_gap_is_zero_filled():
     aligner.add_mic(mic_frame(2 * MIC_CHUNK))
     assert aligner.dropped_mic_samples == MIC_CHUNK
     assert len(list(aligner.blocks())) == 3 * MIC_CHUNK // BLOCK
-
-
-def test_flush_ignores_reports_until_acked():
-    aligner = Aligner()
-    aligner.add_mic(mic_frame(0))
-    aligner.add_sent(4800, np.ones(3200, dtype=np.int16))
-    aligner.add_played(PlayedReport(960, T0 + 20_000))
-    aligner.begin_flush()
-    assert aligner.in_flight_speaker_samples == 0
-    aligner.add_played(PlayedReport(960, T0 + 40_000))
-    assert aligner.played_speaker_samples == 960
-    aligner.end_flush()
-    aligner.add_sent(960, np.ones(640, dtype=np.int16))
-    assert aligner.in_flight_speaker_samples == 960

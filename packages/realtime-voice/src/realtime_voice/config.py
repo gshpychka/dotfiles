@@ -16,8 +16,6 @@ def _read_secret(path: str) -> str:
     return Path(path).read_text().strip()
 
 
-# OpenAI semantic_vad eagerness: how readily a pause ends the user's turn.
-Eagerness = Literal["low", "medium", "high", "auto"]
 # Reasoning effort of the Responses model a Live session delegates to.
 ReasoningEffort = Literal["none", "minimal", "low", "medium", "high", "xhigh"]
 
@@ -41,33 +39,6 @@ class McpServer:
     transport: HttpServer | StdioServer
     # None exposes every tool the server offers.
     allow_tools: frozenset[str] | None
-
-
-@dataclass(frozen=True, slots=True)
-class BargeIn:
-    # Silero speech probability a 32 ms window needs to count as speech.
-    vad_threshold: float
-    # Consecutive speech needed while the assistant is talking before it yields.
-    min_speech_ms: int
-    # Echo-cancelled level below which nothing counts as speech, so a quiet
-    # echo residual that fools the VAD can't interrupt.
-    min_level_dbfs: float
-    # Audio from before the trigger that is replayed to OpenAI, so the first
-    # syllables of the interruption aren't lost.
-    preroll_ms: int
-
-
-@dataclass(frozen=True, slots=True)
-class Realtime:
-    """The turn-based OpenAI Realtime backend."""
-
-    model: str
-    voice: str
-    instructions: str
-    turn_eagerness: Eagerness
-    transcription_model: str | None
-    vad_model: Path
-    barge_in: BargeIn
 
 
 @dataclass(frozen=True, slots=True)
@@ -109,7 +80,6 @@ class Config:
     device_token: str
     openai_api_key: str
     devices: list[Device]
-    realtime: Realtime
     live: Live
     # Conversation ends after this long with nobody speaking and nothing playing.
     idle_timeout_s: float
@@ -158,24 +128,6 @@ def _mcp_server(raw: dict[str, Any]) -> McpServer:
     return McpServer(raw["name"], parsed, None if allow is None else frozenset(allow))
 
 
-def _realtime(raw: dict[str, Any]) -> Realtime:
-    barge_in = raw["barge_in"]
-    return Realtime(
-        model=raw["model"],
-        voice=raw["voice"],
-        instructions=raw["instructions"],
-        turn_eagerness=cast(Eagerness, _one_of(Eagerness, "realtime.turn_eagerness", raw["turn_eagerness"])),
-        transcription_model=raw.get("transcription_model"),
-        vad_model=Path(raw["vad_model"]),
-        barge_in=BargeIn(
-            vad_threshold=float(barge_in["vad_threshold"]),
-            min_speech_ms=int(barge_in["min_speech_ms"]),
-            min_level_dbfs=float(barge_in["min_level_dbfs"]),
-            preroll_ms=int(barge_in["preroll_ms"]),
-        ),
-    )
-
-
 def _live(raw: dict[str, Any]) -> Live:
     delegation = raw["delegation"]
     return Live(
@@ -201,7 +153,6 @@ def load(path: Path) -> Config:
         device_token=_read_secret(raw["device_token_file"]),
         openai_api_key=_read_secret(raw["openai_api_key_file"]),
         devices=[Device(d["name"], d["address"], d["area"]) for d in raw["devices"]],
-        realtime=_realtime(raw["realtime"]),
         live=_live(raw["live"]),
         idle_timeout_s=float(raw["idle_timeout_s"]),
         max_conversation_s=float(raw["max_conversation_s"]),

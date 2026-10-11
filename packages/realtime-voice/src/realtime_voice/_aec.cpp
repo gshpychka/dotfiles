@@ -1,15 +1,13 @@
 // Python binding for WebRTC AudioProcessing (AEC3 + high-pass filter).
 //
 // Only the pieces the broker needs are exposed: 10 ms mono int16 frames in both
-// directions, and the statistics used to judge whether the canceller has
-// converged. Frames must be fed in lockstep: one reverse (far-end, what the
+// directions. Frames must be fed in lockstep: one reverse (far-end, what the
 // device played) frame, then one capture (near-end, what the mic heard) frame
 // covering the same instant.
 
 #include <pybind11/pybind11.h>
 
 #include <cstdint>
-#include <optional>
 #include <stdexcept>
 #include <string>
 
@@ -38,8 +36,6 @@ class EchoCanceller {
     config.high_pass_filter.enabled = true;
     config.echo_canceller.enabled = true;
     config.echo_canceller.mobile_mode = false;
-    // Noise suppression and AGC stay off: OpenAI runs its own noise reduction,
-    // and gain changes would skew the barge-in VAD's notion of loudness.
     config.noise_suppression.enabled = false;
     config.gain_controller1.enabled = false;
     config.gain_controller2.enabled = false;
@@ -78,17 +74,6 @@ class EchoCanceller {
     return py::bytes(out);
   }
 
-  py::dict stats() {
-    auto s = apm_->GetStatistics();
-    py::dict d;
-    d["echo_return_loss"] = to_py(s.echo_return_loss);
-    d["echo_return_loss_enhancement"] = to_py(s.echo_return_loss_enhancement);
-    d["divergent_filter_fraction"] = to_py(s.divergent_filter_fraction);
-    d["delay_ms"] = to_py(s.delay_ms);
-    d["residual_echo_likelihood"] = to_py(s.residual_echo_likelihood);
-    return d;
-  }
-
  private:
   py::buffer_info check_frame(py::buffer &frame) const {
     py::buffer_info info = frame.request();
@@ -97,12 +82,6 @@ class EchoCanceller {
                                   " int16 samples (10 ms at " + std::to_string(sample_rate_hz_) + " Hz)");
     }
     return info;
-  }
-
-  template <typename T>
-  static py::object to_py(const std::optional<T> &v) {
-    if (!v) return py::none();
-    return py::cast(*v);
   }
 
   int sample_rate_hz_;
@@ -118,6 +97,5 @@ PYBIND11_MODULE(_aec, m) {
       .def(py::init<int>(), py::arg("sample_rate_hz"))
       .def_property_readonly("frame_samples", &EchoCanceller::frame_samples)
       .def("process_reverse", &EchoCanceller::process_reverse, py::arg("frame"))
-      .def("process_capture", &EchoCanceller::process_capture, py::arg("frame"))
-      .def("stats", &EchoCanceller::stats);
+      .def("process_capture", &EchoCanceller::process_capture, py::arg("frame"));
 }

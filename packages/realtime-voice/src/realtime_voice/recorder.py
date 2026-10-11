@@ -1,18 +1,15 @@
-"""Optional per-conversation recordings for tuning barge-in.
+"""Optional per-conversation recordings for tuning echo cancellation.
 
-Each conversation writes `<stamp>-<device>.wav` (16 kHz, three channels: raw
-mic, the aligned far-end reference, echo-cancelled mic) and a `.jsonl` with the
-barge-in decisions and AEC statistics, so thresholds can be tuned offline
-against what actually happened in the room.
+Each conversation writes `<stamp>-<device>.wav`: 16 kHz, three channels (raw
+mic, the aligned far-end reference, echo-cancelled mic), so the canceller can
+be judged offline against what actually happened in the room.
 """
 
 from __future__ import annotations
 
-import json
 import time
 import wave
 from pathlib import Path
-from typing import Any
 
 import numpy as np
 
@@ -27,24 +24,16 @@ class Recorder:
         self._wav.setnchannels(3)
         self._wav.setsampwidth(2)
         self._wav.setframerate(MIC_RATE)
-        self._events = (directory / f"{stamp}.jsonl").open("w")
 
     def block(self, mic: np.ndarray, reference: np.ndarray, cleaned: np.ndarray) -> None:
         self._wav.writeframes(np.stack([mic, reference, cleaned], axis=1).astype("<i2").tobytes())
 
-    def event(self, mic_index: int, kind: str, **fields: Any) -> None:
-        self._events.write(json.dumps({"t": mic_index / MIC_RATE, "event": kind, **fields}) + "\n")
-
     def close(self) -> None:
         self._wav.close()
-        self._events.close()
 
 
 class NullRecorder:
     def block(self, mic: np.ndarray, reference: np.ndarray, cleaned: np.ndarray) -> None:
-        pass
-
-    def event(self, mic_index: int, kind: str, **fields: Any) -> None:
         pass
 
     def close(self) -> None:

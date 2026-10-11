@@ -1,1 +1,1 @@
-"""Bridges a Voice PE to the OpenAI Realtime API with full-duplex barge-in."""
+"""Bridges a Voice PE to a full-duplex OpenAI Live conversation."""

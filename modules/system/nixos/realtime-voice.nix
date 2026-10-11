@@ -46,8 +46,8 @@ in
     recordings = {
       enable = lib.mkEnableOption ''
         recording every conversation's mic, echo reference and echo-cancelled
-        audio, for tuning barge-in. That is household audio, so leave it off
-        otherwise'';
+        audio, for tuning echo cancellation. That is household audio, so leave
+        it off otherwise'';
       retention = lib.mkOption {
         type = lib.types.str;
         default = "7d";
@@ -57,7 +57,7 @@ in
 
     mcpServers = lib.mkOption {
       default = { };
-      description = "HTTP MCP servers whose tools both backends get as <name>__<tool>, keyed by server name.";
+      description = "HTTP MCP servers whose tools the Live session gets as <name>__<tool>, keyed by server name.";
       type = lib.types.attrsOf (
         lib.types.submodule {
           options = {
@@ -79,9 +79,8 @@ in
       default = { };
       description = ''
         Broker configuration (packages/realtime-voice/src/realtime_voice/config.py):
-        the realtime and live backends and the conversation timeouts. The
-        listener, credentials, devices, VAD model, recordings and MCP servers
-        come from this module.
+        the Live session and the conversation timeouts. The listener,
+        credentials, devices, recordings and MCP servers come from this module.
       '';
     };
   };
@@ -97,7 +96,6 @@ in
         address = host.lanIp;
         area = host.voiceArea;
       }) voicePes;
-      realtime.vad_model = "${pkgs.realtime-voice.vadModel}";
       recordings_dir = if cfg.recordings.enable then "/var/lib/${recordingsDir}" else null;
       mcp_servers = lib.mapAttrsToList (name: server: {
         inherit name;
@@ -123,7 +121,7 @@ in
     );
 
     systemd.services.realtime-voice = {
-      description = "OpenAI Realtime voice broker";
+      description = "OpenAI Live voice broker";
       wantedBy = [ "multi-user.target" ];
       wants = [ "network-online.target" ];
       after = [ "network-online.target" ];

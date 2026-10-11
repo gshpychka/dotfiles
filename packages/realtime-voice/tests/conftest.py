@@ -1,39 +1,21 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 import numpy as np
 import pytest
-from realtime_voice.config import BargeIn, Config, Delegation, Live, Realtime
-
-
-@pytest.fixture
-def vad_model() -> Path:
-    path = os.environ.get("REALTIME_VOICE_VAD_MODEL")
-    if not path:
-        pytest.skip("REALTIME_VOICE_VAD_MODEL not set")
-    return Path(path)
+from realtime_voice.config import Config, Delegation, Live
 
 
 @pytest.fixture
 def make_config(tmp_path: Path):
-    def make(vad_model: Path = Path("/nonexistent"), **overrides) -> Config:
+    def make(**overrides) -> Config:
         fields = {
             "listen_host": "127.0.0.1",
             "listen_port": 0,
             "device_token": "token",
             "openai_api_key": "key",
             "devices": [],
-            "realtime": Realtime(
-                model="gpt-realtime-2",
-                voice="marin",
-                instructions="",
-                turn_eagerness="auto",
-                transcription_model=None,
-                vad_model=vad_model,
-                barge_in=BargeIn(vad_threshold=0.5, min_speech_ms=96, min_level_dbfs=-50.0, preroll_ms=300),
-            ),
             "live": Live(
                 model="gpt-live-1",
                 voice="marin",
@@ -62,3 +44,10 @@ def speechlike(n: int, rate: int, seed: int) -> np.ndarray:
     envelope = 0.55 + 0.45 * np.sin(2 * np.pi * 4 * t)
     signal = noise * envelope
     return (signal / np.max(np.abs(signal)) * 12000).astype(np.int16)
+
+
+def rms_dbfs(samples: np.ndarray) -> float:
+    if len(samples) == 0:
+        return -120.0
+    rms = float(np.sqrt(np.mean(np.square(samples.astype(np.float64)))))
+    return 20 * np.log10(max(rms, 1e-3) / 32768.0)
