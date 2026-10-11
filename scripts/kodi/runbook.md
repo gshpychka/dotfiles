@@ -56,8 +56,12 @@ profile 7 FEL. CPM publishes no builds.
 - `local-demux-replay-seek.patch` drops the packets the startup probes queue
   when playback seeks, so a resumed movie starts with audio and picture in sync
 - `local-window-close-message-flags.patch` reads a cross-thread window close's
-  force and sound flags from the field the sender fills, so the OSD and seek
-  bar finish closing when CPM's overlay worker closes them
+  force and sound flags from the field the sender fills, so a forced close
+  requested off the main thread completes
+- `local-render-osd-on-main-thread.patch` keeps the OSD and seek bar on Kodi's
+  main thread. CPM's overlay worker renders them from a second GL context, and
+  Kodi's GUI renderer keeps its shaders, matrices and viewport as state both
+  contexts share, so the worker's output comes out invisible or mirrored
 
 Build on reaper. The first build takes a few hours; a Kodi-only change takes
 minutes:

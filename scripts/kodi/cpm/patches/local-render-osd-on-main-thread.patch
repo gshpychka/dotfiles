@@ -1,0 +1,14 @@
+diff --git a/xbmc/application/Application.cpp b/xbmc/application/Application.cpp
+--- a/xbmc/application/Application.cpp
++++ b/xbmc/application/Application.cpp
+@@ -903,10 +903,6 @@
+                                                        appPlayer->IsRenderingVideoLayer());
+ 
+   CTimeUtils::UpdateFrameTime(hasRendered);
+-
+-  if (hasRendered)
+-    CServiceBroker::GetGUI()->GetWindowManager().ScheduleAsyncFullscreenOverlayRender(
+-        CTimeUtils::GetFrameTime());
+ }
+ 
+ bool CApplication::OnAction(const CAction &action)
