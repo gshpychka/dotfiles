@@ -31,6 +31,7 @@
       users = [ config.my.user ];
     };
     telegram.enable = true;
+    responsesEndpoint.enable = true;
 
     model = {
       primary = "openai/gpt-6-astra";

@@ -82,7 +82,10 @@ in
       openclaw = {
         port = ports.openclaw;
         websockets = true;
-        loopbackClients = [ config.services.openclaw-gateway.user ];
+        loopbackClients = [
+          config.services.openclaw-gateway.user
+          config.users.users.voice-broker.name
+        ];
       };
     };
     loopbackGate.clients = [

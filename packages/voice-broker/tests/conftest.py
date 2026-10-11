@@ -4,7 +4,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from voice_broker.config import Config, Delegation, Live
+from voice_broker.config import Config, Live, OpenClaw
 
 
 @pytest.fixture
@@ -16,16 +16,11 @@ def make_config(tmp_path: Path):
             "device_token": "token",
             "openai_api_key": "key",
             "devices": [],
-            "live": Live(
-                model="gpt-live-1",
-                voice="marin",
-                instructions="",
-                delegation=Delegation(model="gpt-6-luna", instructions="", reasoning_effort="low"),
-            ),
+            "live": Live(model="gpt-live-1", voice="marin", instructions=""),
+            "openclaw": OpenClaw(url="http://openclaw.test", token="gateway-secret", instructions="", model=None),
             "idle_timeout_s": 1.0,
             "max_conversation_s": 30.0,
             "recordings_dir": None,
-            "mcp_servers": [],
         }
         fields.update(overrides)
         return Config(**fields)

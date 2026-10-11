@@ -1,14 +1,8 @@
-{ config, ... }:
-{
+_: {
   my.voice-broker = {
     enable = true;
     sopsFile = ../../secrets/hoard/voice-broker.yaml;
     recordings.enable = true;
-    # HA's built-in MCP Server integration: the Assist API over exposed entities
-    mcpServers.home = {
-      url = "http://homeassistant.${config.my.domain}:8123/api/mcp";
-      bearerTokenKey = "ha-token";
-    };
 
     settings = {
       live = {
@@ -27,12 +21,15 @@
           what they say.
 
           Delegation policy:
-          Backend tools:
-          - Home control: read and change lights, climate, media, sensors and
-            anything else exposed in Home Assistant, and run its voice scripts.
+          Backend: the household's assistant. It reads and changes the home
+          through Home Assistant (lights, climate, media, sensors and more),
+          and has its own tools and memory beyond the home.
 
           Delegate to the backend when:
           - The user asks about the state of the home or asks to change it.
+          - The user asks for something you cannot answer from the
+            conversation: current information, something to remember or
+            recall, or a task to carry out.
           - A correction changes the work already requested.
 
           Do not delegate to the backend when:
@@ -42,17 +39,15 @@
           Delegate before giving an answer that depends on backend work.
           Do not guess the result while waiting.
         '';
-        delegation = {
-          model = "gpt-6-luna";
-          instructions = ''
-            You carry out requests for a voice assistant in one home. Use
-            the home__ tools to inspect and control the home. Check the current state before changing something when the request is
-            ambiguous. Report the outcome in one short plain sentence that can be
-            spoken aloud: what you changed or found, with no IDs, lists or markup.
-          '';
-          reasoning_effort = "none";
-        };
       };
+      openclaw.instructions = ''
+        This turn comes from a voice speaker in the home. Carry out the latest
+        request in the conversation it quotes. Check the current state before
+        changing something when the request is ambiguous, and before repeating
+        an action an earlier, interrupted request may already have done. Your
+        reply is spoken aloud: one or two short plain sentences with what you
+        changed or found, and no IDs, lists or markup.
+      '';
       idle_timeout_s = 8;
       max_conversation_s = 600;
     };

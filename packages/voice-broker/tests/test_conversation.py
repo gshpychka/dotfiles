@@ -17,7 +17,6 @@ from conftest import speechlike
 from voice_broker._aec import EchoCanceller
 from voice_broker.conversation import Conversation, EndReason
 from voice_broker.live import LiveSession
-from voice_broker.mcp_hub import McpHub
 from voice_broker.protocol import (
     MIC_RATE,
     SPEAKER_RATE,
@@ -114,12 +113,8 @@ def speech_deltas(seconds: float, seed: int) -> list[SimpleNamespace]:
     ]
 
 
-def response_event(delegation_id: str, **event) -> SimpleNamespace:
-    return SimpleNamespace(type="response.event", delegation_id=delegation_id, event=event)
-
-
 class ScriptedLive:
-    """Speaks, delegates one tool call, then speaks the result after response.create.
+    """Speaks, hears a request, delegates it, then speaks the agent's answer once it arrives as commentary.
 
     Like GPT-Live, the output stream never stops: between utterances it carries
     ±1 LSB silence in real time.
@@ -131,16 +126,11 @@ class ScriptedLive:
         self._refuse = refuse
         self.appended_while_playing = 0
         self._device = device
-        self.session = SimpleNamespace(start=self._start, input_audio=SimpleNamespace(append=self._append))
-        self.response = SimpleNamespace(
-            create=self._response_create, item=SimpleNamespace(create=self._record("response.item.create"))
+        self.session = SimpleNamespace(
+            start=self._start,
+            input_audio=SimpleNamespace(append=self._append),
+            commentary=SimpleNamespace(append=self._commentary),
         )
-
-    def _record(self, name):
-        async def call(**kwargs):
-            self.calls.append((name, kwargs))
-
-        return call
 
     async def _start(self, session) -> None:
         self.calls.append(("session.start", {"session": session}))
@@ -164,25 +154,17 @@ class ScriptedLive:
             self.appended_while_playing += len(base64.b64decode(audio))
 
     async def _greet_and_delegate(self) -> None:
+        await self.events.put(SimpleNamespace(type="session.output_transcript.delta", delta="Hi, what can I do?"))
         for delta in speech_deltas(1.0, seed=5):
             await self.events.put(delta)
+        for fragment in ("Turn off ", "the lights."):
+            await self.events.put(SimpleNamespace(type="session.input_transcript.delta", delta=fragment))
         await self.events.put(
-            SimpleNamespace(type="session.delegation.created", delegation=SimpleNamespace(id="dlg_1"))
+            SimpleNamespace(type="session.delegation.created", delegation=SimpleNamespace(id="dlg_1", target="client"))
         )
-        await self.events.put(response_event("dlg_1", type="response.created", response={"id": "resp_1"}))
-        await self.events.put(
-            response_event(
-                "dlg_1",
-                type="response.output_item.done",
-                item={"type": "function_call", "call_id": "call_1", "name": "home__lights", "arguments": "{}"},
-            )
-        )
-        await self.events.put(response_event("dlg_1", type="response.completed", response={"id": "resp_1"}))
 
-    async def _response_create(self) -> None:
-        self.calls.append(("response.create", {}))
-        await self.events.put(response_event("dlg_1", type="response.created", response={"id": "resp_2"}))
-        await self.events.put(response_event("dlg_1", type="response.completed", response={"id": "resp_2"}))
+    async def _commentary(self, **kwargs) -> None:
+        self.calls.append(("session.commentary.append", kwargs))
         for delta in speech_deltas(0.5, seed=6):
             await self.events.put(delta)
 
@@ -195,52 +177,55 @@ class ScriptedLive:
             raise StopAsyncIteration
         return event
 
-    def names(self) -> list[str]:
-        return [name for name, _ in self.calls]
-
 
 def run_live(make_config, refuse: bool = False):
     async def main():
         config = make_config()
         device = SimDevice(talk_after_s=0.3)
         live = ScriptedLive(device, refuse)
+        tasks: list[str] = []
 
         @asynccontextmanager
         async def connect():
             yield live
 
-        session = LiveSession(config.live, "Kitchen", McpHub([]), connect)
+        async def consult(task: str) -> str:
+            tasks.append(task)
+            return "The kitchen lights are off."
+
+        session = LiveSession(config.live, "Kitchen", consult, connect)
         conversation = Conversation(config, "test", device, session, EchoCanceller(MIC_RATE))
         reason = await asyncio.wait_for(conversation.run(), 15)
-        return reason, device, live
+        return reason, device, live, tasks
 
     return asyncio.run(main())
 
 
 def test_live_refusal_ends_the_conversation(make_config):
-    reason, device, _ = run_live(make_config, refuse=True)
+    reason, device, _, _ = run_live(make_config, refuse=True)
     assert reason == EndReason.OPENAI_GONE
     assert device.controls[-1][0] == ControlType.END
 
 
-def test_live_streams_the_mic_and_answers_delegated_calls(make_config):
-    reason, device, live = run_live(make_config)
+def test_live_streams_the_mic_and_speaks_the_agents_answer(make_config):
+    reason, device, live, tasks = run_live(make_config)
 
     (start,) = [kw["session"] for name, kw in live.calls if name == "session.start"]
-    assert start["delegation"]["type"] == "responses"
-    # Both the voice and the tool backend know which room the speaker is in.
+    assert start["delegation"] == {"type": "client"}
     assert "in the Kitchen" in start["instructions"]
-    assert "in the Kitchen" in start["delegation"]["responses"]["instructions"]
     assert start["audio"]["format"] == {"type": "audio/pcm", "rate": SPEAKER_RATE}
 
     # Full duplex: the mic keeps streaming while the reply plays.
     assert live.appended_while_playing > 0
 
-    (output,) = [kw["item"] for name, kw in live.calls if name == "response.item.create"]
-    assert output["type"] == "function_call_output" and output["call_id"] == "call_1"
-    assert live.names().index("response.item.create") < live.names().index("response.create")
+    # The agent gets the room and the conversation, fragments joined per side.
+    (task,) = tasks
+    assert "in the Kitchen" in task
+    assert "assistant: Hi, what can I do?\nuser: Turn off the lights." in task
+    (answer,) = [kw for name, kw in live.calls if name == "session.commentary.append"]
+    assert answer == {"content": "The kitchen lights are off.", "delegation_id": "dlg_1"}
 
-    # The greeting and the answer to the tool result both play out in full.
+    # The greeting and the spoken answer both play out in full.
     assert device.played_total >= int(1.5 * SPEAKER_RATE) - SPEAKER_TICK
     phases = [f["phase"] for k, f in device.controls if k == ControlType.PHASE]
     assert "thinking" in phases and "replying" in phases

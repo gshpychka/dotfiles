@@ -59,7 +59,6 @@ python3Packages.buildPythonApplication {
     openai
   ]
   ++ (with python3Packages; [
-    mcp
     numpy
     soxr
     websockets

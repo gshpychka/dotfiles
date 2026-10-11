@@ -8,22 +8,22 @@
 }:
 let
   cfg = config.my.voice-broker;
+  openclaw = config.my.openclaw;
   json = pkgs.formats.json { };
   voicePes = lib.filterAttrs (_: host: host.voiceArea != null) config.my.hosts;
   voicePeIps = map (host: host.lanIp) (lib.attrValues voicePes);
   nftables = config.networking.firewall.backend == "nftables";
 
+  user = "voice-broker";
   stateDirectory = "voice-broker";
   recordingsDir = "${stateDirectory}/recordings";
 
   # sopsFile keys, handed to the service as systemd credentials under the same names.
-  credentialNames = lib.unique (
-    [
-      "openai-api-key"
-      "device-token"
-    ]
-    ++ lib.mapAttrsToList (_: server: server.bearerTokenKey) cfg.mcpServers
-  );
+  credentialNames = [
+    "openai-api-key"
+    "device-token"
+  ];
+  openclawCredential = "openclaw-secret";
   credential = name: "/run/credentials/voice-broker.service/${name}";
   # sops-nix secret names are host-global, so they carry the service name
   sopsName = name: "voice-broker/${name}";
@@ -34,7 +34,7 @@ in
 
     sopsFile = lib.mkOption {
       type = lib.types.path;
-      description = "SOPS file holding flat keys openai-api-key, device-token and every mcpServers bearerTokenKey.";
+      description = "SOPS file holding flat keys openai-api-key and device-token.";
     };
 
     port = lib.mkOption {
@@ -55,37 +55,26 @@ in
       };
     };
 
-    mcpServers = lib.mkOption {
-      default = { };
-      description = "HTTP MCP servers whose tools the Live session gets as <name>__<tool>, keyed by server name.";
-      type = lib.types.attrsOf (
-        lib.types.submodule {
-          options = {
-            url = lib.mkOption {
-              type = lib.types.str;
-              description = "Endpoint URL.";
-            };
-            bearerTokenKey = lib.mkOption {
-              type = lib.types.str;
-              description = "sopsFile key holding the bearer token sent with every request.";
-            };
-          };
-        }
-      );
-    };
-
     settings = lib.mkOption {
       inherit (json) type;
       default = { };
       description = ''
         Broker configuration (packages/voice-broker/src/voice_broker/config.py):
-        the Live session and the conversation timeouts. The listener,
-        credentials, devices, recordings and MCP servers come from this module.
+        the Live session, the OpenClaw consult instructions and the
+        conversation timeouts. The listener, credentials, devices, recordings
+        and the gateway's address come from this module.
       '';
     };
   };
 
   config = lib.mkIf cfg.enable {
+    assertions = [
+      {
+        assertion = openclaw.enable && openclaw.responsesEndpoint.enable;
+        message = "my.voice-broker hands delegated work to OpenClaw on this host; enable my.openclaw and its responsesEndpoint.";
+      }
+    ];
+
     my.voice-broker.settings = {
       listen_host = "0.0.0.0";
       listen_port = cfg.port;
@@ -97,17 +86,10 @@ in
         area = host.voiceArea;
       }) voicePes;
       recordings_dir = if cfg.recordings.enable then "/var/lib/${recordingsDir}" else null;
-      mcp_servers = lib.mapAttrsToList (name: server: {
-        inherit name;
-        transport = {
-          type = "http";
-          inherit (server) url;
-          headers.Authorization = {
-            file = credential server.bearerTokenKey;
-            prefix = "Bearer ";
-          };
-        };
-      }) cfg.mcpServers;
+      openclaw = {
+        url = openclaw.localUrl;
+        token_file = credential openclawCredential;
+      };
     };
 
     sops.secrets = lib.listToAttrs (
@@ -120,6 +102,13 @@ in
       ) credentialNames
     );
 
+    # Static: loopback access to the OpenClaw gateway is granted per user.
+    users.users.${user} = {
+      isSystemUser = true;
+      group = user;
+    };
+    users.groups.${user} = { };
+
     systemd.services.voice-broker = {
       description = "OpenAI Live voice broker";
       wantedBy = [ "multi-user.target" ];
@@ -127,8 +116,11 @@ in
       after = [ "network-online.target" ];
       serviceConfig = {
         ExecStart = "${lib.getExe pkgs.voice-broker} --config ${json.generate "voice-broker.json" cfg.settings}";
-        LoadCredential = map (name: "${name}:${config.sops.secrets.${sopsName name}.path}") credentialNames;
-        DynamicUser = true;
+        LoadCredential =
+          map (name: "${name}:${config.sops.secrets.${sopsName name}.path}") credentialNames
+          ++ [ "${openclawCredential}:${openclaw.secretFile}" ];
+        User = user;
+        Group = user;
         StateDirectory = stateDirectory;
         Restart = "on-failure";
         RestartSec = 5;
@@ -142,6 +134,8 @@ in
         ProtectKernelTunables = true;
         ProtectKernelModules = true;
         ProtectControlGroups = true;
+        RemoveIPC = true;
+        RestrictSUIDSGID = true;
         RestrictAddressFamilies = [
           "AF_INET"
           "AF_INET6"
@@ -153,9 +147,7 @@ in
       };
     };
 
-    # DynamicUser state lives under /var/lib/private; /var/lib/${stateDirectory} is a symlink to it.
-    systemd.tmpfiles.settings.voice-broker."/var/lib/private/${recordingsDir}".e.age =
-      cfg.recordings.retention;
+    systemd.tmpfiles.settings.voice-broker."/var/lib/${recordingsDir}".e.age = cfg.recordings.retention;
 
     # Only the Voice PEs may open conversations: every one is billed to the OpenAI key.
     networking.firewall = {

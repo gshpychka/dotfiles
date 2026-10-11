@@ -229,6 +229,7 @@ let
           };
       # nginx proxies the Control UI from loopback
       trustedProxies = [ "127.0.0.1" ];
+      http.endpoints.responses.enabled = cfg.responsesEndpoint.enable;
       inherit publicOrigin;
       controlUi = {
         allowedOrigins = [ publicOrigin ];
@@ -397,6 +398,25 @@ in
     };
 
     telegram.enable = lib.mkEnableOption "the Telegram channel, answering DMs from the owner only";
+
+    responsesEndpoint.enable = lib.mkEnableOption ''
+      the OpenResponses endpoint, POST /v1/responses
+      (https://docs.openclaw.ai/gateway/openresponses-http-api): one agent turn
+      per request, as the owner, for any client holding the gateway secret'';
+
+    localUrl = lib.mkOption {
+      type = lib.types.str;
+      default = "http://127.0.0.1:${toString gw.port}";
+      readOnly = true;
+      description = "Base URL of the gateway's HTTP endpoints on this host.";
+    };
+
+    secretFile = lib.mkOption {
+      type = lib.types.str;
+      default = config.sops.secrets.${sopsKey "gateway-token"}.path;
+      readOnly = true;
+      description = "File holding the gateway secret, the bearer credential of its HTTP endpoints; readable by root only.";
+    };
 
     model = {
       primary = lib.mkOption {

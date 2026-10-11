@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "voice-broker"
 version = "0.1.0"
 requires-python = ">=3.12"
-dependencies = ["mcp", "numpy", "openai", "soxr", "websockets"]
+dependencies = ["numpy", "openai", "soxr", "websockets"]
 
 [project.scripts]
 voice-broker = "voice_broker.__main__:main"

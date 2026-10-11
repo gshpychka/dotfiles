@@ -2,8 +2,8 @@
 
 GPT-Live listens while it speaks and decides for itself when to talk, yield or
 keep going, so the echo-cancelled mic streams to it continuously and playback
-only ever ends when it stops sending audio. Tool work is delegated to a
-Responses model; its function calls run on the MCP hub.
+only ever ends when it stops sending audio. Work it delegates goes to an agent
+as a consult on the conversation's transcript, and GPT-Live speaks the answer.
 """
 
 from __future__ import annotations
@@ -11,9 +11,9 @@ from __future__ import annotations
 import asyncio
 import base64
 import logging
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 from openai import AsyncOpenAI
@@ -22,19 +22,23 @@ from openai.types.live.session_config_param import SessionConfigParam
 
 from .config import Live
 from .dsp import mic_to_speaker_rate
-from .mcp_hub import McpHub
+from .openclaw import ConsultFailed
 from .protocol import SPEAKER_RATE, Phase
-from .session import Host, SessionRefused, located
+from .session import Host, SessionRefused, located, placement
 
 log = logging.getLogger(__name__)
 
 # Base64 audio, dozens per second; the recordings hold the same audio.
 _AUDIO_EVENTS = frozenset({"session.output_audio.delta"})
-# The Responses API's terminal events for one response.
-_RESPONSE_FINISHED = frozenset({"response.completed", "response.failed", "response.incomplete"})
+# An append carries at most 500 tokens, and every token spans at least one byte.
+_APPEND_MAX_BYTES = 500
 
 # Opens a Live connection; injected so tests can substitute OpenAI.
 LiveConnector = Callable[[], AbstractAsyncContextManager[AsyncLiveConnection]]
+# The agent's answer to a task; raises ConsultFailed.
+Consult = Callable[[str], Awaitable[str]]
+
+Role = Literal["user", "assistant"]
 
 
 def live_connector(client: AsyncOpenAI) -> LiveConnector:
@@ -44,21 +48,20 @@ def live_connector(client: AsyncOpenAI) -> LiveConnector:
 
 
 class LiveSession:
-    def __init__(self, config: Live, area: str, hub: McpHub, connect: LiveConnector) -> None:
+    def __init__(self, config: Live, area: str, consult: Consult, connect: LiveConnector) -> None:
         self._config = config
         self._area = area
-        self._hub = hub
+        self._consult = consult
         self._connect = connect
         self._to_openai_rate = mic_to_speaker_rate()
         self._conn: AsyncLiveConnection | None = None
         self._host: Host | None = None
-        # Delegated Responses requests that have not finished.
-        self._responses: set[str] = set()
-        # Function calls requested within each delegation, run once its response is done.
-        self._calls: dict[str | None, list[tuple[str, str, str]]] = {}  # call_id, name, arguments
-        self._tools_running = 0
-        self._user_said: list[str] = []
-        self._assistant_said: list[str] = []
+        # Transcript fragments in delivery order.
+        self._heard: list[tuple[Role, str]] = []
+        self._logged = 0
+        # Fragments before this index reached the agent in a consult it answered.
+        self._consulted = 0
+        self._consulting: asyncio.Task[None] | None = None
 
     @asynccontextmanager
     async def open(self, host: Host) -> AsyncIterator[None]:
@@ -75,17 +78,18 @@ class LiveSession:
             try:
                 yield
             finally:
+                if self._consulting is not None:
+                    self._consulting.cancel()
                 self._conn = None
 
     @property
     def busy(self) -> bool:
-        return bool(self._responses) or self._tools_running > 0
+        return self._consulting is not None
 
     def on_playback_finished(self) -> None:
         self._flush_transcripts()
 
     def _session_config(self) -> SessionConfigParam:
-        delegation = self._config.delegation
         return {
             "model": self._config.model,
             "instructions": located(self._config.instructions, self._area),
@@ -93,20 +97,7 @@ class LiveSession:
                 "format": {"type": "audio/pcm", "rate": SPEAKER_RATE},
                 "output": {"voice": self._config.voice},
             },
-            "delegation": {
-                "type": "responses",
-                "responses": {
-                    "model": delegation.model,
-                    "instructions": located(delegation.instructions, self._area),
-                    "reasoning": {"effort": delegation.reasoning_effort},
-                    # Strict schemas make every parameter required, and HA's
-                    # intents reject the empty slots the model then fills in.
-                    "tools": [{**tool, "strict": False} for tool in self._hub.function_tools()],
-                    "tool_choice": "auto",
-                    # https://developers.openai.com/api/docs/guides/live-migration
-                    "parallel_tool_calls": False,
-                },
-            },
+            "delegation": {"type": "client"},
         }
 
     # -- mic -----------------------------------------------------------------
@@ -130,17 +121,12 @@ class LiveSession:
                     self._host.play(samples)
                 case "session.input_transcript.delta":
                     self._host.mark_activity()
-                    if self._assistant_said:
-                        self._flush_transcripts()
-                    self._user_said.append(event.delta)
+                    self._hear("user", event.delta)
                 case "session.output_transcript.delta":
-                    if self._user_said:
-                        self._flush_transcripts()
-                    self._assistant_said.append(event.delta)
+                    self._hear("assistant", event.delta)
                 case "session.delegation.created":
                     await self._host.set_phase(Phase.THINKING)
-                case "response.event":
-                    await self._on_response_event(event.delegation_id, event.event)
+                    self._delegate(event.delegation.id)
                 case "session.closed":
                     log.info("live session closed: %s after %.1f s", event.reason, event.usage.seconds)
                     return
@@ -148,41 +134,50 @@ class LiveSession:
                     log.error("openai error: %s (%s)", event.error.message, event.error.code)
         self._flush_transcripts()
 
-    async def _on_response_event(self, delegation_id: str | None, nested: dict[str, Any]) -> None:
-        """One streaming event of a delegated Responses request."""
-        assert self._host is not None
-        match nested.get("type"):
-            case "response.created":
-                self._responses.add(nested["response"]["id"])
-            case "response.output_item.done":
-                item = nested["item"]
-                if item.get("type") == "function_call":
-                    self._calls.setdefault(delegation_id, []).append((item["call_id"], item["name"], item["arguments"]))
-            case finished if finished in _RESPONSE_FINISHED:
-                response = nested["response"]
-                if finished != "response.completed":
-                    reason = response.get("error") or response.get("incomplete_details")
-                    log.warning("delegated response %s: %s", finished, reason)
-                self._responses.discard(response["id"])
-                calls = self._calls.pop(delegation_id, [])
-                if calls:
-                    asyncio.create_task(self._run_tools(calls))
-                elif not self.busy and not self._host.assistant_audible:
-                    await self._host.set_phase(Phase.LISTENING)
+    def _hear(self, role: Role, text: str) -> None:
+        if self._heard and self._heard[-1][0] != role:
+            self._flush_transcripts()
+        self._heard.append((role, text))
 
-    async def _run_tools(self, calls: list[tuple[str, str, str]]) -> None:
+    # -- delegation ----------------------------------------------------------
+
+    def _delegate(self, delegation_id: str) -> None:
+        # The new task's transcript holds everything the superseded one did.
+        if self._consulting is not None:
+            log.info("delegation %s supersedes the running consult", delegation_id)
+            self._consulting.cancel()
+        self._consulting = asyncio.create_task(self._run_consult(delegation_id))
+
+    async def _run_consult(self, delegation_id: str) -> None:
         assert self._conn is not None and self._host is not None
-        self._tools_running += 1
+        upto = len(self._heard)
+        heard = self._heard[self._consulted : upto]
         try:
-            outputs = await asyncio.gather(*(self._hub.call(name, arguments) for _, name, arguments in calls))
-            for (call_id, _, _), output in zip(calls, outputs, strict=True):
-                await self._conn.response.item.create(
-                    item={"type": "function_call_output", "call_id": call_id, "output": output}
-                )
-            await self._conn.response.create()
+            if any(role == "user" for role, _ in heard):
+                try:
+                    answer = await self._consult(self._task(heard))
+                    self._consulted = upto
+                except ConsultFailed as e:
+                    log.warning("consult failed: %s", e)
+                    answer = f"The request failed: {e}"
+            else:
+                answer = "No transcript of the request arrived; ask the user to repeat it."
+            for chunk in _chunks(answer):
+                await self._conn.session.commentary.append(content=chunk, delegation_id=delegation_id)
         finally:
-            self._tools_running -= 1
+            if self._consulting is asyncio.current_task():
+                self._consulting = None
             self._host.mark_activity()
+        if not self.busy and not self._host.assistant_audible:
+            await self._host.set_phase(Phase.LISTENING)
+
+    def _task(self, heard: list[tuple[Role, str]]) -> str:
+        said = "\n".join(f"{role}: {text.strip()}" for role, text in _turns(heard))
+        return (
+            f"{placement(self._area)}\n"
+            "The conversation at this speaker since your last answer to it, from speech"
+            f" recognition, which can mishear:\n{said}\n"
+        )
 
     # -- logging -------------------------------------------------------------
 
@@ -192,9 +187,28 @@ class LiveSession:
 
     def _flush_transcripts(self) -> None:
         """Transcripts arrive as fragments with no end marker; log each side's run as a line."""
-        if self._user_said:
-            log.info("user: %s", "".join(self._user_said).strip())
-            self._user_said.clear()
-        if self._assistant_said:
-            log.info("assistant: %s", "".join(self._assistant_said).strip())
-            self._assistant_said.clear()
+        for role, text in _turns(self._heard[self._logged :]):
+            log.info("%s: %s", role, text.strip())
+        self._logged = len(self._heard)
+
+
+def _turns(fragments: list[tuple[Role, str]]) -> list[tuple[Role, str]]:
+    """Consecutive fragments from one side, joined."""
+    turns: list[tuple[Role, str]] = []
+    for role, text in fragments:
+        if turns and turns[-1][0] == role:
+            turns[-1] = (role, turns[-1][1] + text)
+        else:
+            turns.append((role, text))
+    return turns
+
+
+def _chunks(text: str) -> list[str]:
+    """`text` split between words into appends of at most _APPEND_MAX_BYTES."""
+    chunks: list[str] = []
+    for word in text.split():
+        if chunks and len(f"{chunks[-1]} {word}".encode()) <= _APPEND_MAX_BYTES:
+            chunks[-1] = f"{chunks[-1]} {word}"
+        else:
+            chunks.append(word.encode()[:_APPEND_MAX_BYTES].decode(errors="ignore"))
+    return chunks

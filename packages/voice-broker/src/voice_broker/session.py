@@ -10,10 +10,14 @@ import numpy as np
 from .protocol import Phase
 
 
+def placement(area: str) -> str:
+    """Where the speaker is, which unplaced requests refer to."""
+    return f"This speaker is in the {area}. A request that names no place is about the {area}."
+
+
 def located(instructions: str, area: str) -> str:
-    """Instructions for a speaker in `area`, which unplaced requests refer to."""
-    placement = f"This speaker is in the {area}. A request that names no place is about the {area}."
-    return f"{instructions.rstrip()}\n\n{placement}\n"
+    """Instructions for a speaker in `area`."""
+    return f"{instructions.rstrip()}\n\n{placement(area)}\n"
 
 
 class SessionRefused(Exception):
@@ -58,5 +62,5 @@ class ModelSession(Protocol):
 
     @property
     def busy(self) -> bool:
-        """A response or tool call is in progress."""
+        """Delegated work is in progress."""
         ...

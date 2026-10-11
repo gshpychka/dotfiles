@@ -22,7 +22,7 @@ from ._aec import EchoCanceller
 from .config import Config, Device
 from .conversation import Conversation
 from .live import LiveSession, live_connector
-from .mcp_hub import McpHub
+from .openclaw import OpenClaw
 from .protocol import MIC_RATE, ProtocolError, parse_start
 
 log = logging.getLogger("voice_broker")
@@ -53,7 +53,7 @@ class _DeviceState:
 class Broker:
     def __init__(self, config: Config) -> None:
         self._config = config
-        self._hub = McpHub(config.mcp_servers)
+        self._openclaw = OpenClaw(config.openclaw)
         self._devices = {d.address: _DeviceState(d, EchoCanceller(MIC_RATE)) for d in config.devices}
         self._connect = live_connector(AsyncOpenAI(api_key=config.openai_api_key))
 
@@ -82,12 +82,11 @@ class Broker:
             log.warning("no valid start from %s: %r", device.remote_address, e)
             return
         log.info("woken by %s", start.wake_word)
-        session = LiveSession(self._config.live, state.device.area, self._hub, self._connect)
+        session = LiveSession(self._config.live, state.device.area, self._openclaw.consult, self._connect)
         reason = await Conversation(self._config, state.device.name, device, session, state.aec).run()
         log.info("conversation over: %s", reason)
 
     async def run(self) -> None:
-        await self._hub.start()
         try:
             server: Server
             async with serve(
@@ -109,7 +108,7 @@ class Broker:
                 await stop.wait()
                 server.close()
         finally:
-            await self._hub.close()
+            await self._openclaw.aclose()
 
 
 def main() -> None:
