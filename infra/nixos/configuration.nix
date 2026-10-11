@@ -19,7 +19,7 @@ in
   imports = [
     "${modulesPath}/virtualisation/google-compute-image.nix"
     ../../machines/buoy/data-disk.nix
-    # this image runs while the VM can read the age key; fetch-sops-age-key runs as root
+    # this image reads the age key with the VM's service-account token
     ../../machines/buoy/metadata-server.nix
   ];
 
@@ -56,14 +56,10 @@ in
       RemainAfterExit = true;
     };
 
-    # The VM can only read the secret while grant_vm_sops_age_key_access is on
-    # (infra/buoy/sops.tf), which is only needed for a fresh data disk. On a
-    # plain instance replacement the fetch is denied and the key already on the
-    # data disk is kept.
     script = ''
       KEY_FILE="${config.fileSystems.data.mountPoint}/${ageKeySecretName}.txt"
       TMP_FILE="$KEY_FILE.tmp"
-      # files are private from creation; the key is only replaced once a fetch succeeds
+      # files are private from creation
       umask 077
 
       echo "Fetching SOPS age key '${ageKeySecretName}' from Secret Manager..."
@@ -73,6 +69,7 @@ in
         --format='get(payload.data)' \
         --out-file="$TMP_FILE"; then
         rm -f "$TMP_FILE"
+        # the secret is readable only while granted; the disk outlives the VM
         if [ -s "$KEY_FILE" ]; then
           echo "Could not fetch the SOPS age key; keeping the existing $KEY_FILE"
           exit 0
