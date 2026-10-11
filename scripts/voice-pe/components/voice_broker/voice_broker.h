@@ -1,6 +1,6 @@
 #pragma once
 
-// Streams a conversation to the realtime-voice broker (packages/realtime-voice):
+// Streams a conversation to the voice broker (packages/voice-broker):
 // mic audio up, assistant audio down, and exact DAC timing of what was played
 // so the broker can cancel the speaker's echo.
 //
@@ -33,11 +33,11 @@
 #include <utility>
 #include <vector>
 
-namespace esphome::realtime_voice {
+namespace esphome::voice_broker {
 
 enum class Phase : uint8_t { LISTENING, THINKING, REPLYING };
 
-class RealtimeVoice : public Component {
+class VoiceBroker : public Component {
  public:
   void setup() override;
   void loop() override;
@@ -78,7 +78,7 @@ class RealtimeVoice : public Component {
   // esp_websocket_client's handler argument: ties events to the connection
   // they came from, so late events from a closed one are ignored.
   struct HandlerContext {
-    RealtimeVoice *parent;
+    VoiceBroker *parent;
     uint32_t generation;
   };
 
@@ -137,20 +137,20 @@ class RealtimeVoice : public Component {
   HighFrequencyLoopRequester high_freq_;
 };
 
-template<typename... Ts> class StartAction : public Action<Ts...>, public Parented<RealtimeVoice> {
+template<typename... Ts> class StartAction : public Action<Ts...>, public Parented<VoiceBroker> {
  public:
   TEMPLATABLE_VALUE(std::string, wake_word)
   void play(const Ts &...x) override { this->parent_->start(this->wake_word_.value(x...)); }
 };
 
-template<typename... Ts> class StopAction : public Action<Ts...>, public Parented<RealtimeVoice> {
+template<typename... Ts> class StopAction : public Action<Ts...>, public Parented<VoiceBroker> {
  public:
   void play(const Ts &...x) override { this->parent_->stop(); }
 };
 
-template<typename... Ts> class IsRunningCondition : public Condition<Ts...>, public Parented<RealtimeVoice> {
+template<typename... Ts> class IsRunningCondition : public Condition<Ts...>, public Parented<VoiceBroker> {
  public:
   bool check(const Ts &...x) override { return this->parent_->is_running(); }
 };
 
-}  // namespace esphome::realtime_voice
+}  // namespace esphome::voice_broker

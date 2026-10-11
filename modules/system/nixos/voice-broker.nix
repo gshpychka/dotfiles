@@ -1,4 +1,4 @@
-# OpenAI voice broker for the Voice PEs (packages/realtime-voice).
+# OpenAI voice broker for the Voice PEs (packages/voice-broker).
 # Setup steps that can't be declared here: scripts/voice-pe/runbook.md.
 {
   config,
@@ -7,13 +7,13 @@
   ...
 }:
 let
-  cfg = config.my.realtime-voice;
+  cfg = config.my.voice-broker;
   json = pkgs.formats.json { };
   voicePes = lib.filterAttrs (_: host: host.voiceArea != null) config.my.hosts;
   voicePeIps = map (host: host.lanIp) (lib.attrValues voicePes);
   nftables = config.networking.firewall.backend == "nftables";
 
-  stateDirectory = "realtime-voice";
+  stateDirectory = "voice-broker";
   recordingsDir = "${stateDirectory}/recordings";
 
   # sopsFile keys, handed to the service as systemd credentials under the same names.
@@ -24,13 +24,13 @@ let
     ]
     ++ lib.mapAttrsToList (_: server: server.bearerTokenKey) cfg.mcpServers
   );
-  credential = name: "/run/credentials/realtime-voice.service/${name}";
+  credential = name: "/run/credentials/voice-broker.service/${name}";
   # sops-nix secret names are host-global, so they carry the service name
-  sopsName = name: "realtime-voice/${name}";
+  sopsName = name: "voice-broker/${name}";
 in
 {
-  options.my.realtime-voice = {
-    enable = lib.mkEnableOption "the realtime-voice broker";
+  options.my.voice-broker = {
+    enable = lib.mkEnableOption "the Voice PE broker";
 
     sopsFile = lib.mkOption {
       type = lib.types.path;
@@ -78,7 +78,7 @@ in
       inherit (json) type;
       default = { };
       description = ''
-        Broker configuration (packages/realtime-voice/src/realtime_voice/config.py):
+        Broker configuration (packages/voice-broker/src/voice_broker/config.py):
         the Live session and the conversation timeouts. The listener,
         credentials, devices, recordings and MCP servers come from this module.
       '';
@@ -86,7 +86,7 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    my.realtime-voice.settings = {
+    my.voice-broker.settings = {
       listen_host = "0.0.0.0";
       listen_port = cfg.port;
       device_token_file = credential "device-token";
@@ -120,13 +120,13 @@ in
       ) credentialNames
     );
 
-    systemd.services.realtime-voice = {
+    systemd.services.voice-broker = {
       description = "OpenAI Live voice broker";
       wantedBy = [ "multi-user.target" ];
       wants = [ "network-online.target" ];
       after = [ "network-online.target" ];
       serviceConfig = {
-        ExecStart = "${lib.getExe pkgs.realtime-voice} --config ${json.generate "realtime-voice.json" cfg.settings}";
+        ExecStart = "${lib.getExe pkgs.voice-broker} --config ${json.generate "voice-broker.json" cfg.settings}";
         LoadCredential = map (name: "${name}:${config.sops.secrets.${sopsName name}.path}") credentialNames;
         DynamicUser = true;
         StateDirectory = stateDirectory;
@@ -154,7 +154,7 @@ in
     };
 
     # DynamicUser state lives under /var/lib/private; /var/lib/${stateDirectory} is a symlink to it.
-    systemd.tmpfiles.settings.realtime-voice."/var/lib/private/${recordingsDir}".e.age =
+    systemd.tmpfiles.settings.voice-broker."/var/lib/private/${recordingsDir}".e.age =
       cfg.recordings.retention;
 
     # Only the Voice PEs may open conversations: every one is billed to the OpenAI key.

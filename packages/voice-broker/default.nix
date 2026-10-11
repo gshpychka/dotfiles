@@ -34,7 +34,7 @@ let
   };
 in
 python3Packages.buildPythonApplication {
-  pname = "realtime-voice";
+  pname = "voice-broker";
   version = "0.1.0";
   pyproject = true;
 
@@ -67,5 +67,5 @@ python3Packages.buildPythonApplication {
 
   nativeCheckInputs = [ python3Packages.pytestCheckHook ];
 
-  meta.mainProgram = "realtime-voice";
+  meta.mainProgram = "voice-broker";
 }

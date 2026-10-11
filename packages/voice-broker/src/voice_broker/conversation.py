@@ -2,7 +2,7 @@
 
 Audio path, device mic to OpenAI:
     MIC frames -> Aligner (pairs each 10 ms with what the speaker played)
-    -> AEC3 -> the model session, which decides what reaches OpenAI
+    -> AEC3 -> the model session
 
 Audio path, OpenAI to device speaker:
     model audio -> pending queue -> paced to the device so at most
@@ -226,7 +226,6 @@ class Conversation:
             if self.assistant_audible:
                 await self.set_phase(Phase.REPLYING)
             elif self._phase == Phase.REPLYING:
-                # Finished playing without interruption.
                 self._session.on_playback_finished()
                 self.mark_activity()
                 await self.set_phase(Phase.THINKING if self._session.busy else Phase.LISTENING)

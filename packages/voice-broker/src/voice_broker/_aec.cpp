@@ -36,9 +36,6 @@ class EchoCanceller {
     config.high_pass_filter.enabled = true;
     config.echo_canceller.enabled = true;
     config.echo_canceller.mobile_mode = false;
-    config.noise_suppression.enabled = false;
-    config.gain_controller1.enabled = false;
-    config.gain_controller2.enabled = false;
     apm_->ApplyConfig(config);
     apm_->Initialize();
   }

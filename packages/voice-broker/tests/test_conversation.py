@@ -14,11 +14,11 @@ from types import SimpleNamespace
 
 import numpy as np
 from conftest import speechlike
-from realtime_voice._aec import EchoCanceller
-from realtime_voice.conversation import Conversation, EndReason
-from realtime_voice.live import LiveSession
-from realtime_voice.mcp_hub import McpHub
-from realtime_voice.protocol import (
+from voice_broker._aec import EchoCanceller
+from voice_broker.conversation import Conversation, EndReason
+from voice_broker.live import LiveSession
+from voice_broker.mcp_hub import McpHub
+from voice_broker.protocol import (
     MIC_RATE,
     SPEAKER_RATE,
     ControlType,

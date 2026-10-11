@@ -21,7 +21,7 @@ broker -> device
 Text frames are JSON objects with a "type" field, see ControlType.
 
 The C++ side mirrors these constants in
-scripts/voice-pe/components/realtime_voice/protocol.h; keep them in sync.
+scripts/voice-pe/components/voice_broker/protocol.h; keep them in sync.
 """
 
 from __future__ import annotations

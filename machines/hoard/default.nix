@@ -38,7 +38,7 @@
     ./docker.nix
     ./home.nix
     ./openclaw.nix
-    ./realtime-voice.nix
+    ./voice-broker.nix
   ];
 
   nixpkgs.hostPlatform = "x86_64-linux";

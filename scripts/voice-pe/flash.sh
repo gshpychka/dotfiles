@@ -21,8 +21,8 @@ fi
 trap 'rm -f secrets.yaml' EXIT
 (
   umask 077
-  sops -d --extract '["device-token"]' "$repo/secrets/hoard/realtime-voice.yaml" |
-    sed 's/^/realtime_voice_token: /' >secrets.yaml
+  sops -d --extract '["device-token"]' "$repo/secrets/hoard/voice-broker.yaml" |
+    sed 's/^/voice_broker_token: /' >secrets.yaml
 )
 
 esphome compile voice-pe.yaml

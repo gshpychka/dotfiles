@@ -1,5 +1,5 @@
 import pytest
-from realtime_voice.protocol import (
+from voice_broker.protocol import (
     ControlType,
     Kind,
     MicFrame,

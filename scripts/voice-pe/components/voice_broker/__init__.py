@@ -14,21 +14,21 @@ CONF_ON_PHASE = "on_phase"
 CONF_ON_END = "on_end"
 CONF_ON_ERROR = "on_error"
 
-realtime_voice_ns = cg.esphome_ns.namespace("realtime_voice")
-RealtimeVoice = realtime_voice_ns.class_("RealtimeVoice", cg.Component)
-StartAction = realtime_voice_ns.class_(
-    "StartAction", automation.Action, cg.Parented.template(RealtimeVoice)
+voice_broker_ns = cg.esphome_ns.namespace("voice_broker")
+VoiceBroker = voice_broker_ns.class_("VoiceBroker", cg.Component)
+StartAction = voice_broker_ns.class_(
+    "StartAction", automation.Action, cg.Parented.template(VoiceBroker)
 )
-StopAction = realtime_voice_ns.class_(
-    "StopAction", automation.Action, cg.Parented.template(RealtimeVoice)
+StopAction = voice_broker_ns.class_(
+    "StopAction", automation.Action, cg.Parented.template(VoiceBroker)
 )
-IsRunningCondition = realtime_voice_ns.class_(
-    "IsRunningCondition", automation.Condition, cg.Parented.template(RealtimeVoice)
+IsRunningCondition = voice_broker_ns.class_(
+    "IsRunningCondition", automation.Condition, cg.Parented.template(VoiceBroker)
 )
 
 CONFIG_SCHEMA = cv.Schema(
     {
-        cv.GenerateID(): cv.declare_id(RealtimeVoice),
+        cv.GenerateID(): cv.declare_id(VoiceBroker),
         cv.Required(CONF_URL): cv.string_strict,
         cv.Required(CONF_TOKEN): cv.string_strict,
         # One 16-bit channel: the broker's echo canceller works on mono.
@@ -51,7 +51,7 @@ FINAL_VALIDATE_SCHEMA = cv.Schema(
     {
         cv.Required(
             CONF_MICROPHONE
-        ): microphone.final_validate_microphone_source_schema("realtime_voice", 16000)
+        ): microphone.final_validate_microphone_source_schema("voice_broker", 16000)
     },
     extra=cv.ALLOW_EXTRA,
 )
@@ -86,15 +86,15 @@ async def to_code(config):
         )
 
 
-ACTION_SCHEMA = maybe_simple_id({cv.GenerateID(): cv.use_id(RealtimeVoice)})
+ACTION_SCHEMA = maybe_simple_id({cv.GenerateID(): cv.use_id(VoiceBroker)})
 
 
 @automation.register_action(
-    "realtime_voice.start",
+    "voice_broker.start",
     StartAction,
     cv.Schema(
         {
-            cv.GenerateID(): cv.use_id(RealtimeVoice),
+            cv.GenerateID(): cv.use_id(VoiceBroker),
             cv.Optional(CONF_WAKE_WORD, default=""): cv.templatable(cv.string),
         }
     ),
@@ -109,7 +109,7 @@ async def start_to_code(config, action_id, template_arg, args):
 
 
 @automation.register_action(
-    "realtime_voice.stop", StopAction, ACTION_SCHEMA, synchronous=True
+    "voice_broker.stop", StopAction, ACTION_SCHEMA, synchronous=True
 )
 async def stop_to_code(config, action_id, template_arg, args):
     var = cg.new_Pvariable(action_id, template_arg)
@@ -118,7 +118,7 @@ async def stop_to_code(config, action_id, template_arg, args):
 
 
 @automation.register_condition(
-    "realtime_voice.is_running", IsRunningCondition, ACTION_SCHEMA
+    "voice_broker.is_running", IsRunningCondition, ACTION_SCHEMA
 )
 async def is_running_to_code(config, condition_id, template_arg, args):
     var = cg.new_Pvariable(condition_id, template_arg)

@@ -20,7 +20,7 @@
     maintainerr = 6246;
     tautulli = config.services.tautulli.port;
     openclaw = config.services.openclaw-gateway.port;
-    realtime-voice = config.my.realtime-voice.port;
+    voice-broker = config.my.voice-broker.port;
     # fixed upstream
     plex = 32400;
     # Jellyfin's default HTTP port; not exposed as a module option

@@ -1,8 +1,8 @@
 """The aligner must put played audio at the mic sample where the DAC emitted it."""
 
 import numpy as np
-from realtime_voice.alignment import BLOCK, Aligner
-from realtime_voice.protocol import MIC_RATE, SPEAKER_RATE, MicFrame, PlayedReport
+from voice_broker.alignment import BLOCK, Aligner
+from voice_broker.protocol import MIC_RATE, SPEAKER_RATE, MicFrame, PlayedReport
 
 US = 1_000_000
 T0 = 5_000_000  # esp_timer at the first mic sample

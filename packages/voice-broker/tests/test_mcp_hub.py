@@ -8,8 +8,8 @@ import textwrap
 from pathlib import Path
 
 import pytest
-from realtime_voice.config import McpServer, StdioServer
-from realtime_voice.mcp_hub import McpHub
+from voice_broker.config import McpServer, StdioServer
+from voice_broker.mcp_hub import McpHub
 
 SERVER = textwrap.dedent(
     """

@@ -2,8 +2,8 @@
 
 import numpy as np
 from conftest import rms_dbfs, speechlike
-from realtime_voice._aec import EchoCanceller
-from realtime_voice.protocol import MIC_RATE
+from voice_broker._aec import EchoCanceller
+from voice_broker.protocol import MIC_RATE
 
 BLOCK = MIC_RATE // 100
 

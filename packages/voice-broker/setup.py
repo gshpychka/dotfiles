@@ -14,8 +14,8 @@ def pkg_config(*args: str) -> list[str]:
 setup(
     ext_modules=[
         Pybind11Extension(
-            "realtime_voice._aec",
-            ["src/realtime_voice/_aec.cpp"],
+            "voice_broker._aec",
+            ["src/voice_broker/_aec.cpp"],
             cxx_std=17,
             extra_compile_args=pkg_config("--cflags"),
             extra_link_args=pkg_config("--libs"),

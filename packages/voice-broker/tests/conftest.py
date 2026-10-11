@@ -4,7 +4,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from realtime_voice.config import Config, Delegation, Live
+from voice_broker.config import Config, Delegation, Live
 
 
 @pytest.fixture

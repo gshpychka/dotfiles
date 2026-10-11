@@ -53,7 +53,7 @@ class ModelSession(Protocol):
         ...
 
     def on_playback_finished(self) -> None:
-        """Assistant audio played out to the end."""
+        """Assistant audio finished playing."""
         ...
 
     @property

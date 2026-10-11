@@ -1,4 +1,4 @@
-"""Entry point: `realtime-voice --config <file>`."""
+"""Entry point: `voice-broker --config <file>`."""
 
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ from .live import LiveSession, live_connector
 from .mcp_hub import McpHub
 from .protocol import MIC_RATE, ProtocolError, parse_start
 
-log = logging.getLogger("realtime_voice")
+log = logging.getLogger("voice_broker")
 
 # The device sends START right after connecting.
 _START_TIMEOUT_S = 5
@@ -113,7 +113,7 @@ class Broker:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(prog="realtime-voice")
+    parser = argparse.ArgumentParser(prog="voice-broker")
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--log-level", default="INFO")
     args = parser.parse_args()

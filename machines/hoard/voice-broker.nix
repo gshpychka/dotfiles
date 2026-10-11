@@ -1,8 +1,8 @@
 { config, ... }:
 {
-  my.realtime-voice = {
+  my.voice-broker = {
     enable = true;
-    sopsFile = ../../secrets/hoard/realtime-voice.yaml;
+    sopsFile = ../../secrets/hoard/voice-broker.yaml;
     recordings.enable = true;
     # HA's built-in MCP Server integration: the Assist API over exposed entities
     mcpServers.home = {

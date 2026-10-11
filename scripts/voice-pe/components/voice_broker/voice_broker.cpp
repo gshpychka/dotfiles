@@ -1,4 +1,4 @@
-#include "realtime_voice.h"
+#include "voice_broker.h"
 #include "protocol.h"
 
 #include "esphome/components/audio/audio.h"
@@ -10,9 +10,9 @@
 
 #include <cstring>
 
-namespace esphome::realtime_voice {
+namespace esphome::voice_broker {
 
-static const char *const TAG = "realtime_voice";
+static const char *const TAG = "voice_broker";
 
 // Up to ~1 s of mic frames plus PLAYED reports and control messages.
 static constexpr size_t IO_QUEUE_LENGTH = 96;
@@ -28,12 +28,12 @@ static uint8_t *alloc_frame(size_t len) {
   return static_cast<uint8_t *>(heap_caps_malloc(len, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
 }
 
-void RealtimeVoice::setup() {
+void VoiceBroker::setup() {
   this->io_queue_ = xQueueCreate(IO_QUEUE_LENGTH, sizeof(IoItem));
   this->event_queue_ = xQueueCreate(EVENT_QUEUE_LENGTH, sizeof(Event));
   this->playback_ = ring_buffer::RingBuffer::create(PLAYBACK_BUFFER_BYTES);
   if (this->io_queue_ == nullptr || this->event_queue_ == nullptr || this->playback_ == nullptr ||
-      xTaskCreate(RealtimeVoice::io_task_, "realtime_voice_io", IO_TASK_STACK, this, 5, nullptr) != pdPASS) {
+      xTaskCreate(VoiceBroker::io_task_, "voice_broker_io", IO_TASK_STACK, this, 5, nullptr) != pdPASS) {
     ESP_LOGE(TAG, "Failed to allocate queues, buffer or io task");
     this->mark_failed();
     return;
@@ -44,13 +44,13 @@ void RealtimeVoice::setup() {
       [this](uint32_t frames, int64_t timestamp_us) { this->on_audio_output_(frames, timestamp_us); });
 }
 
-void RealtimeVoice::dump_config() {
-  ESP_LOGCONFIG(TAG, "Realtime voice:\n  URL: %s", this->url_.c_str());
+void VoiceBroker::dump_config() {
+  ESP_LOGCONFIG(TAG, "Voice broker:\n  URL: %s", this->url_.c_str());
 }
 
 // -- session state machine (main loop) ----------------------------------------
 
-void RealtimeVoice::start(const std::string &wake_word) {
+void VoiceBroker::start(const std::string &wake_word) {
   if (this->state_ != State::IDLE)
     return;
   this->wake_word_ = wake_word;
@@ -60,7 +60,7 @@ void RealtimeVoice::start(const std::string &wake_word) {
   this->queue_io_(IoItem::OPEN);
 }
 
-void RealtimeVoice::stop() {
+void VoiceBroker::stop() {
   if (this->state_ == State::IDLE)
     return;
   if (this->state_ == State::ACTIVE)
@@ -68,7 +68,7 @@ void RealtimeVoice::stop() {
   this->teardown_();
 }
 
-void RealtimeVoice::teardown_() {
+void VoiceBroker::teardown_() {
   this->streaming_ = false;
   this->mic_source_->stop();
   this->speaker_->stop();
@@ -84,7 +84,7 @@ void RealtimeVoice::teardown_() {
   this->end_trigger_.trigger();
 }
 
-void RealtimeVoice::loop() {
+void VoiceBroker::loop() {
   Event event;
   while (xQueueReceive(this->event_queue_, &event, 0) == pdTRUE) {
     if (event.generation != this->generation_)
@@ -130,7 +130,7 @@ void RealtimeVoice::loop() {
   this->feed_speaker_();
 }
 
-void RealtimeVoice::feed_speaker_() {
+void VoiceBroker::feed_speaker_() {
   if (this->play_holdover_.empty()) {
     // Whole samples only: a WebSocket fragment can end mid-sample.
     size_t available = this->playback_->available() & ~static_cast<size_t>(1);
@@ -160,7 +160,7 @@ void RealtimeVoice::feed_speaker_() {
 
 // -- producers (mic task, audio task, main loop) ------------------------------
 
-bool RealtimeVoice::queue_io_(IoItem::Op op, uint8_t *data, size_t len) {
+bool VoiceBroker::queue_io_(IoItem::Op op, uint8_t *data, size_t len) {
   IoItem item{op, this->generation_, data, len};
   if (xQueueSend(this->io_queue_, &item, 0) != pdTRUE) {
     free(data);
@@ -169,7 +169,7 @@ bool RealtimeVoice::queue_io_(IoItem::Op op, uint8_t *data, size_t len) {
   return true;
 }
 
-void RealtimeVoice::queue_control_(const char *type,
+void VoiceBroker::queue_control_(const char *type,
                                    std::initializer_list<std::pair<const char *, std::string>> fields) {
   std::string text = json::build_json([&](JsonObject root) {
     root["type"] = type;
@@ -184,7 +184,7 @@ void RealtimeVoice::queue_control_(const char *type,
     ESP_LOGW(TAG, "io queue full, dropped control %s", type);
 }
 
-void RealtimeVoice::on_mic_data_(const std::vector<uint8_t> &data) {
+void VoiceBroker::on_mic_data_(const std::vector<uint8_t> &data) {
   if (!this->streaming_)
     return;
   const uint32_t samples = data.size() / sizeof(int16_t);
@@ -206,7 +206,7 @@ void RealtimeVoice::on_mic_data_(const std::vector<uint8_t> &data) {
   this->queue_io_(IoItem::BINARY, frame, len);
 }
 
-void RealtimeVoice::on_audio_output_(uint32_t frames, int64_t timestamp_us) {
+void VoiceBroker::on_audio_output_(uint32_t frames, int64_t timestamp_us) {
   if (!this->streaming_ || frames == 0)
     return;
   uint8_t *frame = alloc_frame(protocol::PLAYED_SIZE);
@@ -219,7 +219,7 @@ void RealtimeVoice::on_audio_output_(uint32_t frames, int64_t timestamp_us) {
     ESP_LOGW(TAG, "io queue full, dropped a PLAYED report");
 }
 
-void RealtimeVoice::post_event_(Event::Type type, uint32_t generation, Phase phase) {
+void VoiceBroker::post_event_(Event::Type type, uint32_t generation, Phase phase) {
   Event event{type, generation, phase};
   if (xQueueSend(this->event_queue_, &event, 0) != pdTRUE)
     ESP_LOGW(TAG, "event queue full");
@@ -227,8 +227,8 @@ void RealtimeVoice::post_event_(Event::Type type, uint32_t generation, Phase pha
 
 // -- io task ------------------------------------------------------------------
 
-void RealtimeVoice::io_task_(void *arg) {
-  auto *self = static_cast<RealtimeVoice *>(arg);
+void VoiceBroker::io_task_(void *arg) {
+  auto *self = static_cast<VoiceBroker *>(arg);
   // Generation of the connection client_ belongs to; frames from other
   // conversations are dropped.
   uint32_t client_generation = 0;
@@ -263,7 +263,7 @@ void RealtimeVoice::io_task_(void *arg) {
   }
 }
 
-void RealtimeVoice::io_open_(uint32_t generation) {
+void VoiceBroker::io_open_(uint32_t generation) {
   esp_websocket_client_config_t config = {};
   config.uri = this->url_.c_str();
   config.headers = this->headers_.c_str();
@@ -285,7 +285,7 @@ void RealtimeVoice::io_open_(uint32_t generation) {
     this->handler_context_ = nullptr;
     return;
   }
-  esp_websocket_register_events(this->client_, WEBSOCKET_EVENT_ANY, RealtimeVoice::ws_event_handler_,
+  esp_websocket_register_events(this->client_, WEBSOCKET_EVENT_ANY, VoiceBroker::ws_event_handler_,
                                 this->handler_context_);
   if (esp_websocket_client_start(this->client_) != ESP_OK) {
     ESP_LOGE(TAG, "esp_websocket_client_start failed");
@@ -294,7 +294,7 @@ void RealtimeVoice::io_open_(uint32_t generation) {
   }
 }
 
-void RealtimeVoice::io_close_() {
+void VoiceBroker::io_close_() {
   if (this->client_ == nullptr)
     return;
   if (esp_websocket_client_is_connected(this->client_))
@@ -308,7 +308,7 @@ void RealtimeVoice::io_close_() {
 
 // -- ws task ------------------------------------------------------------------
 
-void RealtimeVoice::ws_event_handler_(void *arg, esp_event_base_t base, int32_t event_id, void *event_data) {
+void VoiceBroker::ws_event_handler_(void *arg, esp_event_base_t base, int32_t event_id, void *event_data) {
   auto *context = static_cast<HandlerContext *>(arg);
   auto *self = context->parent;
   switch (event_id) {
@@ -328,7 +328,7 @@ void RealtimeVoice::ws_event_handler_(void *arg, esp_event_base_t base, int32_t 
   }
 }
 
-void RealtimeVoice::on_ws_data_(uint32_t generation, const esp_websocket_event_data_t *data) {
+void VoiceBroker::on_ws_data_(uint32_t generation, const esp_websocket_event_data_t *data) {
   if (generation != this->generation_)
     return;
   // One WebSocket frame can arrive in several events when it exceeds
@@ -361,7 +361,7 @@ void RealtimeVoice::on_ws_data_(uint32_t generation, const esp_websocket_event_d
   }
 }
 
-void RealtimeVoice::on_control_(uint32_t generation, const std::string &text) {
+void VoiceBroker::on_control_(uint32_t generation, const std::string &text) {
   json::parse_json(text, [&](JsonObject root) -> bool {
     const char *type = root["type"];
     if (type == nullptr)
@@ -386,4 +386,4 @@ void RealtimeVoice::on_control_(uint32_t generation, const std::string &text) {
   });
 }
 
-}  // namespace esphome::realtime_voice
+}  // namespace esphome::voice_broker

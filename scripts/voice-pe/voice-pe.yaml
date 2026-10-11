@@ -1,13 +1,13 @@
 # Firmware for every Voice PE in the house: the stock firmware plus OpenAI Live
-# through the realtime-voice broker.
+# through the voice broker on hoard.
 #
 # Everything stock comes from the upstream release below; this file only adds
-# the realtime_voice component, the "Voice backend" select and the wake word
+# the voice_broker component, the "Voice backend" select and the wake word
 # routing between the two. Deployment: runbook.md.
 
 substitutions:
-  # packages/realtime-voice on hoard; the port is my.realtime-voice.port
-  realtime_voice_url: ws://hoard.glib.sh:10310
+  # packages/voice-broker on hoard; the port is my.voice-broker.port
+  voice_broker_url: ws://hoard.glib.sh:10310
 
 packages:
   voice_pe:
@@ -23,7 +23,7 @@ external_components:
   - source:
       type: local
       path: components
-    components: [realtime_voice]
+    components: [voice_broker]
 
 select:
   - platform: template
@@ -38,10 +38,10 @@ select:
       - Live
     initial_option: Home Assistant
 
-realtime_voice:
-  id: rtv
-  url: ${realtime_voice_url}
-  token: !secret realtime_voice_token
+voice_broker:
+  id: broker
+  url: ${voice_broker_url}
+  token: !secret voice_broker_token
   microphone:
     microphone: i2s_mics
     # XMOS channel 0 carries its echo-cancelled output; the broker's AEC
@@ -83,10 +83,10 @@ binary_sensor:
     on_press:
       - if:
           condition:
-            realtime_voice.is_running:
+            voice_broker.is_running:
           then:
             - lambda: id(color_changed) = true;
-            - realtime_voice.stop:
+            - voice_broker.stop:
             - wait_until:
                 binary_sensor.is_off: center_button
             # Past the multi-click window, as upstream's dial handler does.
@@ -112,9 +112,9 @@ micro_wake_word:
                 else:
                   - if:
                       condition:
-                        realtime_voice.is_running:
+                        voice_broker.is_running:
                       then:
-                        - realtime_voice.stop:
+                        - voice_broker.stop:
                       else:
                         - if:
                             condition:
@@ -152,7 +152,7 @@ micro_wake_word:
                                               duration: 0.0s
                                           - lambda: id(voice_assistant_phase) = ${voice_assist_waiting_for_command_phase_id};
                                           - script.execute: control_leds
-                                          - realtime_voice.start:
+                                          - voice_broker.start:
                                               wake_word: !lambda return wake_word;
                                         else:
                                           - voice_assistant.start:

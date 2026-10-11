@@ -1,13 +1,13 @@
 #pragma once
 
 // Wire protocol shared with the broker. The authoritative description is the
-// docstring of packages/realtime-voice/src/realtime_voice/protocol.py; keep
+// docstring of packages/voice-broker/src/voice_broker/protocol.py; keep
 // these constants in sync with it.
 
 #include <cstddef>
 #include <cstdint>
 
-namespace esphome::realtime_voice::protocol {
+namespace esphome::voice_broker::protocol {
 
 static constexpr uint32_t MIC_RATE = 16000;
 static constexpr uint32_t SPEAKER_RATE = 24000;
@@ -38,4 +38,4 @@ inline void put_i64(uint8_t *p, int64_t v) {
     p[i] = static_cast<uint8_t>(u >> (8 * i));
 }
 
-}  // namespace esphome::realtime_voice::protocol
+}  // namespace esphome::voice_broker::protocol

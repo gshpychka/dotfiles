@@ -4,7 +4,7 @@ The Voice PEs (the hosts with a `voiceArea` in `modules/common/hosts.nix`) run
 one firmware, `voice-pe.yaml`: the stock Home
 Assistant Voice firmware with one addition, a **Voice backend** select. "Home Assistant" is the stock Assist path, still switched between
 pipelines by the Assistant selects. "Live" hands the conversation to the
-realtime-voice broker on hoard (`machines/hoard/realtime-voice.nix`), which
+voice broker on hoard (`machines/hoard/voice-broker.nix`), which
 runs it on GPT-Live. GPT-Live listens while it speaks and decides itself when
 to answer, yield or keep going. Home control goes through a delegated
 Responses model.
@@ -28,7 +28,7 @@ speaker with it.
    generated:
 
    ```sh
-   nix develop -c sops secrets/hoard/realtime-voice.yaml
+   nix develop -c sops secrets/hoard/voice-broker.yaml
    ```
 
    - `openai-api-key`: an OpenAI API key with Live access
@@ -67,18 +67,18 @@ upstream releases for the devices. To pick one up, bump `ref` in
 ## Using it
 
 Set **Voice backend** to Live on the device page. Watch the broker with
-`ssh hoard journalctl -fu realtime-voice`.
+`ssh hoard journalctl -fu voice-broker`.
 
 ## Recording conversations
 
 To check the echo cancellation against what happened in the room:
 
-1. Set `recordings.enable = true` in `machines/hoard/realtime-voice.nix` and
+1. Set `recordings.enable = true` in `machines/hoard/voice-broker.nix` and
    deploy hoard.
 2. Have a few conversations: talk over replies, and also let replies play out
    while the room is noisy (music, dishes).
 3. Each conversation leaves `<stamp>-<pe>.wav` in
-   `/var/lib/private/realtime-voice/recordings/`: 16 kHz with three channels,
+   `/var/lib/private/voice-broker/recordings/`: 16 kHz with three channels,
    the raw mic, what the speaker played (aligned to the mic), and the
    echo-cancelled mic.
 4. Set `recordings.enable = false`, delete the recordings, deploy.
