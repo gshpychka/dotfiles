@@ -65,7 +65,6 @@
     };
 
     claudeCode.enable = true;
-    # what the agent may switch hoard to: main as merged on GitHub
-    rebuild.flake = "github:gshpychka/dotfiles#hoard";
+    rebuild.enable = true;
   };
 }
