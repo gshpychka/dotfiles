@@ -66,5 +66,6 @@
 
     claudeCode.enable = true;
     rebuild.enable = true;
+    onedrive.enable = true;
   };
 }

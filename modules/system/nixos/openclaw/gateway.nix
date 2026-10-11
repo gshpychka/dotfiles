@@ -279,7 +279,7 @@ let
       model = {
         inherit (cfg.model) primary fallbacks;
       };
-      workspace = "${gw.stateDir}/workspace";
+      inherit (cfg) workspace;
       userTimezone = config.time.timeZone;
       heartbeat.every = "0m";
       sandbox = {
@@ -457,6 +457,13 @@ in
           };
         }
       );
+    };
+
+    workspace = lib.mkOption {
+      type = lib.types.str;
+      default = "${gw.stateDir}/workspace";
+      readOnly = true;
+      description = "The agent's workspace, the only directory its file tools reach.";
     };
 
     ageKeyFile = lib.mkOption {

@@ -16,7 +16,7 @@ let
   cfg = config.my.openclaw;
   gw = config.services.openclaw-gateway;
   nixos-rebuild = "/run/current-system/sw/bin/nixos-rebuild";
-  logFile = "${gw.stateDir}/workspace/nixos-rebuild.log";
+  logFile = "${cfg.workspace}/nixos-rebuild.log";
 in
 {
   options.my.openclaw.rebuild.enable = lib.mkEnableOption ''
