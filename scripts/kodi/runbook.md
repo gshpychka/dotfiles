@@ -10,8 +10,12 @@ units.
 Kodi overwrites an addon's directory on every update, so `kodi-customize.sh`
 reapplies these at boot and after each Bingie, Bingie Widgets or PKC update:
 
-- subtitles at a fixed spot in the bottom letterbox bar, the same in every
-  display mode (applied at boot only, while Kodi is stopped)
+- Kodi's settings from the table in `kodi-customize.sh`, each with its reason:
+  player-led Dolby Vision tuned for the S95C, HDR10+ played as Dolby Vision,
+  and subtitles at a fixed spot in the bottom letterbox bar, the same in every
+  display mode
+- InfoTagger 0.0.9, fetched by `deploy.sh` at its pinned commit, and the pin
+  that keeps Skin Shortcuts at 2.1.0
 - hides the Bingie profile switcher at the top of the side menu
 - installs every file in `skin-overrides/` into the skin, currently a
   Netflix-style PKC skip intro/credits button
@@ -28,8 +32,12 @@ Deploy from eve:
 scripts/kodi/deploy.sh
 ```
 
-Settings changes land at the next boot (`ssh kodi reboot`). After a PKC patch
-change, restart Kodi so PKC loads it (`ssh kodi systemctl restart kodi`).
+A running Kodi takes setting changes at once; the subtitle position per
+display mode, InfoTagger and the Skin Shortcuts pin land at the next boot
+(`ssh kodi reboot`). The table is the source of truth: a setting changed in
+Kodi's menus goes back to the table's value whenever the script runs. After a
+PKC patch change, restart Kodi so PKC loads it
+(`ssh kodi systemctl restart kodi`).
 Library items get new HDR details when PKC next syncs them; to rewrite all of
 them, run PKC's repair sync:
 `ssh kodi 'kodi-send --action="RunPlugin(plugin://plugin.video.plexkodiconnect/?mode=repair)"'`.
@@ -38,8 +46,8 @@ Removing a file from `skin-overrides/` does not remove the installed copy from
 the skin; delete it from `skin.bingie/1080i` as well.
 
 If an addon release moves something a patch anchors on, the script logs
-`anchor not found` and leaves that file untouched:
-`ssh kodi journalctl -t kodi-customize`.
+`anchor not found` and leaves that file untouched; a setting that Kodi or
+CoreELEC renames is logged too: `ssh kodi journalctl -t kodi-customize`.
 
 To undo: disable both units, delete them and `/storage/.config/kodi-customize`,
 then reinstall Bingie, Bingie Widgets and PKC from their repositories to
@@ -100,27 +108,6 @@ scripts/kodi/cpm/flash.sh ~/build/cpm-coreelec/target/CoreELEC-Amlogic-ng.aarch6
 (untested): unpack the backup's `flash.tar` over `/flash` after
 `mount -o remount,rw /flash`, and reboot. `storage.tar` holds Kodi's state,
 with the databases in `.dbbackup/`.
-
-These live in Kodi's own settings and survive updates:
-
-- Settings > System > CoreELEC > Dolby Vision: mode On demand, type Player-led
-  (HDR), VS10 off for every source except Dolby Vision, DV-LL limit "Min PQ 20
-  and limit max" with brightness adjustment -1, the combination that clips
-  least near black on the S95C (the black-clipping patterns in hoard's
-  `test-files` show from code 68 in Dolby Vision and 66 in HDR10)
-- the dual-layer priority is Dolby Vision: for files carrying both, the S95C
-  shows the box's Dolby Vision output brighter than its own HDR10+ processing
-- the injected VSVDB describes the S95C: BT.2020, 0 to 1252 cd/m², payload
-  `4903885698A953`; RTINGS measures its peak at about 1,200–1,230 cd/m²
-- the injected HDR InfoFrame payload
-  `3421AA9B9619FC08488A0839133D4240B0040100CE04EA00` declares BT.2020, mastering
-  1200 cd/m², MaxCLL 1230, MaxFALL 234
-- Skin Shortcuts is pinned at 2.1.0, the pin Kodi records when an add-on is
-  downgraded; 3.x refuses Bingie
-- InfoTagger is 0.0.9 from
-  [its author](https://github.com/jurialmunkey/script.module.infotagger/tree/c6272475996215648d19fd030dd12b3cadc1bd23),
-  unpacked over `addons/script.module.infotagger`. Kodi's repository has 0.0.8,
-  which drops every video stream carrying Kodi 22's `hdrdetail` field
 
 The CoreELEC settings pages for Network and Bluetooth fail to load: PyGObject
 calls `pkgutil.get_loader`, which Python 3.14 removed.

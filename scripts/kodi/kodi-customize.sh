@@ -11,16 +11,62 @@ SKIN=$ADDONS/skin.bingie/1080i
 PKC_MEDIA=$ADDONS/plugin.video.plexkodiconnect/resources/lib/plex_api/media.py
 WIDGETS_KODIDB=$ADDONS/script.bingie.widgets/resources/lib/helpers/kodidb.py
 GUISETTINGS=/storage/.kodi/userdata/guisettings.xml
+DATABASE=/storage/.kodi/userdata/Database
 
-# Subtitles sit at a fixed spot near the bottom of the screen. Almost every
-# film in the library has its letterbox bars baked into a 16:9 frame, so Kodi's
-# "bottom of video, outside" places them over the picture. Kodi keeps the
-# position per display mode; every mode whose GUI is 1080 lines tall gets the
-# same one, low enough for two lines to fit in a 2.39:1 bar. The vertical
-# margin is a percentage of the screen height.
-SUBTITLES_ALIGN_MANUAL=0
+# Kodi keeps the subtitle position per display mode; every mode whose GUI is
+# 1080 lines tall gets the same one, low enough for two lines of subtitles to
+# fit in a 2.39:1 bar.
 SUBTITLES_POSITION_1080=1080
-SUBTITLES_MARGIN_VERTICAL=2
+
+# Kodi's settings, one "id value" pair per line with the value as a JSON
+# literal of the setting's type, a number setting's with a decimal point;
+# string values hold no JSON escapes or XML special characters. Kodi accepts a
+# setting only while the settings it depends on show it, so each one follows
+# those.
+kodi_settings() {
+  cat <<'EOF'
+# Player-led Dolby Vision on demand: the box runs the Dolby Vision processing
+# and sends HDR10, which is how the S95C, a TV without Dolby Vision, shows it.
+coreelec.amlogic.dolbyvision.mode 1
+coreelec.amlogic.dolbyvision.type 2
+# VS10 bypassed (5) for every source except Dolby Vision (0).
+coreelec.amlogic.dolbyvision.vs10.sdr8 5
+coreelec.amlogic.dolbyvision.vs10.sdr10 5
+coreelec.amlogic.dolbyvision.vs10.hdr10 5
+coreelec.amlogic.dolbyvision.vs10.hdr10plus 5
+coreelec.amlogic.dolbyvision.vs10.hdrhlg 5
+coreelec.amlogic.dolbyvision.vs10.dv 0
+# "Min PQ 20 and limit max" with brightness adjustment -1 clips least near
+# black on the S95C: the black-clipping patterns in hoard's test-files show
+# from code 68 in Dolby Vision and 66 in HDR10.
+coreelec.amlogic.dolbyvision.ll.vsvdb.limit 2
+coreelec.amlogic.dolbyvision.ll.vsvdb.limit.brightness -1
+# The injected VSVDB describes the S95C: BT.2020, 0 to 1252 cd/m². RTINGS
+# measures its peak at about 1,200–1,230 cd/m².
+coreelec.amlogic.dolbyvision.vsvdb.inject true
+coreelec.amlogic.dolbyvision.vsvdb.colour.space 1
+coreelec.amlogic.dolbyvision.vsvdb.min.luminance 0
+coreelec.amlogic.dolbyvision.vsvdb.max.luminance 17
+coreelec.amlogic.dolbyvision.vsvdb.payload "4903885698A953"
+# The injected HDR InfoFrame declares BT.2020, mastering 1200 cd/m², MaxCLL
+# 1230 and MaxFALL 234.
+coreelec.amlogic.dolbyvision.hdr.inject true
+coreelec.amlogic.dolbyvision.hdr.payload "3421AA9B9619FC08488A0839133D4240B0040100CE04EA00"
+# Dolby Vision has priority: for files carrying both, the S95C shows the box's
+# Dolby Vision output brighter than its own HDR10+ processing.
+coreelec.amlogic.dolbyvision.dual.priority 0
+# Files with HDR10+ alone play as Dolby Vision built from their HDR10+
+# metadata; files carrying both play their own Dolby Vision.
+coreelec.amlogic.dolbyvision.hdr10plus.convert true
+coreelec.amlogic.dolbyvision.hdr10plus.prefer.convert false
+# Subtitles sit at a fixed spot (manual alignment, 0) near the bottom of the
+# screen. Almost every film in the library has its letterbox bars baked into a
+# 16:9 frame, so Kodi's "bottom of video, outside" places them over the
+# picture. The vertical margin is a percentage of the screen height.
+subtitles.align 0
+subtitles.marginvertical 2.0
+EOF
+}
 
 log() {
   logger -t kodi-customize "$1"
@@ -195,16 +241,41 @@ bingie_progress() {
   done
 }
 
-# Kodi rewrites guisettings.xml from memory when it exits, so this only runs
-# while Kodi is stopped, i.e. at boot before kodi.service.
-kodi_settings() {
-  awk -v align="$SUBTITLES_ALIGN_MANUAL" -v pos="$SUBTITLES_POSITION_1080" \
-    -v margin="$SUBTITLES_MARGIN_VERTICAL" '
-    /<setting id="subtitles.align"/ {
-      sub(/<setting id="subtitles.align"[^>]*>[0-9]+</, "<setting id=\"subtitles.align\">" align "<")
+# Kodi rewrites guisettings.xml from memory when it exits, so the file is only
+# written while Kodi is stopped, i.e. at boot before kodi.service.
+settings_file() {
+  missing=$GUISETTINGS.missing.$$
+  KODI_SETTINGS=$(kodi_settings) awk -v pos="$SUBTITLES_POSITION_1080" -v missing="$missing" '
+    BEGIN {
+      n = split(ENVIRON["KODI_SETTINGS"], lines, "\n")
+      for (i = 1; i <= n; i++) {
+        if (lines[i] ~ /^[ \t]*(#|$)/) continue
+        id = value = lines[i]
+        sub(/[ \t].*/, "", id)
+        sub(/^[^ \t]+[ \t]+/, "", value)
+        gsub(/^"|"$/, "", value)
+        want[id] = value
+      }
     }
-    /<setting id="subtitles.marginvertical"/ {
-      sub(/<setting id="subtitles.marginvertical"[^>]*>[0-9.]+</, "<setting id=\"subtitles.marginvertical\">" margin "<")
+    match($0, /<setting id="[^"]*"/) {
+      id = substr($0, RSTART + 13, RLENGTH - 14)
+      if (id in want) {
+        found[id] = 1
+        current = $0
+        if (current ~ /\/>[ \t]*$/) {
+          current = ""
+        } else {
+          sub(/^[^>]*>/, "", current)
+          sub(/<\/setting>.*/, "", current)
+        }
+        number = "^-?[0-9]+(\\.[0-9]+)?$"
+        same = current == want[id] || (current ~ number && want[id] ~ number && current + 0 == want[id] + 0)
+        if (!same) {
+          match($0, /^[ \t]*/)
+          print substr($0, 1, RLENGTH) "<setting id=\"" id "\">" want[id] "</setting>"
+          next
+        }
+      }
     }
     /<resolution>/ { inres = 1; buf = "" }
     inres {
@@ -218,13 +289,87 @@ kodi_settings() {
       next
     }
     { print }
+    END {
+      printf "" >missing
+      for (id in want)
+        if (!(id in found)) print id >missing
+    }
   ' "$GUISETTINGS" >"$GUISETTINGS.tmp.$$"
+  for id in $(cat "$missing"); do
+    log "setting $id missing from guisettings.xml, Kodi or CoreELEC changed; update this script"
+    status=1
+  done
+  rm -f "$missing"
   if [ "$(md5sum <"$GUISETTINGS.tmp.$$")" = "$(md5sum <"$GUISETTINGS")" ]; then
     rm -f "$GUISETTINGS.tmp.$$"
     return 0
   fi
   mv "$GUISETTINGS.tmp.$$" "$GUISETTINGS"
-  log "subtitle position settings applied"
+  log "Kodi settings applied to guisettings.xml"
+}
+
+# A running Kodi takes the settings over JSON-RPC and saves them when it exits.
+# The per-display-mode subtitle position waits for the next boot.
+settings_live() {
+  if ! out=$(kodi_settings | python3 "$HERE/kodi-settings-rpc.py" 2>&1); then
+    log "Kodi JSON-RPC failed, settings apply at the next boot: $out"
+    status=1
+    return 0
+  fi
+  printf '%s\n' "$out" | while read -r kind id value; do
+    case $kind in
+      changed) log "Kodi setting $id set to $value" ;;
+      rejected) log "Kodi rejected setting $id: missing, or hidden by a setting before it; update this script" ;;
+    esac
+  done
+  case $out in *rejected*) status=1 ;; esac
+}
+
+# Version of an installed or shipped add-on; its <addon> tag can span lines.
+addon_version() {
+  [ -f "$1/addon.xml" ] || return 0
+  tr '\n' ' ' <"$1/addon.xml" | sed -n 's/.*<addon[ \t][^>]*version="\([^"]*\)".*/\1/p'
+}
+
+# Skin Shortcuts 3.x refuses Bingie, so 2.1.0 stays installed with the pin
+# Kodi records when an add-on is downgraded (update rule 2, PIN_OLD_VERSION).
+# Kodi loads the rules from its add-on database when it scans add-ons, so the
+# pin is written at boot, before its first scan.
+pin_skinshortcuts() {
+  db=$(ls "$DATABASE"/Addons*.db 2>/dev/null | sort -V | tail -n 1)
+  if [ -z "$db" ]; then
+    log "Kodi add-on database missing, Skin Shortcuts left unpinned"
+    status=1
+    return 0
+  fi
+  added=$(sqlite3 "$db" "INSERT OR IGNORE INTO update_rules (addonID, updateRule) VALUES ('script.skinshortcuts', 2); SELECT changes();")
+  [ "$added" = 1 ] && log "Skin Shortcuts pinned"
+  version=$(addon_version "$ADDONS/script.skinshortcuts")
+  case $version in
+    2.*) ;;
+    *)
+      log "Skin Shortcuts ${version:-missing}, Bingie needs 2.1.0; install it from Kodi's add-on info"
+      status=1
+      ;;
+  esac
+}
+
+# Add-ons pinned to a release newer than Kodi's repository carries: InfoTagger
+# 0.0.9, as the repository's 0.0.8 drops every video stream carrying Kodi 22's
+# hdrdetail field. An installed copy older than the shipped one is replaced at
+# boot, so Kodi registers the shipped version when it scans add-ons.
+install_pinned_addons() {
+  for src in "$HERE"/addons/*; do
+    [ -f "$src/addon.xml" ] || continue
+    id=$(basename "$src")
+    shipped=$(addon_version "$src")
+    installed=$(addon_version "$ADDONS/$id")
+    newest=$(printf '%s\n%s\n' "$shipped" "$installed" | sort -V | tail -n 1)
+    [ -n "$installed" ] && [ "$newest" = "$installed" ] && continue
+    rm -rf "${ADDONS:?}/$id"
+    cp -r "$src" "$ADDONS/$id"
+    log "installed $id $shipped over ${installed:-nothing}"
+  done
 }
 
 # Whole-window overrides, e.g. PlexKodiConnect's skip marker dialog. Kodi
@@ -245,8 +390,14 @@ install_overrides() {
 
 pkc_hdr
 bingie_widgets_streams
-if [ -f "$GUISETTINGS" ] && ! systemctl -q is-active kodi.service; then
-  kodi_settings
+if systemctl -q is-active kodi.service; then
+  settings_live
+else
+  if [ -f "$GUISETTINGS" ]; then
+    settings_file
+  fi
+  pin_skinshortcuts
+  install_pinned_addons
 fi
 if [ -d "$SKIN" ]; then
   hide_profile
