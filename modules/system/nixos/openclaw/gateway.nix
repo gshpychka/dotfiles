@@ -59,7 +59,11 @@ let
     TELEGRAM_BOT_TOKEN = "telegram-bot-token";
     TELEGRAM_OWNER_ID = "telegram-owner-id";
   }
+  // lib.optionalAttrs (cfg.memorySearch.apiKey != null) {
+    ${memorySearchKeyVar} = cfg.memorySearch.apiKey;
+  }
   // cfg.providerKeys;
+  memorySearchKeyVar = "MEMORY_SEARCH_API_KEY";
   envRef = id: {
     source = "env";
     provider = "default";
@@ -245,8 +249,8 @@ let
 
     inherit (cfg) tts;
   }
-  // lib.optionalAttrs (cfg.memorySearch.apiKeyVar != null) {
-    memory.search.remote.apiKey = envRef cfg.memorySearch.apiKeyVar;
+  // lib.optionalAttrs (cfg.memorySearch.apiKey != null) {
+    memory.search.remote.apiKey = envRef memorySearchKeyVar;
   };
 
   # The gateway refuses to start on unknown or legacy keys in a read-only
@@ -371,13 +375,13 @@ in
       '';
     };
 
-    memorySearch.apiKeyVar = lib.mkOption {
+    memorySearch.apiKey = lib.mkOption {
       type = lib.types.nullOr lib.types.str;
       default = null;
-      example = "OPENAI_API_KEY";
+      example = "openai-api-key";
       description = ''
-        The providerKeys variable holding the key memory search embeds with;
-        null leaves the embedding credential to OpenClaw's auth lookup.
+        The sopsFile key holding the API key memory search embeds with; null
+        leaves the embedding credential to OpenClaw's auth lookup.
       '';
     };
 
@@ -520,10 +524,6 @@ in
           # a variable claimed twice would resolve to only one of its sops keys
           assertion = lib.allUnique claims;
           message = "my.openclaw.mcpServers: secret variable names must be unique and differ from the gateway's own.";
-        }
-        {
-          assertion = cfg.memorySearch.apiKeyVar == null || cfg.providerKeys ? ${cfg.memorySearch.apiKeyVar};
-          message = "my.openclaw.memorySearch.apiKeyVar must name a variable in my.openclaw.providerKeys.";
         }
       ];
 
