@@ -23,7 +23,6 @@ let
   inherit (cfg) user home;
   # the sessions' default working directory
   workDir = "${home}/work";
-  outputChain = "openclaw-code-out";
 
   # Claude Code with the sessions' home and PATH.
   session = pkgs.writeShellApplication {
@@ -126,28 +125,6 @@ in
 
         # nix builds in sessions; the daemon admits only listed users
         nix.settings.allowed-users = [ user ];
-
-        # The gateway's trusted-proxy auth admits any loopback connection naming
-        # a proxied user, so sessions stay off its port; the ACP adapter
-        # connects as the gateway user.
-        networking.firewall.extraCommands = lib.mkIf (!config.networking.nftables.enable) ''
-          for ipt in iptables ${lib.optionalString config.networking.enableIPv6 "ip6tables"}; do
-            $ipt -w -N ${outputChain} 2>/dev/null || true
-            $ipt -w -F ${outputChain}
-            $ipt -w -A ${outputChain} -o lo -p tcp --dport ${toString gw.port} -j REJECT --reject-with tcp-reset
-            $ipt -w -C OUTPUT -m owner --uid-owner ${user} -j ${outputChain} 2>/dev/null \
-              || $ipt -w -A OUTPUT -m owner --uid-owner ${user} -j ${outputChain}
-          done
-        '';
-        networking.nftables.tables.${outputChain} = lib.mkIf config.networking.nftables.enable {
-          family = "inet";
-          content = ''
-            chain output {
-              type filter hook output priority filter; policy accept;
-              oif lo meta skuid "${user}" tcp dport ${toString gw.port} reject with tcp reset
-            }
-          '';
-        };
 
         my.openclaw.claudeCode.tools = with pkgs; [
           git
