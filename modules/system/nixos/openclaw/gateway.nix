@@ -244,6 +244,9 @@ let
     skills.load.extraDirs = [ "${skillsDir}" ];
 
     inherit (cfg) tts;
+  }
+  // lib.optionalAttrs (cfg.memorySearch.apiKeyVar != null) {
+    memory.search.remote.apiKey = envRef cfg.memorySearch.apiKeyVar;
   };
 
   # The gateway refuses to start on unknown or legacy keys in a read-only
@@ -365,6 +368,16 @@ in
       description = ''
         Provider credentials by the environment variable OpenClaw reads for
         them, each set from the named sopsFile key.
+      '';
+    };
+
+    memorySearch.apiKeyVar = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = null;
+      example = "OPENAI_API_KEY";
+      description = ''
+        The providerKeys variable holding the key memory search embeds with;
+        null leaves the embedding credential to OpenClaw's auth lookup.
       '';
     };
 
@@ -496,7 +509,6 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    # a variable claimed twice would resolve to only one of its sops keys
     assertions =
       let
         claims =
@@ -505,8 +517,13 @@ in
       in
       [
         {
+          # a variable claimed twice would resolve to only one of its sops keys
           assertion = lib.allUnique claims;
           message = "my.openclaw.mcpServers: secret variable names must be unique and differ from the gateway's own.";
+        }
+        {
+          assertion = cfg.memorySearch.apiKeyVar == null || cfg.providerKeys ? ${cfg.memorySearch.apiKeyVar};
+          message = "my.openclaw.memorySearch.apiKeyVar must name a variable in my.openclaw.providerKeys.";
         }
       ];
 

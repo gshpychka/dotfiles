@@ -41,6 +41,8 @@
       OPENAI_API_KEY = "openai-api-key";
       ELEVENLABS_API_KEY = "elevenlabs-api-key";
     };
+    # memory embeddings bill the API key; model calls go to the ChatGPT sign-in
+    memorySearch.apiKeyVar = "OPENAI_API_KEY";
     # spoken replies to voice notes
     tts = {
       provider = "elevenlabs";
