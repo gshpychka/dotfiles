@@ -1,7 +1,6 @@
 {
   config,
   pkgs,
-  lib,
   ...
 }:
 {
@@ -25,6 +24,10 @@
             enable = true;
             pituitary.enable = true;
           };
+          sops = {
+            enable = true;
+            ageIdentity = "host-key";
+          };
           ssh.enable = true;
           tmux.enable = true;
           tools.enable = true;
@@ -32,9 +35,6 @@
         };
 
         home.packages = with pkgs; [ ];
-
-        # age identity for the sops CLI, derived from the SSH host key at runtime.
-        home.sessionVariables.SOPS_AGE_KEY_CMD = "sudo ${lib.getExe pkgs.ssh-to-age} -private-key -i /etc/ssh/ssh_host_ed25519_key";
 
         home.stateVersion = "24.05";
       };
