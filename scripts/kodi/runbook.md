@@ -53,17 +53,24 @@ sends HDR10, which is how the Samsung S95C, a TV without Dolby Vision, shows
 profile 7 FEL. CPM publishes no builds.
 
 `cpm/build.sh` pins `cpm-code/CoreELEC`, which in turn pins its Kodi
-(`cpm-code/xbmc`), and adds the Kodi patches in `cpm/patches/`:
+(`cpm-code/xbmc`) and kernel (`cpm-code/linux-amlogic`), and adds the patches
+in `cpm/patches/`, one directory per package:
 
-- `local-demux-replay-seek.patch` drops the packets the startup probes queue
-  when playback seeks, so a resumed movie starts with audio and picture in sync
-- `local-window-close-message-flags.patch` reads a cross-thread window close's
-  force and sound flags from the field the sender fills, so a forced close
-  requested off the main thread completes
-- `local-render-osd-on-main-thread.patch` keeps the OSD and seek bar on Kodi's
-  main thread. CPM's overlay worker renders them from a second GL context, and
-  Kodi's GUI renderer keeps its shaders, matrices and viewport as state both
-  contexts share, so the worker's output comes out invisible or mirrored
+- `kodi/local-demux-replay-seek.patch` drops the packets the startup probes
+  queue when playback seeks, so a resumed movie starts with audio and picture
+  in sync
+- `kodi/local-window-close-message-flags.patch` reads a cross-thread window
+  close's force and sound flags from the field the sender fills, so a forced
+  close requested off the main thread completes
+- `kodi/local-render-osd-on-main-thread.patch` keeps the OSD and seek bar on
+  Kodi's main thread. CPM's overlay worker renders them from a second GL
+  context, and Kodi's GUI renderer keeps its shaders, matrices and viewport as
+  state both contexts share, so the worker's output comes out invisible or
+  mirrored
+- `linux/local-dv-ll-brightness-reset.patch` clears the Dolby Vision brightness
+  adjustment when Dolby Vision turns off. The adjustment sits in the video
+  post-processing every output passes through, so HDR10, HDR10+ and SDR
+  playback that follows Dolby Vision keeps the source's black level
 
 Build on reaper. The first build takes a few hours; a Kodi-only change takes
 minutes:

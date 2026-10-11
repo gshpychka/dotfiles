@@ -46,11 +46,14 @@ fi
 exec docker run --rm --log-driver none --name cpm-build \
   -v "$WORK":/build -v "$HERE/patches":/patches:ro -w /build "${BUILD_ENV[@]}" \
   -e FAKEROOT_SOURCE="$FAKEROOT_SOURCE" "$IMAGE" bash -ec '
-    kodi_patches=projects/Amlogic-ce/packages/mediacenter/kodi/patches
     # Ours are the local-*.patch files. A changed set changes the package
-    # hash, so the build re-unpacks and re-patches Kodi.
-    rm -f "$kodi_patches"/local-*.patch
-    cp /patches/local-*.patch "$kodi_patches"/
+    # hash, so the build re-unpacks and re-patches that package.
+    for target in kodi:projects/Amlogic-ce/packages/mediacenter/kodi/patches \
+                  linux:projects/Amlogic-ce/devices/Amlogic-ng/patches/linux; do
+      dir=${target#*:}
+      rm -f "$dir"/local-*.patch
+      cp /patches/"${target%%:*}"/local-*.patch "$dir"/
+    done
 
     (
       . config/options fakeroot
