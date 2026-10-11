@@ -87,8 +87,11 @@ with the databases in `.dbbackup/`.
 These live in Kodi's own settings and survive updates:
 
 - Settings > System > CoreELEC > Dolby Vision: mode On demand, type Player-led
-  (HDR), VS10 for SDR and HDR10 sources set to Dolby Vision, dual-layer
-  priority HDR10+, DV-LL limit "Min PQ 20 and limit max"
+  (HDR), VS10 off for every source except Dolby Vision, dual-layer priority
+  HDR10+, DV-LL limit "Min PQ 20 and limit max" with brightness adjustment -1,
+  the combination that clips least near black on the S95C (the black-clipping
+  patterns in hoard's `test-files` show from code 68 in Dolby Vision and 66 in
+  HDR10)
 - the injected VSVDB describes the S95C: BT.2020, 0 to 1252 cd/m², payload
   `4903885698A953`; RTINGS measures its peak at about 1,200–1,230 cd/m²
 - the injected HDR InfoFrame payload
