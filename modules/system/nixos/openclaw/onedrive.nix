@@ -1,6 +1,6 @@
 # The owner's OneDrive, synced both ways into the agent's workspace by the
 # OneDrive Client for Linux (https://github.com/abraunegg/onedrive), where the
-# agent's file tools and sandboxed sessions reach it.
+# agent's file tools reach it.
 #
 # Imperative, one-time: sign in to the owner's Microsoft account (open the
 # printed address, paste back the one the browser ends on), then start the sync:

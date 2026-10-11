@@ -4,13 +4,11 @@
 # Trust boundaries:
 #   - the gateway runs as its own system user and reads secrets from files
 #     rendered by sops; openclaw.json carries only env references;
-#   - the owner's main session (the Telegram DM) runs on this host as the
-#     gateway user. Its file tools stay inside the workspace, and its commands
-#     run against an allowlist (hostExec.allowlist), anything else waiting for
-#     the owner's approval in the Telegram DM;
-#   - every other session (automations, Control UI sessions) runs its tools in
-#     rootless Podman containers owned by that user, with no network and only
-#     the workspace.
+#   - every session runs its tools on this host as the gateway user. File tools
+#     stay inside the workspace, and commands run against an allowlist
+#     (hostExec.allowlist), anything else waiting for the owner's approval in
+#     the Telegram DM. OpenClaw checks a DM's sandbox policy under a per-peer
+#     key, so its non-main sandbox mode covers the owner's DM as well.
 #
 # Imperative, one-time without trustedProxy: a browser reaching the Control UI
 # through a reverse proxy is a remote device and must be paired from the host:
@@ -30,7 +28,6 @@ let
   cfg = config.my.openclaw;
   gw = config.services.openclaw-gateway;
   inherit (pkgs.stdenv.hostPlatform) system;
-  podman = config.virtualisation.podman.package;
 
   configEtcPath = lib.removePrefix "/etc/" gw.configPath;
   configFile = config.environment.etc.${configEtcPath}.source;
@@ -39,73 +36,10 @@ let
   sopsKey = key: "openclaw/${key}";
   placeholder = name: config.sops.placeholder.${name};
 
-  # Rootless Podman under a system service has no user session: runtime state
-  # goes to the unit's RuntimeDirectory, and the cgroupfs manager stands in for
-  # the systemd one, which needs a user D-Bus.
-  runtimeDir = "/run/${gw.unitName}";
-  containersConf = (pkgs.formats.toml { }).generate "openclaw-containers.conf" {
-    engine = {
-      cgroup_manager = "cgroupfs";
-      events_logger = "file";
-    };
-  };
-
-  # Tool-execution image. With no tag given, dockerTools tags the image with
-  # its output hash, so each content change yields a new immutable reference.
-  sandboxImage = pkgs.dockerTools.buildLayeredImage {
-    name = "openclaw-sandbox";
-    contents = with pkgs; [
-      bashInteractive
-      coreutils
-      findutils
-      diffutils
-      gnugrep
-      gnused
-      gawk
-      gnutar
-      gzip
-      curl
-      git
-      jq
-      ripgrep
-      # the sandbox filesystem bridge runs python3 from /bin
-      python3
-      cacert
-      dockerTools.fakeNss
-    ];
-    extraCommands = ''
-      mkdir -p tmp
-      chmod 1777 tmp
-    '';
-    config = {
-      Cmd = [
-        "sleep"
-        "infinity"
-      ];
-      Env = [
-        "PATH=/bin"
-        "SSL_CERT_FILE=/etc/ssl/certs/ca-bundle.crt"
-      ];
-    };
-  };
-  sandboxRepository = "localhost/${sandboxImage.imageName}";
-  sandboxImageRef = "${sandboxRepository}:${sandboxImage.imageTag}";
-
   # the private key exists only on this host
   generateAgeKey = pkgs.writeShellScript "openclaw-generate-age-key" ''
     set -euo pipefail
     [ -e ${cfg.ageKeyFile} ] || ${lib.getExe' pkgs.age "age-keygen"} -o ${cfg.ageKeyFile}
-  '';
-
-  # Loads the current image into the gateway user's store and drops earlier
-  # tags and their containers.
-  loadSandboxImage = pkgs.writeShellScript "openclaw-load-sandbox-image" ''
-    set -euo pipefail
-    ${lib.getExe podman} load --quiet --input ${sandboxImage}
-    ${lib.getExe podman} images --format '{{.Repository}}:{{.Tag}}' \
-        --filter reference=${sandboxRepository} \
-      | { grep -vxF ${sandboxImageRef} || true; } \
-      | xargs --no-run-if-empty ${lib.getExe podman} rmi --force
   '';
 
   enabledMcpServers = lib.filterAttrs (_: server: server.enable) cfg.mcpServers;
@@ -175,21 +109,18 @@ let
     OPENCLAW_STATE_DIR = gw.stateDir;
     OPENCLAW_DISABLE_BONJOUR = "1";
     HOME = gw.stateDir;
-    XDG_RUNTIME_DIR = runtimeDir;
-    CONTAINERS_CONF_OVERRIDE = "${containersConf}";
     SOPS_AGE_KEY_FILE = cfg.ageKeyFile;
   };
 
   # The operator CLI, run as the gateway user with the unit's environment.
   cli = pkgs.writeShellApplication {
     name = "openclaw";
-    runtimeInputs = [ podman ];
     text = ''
       if [ "$(id -un)" != ${gw.user} ]; then
         exec sudo -u ${gw.user} -- "$0" "$@"
       fi
-      # Node fails to spawn children (ffmpeg, podman) from a working directory
-      # the gateway user cannot enter
+      # Node fails to spawn children (ffmpeg) from a working directory the
+      # gateway user cannot enter
       [ -x . ] || cd ${gw.stateDir}
       ${lib.toShellVars gw.environment}
       export ${lib.concatStringsSep " " (lib.attrNames gw.environment)}
@@ -283,20 +214,6 @@ let
       inherit (cfg) workspace;
       userTimezone = config.time.timeZone;
       heartbeat.every = "0m";
-      sandbox = {
-        # OpenClaw starts ACP sessions only from an unsandboxed session
-        mode = "non-main";
-        backend = "podman";
-        scope = "agent";
-        workspaceAccess = "rw";
-        docker = {
-          image = sandboxImageRef;
-          network = "none";
-          readOnlyRoot = true;
-          capDrop = [ "ALL" ];
-        };
-        browser.enabled = false;
-      };
     }
     // lib.optionalAttrs (cfg.model.utility != null) {
       utilityModel = cfg.model.utility;
@@ -304,8 +221,7 @@ let
 
     tools = {
       exec = {
-        # the sandbox where the session has one, this host otherwise
-        host = "auto";
+        host = "gateway";
         # host commands: the allowlist runs, anything else asks the owner
         mode = "ask";
         pathPrepend = [
@@ -315,18 +231,7 @@ let
           config.security.wrapperDir
         ];
       };
-      # sandboxed sessions never reach the host
-      elevated.enabled = false;
       fs.workspaceOnly = true;
-      # Tools sandboxed sessions get beyond the core file/exec set; MCP tools
-      # belong to the bundle-mcp plugin id.
-      sandbox.tools.alsoAllow = [
-        "bundle-mcp"
-        "web_fetch"
-        "web_search"
-        "group:memory"
-        "message"
-      ];
       media = {
         # an empty model list otherwise falls through to auto-detection
         audio.enabled = cfg.transcription != [ ];
@@ -611,9 +516,7 @@ in
       config = openclawConfig;
       environment = gatewayEnv;
       environmentFiles = [ config.sops.templates."openclaw.env".path ];
-      servicePath = [ podman ];
       execStartPre = [
-        "${loadSandboxImage}"
         "${generateAgeKey}"
         # non-fatal: OpenClaw's default approvals ask for every host command
         "-${lib.getExe' gw.package "openclaw"} approvals set --file ${approvalsFile}"
@@ -626,10 +529,8 @@ in
       inherit (gw) user group;
     };
 
-    users.users.${gw.user}.autoSubUidGidRange = true;
     # for tmpfiles rules inside it: tmpfiles creates a missing parent as root
     systemd.tmpfiles.rules = [ "d ${cfg.workspace} 0700 ${gw.user} ${gw.group} - -" ];
-    virtualisation.podman.enable = true;
 
     my.openclaw = {
       # sops with the agent's own key (SOPS_AGE_KEY_FILE), for secrets encrypted to it
@@ -670,13 +571,12 @@ in
       serviceConfig = {
         StandardOutput = lib.mkForce "journal";
         StandardError = lib.mkForce "journal";
-        RuntimeDirectory = gw.unitName;
         UMask = "0077";
         # No filesystem sandboxing: host commands share this unit's mount
         # namespace, and root ones through sudo write /nix, /etc and /root.
         # No NoNewPrivileges, nor seccomp-backed directives, which imply it for
         # a non-root User= (context_has_seccomp, src/core/exec-invoke.c): sudo
-        # and rootless Podman's newuidmap/newgidmap are setuid.
+        # is setuid.
         MemoryMax = "6G";
         TasksMax = 1024;
       };
