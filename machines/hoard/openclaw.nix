@@ -54,7 +54,6 @@
     # HA's MCP Server integration: the Assist API over the entities exposed
     # to it, as a dedicated HA user
     mcpServers.home-assistant = {
-      enable = false;
       settings = {
         url = "http://homeassistant.${config.my.domain}:8123/api/mcp";
         transport = "streamable-http";
@@ -65,7 +64,6 @@
     # The ha-mcp app (https://homeassistant-ai.github.io/ha-mcp/), for HA
     # administration; its URL path is its only credential.
     mcpServers.home-assistant-admin = {
-      enable = false;
       settings = {
         url = "http://homeassistant.${config.my.domain}:9583/\${HOME_ASSISTANT_ADMIN_MCP_PATH}";
         transport = "streamable-http";
