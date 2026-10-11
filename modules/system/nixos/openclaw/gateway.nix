@@ -307,7 +307,12 @@ let
         host = "auto";
         # host commands: the allowlist runs, anything else asks the owner
         mode = "ask";
-        pathPrepend = [ "${hostTools}/bin" ];
+        pathPrepend = [
+          "${hostTools}/bin"
+          # setuid wrappers such as sudo; the login-shell PATH OpenClaw merges
+          # in has them too, but it is dropped when OpenClaw's probe fails
+          config.security.wrapperDir
+        ];
       };
       # sandboxed sessions never reach the host
       elevated.enabled = false;
