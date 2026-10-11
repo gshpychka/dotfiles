@@ -4,9 +4,11 @@
 # ./bootstrap/terraform-backend.sh   # new GCP project only: create tf state bucket
 # nix build ..#packages.x86_64-linux.gce-image -o result   # bootstrap image .raw.tar.gz
 # cd buoy && tg apply -var grant_vm_sops_age_key_access=true   # age key → Secret Manager, VM, data disk, static IP, DNS
-#   rotating the age key: add -replace=age_secret_key.sops -replace=google_compute_instance.vm
-#   if fetch-sops-age-key failed (IAM grants take a minute or two): ssh root@buoy systemctl restart fetch-sops-age-key
+#   rotating the age key: run it with -replace=age_secret_key.sops, then again with -replace=google_compute_instance.vm
+#   (one apply creates the VM, the key and the grant in parallel)
 # tg output -raw sops_age_public_key   # → buoy_host (new on first apply / lost tf state)
+# ssh root@buoy cat /mnt/data/sops-age-key.txt | age-keygen -y   # prints buoy_host
+#   otherwise (IAM grants take a minute or two): ssh root@buoy systemctl restart fetch-sops-age-key, and check again
 # if buoy_host changed (repo root): set .sops.yaml buoy_host
 #   nix shell nixpkgs#sops nixpkgs#gnupg -c find secrets -type f -exec sops updatekeys -y {} \;   # YubiKey plugged in
 #   git commit -am rekey && git push
