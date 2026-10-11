@@ -9,7 +9,7 @@
 #      permissions Contents, Pull requests and Workflows read and write.
 #      Note the App ID and the slug in the App's public link.
 #   2. Generate a private key, then store it and delete the download:
-#        sops set secrets/hoard/openclaw.yaml '["github-app-private-key"]' "$(jq -Rs . < key.pem)"
+#        jq -Rs . < key.pem | sops set --value-stdin secrets/hoard/openclaw.yaml '["github-app-private-key"]'
 #   3. Install App > the owner's account > only select repositories. The
 #      installation ID ends the installation's settings URL.
 #   4. Bot user ID, for commit attribution:
