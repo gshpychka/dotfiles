@@ -1,0 +1,75 @@
+--- a/src/plugins/discovery.ts
++++ b/src/plugins/discovery.ts
+@@ -31,9 +31,12 @@
+   shouldSkipIncompatiblePackagePluginApi,
+ } from "./discovery-availability.js";
+ import { addMissingRequiredPluginDiagnostics } from "./discovery-required-plugins.js";
+ import type { PluginCandidate, PluginDiscoveryResult } from "./discovery.types.js";
+-import { shouldRejectHardlinkedPluginFiles } from "./hardlink-policy.js";
++import {
++  isTrustedNixStorePluginRoot,
++  shouldRejectHardlinkedPluginFiles,
++} from "./hardlink-policy.js";
+ import { hashStableJson } from "./installed-plugin-index-hash.js";
+ import type { PluginBundleFormat, PluginDiagnostic, PluginFormat } from "./manifest-types.js";
+ import {
+   DEFAULT_PLUGIN_ENTRY_CANDIDATES,
+@@ -115,8 +118,9 @@
+   };
+ }
+ 
+ function checkPathStatAndPermissions(params: {
++  env: NodeJS.ProcessEnv;
+   source: string;
+   rootDir: string;
+   origin: PluginOrigin;
+   uid: number | null;
+@@ -167,8 +171,9 @@
+     }
+     if (
+       params.origin !== "bundled" &&
+       params.uid !== null &&
++      !isTrustedNixStorePluginRoot(params) &&
+       typeof stat.uid === "number" &&
+       stat.uid !== params.uid &&
+       stat.uid !== 0
+     ) {
+@@ -579,8 +584,9 @@
+     const resolvedRoot = pluginCacheRealpathSync(params.rootDir) ?? path.resolve(params.rootDir);
+     const issue =
+       checkSourceEscapesRoot({ source: resolved, rootDir: resolvedRoot }) ??
+       checkPathStatAndPermissions({
++        env,
+         source: resolved,
+         rootDir: resolvedRoot,
+         origin: params.origin,
+         uid: currentUid(ownershipUid),
+--- a/src/plugins/hardlink-policy.ts
++++ b/src/plugins/hardlink-policy.ts
+@@ -22,8 +22,15 @@
+   const rootRealPath = pluginCacheRealpathSync(rootDir) ?? path.resolve(rootDir);
+   return rootRealPath === NIX_STORE_ROOT || rootRealPath.startsWith(`${NIX_STORE_ROOT}/`);
+ }
+ 
++export function isTrustedNixStorePluginRoot(params: {
++  rootDir: string;
++  env?: NodeJS.ProcessEnv;
++}): boolean {
++  return resolveIsNixMode(params.env) && isNixStorePluginRoot(params.rootDir);
++}
++
+ /** Decides whether plugin file hardlinks should fail boundary validation for one root. */
+ export function shouldRejectHardlinkedPluginFiles(params: {
+   origin: PluginOrigin;
+   rootDir: string;
+@@ -32,9 +39,9 @@
+ }): boolean {
+   if (params.origin === "bundled") {
+     return false;
+   }
+-  if (resolveIsNixMode(params.env) && isNixStorePluginRoot(params.rootDir)) {
++  if (isTrustedNixStorePluginRoot(params)) {
+     return false;
+   }
+   return true;
+ }

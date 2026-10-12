@@ -55,6 +55,13 @@ in
         services.openclaw-gateway = {
           # sessions inherit the gateway's PATH
           servicePath = cfg.hostTools;
+          config.agents.entries.claude.runtime = {
+            type = "acp";
+            acp = {
+              agent = "claude";
+              backend = "acpx";
+            };
+          };
           # The adapter bundled with acpx carries its own `claude`, a binary
           # for generic Linux that NixOS cannot run; it honours this variable.
           environment.CLAUDE_CODE_EXECUTABLE = lib.getExe pkgs.claude-code;

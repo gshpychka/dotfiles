@@ -555,7 +555,10 @@ in
 
     services.openclaw-gateway = {
       enable = true;
-      package = inputs.nix-openclaw.packages.${system}.openclaw-gateway;
+      package = import ../../../../packages/openclaw-approval-fix {
+        inherit inputs system;
+        approvalPatch = ../../../../packages/openclaw-approval-fix/approval-scope.patch;
+      };
       config = openclawConfig;
       environment = gatewayEnv;
       environmentFiles = [ config.sops.templates."openclaw.env".path ];
