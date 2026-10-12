@@ -18,7 +18,7 @@ let
   };
 
   # a shell file exporting the unit's environment: its variables, then the
-  # files it loads
+  # files it loads, under `set -a` so that their variables are exported too
   environment = pkgs.writeText "openclaw-environment.sh" (
     lib.concatLines (
       lib.mapAttrsToList (name: value: "export ${lib.toShellVar name value}") variables
@@ -31,17 +31,17 @@ let
   cli = pkgs.writeShellApplication {
     name = "openclaw";
     text = ''
-      # the gateway user owns the state directory, and alone reads the config
+      # `id -un` is the current user; any but the gateway user re-runs this script as it
       if [ "$(id -un)" != ${gw.user} ]; then
+        # this script again ("$0" "$@") as the gateway user with its home (-H); config and state are its alone
         exec sudo -H -u ${gw.user} -- "$0" "$@"
       fi
-      # Node fails to spawn children (ffmpeg) from a working directory the
-      # gateway user cannot enter
+      # moves out of a directory the gateway user cannot enter (-x), from which Node fails to spawn ffmpeg
       [ -x . ] || cd ${gw.stateDir}
-      # the unit's environment
+      # the file run in this shell (`.`), which keeps what it exports: the unit's environment
       # shellcheck disable=SC1091
       . ${environment}
-      # the unit's own binary
+      # the gateway package's binary in place of this shell, the arguments passed on
       exec ${lib.getExe' gw.package "openclaw"} "$@"
     '';
   };
