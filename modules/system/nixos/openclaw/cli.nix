@@ -33,11 +33,14 @@ let
     text = ''
       # whether the current user (`id -un`) is someone other than the gateway user
       if [ "$(id -un)" != ${gw.user} ]; then
-        # this script again ("$0" "$@") as the gateway user with its home (-H); config and state are its alone
+        # this script again ("$0" "$@") as the gateway user with its home (-H)
         exec sudo -H -u ${gw.user} -- "$0" "$@"
       fi
-      # moves out of a directory the gateway user cannot enter (-x), from which Node fails to spawn ffmpeg
-      [ -x . ] || cd ${gw.stateDir}
+      # whether the working directory (`.`) can be entered (-x) by the current user
+      if ! [ -x . ]; then
+        # the state directory instead: Node fails to spawn a child process from a directory it cannot enter
+        cd ${gw.stateDir}
+      fi
       # the file run in this shell (`.`), which keeps what it exports: the unit's environment
       # shellcheck disable=SC1091
       . ${environment}
