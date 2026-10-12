@@ -93,4 +93,10 @@
     rebuild.enable = true;
     onedrive.enable = true;
   };
+
+  my.tpmSshKey = {
+    enable = true;
+    user = config.services.openclaw-gateway.user;
+  };
+  services.openclaw-gateway.environment.SSH_AUTH_SOCK = config.my.tpmSshKey.socket;
 }
