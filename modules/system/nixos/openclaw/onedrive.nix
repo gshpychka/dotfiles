@@ -1,5 +1,5 @@
-# The host's OneDrive sync (my.onedrive), read and written by the agent as a
-# member of its group.
+# The host's OneDrive sync (my.onedrive) for the agent: membership in its
+# group, so the agent's file tools work in the tree, and a skill describing it.
 { config, lib, ... }:
 let
   cfg = config.my.openclaw;
@@ -7,8 +7,9 @@ let
   onedrive = config.my.onedrive;
 in
 {
-  options.my.openclaw.onedrive.enable =
-    lib.mkEnableOption "the agent's access to the host's OneDrive sync";
+  options.my.openclaw.onedrive.enable = lib.mkEnableOption ''
+    the host's OneDrive sync for the agent: its file tools in the tree, and a
+    skill describing it'';
 
   config = lib.mkIf (cfg.enable && cfg.onedrive.enable) {
     assertions = [
