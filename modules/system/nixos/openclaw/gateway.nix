@@ -34,10 +34,12 @@ let
   configFile = config.environment.etc.${configEtcPath}.source;
   unit = "${gw.unitName}.service";
 
+  # the nixpkgs that builds the rest of the gateway; updates to ours leave it unchanged
+  openclawPkgs = inputs.nix-openclaw.inputs.nixpkgs.legacyPackages.${system};
   gatewayPackage = inputs.nix-openclaw.packages.${system}.openclaw-gateway.override (old: {
-    gatewaySrc = pkgs.applyPatches {
+    gatewaySrc = openclawPkgs.applyPatches {
       name = "openclaw-${old.sourceInfo.releaseVersion}-source";
-      src = pkgs.fetchFromGitHub {
+      src = openclawPkgs.fetchFromGitHub {
         inherit (old.sourceInfo)
           owner
           repo
