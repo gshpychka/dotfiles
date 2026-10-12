@@ -10,7 +10,8 @@
 }:
 let
   cfg = config.my.openclaw;
-  codexPlugin = inputs.nix-openclaw.packages.${pkgs.stdenv.hostPlatform.system}.openclaw-runtime-plugin-codex;
+  codexPlugin =
+    inputs.nix-openclaw.packages.${pkgs.stdenv.hostPlatform.system}.openclaw-runtime-plugin-codex;
 in
 {
   config = lib.mkIf cfg.enable {
@@ -22,7 +23,10 @@ in
           # Managed stdio bridges the ordered OpenClaw OAuth profile in memory.
           # Leave command unset so the plugin uses its own pinned binary.
           homeScope = "agent";
-          clearEnv = [ "CODEX_API_KEY" "OPENAI_API_KEY" ];
+          clearEnv = [
+            "CODEX_API_KEY"
+            "OPENAI_API_KEY"
+          ];
         };
       };
     };
