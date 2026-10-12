@@ -16,6 +16,7 @@ let
     p.hashicorp_google
     p.clementblaise_age
     p.tailscale_tailscale
+    p.hashicorp_aws
   ]);
   # sops exec-env takes one command string, which a shell re-parses, so each
   # argument is requoted with printf %q
@@ -30,6 +31,7 @@ pkgs.mkShell {
   buildInputs = [
     terraform
     pkgs.google-cloud-sdk
+    pkgs.awscli2
     pkgs.sops
     pkgs.age
     pkgs.terragrunt
@@ -44,5 +46,11 @@ pkgs.mkShell {
     export TF_VAR_gcp_project_id="${values.gcpProjectId}"
     export TF_VAR_domain_name="${values.domain}"
     export TF_STATE_BUCKET="${values.gcpTfStateBucket}"
+    # like gcloud's, the AWS login lives under infra/.home, apart from any
+    # other AWS profiles on the machine; sign in once with `aws configure sso`
+    # (or `aws configure`) against the personal account infra/aws manages
+    export AWS_CONFIG_FILE=$REPO_ROOT/infra/.home/.aws/config
+    export AWS_SHARED_CREDENTIALS_FILE=$REPO_ROOT/infra/.home/.aws/credentials
+    export TF_VAR_user="${values.user}"
   '';
 }

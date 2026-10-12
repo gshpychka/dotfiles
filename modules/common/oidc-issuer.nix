@@ -17,7 +17,7 @@ in
       type = lib.types.str;
       readOnly = true;
       # infra/reaper/dns.tf points this name at the publishing machine's
-      # tunnel (reaper-tunnel)
+      # tunnel (reaper-tunnel); infra/aws trusts it as an OIDC provider
       default = "tokens.${config.my.domain}";
       description = "Public hostname of the issuer.";
     };
@@ -33,7 +33,8 @@ in
     audience = lib.mkOption {
       type = lib.types.str;
       readOnly = true;
-      # the audience GitHub Actions and the AWS docs use for STS
+      # the audience GitHub Actions and the AWS docs use for STS; infra/aws
+      # registers it
       default = "sts.amazonaws.com";
       description = "`aud` claim of every token; the client ID registered with the AWS OIDC provider.";
     };

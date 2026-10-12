@@ -37,10 +37,9 @@
 #   after a rotation, once my.oidcIssuer.signer.tokenLifetime has passed, drop
 #   the old entry and delete /var/lib/oidc-issuer/<old kid>
 #
-# AWS side, once per account:
-#   aws iam create-open-id-connect-provider --url https://tokens.glib.sh --client-id-list sts.amazonaws.com
-#   each role's trust policy: Principal.Federated = that provider's ARN,
-#   Action = sts:AssumeRoleWithWebIdentity, Condition.StringEquals =
+# AWS side: infra/aws creates the OIDC provider for my.oidcIssuer.url and a
+# test role. Each role's trust policy: Principal.Federated = that provider's
+# ARN, Action = sts:AssumeRoleWithWebIdentity, Condition.StringEquals =
 #   { "tokens.glib.sh:aud": "sts.amazonaws.com", "tokens.glib.sh:sub": "reaper:<user>" }
 #
 # Usage, as a client user:
