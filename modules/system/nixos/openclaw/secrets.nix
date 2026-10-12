@@ -60,7 +60,7 @@ in
         content = lib.concatStrings (
           lib.mapAttrsToList (var: key: "${var}=${config.sops.placeholder.${sopsName key}}\n") cfg.secrets
         );
-        # the gateway user's own processes read it as well as systemd
+        # the gateway user reads it directly
         owner = gw.user;
         restartUnits = [ "${gw.unitName}.service" ];
       };

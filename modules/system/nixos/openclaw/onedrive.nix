@@ -5,6 +5,10 @@
 # printed address, paste back the one the browser ends on), then start the sync:
 #   sudo -iu openclaw onedrive --display-quota
 #   sudo systemctl start openclaw-onedrive
+#
+# Imperative, whenever the service has stopped on a required --resync:
+#   sudo -iu openclaw onedrive --sync --resync
+#   sudo systemctl start openclaw-onedrive
 {
   config,
   lib,
@@ -52,9 +56,7 @@ in
         ExecStart = "${lib.getExe pkgs.onedrive} --monitor";
         Restart = "on-failure";
         RestartSec = "5min";
-        # the client's exit statuses for a required --resync (126 through 2.5.11,
-        # 78 on upstream's master); recover with
-        # `sudo -iu openclaw onedrive --sync --resync` and a restart
+        # the client's exit status for a required --resync: 126 through 2.5.11, 78 after
         RestartPreventExitStatus = [
           78
           126

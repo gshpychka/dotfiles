@@ -69,7 +69,7 @@ in
             if cfg.trustedProxy.enable then
               {
                 mode = "trusted-proxy";
-                # clients that bypass the proxy, such as the operator CLI
+                # clients that bypass the proxy
                 password = cfg.secretRefs.${secretVar};
                 trustedProxy = {
                   inherit (cfg.trustedProxy) userHeader;
