@@ -31,7 +31,7 @@ let
   cli = pkgs.writeShellApplication {
     name = "openclaw";
     text = ''
-      # `id -un` is the current user; any but the gateway user re-runs this script as it
+      # whether the current user (`id -un`) is someone other than the gateway user
       if [ "$(id -un)" != ${gw.user} ]; then
         # this script again ("$0" "$@") as the gateway user with its home (-H); config and state are its alone
         exec sudo -H -u ${gw.user} -- "$0" "$@"
