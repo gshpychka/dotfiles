@@ -8,6 +8,7 @@
 let
   cfg = config.my.openclaw;
   gw = config.services.openclaw-gateway;
+  host = config.networking.hostName;
 in
 {
   options.my.openclaw.root.sshKey = lib.mkOption {
@@ -42,5 +43,18 @@ in
     };
     # sudo's pam_ssh_agent_auth reads /etc/ssh/authorized_keys.d/%u, as does sshd
     users.users.${gw.user}.openssh.authorizedKeys.keys = [ cfg.root.sshKey ];
+
+    my.openclaw.skills.nixos-rebuild = {
+      description = "Rebuild and switch this host (${host}) from a checkout of its NixOS config.";
+      text = ''
+        Send a switch's output to a file:
+
+            sudo nixos-rebuild switch --flake .#${host} >${cfg.workspace}/nixos-rebuild.log 2>&1
+
+        A switch may restart this gateway mid-turn. The activation carries on
+        in its own unit, writing to your command's output, and dies on a
+        closed pipe. After the restart, the log shows how it ended.
+      '';
+    };
   };
 }

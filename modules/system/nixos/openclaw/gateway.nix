@@ -249,9 +249,10 @@ let
         mode = "full";
         pathPrepend = [
           "${extraPackages}/bin"
-          # setuid wrappers such as sudo; OpenClaw's login-shell PATH merge
-          # is best-effort
+          # setuid wrappers such as sudo, then the system's packages;
+          # OpenClaw's login-shell PATH merge is best-effort
           config.security.wrapperDir
+          "/run/current-system/sw/bin"
         ];
         applyPatch.workspaceOnly = false;
       };
@@ -570,8 +571,7 @@ in
 
     environment.systemPackages = [
       cli
-      # media decoding resolves ffmpeg/ffprobe only from fixed system paths,
-      # /run/current-system/sw/bin on NixOS, never from PATH
+      # OpenClaw decodes media with the ffmpeg and ffprobe in /run/current-system/sw/bin
       pkgs.ffmpeg-headless
     ];
 
@@ -582,11 +582,6 @@ in
         StandardOutput = lib.mkForce "journal";
         StandardError = lib.mkForce "journal";
         UMask = "0077";
-        # No filesystem sandboxing: host commands share this unit's mount
-        # namespace, and root ones through sudo write /nix, /etc and /root.
-        # No NoNewPrivileges, nor seccomp-backed directives, which imply it for
-        # a non-root User= (context_has_seccomp, src/core/exec-invoke.c): sudo
-        # is setuid.
         MemoryMax = "6G";
         TasksMax = 1024;
       };
