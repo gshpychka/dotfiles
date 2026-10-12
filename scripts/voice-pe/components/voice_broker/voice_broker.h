@@ -14,6 +14,16 @@
 //   audio task   speaker output callback: frames PLAYED reports into io_queue_
 
 #include "protocol.h"
+#include "esphome/components/api/custom_api_device.h"
+#include "esphome/core/preferences.h"
+#include <mutex>
+
+#ifndef USE_API_NOISE
+#error "voice_broker credential provisioning requires API Noise encryption"
+#endif
+#ifdef USE_API_PLAINTEXT
+#error "voice_broker credential provisioning must not accept plaintext API connections"
+#endif
 
 #include "esphome/components/microphone/microphone_source.h"
 #include "esphome/components/ring_buffer/ring_buffer.h"
@@ -37,7 +47,7 @@ namespace esphome::voice_broker {
 
 enum class Phase : uint8_t { LISTENING, THINKING, REPLYING };
 
-class VoiceBroker : public Component {
+class VoiceBroker : public Component, public api::CustomAPIDevice {
  public:
   void setup() override;
   void loop() override;
@@ -45,13 +55,15 @@ class VoiceBroker : public Component {
   float get_setup_priority() const override { return setup_priority::AFTER_WIFI; }
 
   void set_url(const std::string &url) { this->url_ = url; }
-  void set_token(const std::string &token) { this->token_ = token; }
+  void provision_token(std::string token);
   void set_microphone_source(microphone::MicrophoneSource *source) { this->mic_source_ = source; }
   void set_speaker(speaker::Speaker *speaker) { this->speaker_ = speaker; }
 
   Trigger<std::string> *get_phase_trigger() { return &this->phase_trigger_; }
   Trigger<> *get_end_trigger() { return &this->end_trigger_; }
   Trigger<> *get_error_trigger() { return &this->error_trigger_; }
+
+  Trigger<std::string> *get_startup_failure_trigger() { return &this->startup_failure_trigger_; }
 
   // Opens a conversation; no-op if one is running.
   void start(const std::string &wake_word);
@@ -60,7 +72,7 @@ class VoiceBroker : public Component {
   bool is_running() const { return this->state_ != State::IDLE; }
 
  protected:
-  enum class State : uint8_t { IDLE, CONNECTING, ACTIVE };
+  enum class State : uint8_t { IDLE, CONNECTING, WAITING_READY, ACTIVE };
 
   struct IoItem {
     enum Op : uint8_t { OPEN, CLOSE, BINARY, TEXT } op;
@@ -97,15 +109,20 @@ class VoiceBroker : public Component {
   void queue_control_(const char *type, std::initializer_list<std::pair<const char *, std::string>> fields = {});
   void feed_speaker_();
   void teardown_();
+  void startup_failure_();
 
   std::string url_;
+  struct SavedToken { char value[257]{}; };
   std::string token_;
+  ESPPreferenceObject token_preference_;
+  std::mutex token_mutex_;
   microphone::MicrophoneSource *mic_source_{nullptr};
   speaker::Speaker *speaker_{nullptr};
 
   Trigger<std::string> phase_trigger_;
   Trigger<> end_trigger_;
   Trigger<> error_trigger_;
+  Trigger<std::string> startup_failure_trigger_;
 
   State state_{State::IDLE};
   std::string wake_word_;

@@ -2,8 +2,7 @@
 # through the voice broker on hoard.
 #
 # Everything stock comes from the upstream release below; this file only adds
-# the voice_broker component, the "Voice backend" select and the wake word
-# routing between the two. Deployment: runbook.md.
+# the voice_broker component and per-wake-word routing. Deployment: runbook.md.
 
 substitutions:
   # packages/voice-broker on hoard; the port is my.voice-broker.port
@@ -19,29 +18,31 @@ packages:
 # Improv and are reused from there; Improv over USB can replace them.
 improv_serial:
 
+# Keys are restored/provisioned from device NVS, never compiled in.
+api:
+  encryption: {}
+  custom_services: true
+
+# API protobuf dumps at VERY_VERBOSE can contain action arguments.
+logger:
+  level: INFO
+
 external_components:
   - source:
       type: local
       path: components
     components: [voice_broker]
 
-select:
-  - platform: template
-    id: voice_backend
-    name: Voice backend
-    icon: mdi:account-voice
-    entity_category: config
-    optimistic: true
-    restore_value: true
-    options:
-      - Home Assistant
-      - Live
-    initial_option: Home Assistant
+# ESPHome enables only the first model by default and restores enabled state.
+# Append to the upstream client-connected list; do not override its boot script.
+voice_assistant:
+  on_client_connected:
+    - micro_wake_word.enable_model: okay_nabu
+    - micro_wake_word.enable_model: hey_jarvis
 
 voice_broker:
   id: broker
   url: ${voice_broker_url}
-  token: !secret voice_broker_token
   microphone:
     microphone: i2s_mics
     # XMOS channel 0 carries its echo-cancelled output; the broker's AEC
@@ -59,6 +60,14 @@ voice_broker:
           id(voice_assistant_phase) = ${voice_assist_replying_phase_id};
         }
     - script.execute: control_leds
+  # Only before any mic audio has been sent to Live. Never replay commands.
+  on_startup_failure:
+    - mixer_speaker.apply_ducking:
+        id: media_mixing_input
+        decibel_reduction: 0
+        duration: 1.0s
+    - voice_assistant.start:
+        wake_word: !lambda return wake_word;
   on_error:
     - lambda: id(voice_assistant_phase) = ${voice_assist_error_phase_id};
     - script.execute: control_leds
@@ -142,9 +151,7 @@ micro_wake_word:
                                           - delay: 300ms
                                     - if:
                                         condition:
-                                          select.is:
-                                            id: voice_backend
-                                            options: [Live]
+                                          lambda: return wake_word == "Hey Jarvis";
                                         then:
                                           - mixer_speaker.apply_ducking:
                                               id: media_mixing_input

@@ -2,8 +2,9 @@
 
 The Voice PEs (the hosts with a `voiceArea` in `modules/common/hosts.nix`) run
 one firmware, `voice-pe.yaml`: the stock Home
-Assistant Voice firmware with one addition, a **Voice backend** select. "Home Assistant" is the stock Assist path, still switched between
-pipelines by the Assistant selects. "Live" hands the conversation to the
+Assistant Voice firmware with per-wake-word routing. **Okay Nabu** uses
+the stock Assist path, still switched between pipelines by the Assistant
+selects. **Hey Jarvis** hands the conversation to the
 voice broker on hoard (`machines/hoard/voice-broker.nix`), which
 runs it on GPT-Live. GPT-Live listens while it speaks and decides itself when
 to answer, yield or keep going. Work it delegates goes to OpenClaw's main
@@ -41,29 +42,163 @@ speaker with it.
    the broker only accepts those addresses. Home Assistant finds them again
    through zeroconf.
 
-## Flashing
+## Offline Nix firmware
 
-Over the air, one build for every PE, or only the ones named:
+Build only on configured reaper. Zero local jobs is mandatory: hoard previously
+overheated. A path flake includes the currently untracked implementation.
 
 ```sh
-nix run .#flash-voice-pe [pe...]
+sudo -n nix build "path:$PWD#voice-pe-firmware" --max-jobs 0 --cores 8 --no-link --print-out-paths -L
 ```
 
-`flash.sh` does it with the flake's ESPHome and sops. It needs to decrypt the
-secrets file, so run it where a sops key is available.
+Outputs: `firmware.bin` (OTA application), bootloader, partition table, ELF, size
+report, checksums and offline-build evidence. Ordinary sandboxed derivation: no
+network routes, IDF manager disabled, dependencies vendored and SHA-256 locked.
+Changes to YAML/component source automatically regenerate the Nix project.
 
-Wi-Fi credentials and the Home Assistant API key live in the device's flash
-and survive the reflash, so the device stays adopted. The first build
-downloads the ESP-IDF toolchain into `.esphome/` and takes a while.
+All inputs are reconstructible from repository source and public hash-pinned fetches.
+`public-inputs.lock.json` pins both upstream commits, 12 IDF managed component
+archives and three PlatformIO libraries. `assets.lock.json` pins five model
+manifests/models and XMOS firmware; sounds come from the immutable external
+upstream commit. `python-inputs.lock.json` pins the IDF build-time Python closure
+(wheels, plus pure-Python esptool source). Native wheel ELF dependencies are
+patched with Nix libraries; downloads occur only in fixed-output fetch derivations.
 
-This build has no firmware update entity, so Home Assistant no longer offers
-upstream releases for the devices. To pick one up, bump `ref` in
-`voice-pe.yaml` and reflash.
+`project.nix` starts with a new HOME and empty project, runs ESPHome 2026.8.0
+code generation offline, redirects only declared pinned library/XMOS sources,
+and fails unexpected downloads. Firmware compilation uses two CMake configure
+passes: the first discovers built-in IDF components, the second supplies their
+REQUIRES. Neither step consumes an old ESPHome build directory. Build metadata
+uses a fixed release epoch, independent of wall-clock time.
+
+No imported store snapshots, local caches or GC roots are needed. The earlier
+`nix-inputs.lock.json` and `prepare-nix-inputs.py` remain preserved as unused
+preflight artifacts; they are not in the package dependency graph.
+
+To update, change the release/commit/archive/PyPI hash locks deliberately, review
+localization in `reconstruct.py`, then build and run the regression/artifact tests.
+Never add Wi-Fi/API/broker secrets as Nix attributes or files.
+
+Existing-solution preflight: `marcus7070/esphome-flake` packages only the old CLI.
+`mirrexagon/nixpkgs-esp-dev` provides maintained IDF/tool recipes (default 5.5.2),
+not this Voice PE 5.5.5 ESPHome assets and managed-component closure. This package
+uses upstream public archives and the existing pinned modern ESPHome CLI.
+
+## Explicit flashing (never performed by a build)
+
+After separate deployment authorization, choose one already-adopted PE:
+
+```sh
+nix run "path:$PWD#flash-voice-pe" -- --confirm-flash /nix/store/…-voice-pe-firmware-… kitchen.glib.sh
+```
+
+Validates checksums and uploads a prebuilt OTA application only. Never decrypts
+secrets, compiles, changes partitions, or defaults to all devices. Wi-Fi/API keys
+survive OTA in NVS. Factory/USB recovery is separate. Wrapper assumes the existing
+stock OTA endpoint has no password.
+
+## Runtime broker credential
+
+Stop conversations, then provision from a private terminal:
+
+```sh
+nix run "path:$PWD#provision-voice-pe" -- kitchen.glib.sh
+```
+
+Private prompts for existing API Noise key and broker token (empty clears). No
+secrets enter Nix inputs/store, argv, source or shell history. Write-only action
+reports sent, not accepted: verify a new Live conversation separately. Updates
+are rejected while busy, without a nonzero authenticated Noise key, or containing
+overlong/control/whitespace characters. Token persists in preferences/NVS. Failed
+persistence leaves the in-memory active token unchanged. I/O owner rebuilds
+authorization under a mutex per connection. Missing/cleared token uses Assist.
+
+Package removes plaintext API support and compiles INFO logging: protobuf dumps
+cannot expose action arguments. Factory-reset devices need their Noise key first;
+all-zero provisioning key cannot provision broker credentials. Custom-action
+authorization snapshots whether a nonzero key existed at connection creation: an
+onboarding connection cannot acquire action rights after another client adopts
+the device. NVS is not encrypted
+at rest: physical flash access can recover secrets. Existing broker transport is
+`ws://` on trusted LAN, not TLS; never expose it on an untrusted network.
 
 ## Using it
 
-Set **Voice backend** to Live on the device page. Watch the broker with
+Say **Okay Nabu** for normal Assist, or **Hey Jarvis** for Live. Both models
+are enabled on HA client connection (also after reboot), overriding previously
+saved disabled states. Disable them in HA only until the next HA reconnect.
+The old **Voice backend** entity is removed; its stale HA entity can be deleted.
+Mycroft, if manually enabled, retains normal Assist. Watch the broker with
 `ssh hoard journalctl -fu voice-broker`.
+
+### Verified upstream wake words
+
+The pinned [Voice PE 26.9.0 firmware](https://github.com/esphome/home-assistant-voice-pe/blob/26.9.0/home-assistant-voice.yaml)
+already includes `okay_nabu` and `hey_jarvis`. Their model manifests report
+**Okay Nabu** (okay_nabu_20241226.3 release) and **Hey Jarvis** (ESPHome
+micro-wake-word-models v2). These are full phrases, not bare Nabu/Jarvis.
+The ESPHome `on_wake_word_detected` argument is the manifest `wake_word` string;
+routing compares it with `Hey Jarvis`. Both model IDs and the
+`micro_wake_word.enable_model` actions were validated with ESPHome 2026.8.0.
+
+### Startup fallback (no replay)
+
+The device sends START but **no microphone audio** until the broker emits its
+first `phase: listening`, already sent only after `ModelSession.open` succeeds
+in `packages/voice-broker/src/voice_broker/conversation.py`. Connection refusal,
+authentication failure, END/disconnect before readiness, or a 10-second combined
+connection/model-startup timeout invokes normal `voice_assistant.start` once.
+A component allocation failure falls back immediately. Generation checks ignore
+late events and stale queued opens; no reconnect or backend retry loop is used.
+
+No audio/transcript is replayed. Words spoken during connection/startup are not
+sent: wait for the listening cue and repeat the command if fallback occurs.
+After readiness, failures end Live without automatic Assist fallback, because
+tools may already have acted. Normal completion and button/wake cancellation
+never fall back. The stock button/timer/announcement behavior is retained.
+
+Neither path sets a pipeline ID or changes HA Assistant selects. Read-only
+inspection of `automation.switch_to_reaper_assistant` and
+`automation.change_voice_assistant_to_remote` confirmed they select Reaper or
+Remote for kitchen/room according to Ollama/STT/TTS availability. Those current
+selections are honored for Nabu and fallback. No HA automation changes or broker
+deployment are required.
+
+### Verification
+
+Run `CXX=g++ python3 scripts/voice-pe/tests/test_startup.py` to exercise actual
+firmware state-machine methods against mocked I/O (not ESP32 concurrency/audio).
+ESPHome config/code generation passed without secrets. Actual-method host tests
+use dummy values; they are not hardware concurrency/audio/reboot tests. Never
+compile firmware on hoard. Run the credential test with
+`CXX=g++ python3 scripts/voice-pe/tests/test_provision.py`; audit a built output with
+`python3 scripts/voice-pe/tests/audit_firmware.py /nix/store/…-voice-pe-firmware-…`.
+
+Verified clean-source artifact (2026-10-12):
+`/nix/store/9zdi5bkmy4ipi8sjdacpl0znwfcy6bar-voice-pe-firmware-26.9.0-esphome-2026.8.0`.
+Application: 2,789,216 bytes; 66% app-partition headroom. SHA-256:
+`0cfea5d5475fdf8036a94be02949c75a1c63418a160d94b4c0644297be97f31d`.
+Independent remote regenerations produced identical full generated-project and
+Python-module NAR hashes, and identical firmware/bootloader/partition-table/ELF
+checksums. Codegen uses a fixed Python hash seed to stabilize schema comments.
+The clean source copy contained no `.esphome`, imported lock, secrets or plan;
+its dependency graph had no imported snapshot/root references. Remote Nix tests
+passed for startup/fallback, credential action and public-input contracts.
+No device flashing or NixOS switching was performed.
+
+With authorization, flash one named PE first, then check:
+
+- Nabu honors both Reaper and Remote Assistant selection.
+- Jarvis starts Live; either wake word and center button cancel it.
+- Unreachable broker/auth rejection/Live startup refusal or stall falls back
+  exactly once; repeat the command at the normal Assist listening cue.
+- Cancel during connection or model startup; wait >10 seconds: no fallback.
+- Drop an active Live session after a harmless tool call: no Assist replay.
+- Mute, timer cancel, announcement cancel and stock button gestures still work.
+
+Before a rebuild/deployment that interrupts voice, give the user a spoken
+response and obtain deployment authorization. Once the single-PE smoke tests
+pass, flash other PEs. This firmware change needs no NixOS rebuild.
 
 ## Recording conversations
 
@@ -81,5 +216,6 @@ To check the echo cancellation against what happened in the room:
 
 ## Undo
 
-Set **Voice backend** to Home Assistant. To go back to the stock firmware,
+Use **Okay Nabu** for Home Assistant. Disable Jarvis in HA to avoid Live until
+the next HA reconnect. To go back to the stock firmware,
 flash it from https://esphome.github.io/home-assistant-voice-pe/ over USB.

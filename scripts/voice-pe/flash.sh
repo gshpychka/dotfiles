@@ -1,32 +1,11 @@
 #!/usr/bin/env bash
-# Builds voice-pe.yaml once and flashes it over the air to every Voice PE
-# (hosts with a voiceArea in modules/common/hosts.nix), or to the ones named:
-#   nix run .#flash-voice-pe [pe...]
+# Upload an already-built OTA image to one explicitly named device. No compile.
 set -euo pipefail
-
-repo=$(git rev-parse --show-toplevel)
-cd "$repo/scripts/voice-pe"
-
-flake="$repo#nixosConfigurations.hoard.config.my"
-domain=$(nix eval --raw "$flake.domain")
-if (($# > 0)); then
-  pes=("$@")
-else
-  # shellcheck disable=SC2016 # a Nix expression, not shell
-  mapfile -t pes < <(nix eval --raw "$flake.hosts" --apply \
-    'hosts: builtins.concatStringsSep "\n" (builtins.filter (name: hosts.${name}.voiceArea != null) (builtins.attrNames hosts))')
+if [[ $# != 3 || $1 != --confirm-flash ]]; then
+  echo "Usage: flash-voice-pe --confirm-flash FIRMWARE_OUTPUT DEVICE_HOST" >&2
+  exit 2
 fi
-
-# The device token is baked into the firmware; it exists on disk only for the build.
-trap 'rm -f secrets.yaml' EXIT
-(
-  umask 077
-  sops -d --extract '["device-token"]' "$repo/secrets/hoard/voice-broker.yaml" |
-    sed 's/^/voice_broker_token: /' >secrets.yaml
-)
-
-esphome compile voice-pe.yaml
-for pe in "${pes[@]}"; do
-  echo "flashing $pe"
-  esphome upload voice-pe.yaml --device "$pe.$domain"
-done
+firmware=$(realpath "$2")
+[[ -f "$firmware/firmware.bin" && -f "$firmware/SHA256SUMS" ]]
+(cd "$firmware"; sha256sum -c SHA256SUMS)
+exec voice-pe-upload "$firmware/firmware.bin" "$3"

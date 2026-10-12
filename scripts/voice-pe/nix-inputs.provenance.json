@@ -1,0 +1,35 @@
+{
+  "assets": {
+    "audio_file/00210883": "536f3daa7e41ae0789f9309b42a980eb6cccb36a16f1b92d79112129579b9fde",
+    "audio_file/05a8581c": "15328fcc94650b60f85fbc02b1e19e714f71468954c576597e4c9005ab06cba8",
+    "audio_file/0bf33b47": "66d6186784b405958b8a7450365122cbd13996207d9d31f7d439d9f7fcd8cb9c",
+    "audio_file/1da10442": "e9b0d1f62055f8713a1dd0d2f3e92142a7bee8e371b40cf0008e8e624e787ec8",
+    "audio_file/276bc0d3": "5c26cad33931670f2b62db5d2ed35c562b162e819ade38e646680065ad1b055f",
+    "audio_file/415a2e35": "7eb8baa6de8ed087bdea04fa23d989e5c4459120338f98929d4e8a20207f1f50",
+    "audio_file/47c3f9b8": "ac0bba5f82d002d5ffa84c1338a7748e6ad043a5a7dee01fef626b35cc093930",
+    "audio_file/55c72bc2": "2cda3d78ccce5b522fb671092a9e07d29b224b6e861fb6c5fae2d555b6a77021",
+    "audio_file/5a8a55ff": "b0ce950b316ad35ece4ffcba7a7978b1bb701f7f527d69e2d273e06a751642cc",
+    "audio_file/5cdf1eb4": "0e9b50d9bd86f86d7afd379780d3c07cdd140d9b2e9bf812ee819c8a2e183eed",
+    "audio_file/6e5bb6c4": "e9ddba38c4a993fd5a218ec7d04d7a2824b995a9dbb6cb0d8599d7a0ac6a56ee",
+    "audio_file/9506f6c7": "9ccb4a79a00509dc84e901565e42a510f02deef8082dd17da13a43d493014728",
+    "audio_file/acc7c2ea": "800be63f0f16b277c46b664f0896b87e0195d8cc9a927a7cdd6795036058dc44",
+    "audio_file/cb662b9b": "ad187647a7686548fdb2d756012fee689fdeb97dc0bec8d1591c7a134148725f",
+    "audio_file/cde52a3b": "59aeab603814a68acb6d9bca676a820858734fbd6c6725f68e0d708020e58be9",
+    "audio_file/e9bb1cdc": "a33ed44b29da0de31cbc8d503643a1a0c5f9f22df739562880ee7c5cf81da9c4",
+    "micro_wake_word/26089d69/manifest.json": "bd8c9cd4350814f761e651685ae5196e2a56521aaf5670071ba742927de58ed7",
+    "micro_wake_word/26089d69/vad.tflite": "7aa4db6d5fb7c5358609f6931e7847d303c16a43d178638bc14104f50d7eff5f",
+    "micro_wake_word/38c58046/manifest.json": "f8026e2ce93a0855ca23483036fd2d74ee924a2588d9ea6a6c6c7478fbf4be57",
+    "micro_wake_word/38c58046/okay_nabu.tflite": "d89128c4d16a72de429119fb2254ce46649553c2a24f5dd840175c80d7b9d094",
+    "micro_wake_word/67463ea1/hey_mycroft.tflite": "c2a9b6ed51182db72e014781d5a4ece1929dc232a40b5b4be384f0295f0e1571",
+    "micro_wake_word/67463ea1/manifest.json": "57b2b06fe5fdbbe834a242fabc7af31e4194a550fc382b2c88636a6d62d0d57e",
+    "micro_wake_word/7056d5e4/manifest.json": "bd13aeb1b83852649dc4fb6135cb160ff68716d14612b06f6a405342c57447aa",
+    "micro_wake_word/7056d5e4/stop.tflite": "b5a18c4ad681a89950dfade31011e1631bdcb333e93c84519a1a63ff4f071146",
+    "micro_wake_word/db6fafef/hey_jarvis.tflite": "21a7976add39ee24ec96c63d96b7aaa18e24d1d9824b963e451da8feb4b78b77",
+    "micro_wake_word/db6fafef/manifest.json": "b153867d818675d8abcc9dace474afe7f83551ae0d5a9b1d71a98681320185af",
+    "voice_kit/fba897b0": "11b563d6c51424f49f1e1d3585ba03a073e2802798e6aa067c6734d7ecb6935b"
+  },
+  "upstreamRevisions": {
+    "packages/e7fbb461": "2644f4c794271d735d182ca7ebf899ed46164f4e",
+    "external_components/3bf38338": "d4e6fa43d6a1a7d342b7d4d403567e06516719de"
+  }
+}

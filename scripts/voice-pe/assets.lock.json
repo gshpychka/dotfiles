@@ -1,0 +1,64 @@
+{
+  "modelsRevision": "40ff33f57f8fc6ad71a75ef085abbf742495b225",
+  "models": {
+    "okay_nabu": {
+      "manifest": {
+        "url": "https://github.com/kahrendt/microWakeWord/releases/download/okay_nabu_20241226.3/okay_nabu.json",
+        "sha256": "f8026e2ce93a0855ca23483036fd2d74ee924a2588d9ea6a6c6c7478fbf4be57"
+      },
+      "model": {
+        "url": "https://github.com/kahrendt/microWakeWord/releases/download/okay_nabu_20241226.3/okay_nabu.tflite",
+        "sha256": "d89128c4d16a72de429119fb2254ce46649553c2a24f5dd840175c80d7b9d094"
+      },
+      "filename": "okay_nabu.tflite"
+    },
+    "stop": {
+      "manifest": {
+        "url": "https://github.com/kahrendt/microWakeWord/releases/download/stop/stop.json",
+        "sha256": "bd13aeb1b83852649dc4fb6135cb160ff68716d14612b06f6a405342c57447aa"
+      },
+      "model": {
+        "url": "https://github.com/kahrendt/microWakeWord/releases/download/stop/stop.tflite",
+        "sha256": "b5a18c4ad681a89950dfade31011e1631bdcb333e93c84519a1a63ff4f071146"
+      },
+      "filename": "stop.tflite"
+    },
+    "hey_jarvis": {
+      "manifest": {
+        "url": "https://raw.githubusercontent.com/esphome/micro-wake-word-models/40ff33f57f8fc6ad71a75ef085abbf742495b225/models/v2/hey_jarvis.json",
+        "sha256": "b153867d818675d8abcc9dace474afe7f83551ae0d5a9b1d71a98681320185af"
+      },
+      "model": {
+        "url": "https://raw.githubusercontent.com/esphome/micro-wake-word-models/40ff33f57f8fc6ad71a75ef085abbf742495b225/models/v2/hey_jarvis.tflite",
+        "sha256": "21a7976add39ee24ec96c63d96b7aaa18e24d1d9824b963e451da8feb4b78b77"
+      },
+      "filename": "hey_jarvis.tflite"
+    },
+    "hey_mycroft": {
+      "manifest": {
+        "url": "https://raw.githubusercontent.com/esphome/micro-wake-word-models/40ff33f57f8fc6ad71a75ef085abbf742495b225/models/v2/hey_mycroft.json",
+        "sha256": "57b2b06fe5fdbbe834a242fabc7af31e4194a550fc382b2c88636a6d62d0d57e"
+      },
+      "model": {
+        "url": "https://raw.githubusercontent.com/esphome/micro-wake-word-models/40ff33f57f8fc6ad71a75ef085abbf742495b225/models/v2/hey_mycroft.tflite",
+        "sha256": "c2a9b6ed51182db72e014781d5a4ece1929dc232a40b5b4be384f0295f0e1571"
+      },
+      "filename": "hey_mycroft.tflite"
+    },
+    "vad": {
+      "manifest": {
+        "url": "https://raw.githubusercontent.com/esphome/micro-wake-word-models/40ff33f57f8fc6ad71a75ef085abbf742495b225/models/v2/vad.json",
+        "sha256": "bd8c9cd4350814f761e651685ae5196e2a56521aaf5670071ba742927de58ed7"
+      },
+      "model": {
+        "url": "https://raw.githubusercontent.com/esphome/micro-wake-word-models/40ff33f57f8fc6ad71a75ef085abbf742495b225/models/v2/vad.tflite",
+        "sha256": "7aa4db6d5fb7c5358609f6931e7847d303c16a43d178638bc14104f50d7eff5f"
+      },
+      "filename": "vad.tflite"
+    }
+  },
+  "xmos": {
+    "url": "https://github.com/esphome/voice-kit-xmos-firmware/releases/download/v1.3.1/ffva_v1.3.1_upgrade.bin",
+    "sha256": "11b563d6c51424f49f1e1d3585ba03a073e2802798e6aa067c6734d7ecb6935b"
+  }
+}

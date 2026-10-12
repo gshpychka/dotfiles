@@ -183,6 +183,10 @@
       # expose the ISO for easy building: `nix build .#iso`
       packages.x86_64-linux.iso = self.nixosConfigurations.iso.config.system.build.isoImage;
 
+      packages.x86_64-linux.voice-pe-firmware = import ./scripts/voice-pe/firmware.nix {
+        pkgs = nixpkgs.legacyPackages.x86_64-linux;
+      };
+
       # bootable SD image for harbor: `nix build .#harbor-sd-image`
       packages.aarch64-linux.harbor-sd-image =
         (self.nixosConfigurations.harbor.extendModules {
@@ -236,6 +240,10 @@
               piExtensionTypes = pkgs.callPackage ./packages/pi-extension-types.nix { };
             in
             {
+              voice-pe-unit = import ./scripts/voice-pe/checks.nix {
+                inherit pkgs;
+                source = self;
+              };
               statix = pkgs.runCommand "check-statix" { nativeBuildInputs = [ pkgs.statix ]; } ''
                 statix check ${self} -c ${self}
                 touch $out
@@ -300,12 +308,18 @@
           pkgs = nixpkgs.legacyPackages.${system};
           piPackages = pkgs.callPackage ./packages/pi-packages { };
           flashVoicePe = pkgs.callPackage ./scripts/voice-pe/flash.nix { };
+          provisionVoicePe = pkgs.callPackage ./scripts/voice-pe/provision.nix { };
         in
         {
           update-pi-packages = {
             type = "app";
             program = lib.getExe piPackages.updateScript;
             inherit (piPackages.updateScript) meta;
+          };
+          provision-voice-pe = {
+            type = "app";
+            program = lib.getExe provisionVoicePe;
+            inherit (provisionVoicePe) meta;
           };
           flash-voice-pe = {
             type = "app";

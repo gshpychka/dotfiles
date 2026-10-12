@@ -5,7 +5,7 @@ from esphome.automation import maybe_simple_id
 from esphome.components import esp32, microphone, speaker
 from esphome.const import CONF_ID, CONF_MICROPHONE, CONF_SPEAKER, CONF_URL
 
-DEPENDENCIES = ["esp32", "microphone", "speaker"]
+DEPENDENCIES = ["esp32", "api", "microphone", "speaker"]
 AUTO_LOAD = ["audio", "json", "ring_buffer"]
 
 CONF_TOKEN = "token"
@@ -13,6 +13,7 @@ CONF_WAKE_WORD = "wake_word"
 CONF_ON_PHASE = "on_phase"
 CONF_ON_END = "on_end"
 CONF_ON_ERROR = "on_error"
+CONF_ON_STARTUP_FAILURE = "on_startup_failure"
 
 voice_broker_ns = cg.esphome_ns.namespace("voice_broker")
 VoiceBroker = voice_broker_ns.class_("VoiceBroker", cg.Component)
@@ -30,7 +31,6 @@ CONFIG_SCHEMA = cv.Schema(
     {
         cv.GenerateID(): cv.declare_id(VoiceBroker),
         cv.Required(CONF_URL): cv.string_strict,
-        cv.Required(CONF_TOKEN): cv.string_strict,
         # One 16-bit channel: the broker's echo canceller works on mono.
         cv.Required(CONF_MICROPHONE): microphone.microphone_source_schema(
             min_bits_per_sample=16,
@@ -43,6 +43,9 @@ CONFIG_SCHEMA = cv.Schema(
         # `phase` is "listening", "thinking" or "replying".
         cv.Optional(CONF_ON_PHASE): automation.validate_automation(single=True),
         cv.Optional(CONF_ON_END): automation.validate_automation(single=True),
+        cv.Optional(CONF_ON_STARTUP_FAILURE): automation.validate_automation(
+            single=True
+        ),
         cv.Optional(CONF_ON_ERROR): automation.validate_automation(single=True),
     }
 ).extend(cv.COMPONENT_SCHEMA)
@@ -64,7 +67,6 @@ async def to_code(config):
     esp32.add_idf_component(name="espressif/esp_websocket_client", ref="1.7.0")
 
     cg.add(var.set_url(config[CONF_URL]))
-    cg.add(var.set_token(config[CONF_TOKEN]))
     cg.add(
         var.set_microphone_source(
             await microphone.microphone_source_to_code(config[CONF_MICROPHONE])
@@ -79,6 +81,12 @@ async def to_code(config):
     if CONF_ON_END in config:
         await automation.build_automation(
             var.get_end_trigger(), [], config[CONF_ON_END]
+        )
+    if CONF_ON_STARTUP_FAILURE in config:
+        await automation.build_automation(
+            var.get_startup_failure_trigger(),
+            [(cg.std_string, "wake_word")],
+            config[CONF_ON_STARTUP_FAILURE],
         )
     if CONF_ON_ERROR in config:
         await automation.build_automation(

@@ -28,7 +28,31 @@ static uint8_t *alloc_frame(size_t len) {
   return static_cast<uint8_t *>(heap_caps_malloc(len, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
 }
 
+void VoiceBroker::provision_token(std::string token) {
+  // Only a nonzero Noise key authenticates the caller.
+  if (!api::global_api_server->get_noise_ctx().has_psk() || this->is_running() || token.size() > 256)
+    return;
+  for (unsigned char c : token) {
+    if (c < 33 || c > 126)
+      return;
+  }
+  SavedToken saved{};
+  std::memcpy(saved.value, token.data(), token.size());
+  if (!this->token_preference_.save(&saved) || !global_preferences->sync()) {
+    ESP_LOGW(TAG, "Credential persistence failed");
+    return;
+  }
+  std::lock_guard<std::mutex> lock(this->token_mutex_);
+  this->token_ = token;
+}
+
 void VoiceBroker::setup() {
+  static_assert(sizeof(SavedToken) == 257);
+  this->token_preference_ = global_preferences->make_preference<SavedToken>(0x56425401);
+  SavedToken saved{};
+  if (this->token_preference_.load(&saved) && saved.value[256] == 0)
+    this->token_ = saved.value;
+  this->register_service(&VoiceBroker::provision_token, "provision_voice_broker_token", {"token"});
   this->io_queue_ = xQueueCreate(IO_QUEUE_LENGTH, sizeof(IoItem));
   this->event_queue_ = xQueueCreate(EVENT_QUEUE_LENGTH, sizeof(Event));
   this->playback_ = ring_buffer::RingBuffer::create(PLAYBACK_BUFFER_BYTES);
@@ -38,7 +62,6 @@ void VoiceBroker::setup() {
     this->mark_failed();
     return;
   }
-  this->headers_ = "Authorization: Bearer " + this->token_ + "\r\n";
   this->mic_source_->add_data_callback([this](const std::vector<uint8_t> &data) { this->on_mic_data_(data); });
   this->speaker_->add_audio_output_callback(
       [this](uint32_t frames, int64_t timestamp_us) { this->on_audio_output_(frames, timestamp_us); });
@@ -53,11 +76,21 @@ void VoiceBroker::dump_config() {
 void VoiceBroker::start(const std::string &wake_word) {
   if (this->state_ != State::IDLE)
     return;
+  if (this->is_failed() || this->token_.empty()) {
+    this->startup_failure_trigger_.trigger(wake_word);
+    return;
+  }
   this->wake_word_ = wake_word;
   this->generation_++;
   this->state_ = State::CONNECTING;
   this->high_freq_.start();
-  this->queue_io_(IoItem::OPEN);
+  // Bound connection + model startup; audio withheld until LISTENING.
+  this->set_timeout("startup", 10000, [this]() {
+    if (this->state_ == State::CONNECTING || this->state_ == State::WAITING_READY)
+      this->startup_failure_();
+  });
+  if (!this->queue_io_(IoItem::OPEN))
+    this->startup_failure_();
 }
 
 void VoiceBroker::stop() {
@@ -68,7 +101,15 @@ void VoiceBroker::stop() {
   this->teardown_();
 }
 
+void VoiceBroker::startup_failure_() {
+  const std::string wake_word = this->wake_word_;
+  ESP_LOGW(TAG, "Live startup failed; handing wake word to Assist (no audio replay)");
+  this->teardown_();
+  this->startup_failure_trigger_.trigger(wake_word);
+}
+
 void VoiceBroker::teardown_() {
+  this->cancel_timeout("startup");
   this->streaming_ = false;
   this->mic_source_->stop();
   this->speaker_->stop();
@@ -93,23 +134,34 @@ void VoiceBroker::loop() {
       case Event::CONNECTED:
         if (this->state_ != State::CONNECTING)
           break;
-        this->state_ = State::ACTIVE;
-        this->mic_samples_ = 0;
+        this->state_ = State::WAITING_READY;
         this->queue_control_(protocol::START, {{"wake_word", this->wake_word_}});
-        this->streaming_ = true;
-        this->mic_source_->start();
         break;
       case Event::DISCONNECTED:
-        if (this->state_ == State::CONNECTING) {
-          ESP_LOGW(TAG, "Could not reach the broker");
+        if (this->state_ == State::CONNECTING || this->state_ == State::WAITING_READY) {
+          this->startup_failure_();
+        } else {
           this->error_trigger_.trigger();
+          this->teardown_();
         }
-        this->teardown_();
         break;
       case Event::END:
-        this->teardown_();
+        if (this->state_ == State::CONNECTING || this->state_ == State::WAITING_READY)
+          this->startup_failure_();
+        else
+          this->teardown_();
         break;
       case Event::PHASE:
+        // LISTENING is emitted only after broker ModelSession.open succeeds.
+        if (this->state_ == State::WAITING_READY) {
+          if (event.phase != Phase::LISTENING)
+            break;
+          this->cancel_timeout("startup");
+          this->state_ = State::ACTIVE;
+          this->mic_samples_ = 0;
+          this->streaming_ = true;
+          this->mic_source_->start();
+        }
         switch (event.phase) {
           case Phase::LISTENING:
             this->phase_trigger_.trigger("listening");
@@ -238,6 +290,8 @@ void VoiceBroker::io_task_(void *arg) {
       continue;
     switch (item.op) {
       case IoItem::OPEN:
+        if (item.generation != self->generation_)
+          break;  // Cancelled/timed-out startup must not open a stale session.
         self->io_close_();
         client_generation = item.generation;
         self->io_open_(item.generation);
@@ -264,6 +318,10 @@ void VoiceBroker::io_task_(void *arg) {
 }
 
 void VoiceBroker::io_open_(uint32_t generation) {
+  {
+    std::lock_guard<std::mutex> lock(this->token_mutex_);
+    this->headers_ = "Authorization: Bearer " + this->token_ + "\r\n";
+  }
   esp_websocket_client_config_t config = {};
   config.uri = this->url_.c_str();
   config.headers = this->headers_.c_str();

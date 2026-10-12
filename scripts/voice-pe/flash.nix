@@ -1,28 +1,28 @@
 {
-  lib,
-  stdenv,
-  buildFHSEnv,
   esphome,
-  sops,
-  git,
+  python3,
+  coreutils,
   writeShellApplication,
+  lib,
+  writeShellScriptBin,
 }:
+let
+  python = python3.withPackages (p: [
+    p.zeroconf
+    p.pyserial
+  ]);
+  modules = "${esphome}/${python.sitePackages}";
+  uploader = writeShellScriptBin "voice-pe-upload" ''
+    export PYTHONPATH="${modules}"
+    exec ${python}/bin/python3 ${./upload.py} "$@"
+  '';
+in
 writeShellApplication {
   name = "flash-voice-pe";
   runtimeInputs = [
-    # ESPHome downloads ESP-IDF's prebuilt toolchain, whose dynamically linked binaries need an FHS loader
-    (
-      if stdenv.hostPlatform.isLinux then
-        buildFHSEnv {
-          name = "esphome";
-          runScript = lib.getExe esphome;
-        }
-      else
-        esphome
-    )
-    sops
-    git
+    uploader
+    coreutils
   ];
   text = lib.removePrefix "#!/usr/bin/env bash\n" (builtins.readFile ./flash.sh);
-  meta.description = "Build the Voice PE firmware and flash it to every Voice PE";
+  meta.description = "Explicitly upload an existing Voice PE OTA image; never compile or decrypt secrets";
 }
