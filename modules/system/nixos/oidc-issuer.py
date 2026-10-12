@@ -396,7 +396,8 @@ def keygen(config: Config) -> int:
             return 1
     print(f"""Created a new signing key in the TPM2; its files are in {directory}.
 
-Publish it by adding this entry to my.oidcIssuer.issuers.{config["name"]}.publicKeys:
+Publish it by adding this entry to my.oidcIssuer.publicKeys
+(modules/common/oidc-issuer.nix) and deploying the publishing machine:
 
   {{
     kid = "{public["kid"]}";
@@ -404,9 +405,8 @@ Publish it by adding this entry to my.oidcIssuer.issuers.{config["name"]}.public
     y = "{public["y"]}";
   }}
 
-then sign with it by setting my.oidcIssuer.activeKid = "{public["kid"]}";
-and deploy: buoy first (publishes the key), then, after waiting
-{config["jwksCacheSeconds"]} seconds for cached key sets to pick it up, {config["name"]} (signs with it).""")
+Then wait {config["jwksCacheSeconds"]} seconds for cached key sets to pick it up, set
+my.oidcIssuer.signer.activeKid = "{public["kid"]}"; and deploy {config["name"]} to sign with it.""")
     return 0
 
 
