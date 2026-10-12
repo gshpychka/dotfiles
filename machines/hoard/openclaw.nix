@@ -37,7 +37,7 @@
       #   ssh -t hoard openclaw models auth login --provider openai --device-code --profile-id openai:chatgpt
       authOrder.openai = [ "openai:chatgpt" ];
     };
-    providerKeys = {
+    secrets = {
       OPENAI_API_KEY = "openai-api-key";
       ELEVENLABS_API_KEY = "elevenlabs-api-key";
     };

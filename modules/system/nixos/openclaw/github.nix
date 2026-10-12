@@ -121,6 +121,7 @@ in
 
     my.openclaw = {
       extraPackages = [
+        pkgs.git
         token
         gh
       ];
