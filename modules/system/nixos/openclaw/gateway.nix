@@ -534,10 +534,10 @@ in
       ];
     };
 
-    # only the gateway user reads its config
     environment.etc.${configEtcPath} = {
+      # only the gateway user reads its config
       mode = lib.mkForce "0400";
-      inherit (gw) user group;
+      inherit (gw) user;
     };
 
     # for tmpfiles rules inside it: tmpfiles creates a missing parent as root
