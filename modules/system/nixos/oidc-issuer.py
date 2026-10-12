@@ -89,11 +89,11 @@ class KeyFiles(TypedDict):
 
 
 class Config(TypedDict):
-    """Written by machines/reaper/oidc-issuer/default.nix."""
+    """Written by modules/system/nixos/oidc-issuer.nix."""
 
+    name: str
     issuer: str
     audience: str
-    subjectPrefix: str
     tokenLifetimeSeconds: int
     clients: list[str]
     activeKey: PublicKey | None
@@ -290,7 +290,7 @@ def serve(config: Config) -> int:
     now = int(time.time())
     claims = {
         "iss": config["issuer"],
-        "sub": f"{config['subjectPrefix']}:{user}",
+        "sub": f"{config['name']}:{user}",
         "aud": config["audience"],
         "iat": now,
         "exp": now + config["tokenLifetimeSeconds"],
@@ -396,7 +396,7 @@ def keygen(config: Config) -> int:
             return 1
     print(f"""Created a new signing key in the TPM2; its files are in {directory}.
 
-Publish it by adding this entry to my.oidcIssuer.publicKeys:
+Publish it by adding this entry to my.oidcIssuer.issuers.{config["name"]}.publicKeys:
 
   {{
     kid = "{public["kid"]}";
@@ -406,7 +406,7 @@ Publish it by adding this entry to my.oidcIssuer.publicKeys:
 
 then sign with it by setting my.oidcIssuer.activeKid = "{public["kid"]}";
 and deploy: buoy first (publishes the key), then, after waiting
-{config["jwksCacheSeconds"]} seconds for cached key sets to pick it up, reaper (signs with it).""")
+{config["jwksCacheSeconds"]} seconds for cached key sets to pick it up, {config["name"]} (signs with it).""")
     return 0
 
 
