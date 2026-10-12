@@ -1,0 +1,413 @@
+From 7cf2fef695b356df6424c5ac334fdb691dbd9046 Mon Sep 17 00:00:00 2001
+From: Glib Shpychka <23005347+gshpychka@users.noreply.github.com>
+Date: Mon, 12 Oct 2026 18:00:35 +0300
+Subject: [PATCH] fix(sessions): let a tool result follow its question's typed
+ answer
+
+A turn that asks a question records the typed answer it admits in its own
+async context, but the validation of the turn's tool and assistant appends
+runs in the session metadata worker, which cannot read that context. The
+answer then counted as an unrelated newer user turn, the tool result was
+refused, and the turn failed.
+
+The turn now resolves its admitted answers when it prepares an append and
+passes them to the validation, on the main thread and in the worker.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01LNTt5yXBj4uDUwJmPGvXLd
+---
+ src/agents/sessions/session-manager-append.ts |  10 +-
+ .../session-manager-metadata.worker.ts        |   3 +
+ .../sessions/session-manager-persistence.ts   |   9 +-
+ ...ssor.question-answer-worker-append.test.ts | 145 ++++++++++++++++++
+ .../sessions/session-accessor.sqlite-read.ts  |   3 +
+ ...ssion-accessor.sqlite-transcript-parent.ts |  14 +-
+ .../sessions/session-transcript-read-fence.ts |  45 +++---
+ 7 files changed, 197 insertions(+), 32 deletions(-)
+ create mode 100644 src/config/sessions/session-accessor.question-answer-worker-append.test.ts
+
+diff --git a/src/agents/sessions/session-manager-append.ts b/src/agents/sessions/session-manager-append.ts
+index 38e78261622..c4db2462bcf 100644
+--- a/src/agents/sessions/session-manager-append.ts
++++ b/src/agents/sessions/session-manager-append.ts
+@@ -9,7 +9,10 @@ import {
+   prepareTranscriptMessageAppendForWorker,
+ } from "../../config/sessions/session-accessor.sqlite-transcript-message-append.js";
+ import { transcriptEventContextEligibility } from "../../config/sessions/session-transcript-projection-append.js";
+-import { resolveSessionTranscriptReadFence } from "../../config/sessions/session-transcript-read-fence.js";
++import {
++  readSessionTranscriptQuestionAnswers,
++  resolveSessionTranscriptReadFence,
++} from "../../config/sessions/session-transcript-read-fence.js";
+ import { applyAssistantDeliveryDirectives } from "../../config/sessions/transcript-assistant-delivery.js";
+ import { sameSessionTranscriptTargetBinding } from "../../config/sessions/transcript-target-binding.js";
+ import { isSessionTranscriptSideAppendEntry } from "../../config/sessions/transcript-tree.js";
+@@ -190,11 +193,15 @@ export class SessionManagerAppend extends SessionManagerSuffixPersistence {
+     const admittedUserId = this.persistenceTarget
+       ? resolveSessionTranscriptReadFence(this.persistenceTarget)?.entryId
+       : undefined;
++    const questionAnswers = preparedTurnAppend
++      ? readSessionTranscriptQuestionAnswers(admittedUserId)
++      : undefined;
+     if (preparedTurnAppend && this.persistenceTarget) {
+       const validatedMutationAt = validatePreparedAssistantAppendSync(
+         this.persistenceTarget,
+         canonicalEntry.parentId,
+         admittedUserId,
++        questionAnswers,
+       );
+       if (validatedMutationAt === undefined) {
+         throw this.createTranscriptMutationConflictError();
+@@ -257,6 +264,7 @@ export class SessionManagerAppend extends SessionManagerSuffixPersistence {
+                     this.persistenceTarget,
+                     canonicalEntry.parentId,
+                     admittedUserId,
++                    questionAnswers,
+                   )
+                 : undefined;
+               if (validatedMutationAt === undefined) {
+diff --git a/src/agents/sessions/session-manager-metadata.worker.ts b/src/agents/sessions/session-manager-metadata.worker.ts
+index 0eba487e96e..6966bf2cb47 100644
+--- a/src/agents/sessions/session-manager-metadata.worker.ts
++++ b/src/agents/sessions/session-manager-metadata.worker.ts
+@@ -175,6 +175,8 @@ export type SessionMetadataOperations = SessionMaintenanceOperations &
+           cwd: string;
+           validateTurn: boolean;
+           idempotencyLookup?: "scan" | "scan-assistant" | "caller-checked";
++          /** Answers to the turn's questions, which a validated message may follow. */
++          questionAnswers?: readonly UserTurnTranscriptAdmissionReceipt[];
+         } & SessionMetadataMessageControl;
+         options: Pick<
+           NonNullable<Parameters<typeof appendTranscriptEventSnapshotSync>[2]>,
+@@ -436,6 +438,7 @@ export function bindSqliteWorkerBackend(
+           scope,
+           event.parentId,
+           command.input.view?.admission?.entryId,
++          message.questionAnswers,
+         );
+         if (mutationAt === undefined) {
+           const error = new Error(
+diff --git a/src/agents/sessions/session-manager-persistence.ts b/src/agents/sessions/session-manager-persistence.ts
+index 1ac835e43d4..da8abfb11ae 100644
+--- a/src/agents/sessions/session-manager-persistence.ts
++++ b/src/agents/sessions/session-manager-persistence.ts
+@@ -11,7 +11,10 @@ import {
+   appendTranscriptEventSnapshotSync,
+   appendTranscriptMessageSnapshotSync,
+ } from "../../config/sessions/session-accessor.sqlite-transcript-write.js";
+-import { resolveSessionTranscriptReadFence } from "../../config/sessions/session-transcript-read-fence.js";
++import {
++  readSessionTranscriptQuestionAnswers,
++  resolveSessionTranscriptReadFence,
++} from "../../config/sessions/session-transcript-read-fence.js";
+ import { startSessionTranscriptIndexReconcile } from "../../config/sessions/session-transcript-reconcile.js";
+ import {
+   captureSessionTranscriptTargetBinding,
+@@ -218,6 +221,10 @@ export class SessionManagerPersistence extends SessionManagerCore {
+           cwd: message.cwd,
+           validateTurn: message.validateTurn,
+           idempotencyLookup: message.idempotencyLookup,
++          // Admitted answers live in this turn's async context, which the worker cannot read.
++          ...(message.validateTurn
++            ? { questionAnswers: readSessionTranscriptQuestionAnswers(admission?.entryId) }
++            : {}),
+         }
+       : undefined;
+     const { withSessionMetadataWorker } = await runInDetachedAsyncContext(
+diff --git a/src/config/sessions/session-accessor.question-answer-worker-append.test.ts b/src/config/sessions/session-accessor.question-answer-worker-append.test.ts
+new file mode 100644
+index 00000000000..b12d0b385d7
+--- /dev/null
++++ b/src/config/sessions/session-accessor.question-answer-worker-append.test.ts
+@@ -0,0 +1,145 @@
++import path from "node:path";
++import { afterAll, expect, it } from "vitest";
++import { createDeferred } from "../../../test/helpers/promise.js";
++import {
++  claimPendingAgentQuestionAnswer,
++  runAgentHarnessGatewayQuestion,
++} from "../../agents/harness/gateway-question.js";
++import { withQuestionGateway } from "../../agents/harness/gateway-question.test-support.js";
++import { createAdmittedHostCapabilityTestFixture } from "../../agents/harness/host-capability.test-support.js";
++import { withPreparedEmbeddedRunToolAuthority } from "../../agents/harness/tool-authority.runtime.js";
++import { SessionManager } from "../../agents/sessions/session-manager.js";
++import { createUserTurnTranscriptRecorder } from "../../sessions/user-turn-transcript.js";
++import {
++  createTestUserTurnTranscriptTarget,
++  readTranscriptMessages,
++} from "../../sessions/user-turn-transcript.test-support.js";
++import { useSessionStoreTempDirs } from "../../test-utils/session-state-cleanup.js";
++import { replaceSessionEntry } from "./session-accessor.js";
++
++const sessionDirs = useSessionStoreTempDirs(afterAll, "question-worker-append-");
++const questions = [
++  { id: "keep", header: "Keep", question: "Keep it?", isOther: true, options: [] },
++];
++
++it.each([
++  ["follows a typed answer", "answer"],
++  ["refuses an unrelated user turn", "unrelated"],
++])("the waiting question's worker-written tool result %s", async (_label, scenario) => {
++  await withQuestionGateway(async (gateway) => {
++    const dir = sessionDirs.make();
++    const storePath = path.join(dir, "sessions.sqlite");
++    const target = {
++      ...createTestUserTurnTranscriptTarget({
++        sessionId: "question-worker",
++        sessionKey: "agent:main:question-worker",
++        cwd: dir,
++      }),
++      storePath,
++    };
++    await replaceSessionEntry(target, { sessionId: target.sessionId, updatedAt: 1 });
++    const original = createUserTurnTranscriptRecorder({
++      target,
++      input: { text: "Report the time", idempotencyKey: "original:user" },
++    });
++    const persisted = await original.persistApproved();
++    if (!persisted) {
++      throw new Error("original input did not persist");
++    }
++    const controller = new AbortController();
++    const attempt = {
++      agentId: target.agentId,
++      sessionId: target.sessionId,
++      sessionKey: target.sessionKey,
++      sessionFile: persisted.sessionFile,
++      runId: "question-worker-run",
++      workspaceDir: dir,
++      config: {},
++      provider: "fixture",
++      modelId: "fixture",
++      messageProvider: "webchat",
++      senderIsOwner: true,
++      userTurnTranscriptRecorder: original,
++      abortSignal: controller.signal,
++    };
++    const host = await createAdmittedHostCapabilityTestFixture(attempt);
++    const writer = SessionManager.open(target, dir);
++    const releaseAppend = createDeferred();
++    const run = withPreparedEmbeddedRunToolAuthority(
++      { admittedRunContext: host.admittedRunContext },
++      { ...attempt, hostCapabilities: host.hostCapabilities },
++      undefined,
++      async () => {
++        const answer = await runAgentHarnessGatewayQuestion({
++          questions,
++          sessionKey: target.sessionKey,
++          runId: attempt.runId,
++          agentId: target.agentId,
++          timeoutMs: 60_000,
++          signal: controller.signal,
++          delivery: { hostCapabilities: host.hostCapabilities, onBlockReply: async () => {} },
++        });
++        await releaseAppend.promise;
++        return await writer.appendMessageAsync({
++          role: "toolResult",
++          toolCallId: "keep-question",
++          toolName: "ask_user",
++          content: [{ type: "text", text: JSON.stringify(answer) }],
++          isError: answer.status !== "answered",
++          timestamp: 4,
++        });
++      },
++    );
++    const outcome = run.then(
++      (entryId) => ({ entryId, error: undefined }),
++      (error: unknown) => ({ entryId: undefined, error }),
++    );
++    try {
++      await gateway.waitStarted;
++      const source = createUserTurnTranscriptRecorder({
++        target,
++        input: { text: "keep", idempotencyKey: "answer:user" },
++      });
++      await source.stageApproved?.({ runId: "answer", assertCurrent: () => {} });
++      await expect(
++        claimPendingAgentQuestionAnswer({
++          sessionKey: target.sessionKey,
++          text: "keep",
++          sourceRecorder: source,
++          authority: { kind: "run", assertCurrent: () => controller.signal.throwIfAborted() },
++        }),
++      ).resolves.toBe(true);
++      if (scenario === "unrelated") {
++        await createUserTurnTranscriptRecorder({
++          target,
++          input: { text: "An unrelated new turn", idempotencyKey: "unrelated:user" },
++        }).persistApproved();
++      }
++      releaseAppend.resolve();
++      const result = await outcome;
++      const messages = await readTranscriptMessages({
++        sessionId: target.sessionId,
++        sessionKey: target.sessionKey,
++        storePath,
++      });
++      const toolResults = messages.filter((message) => message.role === "toolResult");
++      if (scenario === "answer") {
++        expect(result.error).toBeUndefined();
++        expect(toolResults).toEqual([
++          expect.objectContaining({ toolCallId: "keep-question", isError: false }),
++        ]);
++      } else {
++        expect(result.error).toMatchObject({
++          message: expect.stringMatching(/SQLite transcript changed while preparing rewrite/),
++        });
++        expect(toolResults).toHaveLength(0);
++      }
++    } finally {
++      controller.abort();
++      releaseAppend.resolve();
++      await outcome;
++      host.closeHost();
++      host.closeAdmission();
++    }
++  });
++});
+diff --git a/src/config/sessions/session-accessor.sqlite-read.ts b/src/config/sessions/session-accessor.sqlite-read.ts
+index 5b6712bb89e..c0ab1bfce1a 100644
+--- a/src/config/sessions/session-accessor.sqlite-read.ts
++++ b/src/config/sessions/session-accessor.sqlite-read.ts
+@@ -9,6 +9,7 @@ import {
+ import { assertSqliteJsonlReadBudget } from "../../infra/sqlite-jsonl-budget.js";
+ import { coerceRequiredSqliteNumber as sqliteNumber } from "../../infra/sqlite-number.js";
+ import { runSqliteDeferredTransactionSync } from "../../infra/sqlite-transaction.js";
++import type { UserTurnTranscriptAdmissionReceipt } from "../../sessions/user-turn-transcript.types.js";
+ import { withOpenClawAgentDatabaseReadOnly } from "../../state/openclaw-agent-db-readonly.js";
+ import {
+   openOpenClawAgentDatabase,
+@@ -213,6 +214,7 @@ export function validatePreparedAssistantAppendSync(
+   scope: SessionTranscriptReadScope,
+   preparedParentId: string | null,
+   admittedUserId?: string,
++  questionAnswers?: readonly UserTurnTranscriptAdmissionReceipt[],
+ ): number | null | undefined {
+   const resolved = resolveSqliteTranscriptReadScope(scope);
+   const database = openOpenClawAgentDatabase(toDatabaseOptions(resolved));
+@@ -224,6 +226,7 @@ export function validatePreparedAssistantAppendSync(
+         resolved.sessionId,
+         preparedParentId,
+         admittedUserId,
++        questionAnswers,
+       )
+         ? readTranscriptMutationStateInTransaction(database, resolved.sessionId).updatedAt
+         : undefined,
+diff --git a/src/config/sessions/session-accessor.sqlite-transcript-parent.ts b/src/config/sessions/session-accessor.sqlite-transcript-parent.ts
+index cfa6c28ba85..88974c7a96b 100644
+--- a/src/config/sessions/session-accessor.sqlite-transcript-parent.ts
++++ b/src/config/sessions/session-accessor.sqlite-transcript-parent.ts
+@@ -4,6 +4,7 @@ import {
+   executeSqliteQueryTakeFirstSync,
+   iterateSqliteQuerySync,
+ } from "../../infra/kysely-sync.js";
++import type { UserTurnTranscriptAdmissionReceipt } from "../../sessions/user-turn-transcript.types.js";
+ import type { OpenClawAgentDatabase } from "../../state/openclaw-agent-db.js";
+ import type {
+   TranscriptEvent,
+@@ -14,7 +15,7 @@ import { getSessionKysely } from "./session-accessor.sqlite-scope.js";
+ import { projectTranscriptNavigationSql } from "./session-model-context-projection.js";
+ import { sessionTranscriptIndexNeedsReconcile } from "./session-transcript-index.js";
+ import { transcriptEventReadBytesSql } from "./session-transcript-read-bytes.js";
+-import { resolveSessionTranscriptQuestionAnswer } from "./session-transcript-read-fence.js";
++import { isSameTranscriptStore } from "./session-transcript-read-fence.js";
+ import { transcriptEventNavigationSql } from "./transcript-payload.js";
+ import {
+   isSessionTranscriptLeafControl,
+@@ -41,6 +42,7 @@ export function canRebasePreparedAssistantInTransaction(
+   sessionId: string,
+   preparedParentId: string | null,
+   admittedUserId?: string,
++  questionAnswers: readonly UserTurnTranscriptAdmissionReceipt[] = [],
+ ): boolean {
+   const tailId = readActiveTranscriptAppendParentId(database, sessionId);
+   if (tailId !== preparedParentId) {
+@@ -183,11 +185,11 @@ export function canRebasePreparedAssistantInTransaction(
+     ) {
+       return true;
+     }
+-    const answer = resolveSessionTranscriptQuestionAnswer(
+-      database,
+-      sessionId,
+-      row.event_id,
+-      admittedUserId,
++    const answer = questionAnswers.find(
++      (candidate) =>
++        candidate.entryId === row.event_id &&
++        candidate.sessionId === sessionId &&
++        isSameTranscriptStore(candidate.storePath, database.path),
+     );
+     return (
+       answer !== undefined &&
+diff --git a/src/config/sessions/session-transcript-read-fence.ts b/src/config/sessions/session-transcript-read-fence.ts
+index ea3a1432011..e25f140d933 100644
+--- a/src/config/sessions/session-transcript-read-fence.ts
++++ b/src/config/sessions/session-transcript-read-fence.ts
+@@ -17,7 +17,7 @@ import { transcriptEventNavigationSql } from "./transcript-payload.js";
+ 
+ const transcriptReadFenceStorage = new AsyncLocalStorage<UserTurnTranscriptAdmissionReceipt>();
+ 
+-function isSameTranscriptStore(left: string, right: string): boolean {
++export function isSameTranscriptStore(left: string, right: string): boolean {
+   return left === right || isSameOpenClawAgentDatabasePath(left, right);
+ }
+ 
+@@ -57,35 +57,32 @@ export function withSessionTranscriptQuestionAnswers<T>(
+   );
+ }
+ 
+-export function resolveSessionTranscriptQuestionAnswer(
+-  database: Pick<OpenClawAgentDatabase, "path">,
+-  sessionId: string,
+-  entryId: string,
++/** Answers to this turn's questions, which its prepared assistant and tool messages may follow. */
++export function readSessionTranscriptQuestionAnswers(
+   admittedUserId?: string,
+-): UserTurnTranscriptAdmissionReceipt | undefined {
++): UserTurnTranscriptAdmissionReceipt[] {
+   const scope = questionAnswerStorage.getStore();
+-  const input = scope?.inputs.get(entryId);
+-  if (
+-    !scope ||
+-    !input ||
+-    !isSameTranscriptStore(input.storePath, database.path) ||
+-    input.sessionId !== sessionId
+-  ) {
+-    return undefined;
++  if (!scope || scope.inputs.size === 0) {
++    return [];
+   }
+   scope.assertActive();
+   const creator = scope.recorder && getUserTurnTranscriptAdmissionOwner(scope.recorder);
+   const original = creator?.receipt();
+-  return original &&
+-    !creator?.blocked() &&
+-    original.agentId === input.agentId &&
+-    original.sessionId === input.sessionId &&
+-    original.sessionKey === input.sessionKey &&
+-    isSameTranscriptStore(original.storePath, input.storePath) &&
+-    original.generation === input.generation &&
+-    (admittedUserId === undefined || original.entryId === admittedUserId)
+-    ? input
+-    : undefined;
++  if (
++    !original ||
++    creator?.blocked() ||
++    (admittedUserId !== undefined && original.entryId !== admittedUserId)
++  ) {
++    return [];
++  }
++  return [...scope.inputs.values()].filter(
++    (input) =>
++      original.agentId === input.agentId &&
++      original.sessionId === input.sessionId &&
++      original.sessionKey === input.sessionKey &&
++      isSameTranscriptStore(original.storePath, input.storePath) &&
++      original.generation === input.generation,
++  );
+ }
+ 
+ export class SessionTranscriptReadFenceError extends Error {
+-- 
+2.55.0
+

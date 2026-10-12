@@ -1,4 +1,4 @@
-From 000ec23a7ba5dbc8d307ed7a47056382219a5f88 Mon Sep 17 00:00:00 2001
+From bb3622710235382cac531698b0265a2a68f5ec73 Mon Sep 17 00:00:00 2001
 From: Glib Shpychka <23005347+gshpychka@users.noreply.github.com>
 Date: Mon, 12 Oct 2026 00:56:17 +0300
 Subject: [PATCH] fix(acp): own raw-harness spawns under the requesting agent

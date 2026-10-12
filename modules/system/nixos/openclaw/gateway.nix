@@ -60,6 +60,8 @@ let
         ./patches/acp-raw-harness-owner.patch
         # the agent can ask the owner to approve a command it wants to run
         ./patches/agent-run-approval-requester.patch
+        # a turn carries on after its question is answered by typing
+        ./patches/question-answer-worker-append.patch
       ];
     };
     # follows the source's pnpm-lock.yaml

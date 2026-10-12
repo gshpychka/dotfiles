@@ -1,4 +1,4 @@
-From 47920b2470d9b9143a18425674b42e17dee83f7d Mon Sep 17 00:00:00 2001
+From 89fc6c64efb69675405bbf7a27d6b6ff9005f523 Mon Sep 17 00:00:00 2001
 From: Glib Shpychka <23005347+gshpychka@users.noreply.github.com>
 Date: Mon, 12 Oct 2026 00:26:24 +0300
 Subject: [PATCH] fix(agents): show a delivered run's questions in its reply
