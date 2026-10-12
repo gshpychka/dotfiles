@@ -2,7 +2,7 @@ _: {
   my.voice-broker = {
     enable = true;
     sopsFile = ../../secrets/hoard/voice-broker.yaml;
-    recordings.enable = true;
+    recordings.enable = false;
 
     settings = {
       live = {
