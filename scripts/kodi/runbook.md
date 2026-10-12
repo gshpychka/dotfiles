@@ -80,6 +80,11 @@ in `cpm/patches/`, one directory per package:
   decoder's output buffers, and the timeout restarts the decoder at a later
   keyframe, so a pause after a frame step keeps the picture in sync with the
   audio
+- `linux/local-amlvideo-qbuf-held-index.patch` makes the video driver move
+  frames to the screen on a release only when it holds the released frame. A
+  seek's decoder reset discards the frames the driver holds, and Kodi releases
+  its pre-seek frames after the reset, so each frame after a seek reaches the
+  screen at its own release
 - `linux/local-dv-hdmi-pkt-cache-reset.patch` clears the Dolby Vision driver's
   record of the HDMI packets it sent when Dolby Vision turns off. The driver
   skips a packet identical to the recorded one, and other drivers set the
