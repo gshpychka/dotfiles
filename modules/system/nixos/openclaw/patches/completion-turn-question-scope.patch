@@ -1,4 +1,4 @@
-From f51f4f326306cff07ac9dd6b6a7fab6ae115197f Mon Sep 17 00:00:00 2001
+From cb4a920cbc06001ba68d35f5521f1f0dc1b9dc6d Mon Sep 17 00:00:00 2001
 From: Glib Shpychka <23005347+gshpychka@users.noreply.github.com>
 Date: Sun, 11 Oct 2026 23:15:06 +0300
 Subject: [PATCH] fix(agents): let completion turns ask their requester

@@ -1,4 +1,4 @@
-From 89fc6c64efb69675405bbf7a27d6b6ff9005f523 Mon Sep 17 00:00:00 2001
+From 1c642b1f83ec224b8b8361b13f7bd14553cc8e66 Mon Sep 17 00:00:00 2001
 From: Glib Shpychka <23005347+gshpychka@users.noreply.github.com>
 Date: Mon, 12 Oct 2026 00:26:24 +0300
 Subject: [PATCH] fix(agents): show a delivered run's questions in its reply
@@ -15,7 +15,7 @@ Claude-Session: https://claude.ai/code/session_01LNTt5yXBj4uDUwJmPGvXLd
  2 files changed, 78 insertions(+)
 
 diff --git a/src/agents/command/attempt-execution.ts b/src/agents/command/attempt-execution.ts
-index ddc3b308368..58799f6b18d 100644
+index 10991579531..9fcade16e7d 100644
 --- a/src/agents/command/attempt-execution.ts
 +++ b/src/agents/command/attempt-execution.ts
 @@ -1,5 +1,6 @@
