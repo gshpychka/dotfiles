@@ -10,35 +10,38 @@
 let
   gw = config.services.openclaw-gateway;
 
-  # the unit's environment as a shell file: its variables, then the files it loads
+  # the unit's variables; configPath and stateDir are its OPENCLAW_CONFIG_PATH
+  # and OPENCLAW_STATE_DIR
+  variables = gw.environment // {
+    OPENCLAW_CONFIG_PATH = gw.configPath;
+    OPENCLAW_STATE_DIR = gw.stateDir;
+  };
+
+  # a shell file exporting the unit's environment: its variables, then the
+  # files it loads
   environment = pkgs.writeText "openclaw-environment.sh" (
     lib.concatLines (
-      [
-        (lib.toShellVars (
-          gw.environment
-          // {
-            OPENCLAW_CONFIG_PATH = gw.configPath;
-            OPENCLAW_STATE_DIR = gw.stateDir;
-          }
-        ))
-      ]
+      lib.mapAttrsToList (name: value: "export ${lib.toShellVar name value}") variables
+      ++ [ "set -a" ]
       ++ map (file: ". ${file}") gw.environmentFiles
+      ++ [ "set +a" ]
     )
   );
 
   cli = pkgs.writeShellApplication {
     name = "openclaw";
     text = ''
+      # the gateway user owns the state directory, and alone reads the config
       if [ "$(id -un)" != ${gw.user} ]; then
         exec sudo -H -u ${gw.user} -- "$0" "$@"
       fi
       # Node fails to spawn children (ffmpeg) from a working directory the
       # gateway user cannot enter
       [ -x . ] || cd ${gw.stateDir}
-      set -a
+      # the unit's environment
       # shellcheck disable=SC1091
       . ${environment}
-      set +a
+      # the unit's own binary
       exec ${lib.getExe' gw.package "openclaw"} "$@"
     '';
   };
