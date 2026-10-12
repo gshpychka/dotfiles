@@ -56,6 +56,8 @@ let
         ./patches/delivered-run-question-prompts.patch
         # a Claude Code session belongs to the agent that starts it, so the gateway accepts it
         ./patches/acp-raw-harness-owner.patch
+        # the agent can ask the owner to approve a command it wants to run
+        ./patches/agent-run-approval-requester.patch
       ];
     };
     # follows the source's pnpm-lock.yaml

@@ -1,7 +1,41 @@
+From 9e79e74afef66f5b7e485ebcf0ec6e78919344bc Mon Sep 17 00:00:00 2001
+From: "calcifer-claw[bot]"
+ <340989200+calcifer-claw[bot]@users.noreply.github.com>
+Date: Mon, 12 Oct 2026 13:37:30 +0300
+Subject: [PATCH] fix(gateway): let an agent run request and await its own exec
+ approvals
+
+In-process dispatch keeps the scope ceiling of the System client that
+started the run, which holds operator.write without operator.approvals,
+so exec.approval.request and exec.approval.waitDecision from an agent run
+were refused. A live agent run's own client now holds requester authority
+for those two methods, and a waitDecision without the approvals scope sees
+only approvals its connection registered.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01LNTt5yXBj4uDUwJmPGvXLd
+---
+ .../tools/gateway.hosted-routing.test.ts      |  15 ++
+ src/agents/tools/gateway.ts                   |   1 +
+ .../agent-runtime-approval-requester.test.ts  |  88 +++++++++
+ .../agent-runtime-approval-requester.ts       |  21 ++
+ src/gateway/agent-runtime-identity-token.ts   |   5 +
+ .../approval-request-authority.ts             |   6 +
+ src/gateway/server-methods/approval-shared.ts |   5 +
+ src/gateway/server-methods/exec-approval.ts   |   5 +
+ .../server-methods/method-authorization.ts    |   9 +
+ ...ugin-in-process-dispatch.approvals.test.ts | 181 ++++++++++++++++++
+ src/gateway/server-plugin-runtime-client.ts   |   6 +-
+ 11 files changed, 338 insertions(+), 4 deletions(-)
+ create mode 100644 src/gateway/agent-runtime-approval-requester.test.ts
+ create mode 100644 src/gateway/agent-runtime-approval-requester.ts
+ create mode 100644 src/gateway/server-plugin-in-process-dispatch.approvals.test.ts
+
 diff --git a/src/agents/tools/gateway.hosted-routing.test.ts b/src/agents/tools/gateway.hosted-routing.test.ts
+index 188b2660024..f0b50e72fd7 100644
 --- a/src/agents/tools/gateway.hosted-routing.test.ts
 +++ b/src/agents/tools/gateway.hosted-routing.test.ts
-@@ -272,6 +272,21 @@
+@@ -272,6 +272,21 @@ describe("Gateway tool identity and hosted routing", () => {
      });
    });
  
@@ -24,9 +58,10 @@ diff --git a/src/agents/tools/gateway.hosted-routing.test.ts b/src/agents/tools/
      await withCaller({}, () =>
        withPluginRuntimeGatewayRequestScope({ context, isWebchatConnect: () => false }, () =>
 diff --git a/src/agents/tools/gateway.ts b/src/agents/tools/gateway.ts
+index e1844b4826f..d971984ffcd 100644
 --- a/src/agents/tools/gateway.ts
 +++ b/src/agents/tools/gateway.ts
-@@ -259,6 +259,7 @@
+@@ -259,6 +259,7 @@ const AGENT_RUNTIME_IDENTITY_METHODS = new Set<string>([
  ]);
  
  const OPTIONAL_LOCAL_AGENT_RUNTIME_IDENTITY_METHODS = new Set<string>([
@@ -34,144 +69,12 @@ diff --git a/src/agents/tools/gateway.ts b/src/agents/tools/gateway.ts
    "ui.command",
    "node.invoke",
    "computer.invoke",
-diff --git a/src/gateway/server-methods/approval-request-authority.ts b/src/gateway/server-methods/approval-request-authority.ts
---- a/src/gateway/server-methods/approval-request-authority.ts
-+++ b/src/gateway/server-methods/approval-request-authority.ts
-@@ -12,6 +12,7 @@
- import { listConfiguredSessionStoreAgentIds } from "../../config/sessions/targets-configured-agents.js";
- import type { OpenClawConfig } from "../../config/types.openclaw.js";
- import { normalizeAgentId, parseAgentSessionKey } from "../../routing/session-key.js";
-+import { holdsAgentRuntimeApprovalRequesterAuthority } from "../agent-runtime-approval-requester.js";
- import { captureGatewayAuthPolicy, isGatewayAuthPolicyCurrent } from "../auth-policy.js";
- import { readGatewayAccessRevision } from "../gateway-access-revision.js";
- import { authorizeOperatorScopesForMethod } from "../method-scopes.js";
-@@ -106,6 +107,9 @@
-   const deviceId = client?.connect.device?.id;
-   const approvalRuntime = client?.internal?.approvalRuntime;
-   const runtimeIdentity = client?.internal?.agentRuntimeIdentity;
-+  const runtimeRequester =
-+    (method === "exec.approval.request" || method === "exec.approval.waitDecision") &&
-+    !authorizeOperatorScopesForMethod(method, client?.connect.scopes ?? []).allowed;
-   const actor = resolveGatewayOperatorRoleActor(client);
-   const actorKind = actor?.kind;
-   const actorProfileId = actor?.kind === "operator" ? actor.profileId : undefined;
-@@ -185,6 +189,8 @@
-       client?.connect.device?.id !== deviceId ||
-       client?.internal?.approvalRuntime !== approvalRuntime ||
-       client?.internal?.agentRuntimeIdentity !== runtimeIdentity ||
-+      (runtimeRequester &&
-+        !holdsAgentRuntimeApprovalRequesterAuthority(method, client, options.context)) ||
-       currentActor?.kind !== actorKind ||
-       (currentActor?.kind === "operator" ? currentActor.profileId : undefined) !== actorProfileId ||
-       client?.authenticatedUserProfile?.profileId !== profileId ||
-diff --git a/src/gateway/server-methods/approval-shared.ts b/src/gateway/server-methods/approval-shared.ts
---- a/src/gateway/server-methods/approval-shared.ts
-+++ b/src/gateway/server-methods/approval-shared.ts
-@@ -223,6 +223,8 @@
-   resolveTerminalReason?: (
-     snapshot: ExecApprovalRecord<TPayload>,
-   ) => OperatorApprovalTerminalReason | null | undefined;
-+  /** Requester-only admission cannot use pre-binding legacy approval visibility. */
-+  requireRequesterBinding?: boolean;
- }): Promise<void> {
-   const id = normalizeOptionalString(params.inputId) ?? "";
-   if (!id) {
-@@ -231,9 +233,12 @@
-   }
-   const snapshot = await params.manager.getSnapshot(id, params.authority);
-   params.authority?.assertCurrent();
-+  const requesterConnId = normalizeOptionalString(params.client?.connId);
-   const visible = (record: ExecApprovalRecord<TPayload>) => {
-     const cfg = params.getCfg?.() ?? params.cfg;
-     return (
-+      (!params.requireRequesterBinding ||
-+        (requesterConnId !== undefined && record.requestedByConnId === requesterConnId)) &&
-       !params.client?.invalidated &&
-       isApprovalRecordVisibleToClient({
-         record,
-diff --git a/src/gateway/server-methods/exec-approval.ts b/src/gateway/server-methods/exec-approval.ts
---- a/src/gateway/server-methods/exec-approval.ts
-+++ b/src/gateway/server-methods/exec-approval.ts
-@@ -34,6 +34,7 @@
- import { normalizeCommandSpans } from "../../shared/exec-approval-command-spans.js";
- import type { ExecApprovalManager } from "../exec-approval-manager.js";
- import { InvalidApprovalIdError } from "../exec-approval-registration.js";
-+import { authorizeOperatorScopesForMethod } from "../method-scopes.js";
- import {
-   buildCronExecOperationBinding,
-   parseCronExecOperationBinding,
-@@ -438,6 +439,10 @@
-         manager,
-         inputId: params.id,
-         client,
-+        requireRequesterBinding: !authorizeOperatorScopesForMethod(
-+          "exec.approval.waitDecision",
-+          client?.connect.scopes ?? [],
-+        ).allowed,
-         ...(client?.authenticatedUserProfile ? { getCfg: context.getRuntimeConfig } : {}),
-         respond,
-         resolveTerminalReason: (snapshot) => {
-diff --git a/src/gateway/server-methods/method-authorization.ts b/src/gateway/server-methods/method-authorization.ts
---- a/src/gateway/server-methods/method-authorization.ts
-+++ b/src/gateway/server-methods/method-authorization.ts
-@@ -8,10 +8,12 @@
-   resolveSessionMethodScope,
-   type SessionOperatorScope,
- } from "../../shared/session-method-scopes-base.js";
-+import { holdsAgentRuntimeApprovalRequesterAuthority } from "../agent-runtime-approval-requester.js";
- import { holdsCronManagementGrant } from "../cron-creator-authority-grant.js";
- import { isInProcessSessionRun } from "../in-process-session-run.js";
- import {
-   ADMIN_SCOPE,
-+  APPROVALS_SCOPE,
-   authorizeOperatorScopesForMethod,
-   authorizeOperatorScopesForRequiredScope,
-   resolveLeastPrivilegeOperatorScopesForMethod,
-@@ -89,6 +91,14 @@
-     );
-   }
-   if (!scopeAuth.allowed) {
-+    // Requester authority is separate from reviewing/resolving approvals. The existing
-+    // approval handlers bind registration to this runtime and waits to its exact record.
-+    if (
-+      scopeAuth.missingScope === APPROVALS_SCOPE &&
-+      holdsAgentRuntimeApprovalRequesterAuthority(method, client, context)
-+    ) {
-+      return { error: null };
-+    }
-     // A configured channel owner's automation management runs without operator.admin; its
-     // one-use grant, bound to this method and run, is the admitted authority instead.
-     const runtimeIdentity = client.internal?.agentRuntimeIdentity;
-diff --git a/src/gateway/agent-runtime-approval-requester.ts b/src/gateway/agent-runtime-approval-requester.ts
-new file mode 100644
---- /dev/null
-+++ b/src/gateway/agent-runtime-approval-requester.ts
-@@ -0,0 +1,20 @@
-+import type { GatewayRequestContext, GatewayRequestOptions } from "./server-methods/types.js";
-+
-+/** Built-in approval producers can register and observe their own run, never review approvals. */
-+export function holdsAgentRuntimeApprovalRequesterAuthority(
-+  method: string,
-+  client: GatewayRequestOptions["client"],
-+  context: Pick<GatewayRequestContext, "validateAgentRuntimeApprovalAuthority">,
-+): boolean {
-+  if (method !== "exec.approval.request" && method !== "exec.approval.waitDecision") {
-+    return false;
-+  }
-+  const identity = client?.internal?.agentRuntimeIdentity;
-+  return Boolean(
-+    client?.internal?.syntheticClient === true &&
-+    !client.invalidated &&
-+    identity &&
-+    client.connId === `agent-runtime:${identity.operationalRunInstance.instanceId}` &&
-+    context.validateAgentRuntimeApprovalAuthority?.(identity) === true,
-+  );
-+}
 diff --git a/src/gateway/agent-runtime-approval-requester.test.ts b/src/gateway/agent-runtime-approval-requester.test.ts
 new file mode 100644
+index 00000000000..240e4ba1b7b
 --- /dev/null
 +++ b/src/gateway/agent-runtime-approval-requester.test.ts
-@@ -0,0 +1,78 @@
+@@ -0,0 +1,88 @@
 +import { describe, expect, it, vi } from "vitest";
 +import { holdsAgentRuntimeApprovalRequesterAuthority } from "./agent-runtime-approval-requester.js";
 +import type { AgentRuntimeIdentity } from "./agent-runtime-identity-token.js";
@@ -239,22 +142,187 @@ new file mode 100644
 +    "missing-validator",
 +  ])("refuses %s authority", (reason) => {
 +    const { client, validate, context } = fixture();
-+    if (reason === "invalidated") client.invalidated = true;
-+    if (reason === "foreign-connection") client.connId = "agent-runtime:foreign-instance";
-+    if (reason === "unsigned") delete client.internal?.agentRuntimeIdentity;
-+    if (reason === "non-synthetic" && client.internal) client.internal.syntheticClient = false;
-+    if (reason === "revoked") validate.mockReturnValue(false);
++    if (reason === "invalidated") {
++      client.invalidated = true;
++    }
++    if (reason === "foreign-connection") {
++      client.connId = "agent-runtime:foreign-instance";
++    }
++    if (reason === "unsigned") {
++      delete client.internal?.agentRuntimeIdentity;
++    }
++    if (reason === "non-synthetic") {
++      delete client.internal?.syntheticClient;
++    }
++    if (reason === "revoked") {
++      validate.mockReturnValue(false);
++    }
 +    const currentContext = reason === "missing-validator" ? {} : context;
 +    expect(
 +      holdsAgentRuntimeApprovalRequesterAuthority("exec.approval.request", client, currentContext),
 +    ).toBe(false);
 +  });
 +});
+diff --git a/src/gateway/agent-runtime-approval-requester.ts b/src/gateway/agent-runtime-approval-requester.ts
+new file mode 100644
+index 00000000000..6126ef68be5
+--- /dev/null
++++ b/src/gateway/agent-runtime-approval-requester.ts
+@@ -0,0 +1,21 @@
++import { agentRuntimeConnId } from "./agent-runtime-identity-token.js";
++import type { GatewayRequestContext, GatewayRequestOptions } from "./server-methods/types.js";
++
++/** Whether a live agent run's own client may register an exec approval and await its decision. */
++export function holdsAgentRuntimeApprovalRequesterAuthority(
++  method: string,
++  client: GatewayRequestOptions["client"],
++  context: Pick<GatewayRequestContext, "validateAgentRuntimeApprovalAuthority">,
++): boolean {
++  if (method !== "exec.approval.request" && method !== "exec.approval.waitDecision") {
++    return false;
++  }
++  const identity = client?.internal?.agentRuntimeIdentity;
++  return Boolean(
++    client?.internal?.syntheticClient === true &&
++    !client.invalidated &&
++    identity &&
++    client.connId === agentRuntimeConnId(identity) &&
++    context.validateAgentRuntimeApprovalAuthority?.(identity) === true,
++  );
++}
+diff --git a/src/gateway/agent-runtime-identity-token.ts b/src/gateway/agent-runtime-identity-token.ts
+index af7bec3e459..510ec901421 100644
+--- a/src/gateway/agent-runtime-identity-token.ts
++++ b/src/gateway/agent-runtime-identity-token.ts
+@@ -77,6 +77,11 @@ export type AgentRuntimeDelegatedAuthority = AgentRunDelegatedAuthority &
+ 
+ export type { AgentRuntimeSessionSpawnContext } from "./agent-runtime-session-spawn-context.js";
+ 
++/** The connection id of the in-process client that acts for this run. */
++export function agentRuntimeConnId(identity: AgentRuntimeIdentity): string {
++  return `agent-runtime:${identity.operationalRunInstance.instanceId}`;
++}
++
+ type AgentRuntimeIdentityTokenPayload = Omit<AgentRuntimeIdentity, "kind"> & {
+   kind: typeof AGENT_RUNTIME_IDENTITY_TOKEN_KIND;
+   executionLineageHandoffId?: string;
+diff --git a/src/gateway/server-methods/approval-request-authority.ts b/src/gateway/server-methods/approval-request-authority.ts
+index a6279579d66..dc0e4edeb56 100644
+--- a/src/gateway/server-methods/approval-request-authority.ts
++++ b/src/gateway/server-methods/approval-request-authority.ts
+@@ -12,6 +12,7 @@ import { resolvePersistedSessionStoreOwner } from "../../config/sessions/session
+ import { listConfiguredSessionStoreAgentIds } from "../../config/sessions/targets-configured-agents.js";
+ import type { OpenClawConfig } from "../../config/types.openclaw.js";
+ import { normalizeAgentId, parseAgentSessionKey } from "../../routing/session-key.js";
++import { holdsAgentRuntimeApprovalRequesterAuthority } from "../agent-runtime-approval-requester.js";
+ import { captureGatewayAuthPolicy, isGatewayAuthPolicyCurrent } from "../auth-policy.js";
+ import { readGatewayAccessRevision } from "../gateway-access-revision.js";
+ import { authorizeOperatorScopesForMethod } from "../method-scopes.js";
+@@ -106,6 +107,9 @@ export function createApprovalRequestAuthority(options: GatewayRequestHandlerOpt
+   const deviceId = client?.connect.device?.id;
+   const approvalRuntime = client?.internal?.approvalRuntime;
+   const runtimeIdentity = client?.internal?.agentRuntimeIdentity;
++  const runtimeRequester =
++    (method === "exec.approval.request" || method === "exec.approval.waitDecision") &&
++    !authorizeOperatorScopesForMethod(method, client?.connect.scopes ?? []).allowed;
+   const actor = resolveGatewayOperatorRoleActor(client);
+   const actorKind = actor?.kind;
+   const actorProfileId = actor?.kind === "operator" ? actor.profileId : undefined;
+@@ -185,6 +189,8 @@ export function createApprovalRequestAuthority(options: GatewayRequestHandlerOpt
+       client?.connect.device?.id !== deviceId ||
+       client?.internal?.approvalRuntime !== approvalRuntime ||
+       client?.internal?.agentRuntimeIdentity !== runtimeIdentity ||
++      (runtimeRequester &&
++        !holdsAgentRuntimeApprovalRequesterAuthority(method, client, options.context)) ||
+       currentActor?.kind !== actorKind ||
+       (currentActor?.kind === "operator" ? currentActor.profileId : undefined) !== actorProfileId ||
+       client?.authenticatedUserProfile?.profileId !== profileId ||
+diff --git a/src/gateway/server-methods/approval-shared.ts b/src/gateway/server-methods/approval-shared.ts
+index 76aa4af17a3..1f0268c1a31 100644
+--- a/src/gateway/server-methods/approval-shared.ts
++++ b/src/gateway/server-methods/approval-shared.ts
+@@ -223,6 +223,8 @@ export async function handleApprovalWaitDecision<TPayload>(params: {
+   resolveTerminalReason?: (
+     snapshot: ExecApprovalRecord<TPayload>,
+   ) => OperatorApprovalTerminalReason | null | undefined;
++  /** Limits visibility to approvals that this client's connection registered. */
++  requireRequesterBinding?: boolean;
+ }): Promise<void> {
+   const id = normalizeOptionalString(params.inputId) ?? "";
+   if (!id) {
+@@ -231,9 +233,12 @@ export async function handleApprovalWaitDecision<TPayload>(params: {
+   }
+   const snapshot = await params.manager.getSnapshot(id, params.authority);
+   params.authority?.assertCurrent();
++  const requesterConnId = normalizeOptionalString(params.client?.connId);
+   const visible = (record: ExecApprovalRecord<TPayload>) => {
+     const cfg = params.getCfg?.() ?? params.cfg;
+     return (
++      (!params.requireRequesterBinding ||
++        (requesterConnId !== undefined && record.requestedByConnId === requesterConnId)) &&
+       !params.client?.invalidated &&
+       isApprovalRecordVisibleToClient({
+         record,
+diff --git a/src/gateway/server-methods/exec-approval.ts b/src/gateway/server-methods/exec-approval.ts
+index 3db78fde1ef..23d0f1243a7 100644
+--- a/src/gateway/server-methods/exec-approval.ts
++++ b/src/gateway/server-methods/exec-approval.ts
+@@ -34,6 +34,7 @@ import { normalizeAgentId } from "../../routing/session-key.js";
+ import { normalizeCommandSpans } from "../../shared/exec-approval-command-spans.js";
+ import type { ExecApprovalManager } from "../exec-approval-manager.js";
+ import { InvalidApprovalIdError } from "../exec-approval-registration.js";
++import { authorizeOperatorScopesForMethod } from "../method-scopes.js";
+ import {
+   buildCronExecOperationBinding,
+   parseCronExecOperationBinding,
+@@ -438,6 +439,10 @@ export function createExecApprovalHandlers(
+         manager,
+         inputId: params.id,
+         client,
++        requireRequesterBinding: !authorizeOperatorScopesForMethod(
++          "exec.approval.waitDecision",
++          client?.connect.scopes ?? [],
++        ).allowed,
+         ...(client?.authenticatedUserProfile ? { getCfg: context.getRuntimeConfig } : {}),
+         respond,
+         resolveTerminalReason: (snapshot) => {
+diff --git a/src/gateway/server-methods/method-authorization.ts b/src/gateway/server-methods/method-authorization.ts
+index b6451164ef5..c100a714a9a 100644
+--- a/src/gateway/server-methods/method-authorization.ts
++++ b/src/gateway/server-methods/method-authorization.ts
+@@ -8,10 +8,12 @@ import {
+   resolveSessionMethodScope,
+   type SessionOperatorScope,
+ } from "../../shared/session-method-scopes-base.js";
++import { holdsAgentRuntimeApprovalRequesterAuthority } from "../agent-runtime-approval-requester.js";
+ import { holdsCronManagementGrant } from "../cron-creator-authority-grant.js";
+ import { isInProcessSessionRun } from "../in-process-session-run.js";
+ import {
+   ADMIN_SCOPE,
++  APPROVALS_SCOPE,
+   authorizeOperatorScopesForMethod,
+   authorizeOperatorScopesForRequiredScope,
+   resolveLeastPrivilegeOperatorScopesForMethod,
+@@ -89,6 +91,13 @@ export function authorizeGatewayMethod(
+     );
+   }
+   if (!scopeAuth.allowed) {
++    // An agent run registers and awaits its own approvals without the reviewer scope.
++    if (
++      scopeAuth.missingScope === APPROVALS_SCOPE &&
++      holdsAgentRuntimeApprovalRequesterAuthority(method, client, context)
++    ) {
++      return { error: null };
++    }
+     // A configured channel owner's automation management runs without operator.admin; its
+     // one-use grant, bound to this method and run, is the admitted authority instead.
+     const runtimeIdentity = client.internal?.agentRuntimeIdentity;
 diff --git a/src/gateway/server-plugin-in-process-dispatch.approvals.test.ts b/src/gateway/server-plugin-in-process-dispatch.approvals.test.ts
 new file mode 100644
+index 00000000000..59263b0943b
 --- /dev/null
 +++ b/src/gateway/server-plugin-in-process-dispatch.approvals.test.ts
-@@ -0,0 +1,182 @@
+@@ -0,0 +1,181 @@
 +import { expectDefined } from "@openclaw/normalization-core/expect";
 +import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 +import { createOperationalRunInstanceRef } from "../agents/admitted-run-context.js";
@@ -269,7 +337,10 @@ new file mode 100644
 +import { withPluginRuntimeGatewayRequestScope } from "../plugins/runtime/gateway-request-scope.js";
 +import { createAgentRuntimeApprovalAuthorityValidator } from "./agent-runtime-approval-authority.js";
 +import { createPreparedTestApprovalManager } from "./exec-approval-manager.test-support.js";
++import { APPROVALS_SCOPE } from "./method-scopes.js";
++import type { GatewayMethodDescriptorInput } from "./methods/descriptor.js";
 +import { createGatewayMethodRegistry } from "./methods/registry.js";
++import { createChatRunState } from "./server-chat-state.js";
 +import { createExecApprovalHandlers } from "./server-methods/exec-approval.js";
 +import type {
 +  GatewayRequestContext,
@@ -318,24 +389,20 @@ new file mode 100644
 +      const handlers = createExecApprovalHandlers(manager);
 +      const observed: GatewayRequestHandlerOptions[] = [];
 +      const methodRegistry = createGatewayMethodRegistry(
-+        Object.entries(handlers).map(([name, handler]) => ({
++        Object.entries(handlers).map(([name, handler]): GatewayMethodDescriptorInput => ({
 +          name,
-+          handler: async (options: GatewayRequestHandlerOptions) => {
++          handler: async (options) => {
 +            observed.push(options);
 +            await handler(options);
 +          },
-+          owner: { kind: "core" as const, area: "approval-requester-regression" },
-+          scope: "operator.approvals" as const,
++          owner: { kind: "core", area: "approval-requester-regression" },
++          scope: APPROVALS_SCOPE,
 +        })),
 +      );
-+      context = {
-+        ...context,
-+        getGatewayMethodRegistry: () => methodRegistry,
-+        chatRunState: { hasAbortMarker: () => false },
-+        broadcast: vi.fn(),
-+        hasExecApprovalClients: () => true,
-+      } as GatewayRequestContext;
-+      currentContext = context;
++      context.getGatewayMethodRegistry = () => methodRegistry;
++      context.chatRunState = createChatRunState();
++      context.broadcast = vi.fn();
++      context.hasExecApprovalClients = () => true;
 +      const source = createSyntheticPluginRuntimeClient({
 +        operatorRoleActor: { kind: "system" },
 +        scopes: ["operator.write"],
@@ -437,3 +504,30 @@ new file mode 100644
 +    },
 +  );
 +});
+diff --git a/src/gateway/server-plugin-runtime-client.ts b/src/gateway/server-plugin-runtime-client.ts
+index f419c5f7465..e082bff4738 100644
+--- a/src/gateway/server-plugin-runtime-client.ts
++++ b/src/gateway/server-plugin-runtime-client.ts
+@@ -10,7 +10,7 @@ import { isKnownCoreToolId } from "../agents/tool-catalog.js";
+ import { normalizeToolPolicyName } from "../agents/tool-policy.js";
+ import { getActivePluginRegistry } from "../plugins/runtime.js";
+ import type { RuntimePluginToolGrant } from "../plugins/runtime/tool-grant.js";
+-import type { AgentRuntimeIdentity } from "./agent-runtime-identity-token.js";
++import { agentRuntimeConnId, type AgentRuntimeIdentity } from "./agent-runtime-identity-token.js";
+ import {
+   bindInProcessSubagentResume,
+   readInProcessSubagentResume,
+@@ -120,9 +120,7 @@ export function projectPluginRuntimeClientExecution(params: {
+   return identity || params.nodeInvokeStream
+     ? {
+         ...(params.streamClient ?? params.client),
+-        ...(identity && !params.streamClient
+-          ? { connId: `agent-runtime:${identity.operationalRunInstance.instanceId}` }
+-          : {}),
++        ...(identity && !params.streamClient ? { connId: agentRuntimeConnId(identity) } : {}),
+         ...(params.streamClient
+           ? {
+               connect: {
+-- 
+2.55.0
+
