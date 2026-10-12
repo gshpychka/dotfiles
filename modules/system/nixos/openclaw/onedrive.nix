@@ -56,12 +56,8 @@ in
         ExecStart = "${lib.getExe pkgs.onedrive} --monitor";
         Restart = "on-failure";
         RestartSec = "5min";
-        RestartPreventExitStatus = [
-          # a required --resync, after 2.5.11
-          78
-          # a required --resync, through 2.5.11
-          126
-        ];
+        # a required --resync
+        RestartPreventExitStatus = 126;
         UMask = "0077";
       };
     };
