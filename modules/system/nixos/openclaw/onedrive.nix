@@ -56,9 +56,10 @@ in
         ExecStart = "${lib.getExe pkgs.onedrive} --monitor";
         Restart = "on-failure";
         RestartSec = "5min";
-        # the client's exit status for a required --resync: 126 through 2.5.11, 78 after
         RestartPreventExitStatus = [
+          # a required --resync, after 2.5.11
           78
+          # a required --resync, through 2.5.11
           126
         ];
         UMask = "0077";

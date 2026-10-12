@@ -72,8 +72,8 @@ let
         name = botName;
         email = "${toString app.botUserId}+${botName}@users.noreply.github.com";
       };
-      # the empty helper drops any inherited one
       credential."https://github.com".helper = [
+        # drops any inherited helper
         ""
         "${credentialHelper}"
       ];

@@ -36,10 +36,11 @@ in
         tools.exec = {
           host = "gateway";
           mode = "full";
+          # the wrappers before the system's packages: both hold sudo, and only
+          # the wrapper's is setuid
           pathPrepend = map (package: "${lib.getBin package}/bin") cfg.extraPackages ++ [
-            # setuid wrappers such as sudo, then the system's packages;
-            # OpenClaw's login-shell PATH merge is best-effort
             config.security.wrapperDir
+            # OpenClaw's login-shell PATH merge is best-effort
             "/run/current-system/sw/bin"
           ];
           applyPatch.workspaceOnly = false;
