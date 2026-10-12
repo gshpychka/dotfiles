@@ -1,8 +1,7 @@
 {
   description = "My Machines";
   inputs = {
-    # until https://github.com/NixOS/nixpkgs/pull/568318 is in
-    nixpkgs.url = "github:nixos/nixpkgs/f45c6f04c2f013f004bf94e284e95d72898d9393";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     # source for reaper's whisper CUDA closure (cache.nixos-cuda.org builds these
     # on the 25.11 channel; see machines/reaper/whisper.nix), and an escape hatch
     # for packages broken on unstable
