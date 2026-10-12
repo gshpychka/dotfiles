@@ -42,7 +42,6 @@
     ./tty.nix
     ./bay.nix
     ./twingate.nix
-    ./oidc-issuer
     ./spire
     ./cloudflare-tunnel.nix
     # ./comfyui.nix

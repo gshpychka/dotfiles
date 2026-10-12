@@ -1,4 +1,4 @@
-"""oidc-token: get a token from reaper's OIDC issuer, or trade it for AWS credentials.
+"""oidc-token: get a token from this machine's OIDC issuer, or trade it for AWS credentials.
 
   oidc-token                      print a fresh token (a JWT) for the current user
   oidc-token claims               print the token's claims, e.g. to write a trust policy
@@ -22,7 +22,7 @@ import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 
-# substituted by machines/reaper/oidc-issuer/default.nix
+# substituted by modules/system/nixos/oidc-issuer.nix
 SOCKET_PATH = "@socketPath@"
 ISSUER_UNIT = "@issuerUnit@"
 

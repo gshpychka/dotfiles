@@ -1,7 +1,8 @@
-# Public half of reaper's OIDC token issuer (machines/reaper/oidc-issuer): the
-# discovery document and JWKS AWS STS fetches to verify reaper's tokens. Both
-# are static, built from modules/common/oidc-issuer.nix, so publishing a key is
-# a buoy deploy and reaper needs no public endpoint of its own.
+# Public half of the fleet's OIDC token issuers
+# (modules/system/nixos/oidc-issuer.nix): each issuer's discovery document and
+# JWKS, which AWS STS fetches to verify its tokens. All are static, built from
+# modules/common/oidc-issuer.nix, so publishing a key is a buoy deploy and
+# issuing machines need no public endpoint of their own.
 {
   config,
   lib,
@@ -14,11 +15,11 @@ let
   # for nginx (and serve its own JWKS to AWS) while nginx is down.
   port = 80;
 
-  # URL path -> document
-  documents = {
-    ${cfg.discoveryPath} = cfg.discoveryDocument;
-    ${cfg.jwksPath} = cfg.jwks;
-  };
+  # URL path -> document, for every issuer
+  documents = lib.concatMapAttrs (_: issuer: {
+    ${issuer.discoveryPath} = issuer.discoveryDocument;
+    ${issuer.jwksPath} = issuer.jwks;
+  }) cfg.issuers;
   paths = lib.attrNames documents;
 
   webRoot = pkgs.linkFarm "oidc-discovery" (
