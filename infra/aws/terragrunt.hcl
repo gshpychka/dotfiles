@@ -1,0 +1,26 @@
+include "root" {
+  path = find_in_parent_folders("root.hcl")
+}
+
+generate "provider" {
+  path      = "provider.tf"
+  if_exists = "overwrite_terragrunt"
+  contents  = <<-EOF
+    terraform {
+      required_version = ">= 1.0"
+      required_providers {
+        aws = {
+          source  = "hashicorp/aws"
+          version = "~> 6.0"
+        }
+      }
+    }
+
+    provider "aws" {
+      # IAM is global; the provider still needs a region
+      region = "us-east-1"
+      # refuses to plan or apply against any other account, such as a work one
+      allowed_account_ids = [var.aws_account_id]
+    }
+  EOF
+}
