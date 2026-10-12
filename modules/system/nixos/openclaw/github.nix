@@ -120,7 +120,7 @@ in
     systemd.tmpfiles.rules = [ "L+ ${gw.stateDir}/.gitconfig - - - - ${gitConfig}" ];
 
     my.openclaw = {
-      hostTools = [
+      extraPackages = [
         token
         gh
       ];

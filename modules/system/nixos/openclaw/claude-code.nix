@@ -45,7 +45,7 @@ in
         # nix builds in sessions; the daemon admits only listed users
         nix.settings.allowed-users = [ gw.user ];
 
-        my.openclaw.hostTools = with pkgs; [
+        my.openclaw.extraPackages = with pkgs; [
           ripgrep
           jq
           curl
@@ -54,7 +54,7 @@ in
 
         services.openclaw-gateway = {
           # sessions inherit the gateway's PATH
-          servicePath = cfg.hostTools;
+          servicePath = cfg.extraPackages;
           # The adapter bundled with acpx carries its own `claude`, a binary
           # for generic Linux that NixOS cannot run; it honours this variable.
           environment.CLAUDE_CODE_EXECUTABLE = lib.getExe pkgs.claude-code;

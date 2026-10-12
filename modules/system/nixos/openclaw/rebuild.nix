@@ -1,6 +1,5 @@
-# Rebuilds of this host by the OpenClaw agent, from its own checkout and
-# without asking: `openclaw-rebuild switch --flake .#<host>`. This gives the
-# agent root on this host.
+# Rebuilds of this host by the OpenClaw agent, from its own checkout:
+# `openclaw-rebuild switch --flake .#<host>`.
 {
   config,
   lib,
@@ -9,12 +8,9 @@
 }:
 let
   cfg = config.my.openclaw;
-  gw = config.services.openclaw-gateway;
   nixos-rebuild = "/run/current-system/sw/bin/nixos-rebuild";
   logFile = "${cfg.workspace}/nixos-rebuild.log";
 
-  # A host command of its own: OpenClaw's allowlist matches neither sudo, an
-  # exec wrapper, nor a command with a redirect.
   rebuild = pkgs.writeShellApplication {
     name = "openclaw-rebuild";
     text = ''
@@ -28,25 +24,19 @@ let
 in
 {
   options.my.openclaw.rebuild.enable = lib.mkEnableOption ''
-    rebuilds of this host by the agent, from its own checkout and without
-    asking; this gives the agent root'';
+    rebuilds of this host by the agent, from its own checkout, through its
+    root (my.openclaw.root)'';
 
   config = lib.mkIf (cfg.enable && cfg.rebuild.enable) {
-    security.sudo.extraRules = [
+    assertions = [
       {
-        users = [ gw.user ];
-        commands = [
-          {
-            command = nixos-rebuild;
-            options = [ "NOPASSWD" ];
-          }
-        ];
+        assertion = cfg.root.sshKey != null;
+        message = "my.openclaw.rebuild runs nixos-rebuild with the agent's sudo, which my.openclaw.root.sshKey grants.";
       }
     ];
 
     my.openclaw = {
-      hostTools = [ rebuild ];
-      hostExec.allowlist = [ { pattern = "openclaw-rebuild"; } ];
+      extraPackages = [ rebuild ];
       skills.nixos-rebuild = {
         description = "Rebuild and switch this host (${config.networking.hostName}) from a checkout of its NixOS config.";
         text = ''

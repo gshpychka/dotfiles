@@ -4,10 +4,8 @@
 # Trust boundaries:
 #   - the gateway runs as its own system user and reads secrets from files
 #     rendered by sops; openclaw.json carries only env references;
-#   - every session runs its tools on this host as the gateway user. File tools
-#     stay inside the workspace, and commands run against an allowlist
-#     (hostExec.allowlist); a reviewer model runs any other command once,
-#     denies it, or asks the owner in the Telegram DM. OpenClaw checks a DM's
+#   - every session runs its tools on this host as the gateway user, across
+#     the whole filesystem and without approval. OpenClaw checks a DM's
 #     sandbox policy under a per-peer key, so its non-main sandbox mode covers
 #     the owner's DM as well.
 #
@@ -58,8 +56,6 @@ let
         ./patches/delivered-run-question-prompts.patch
         # a Claude Code session belongs to the agent that starts it, so the gateway accepts it
         ./patches/acp-raw-harness-owner.patch
-        # the agent can ask the owner to approve a command it wants to run
-        ./patches/agent-run-approval-requester.patch
         # a turn carries on after its question is answered by typing
         ./patches/question-answer-worker-append.patch
       ];
@@ -107,9 +103,9 @@ let
 
   publicOrigin = "https://${cfg.publicHost}";
 
-  hostTools = pkgs.buildEnv {
-    name = "openclaw-host-tools";
-    paths = cfg.hostTools;
+  extraPackages = pkgs.buildEnv {
+    name = "openclaw-extra-packages";
+    paths = cfg.extraPackages;
   };
 
   skillsDir = pkgs.runCommand "openclaw-skills" { } (
@@ -126,18 +122,16 @@ let
     )
   );
 
-  # the main session's host exec approvals, which the gateway keeps in its
-  # SQLite state, outside openclaw.json
+  # host exec approvals, which the gateway keeps in its SQLite state, outside
+  # openclaw.json; host exec follows the stricter of these and tools.exec
   approvalsFile = pkgs.writeText "openclaw-exec-approvals.json" (
     builtins.toJSON {
       version = 1;
       defaults = {
-        security = "allowlist";
-        ask = "on-miss";
-        askFallback = "deny";
-        autoAllowSkills = false;
+        security = "full";
+        ask = "off";
+        askFallback = "full";
       };
-      agents.main.allowlist = cfg.hostExec.allowlist;
     }
   );
 
@@ -218,23 +212,13 @@ let
         dmPolicy = "allowlist";
         allowFrom = [ "\${TELEGRAM_OWNER_ID}" ];
         groupPolicy = "disabled";
-        configWrites = false;
-        # host exec approvals from the main session, as buttons in the DM
-        execApprovals = {
-          enabled = true;
-          approvers = [ "\${TELEGRAM_OWNER_ID}" ];
-          target = "dm";
-        };
         capabilities.inlineButtons = "dm";
       };
     };
     commands = {
       ownerAllowFrom = lib.optional cfg.telegram.enable "telegram:\${TELEGRAM_OWNER_ID}";
-      bash = false;
-      config = false;
-      mcp = false;
-      plugins = false;
-      restart = false;
+      bash = true;
+      restart = true;
     };
 
     models.catalogRefresh.enabled = false;
@@ -245,10 +229,9 @@ let
       model = {
         inherit (cfg.model) primary fallbacks;
       };
-      # OpenClaw's own runtime, which runs host commands through
-      # hostExec.allowlist; in auto mode the Codex harness claims openai/* routes.
-      # The entry also leaves an OpenAI sign-in nothing to patch in openclaw.json,
-      # a write Nix mode refuses.
+      # In auto mode the Codex harness claims openai/* routes; the entry keeps
+      # them on OpenClaw's own runtime and leaves an OpenAI sign-in nothing to
+      # patch in openclaw.json, a write Nix mode refuses.
       models."openai/*".agentRuntime.id = "openclaw";
       # the models sessions may select
       modelPolicy.allow = [ "openai/*" ];
@@ -263,18 +246,19 @@ let
     tools = {
       exec = {
         host = "gateway";
-        # host commands: the allowlist runs; the reviewer model runs any other
-        # command once, denies it, or asks the owner
-        mode = "auto";
-        reviewer = lib.filterAttrs (_: value: value != null) cfg.hostExec.reviewer;
+        mode = "full";
         pathPrepend = [
-          "${hostTools}/bin"
+          "${extraPackages}/bin"
           # setuid wrappers such as sudo; OpenClaw's login-shell PATH merge
           # is best-effort
           config.security.wrapperDir
         ];
+        applyPatch.workspaceOnly = false;
       };
-      fs.workspaceOnly = true;
+      # senders whose `! <command>` runs on this host
+      elevated.allowFrom = lib.optionalAttrs cfg.telegram.enable {
+        telegram = [ "\${TELEGRAM_OWNER_ID}" ];
+      };
       media = {
         # an empty model list otherwise falls through to auto-detection
         audio.enabled = cfg.transcription != [ ];
@@ -459,7 +443,7 @@ in
       type = lib.types.str;
       default = "${gw.stateDir}/workspace";
       readOnly = true;
-      description = "The agent's workspace, the only directory its file tools reach.";
+      description = "The agent's workspace: its home, and the working directory its tools start in.";
     };
 
     ageKeyFile = lib.mkOption {
@@ -472,63 +456,10 @@ in
       '';
     };
 
-    hostTools = lib.mkOption {
+    extraPackages = lib.mkOption {
       type = lib.types.listOf lib.types.package;
       default = [ ];
       description = "Packages on PATH for the agent's commands.";
-    };
-
-    hostExec.allowlist = lib.mkOption {
-      type = lib.types.listOf (
-        lib.types.submodule {
-          options = {
-            pattern = lib.mkOption {
-              type = lib.types.str;
-              example = "openclaw-rebuild";
-              description = "Command name on PATH, or a glob of resolved binary paths.";
-            };
-            argPattern = lib.mkOption {
-              type = lib.types.nullOr lib.types.str;
-              default = null;
-              example = "^switch( |$)";
-              description = ''
-                ECMAScript regex the arguments, joined by single spaces, must
-                match; null admits any arguments.
-              '';
-            };
-          };
-        }
-      );
-      default = [ ];
-      description = ''
-        Host commands the main session runs without review
-        (https://docs.openclaw.ai/tools/exec-approvals). The reviewer model
-        runs any other host command once, denies it, or asks the owner.
-      '';
-      apply = map (lib.filterAttrs (_: value: value != null));
-    };
-
-    hostExec.reviewer = {
-      model = lib.mkOption {
-        type = lib.types.nullOr lib.types.str;
-        default = null;
-        example = "openai/gpt-5.6-terra";
-        description = "Model reviewing host commands outside the allowlist, as provider/model; null takes the primary.";
-      };
-      thinking = lib.mkOption {
-        type = lib.types.nullOr (
-          lib.types.enum [
-            "minimal"
-            "low"
-            "medium"
-            "high"
-            "xhigh"
-            "max"
-          ]
-        );
-        default = null;
-        description = "Reasoning effort of the reviewer model; null takes the provider default.";
-      };
     };
 
     skills = lib.mkOption {
@@ -597,7 +528,7 @@ in
       environmentFiles = [ config.sops.templates."openclaw.env".path ];
       execStartPre = [
         "${generateAgeKey}"
-        # non-fatal: OpenClaw's default approvals ask for every host command
+        # non-fatal: the gateway starts on the approvals it already holds
         "-${lib.getExe' gw.package "openclaw"} approvals set --file ${approvalsFile}"
       ];
     };
@@ -613,7 +544,7 @@ in
 
     my.openclaw = {
       # sops with the agent's own key (SOPS_AGE_KEY_FILE), for secrets encrypted to it
-      hostTools = with pkgs; [
+      extraPackages = with pkgs; [
         sops
         age
         git

@@ -37,11 +37,6 @@
       #   ssh -t hoard openclaw models auth login --provider openai --device-code --profile-id openai:chatgpt
       authOrder.openai = [ "openai:chatgpt" ];
     };
-    # every host command outside the allowlist waits on its review
-    hostExec.reviewer = {
-      model = "openai/gpt-5.6-terra";
-      thinking = "low";
-    };
     providerKeys = {
       OPENAI_API_KEY = "openai-api-key";
       ELEVENLABS_API_KEY = "elevenlabs-api-key";
@@ -99,4 +94,5 @@
     user = config.services.openclaw-gateway.user;
   };
   services.openclaw-gateway.environment.SSH_AUTH_SOCK = config.my.tpmSshKey.socket;
+  my.openclaw.root.sshKey = config.my.sshKeys.openclaw;
 }
