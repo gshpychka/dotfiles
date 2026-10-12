@@ -1,4 +1,4 @@
-From 259d610a1372c8cc7f19b791678cffde48f1ae25 Mon Sep 17 00:00:00 2001
+From c60e7c827f11c8eed8d85089a5abe4052765542e Mon Sep 17 00:00:00 2001
 From: Glib Shpychka <23005347+gshpychka@users.noreply.github.com>
 Date: Mon, 12 Oct 2026 00:06:09 +0300
 Subject: [PATCH] fix(code-mode): hold exec while a question waits for its

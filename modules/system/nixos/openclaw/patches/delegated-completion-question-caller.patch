@@ -1,18 +1,23 @@
-From 1cd17b731f62ef5fcb799f9f91ba39c14bb1e6b8 Mon Sep 17 00:00:00 2001
+From 823a827a1a11a005829cc64be597f0bbe223c415 Mon Sep 17 00:00:00 2001
 From: Glib Shpychka <23005347+gshpychka@users.noreply.github.com>
 Date: Sun, 11 Oct 2026 21:54:02 +0300
-Subject: [PATCH] fix(agents): accept answers from the requester's chat after a
- subagent finishes
+Subject: [PATCH] fix(agents): accept answers from the requester's chat after
+ delegated work finishes
 
-When a subagent finishes, OpenClaw continues the requester's session in an
-internal turn. A question that turn asks only accepts answers from a caller
-with the internal turn's authority, so a reply from the chat that started the
-subagent is refused.
+When a subagent, a Claude Code session or a sessions_send follow-up finishes,
+OpenClaw continues the requester's session in an internal turn. A question
+that turn asks only accepts answers from a caller with the internal turn's
+authority, so a reply from the chat that started the work is refused.
 
-sessions_spawn records the requesting chat turn's caller facts on the subagent
-run. The completion handoff carries the caller that every finished run shares,
-and a verified handoff checks answers against that caller. Replies from other
-senders, unverified handoffs, and revoked settle batches are still refused.
+The turn that delegates the work records its caller facts on the run:
+sessions_spawn for subagent, ACP and visible runs, and sessions_send for the
+follow-up run it registers or its private follow-up request. A turn that
+adopts a running child takes over its caller. The completion handoff carries
+the caller that every finished run shares, and a verified handoff checks
+answers against that caller. A sessions_send reply registers the same
+handoff, and a completion without internal events names its child through
+its provenance. Replies from other senders, unverified handoffs, and revoked
+settle batches are still refused.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01LNTt5yXBj4uDUwJmPGvXLd
@@ -25,19 +30,33 @@ Claude-Session: https://claude.ai/code/session_01LNTt5yXBj4uDUwJmPGvXLd
  ...ubagent-announce.requester-settle-state.ts |  18 ++
  ...subagent-announce.requester-settle-wake.ts |   5 +-
  .../subagents/announce/subagent-announce.ts   |   3 +
+ .../session-followup-completion.types.ts      |   3 +
  ...ent-registry-lifecycle-announce-cleanup.ts |   1 +
+ .../subagent-registry-requester-yield.test.ts |  31 +-
+ .../subagent-registry-requester-yield.ts      |   8 +
  .../subagent-registry-run-launch-record.ts    |   2 +
+ ...gent-registry.completion-authority.test.ts |   1 +
  .../registry/subagent-registry.types.ts       |   3 +
+ src/agents/subagents/spawn/acp-spawn.test.ts  |  16 ++
+ src/agents/subagents/spawn/acp-spawn.ts       |   4 +
  .../spawn/subagent-spawn-contract.ts          |   3 +
  src/agents/subagents/spawn/subagent-spawn.ts  |   1 +
  src/agents/tools/gateway-caller-context.ts    |   9 +-
- src/agents/tools/sessions-spawn-tool.ts       |   1 +
+ .../tools/sessions-send-followup-custody.ts   |   1 +
+ src/agents/tools/sessions-send-followup.ts    |   3 +
+ .../sessions-send-owner-continuation.test.ts  |  35 ++-
+ src/agents/tools/sessions-send-reply-flow.ts  |   7 +
+ src/agents/tools/sessions-spawn-tool.ts       |   3 +
+ .../tools/sessions-spawn-tool.visible.test.ts |  31 ++
+ src/agents/tools/sessions-spawn-visible.ts    |   4 +
  .../reply/reply-run-registry.contracts.ts     |  18 ++
  .../reply/reply-run-registry.operation.ts     |   3 +
  .../reply-run-registry.tool-authority.ts      |   4 +
  src/auto-reply/reply/reply-tool-authority.ts  |  56 ++++
+ .../agent-turn/agent-run-admission-phase.ts   |   4 +-
+ ...e-completion.sessions-send.test-support.ts | 123 ++++++++
  .../subagent-completion-tool-handoff.ts       |   2 +
- 20 files changed, 482 insertions(+), 5 deletions(-)
+ 34 files changed, 752 insertions(+), 8 deletions(-)
  create mode 100644 src/agents/harness/tool-authority.delegated-question.test.ts
  create mode 100644 src/agents/subagents/announce/subagent-announce.requester-settle-state.test.ts
 
@@ -586,6 +605,24 @@ index cbf11bf94e8..4a36b2dc692 100644
        isSourceSessionEffectsAllowed: completionDeliveryAllowed,
        isCompletionOwnedByRequesterYield: params.isCompletionOwnedByRequesterYield,
        targetRequesterSessionKey,
+diff --git a/src/agents/subagents/completion/session-followup-completion.types.ts b/src/agents/subagents/completion/session-followup-completion.types.ts
+index 0078f4db1ba..a0252d893d8 100644
+--- a/src/agents/subagents/completion/session-followup-completion.types.ts
++++ b/src/agents/subagents/completion/session-followup-completion.types.ts
+@@ -1,3 +1,4 @@
++import type { ReplyToolAuthorityCaller } from "../../../auto-reply/reply/reply-run-registry.contracts.js";
+ import type { AgentWaitResult } from "../../run-wait.types.js";
+ import type { SubagentRunRecord } from "../registry/subagent-registry.types.js";
+ 
+@@ -20,6 +21,8 @@ export type FollowupRequest = {
+   targetSessionKey: string;
+   targetAgentId: string;
+   custody: FollowupCustody;
++  /** Durable caller facts of the turn that sent the followup. */
++  requesterCaller?: ReplyToolAuthorityCaller;
+   requesterAuthority?: FollowupRequesterAuthority | undefined;
+   completion?: FollowupCompletionOwner;
+ };
 diff --git a/src/agents/subagents/registry/subagent-registry-lifecycle-announce-cleanup.ts b/src/agents/subagents/registry/subagent-registry-lifecycle-announce-cleanup.ts
 index 3903ba9fd2f..2911b0eac11 100644
 --- a/src/agents/subagents/registry/subagent-registry-lifecycle-announce-cleanup.ts
@@ -598,6 +635,86 @@ index 3903ba9fd2f..2911b0eac11 100644
      task: pendingPayload.task,
      timeoutMs: params.subagentAnnounceTimeoutMs,
      cleanup: suppressSessionEffects ? "keep" : cleanup,
+diff --git a/src/agents/subagents/registry/subagent-registry-requester-yield.test.ts b/src/agents/subagents/registry/subagent-registry-requester-yield.test.ts
+index 6ffb2af703d..b74a276f3e5 100644
+--- a/src/agents/subagents/registry/subagent-registry-requester-yield.test.ts
++++ b/src/agents/subagents/registry/subagent-registry-requester-yield.test.ts
+@@ -111,7 +111,9 @@ describe("adoptSubagentRunForRequesterTurnInRuns", () => {
+     };
+   }
+ 
+-  function adoption(entry: SubagentRunRecord) {
++  function adoption(
++    entry: SubagentRunRecord,
++  ): Parameters<typeof adoptSubagentRunForRequesterTurnInRuns>[0] {
+     const runs = new Map([[entry.runId, entry]]);
+     saveSubagentRegistryChangesToSqlite(runs, [...runs.keys()]);
+     return {
+@@ -119,11 +121,38 @@ describe("adoptSubagentRunForRequesterTurnInRuns", () => {
+       requesterSessionKey: REQUESTER,
+       requesterAgentId: "main",
+       requesterTurnRunId: REQUESTER_TURN,
++      requesterCaller: undefined,
+       assertCurrent: () => {},
+       runs,
+     };
+   }
+ 
++  const spawner = {
++    messageProvider: "telegram",
++    senderId: "spawner",
++    senderIsOwner: false,
++    disableTools: false,
++    traceAuthorized: false,
++  };
++  const adopter = { ...spawner, senderId: "owner", senderIsOwner: true, traceAuthorized: true };
++
++  it("gives the completion's questions to the adopting turn's caller", async () => {
++    const child = pendingChild();
++    child.requesterCaller = spawner;
++    const params = adoption(child);
++    params.requesterCaller = adopter;
++    await adoptSubagentRunForRequesterTurnInRuns(params);
++    expect(params.runs.get(child.runId)?.requesterCaller).toEqual(adopter);
++  });
++
++  it("drops the previous caller when the adopting turn has none", async () => {
++    const child = pendingChild();
++    child.requesterCaller = spawner;
++    const params = adoption(child);
++    await adoptSubagentRunForRequesterTurnInRuns(params);
++    expect(params.runs.get(child.runId)).not.toHaveProperty("requesterCaller");
++  });
++
+   it.each(["none", "before", "after"] as const)(
+     "preserves adoption ownership and rearms with sibling timing %s",
+     async (order) => {
+diff --git a/src/agents/subagents/registry/subagent-registry-requester-yield.ts b/src/agents/subagents/registry/subagent-registry-requester-yield.ts
+index 09f4ad55a64..3e708932d52 100644
+--- a/src/agents/subagents/registry/subagent-registry-requester-yield.ts
++++ b/src/agents/subagents/registry/subagent-registry-requester-yield.ts
+@@ -33,6 +33,8 @@ export async function adoptSubagentRunForRequesterTurnInRuns(params: {
+   requesterSessionKey: string;
+   requesterAgentId: string;
+   requesterTurnRunId: string;
++  /** Durable caller facts of the adopting turn. */
++  requesterCaller: SubagentRunRecord["requesterCaller"];
+   assertCurrent: () => void;
+   runs: Map<string, SubagentRunRecord>;
+ }): Promise<AcceptedSessionSpawn | undefined> {
+@@ -83,6 +85,12 @@ export async function adoptSubagentRunForRequesterTurnInRuns(params: {
+       const next = structuredClone(entry);
+       next.requesterTurnRunId = requesterTurnRunId;
+       next.requesterTurnYielded = undefined;
++      // Questions about the completion go to the turn that now owns it.
++      if (params.requesterCaller) {
++        next.requesterCaller = params.requesterCaller;
++      } else {
++        delete next.requesterCaller;
++      }
+       if (next.requesterSettleWake?.requesterYieldBatch === true) {
+         delete next.requesterSettleWake.requesterYieldBatch;
+         delete next.requesterSettleWake.batchRunIds;
 diff --git a/src/agents/subagents/registry/subagent-registry-run-launch-record.ts b/src/agents/subagents/registry/subagent-registry-run-launch-record.ts
 index ebb48ee8031..34d8f79b400 100644
 --- a/src/agents/subagents/registry/subagent-registry-run-launch-record.ts
@@ -618,6 +735,18 @@ index ebb48ee8031..34d8f79b400 100644
      progressOrigin: registerParams.progressOrigin,
      requesterDisplayKey: registerParams.requesterDisplayKey,
      requesterAgentId: prepared.requesterAgentId,
+diff --git a/src/agents/subagents/registry/subagent-registry.completion-authority.test.ts b/src/agents/subagents/registry/subagent-registry.completion-authority.test.ts
+index 488655d36b5..d2bd1ff033b 100644
+--- a/src/agents/subagents/registry/subagent-registry.completion-authority.test.ts
++++ b/src/agents/subagents/registry/subagent-registry.completion-authority.test.ts
+@@ -978,6 +978,7 @@ describe("registered completion source custody", () => {
+               requesterSessionKey: entry.requesterSessionKey,
+               requesterAgentId: "main",
+               requesterTurnRunId: "next-parent",
++              requesterCaller: undefined,
+               assertCurrent: () => {},
+             }),
+           ).rejects.toThrow(/authority/);
 diff --git a/src/agents/subagents/registry/subagent-registry.types.ts b/src/agents/subagents/registry/subagent-registry.types.ts
 index 58a5864518a..411dfa18ae6 100644
 --- a/src/agents/subagents/registry/subagent-registry.types.ts
@@ -636,6 +765,62 @@ index 58a5864518a..411dfa18ae6 100644
    /** Durable source locator for transport-neutral progress presentation. */
    progressOrigin?: SubagentProgressOrigin;
    requesterDisplayKey: string;
+diff --git a/src/agents/subagents/spawn/acp-spawn.test.ts b/src/agents/subagents/spawn/acp-spawn.test.ts
+index 3f54b173eac..a0d0f838dd9 100644
+--- a/src/agents/subagents/spawn/acp-spawn.test.ts
++++ b/src/agents/subagents/spawn/acp-spawn.test.ts
+@@ -778,6 +778,22 @@ describe("spawnAcpDirect", () => {
+     },
+   );
+ 
++  it("records the requesting turn's caller on the run", async () => {
++    const requesterCaller = {
++      messageProvider: "telegram",
++      senderId: "owner",
++      senderIsOwner: true,
++      disableTools: false,
++      traceAuthorized: true,
++    };
++    expectAcceptedSpawn(await spawn({}, { agentSessionKey: "agent:main:main", requesterCaller }));
++    expectRegisteredSubagentRun(
++      hoisted.registerSubagentRunMock,
++      { requesterCaller },
++      { assertCurrent: undefined },
++    );
++  });
++
+   it("strips an inherited OpenClaw auth profile before ACP initialization", async () => {
+     configureSubagentDefaults({ model: "openai/gpt-5.6-luna@openai:test-profile" });
+ 
+diff --git a/src/agents/subagents/spawn/acp-spawn.ts b/src/agents/subagents/spawn/acp-spawn.ts
+index 88a8e1edb4f..6069a93eda2 100644
+--- a/src/agents/subagents/spawn/acp-spawn.ts
++++ b/src/agents/subagents/spawn/acp-spawn.ts
+@@ -4,6 +4,7 @@ import type { AcpTurnAttachment } from "../../../acp/control-plane/manager.types
+ import { cleanupFailedAcpSpawn } from "../../../acp/control-plane/spawn.js";
+ import { isAcpEnabledByPolicy, resolveAcpAgentPolicyError } from "../../../acp/policy.js";
+ import { isExecutionIdentityCollectionEnabled } from "../../../audit/audit-config.js";
++import type { ReplyToolAuthorityCaller } from "../../../auto-reply/reply/reply-run-registry.contracts.js";
+ import { getRuntimeConfig } from "../../../config/config.js";
+ import { resolveSessionStorePathCore } from "../../../config/sessions/paths.js";
+ import { upsertSessionEntryCore } from "../../../config/sessions/session-accessor.js";
+@@ -139,6 +140,8 @@ type SpawnAcpContext = {
+   sandboxed?: boolean;
+   inheritedToolAllowlist?: string[];
+   inheritedToolDenylist?: string[];
++  /** Durable caller facts of the requester turn. */
++  requesterCaller?: ReplyToolAuthorityCaller;
+ };
+ 
+ const ACP_SPAWN_ACCEPTED_NOTE =
+@@ -669,6 +672,7 @@ export async function spawnAcpDirect(
+         completionRequesterSessionId,
+         completionRequesterLifecycleRevision,
+         requesterOrigin,
++        requesterCaller: ctx.requesterCaller,
+         progressOrigin,
+         requesterDisplayKey: ownership.completionRequesterDisplayKey,
+         task: params.task,
 diff --git a/src/agents/subagents/spawn/subagent-spawn-contract.ts b/src/agents/subagents/spawn/subagent-spawn-contract.ts
 index 9db6b3eeef1..c3e455b0962 100644
 --- a/src/agents/subagents/spawn/subagent-spawn-contract.ts
@@ -707,18 +892,228 @@ index 04f5a698486..9369748a6cb 100644
        ...(approvalAuthority ? { approvalAuthority } : {}),
        ...(operatorAuthority ? { operatorAuthority } : {}),
        ...(approvalAuthorityCheck ? { approvalAuthorityCheck } : {}),
+diff --git a/src/agents/tools/sessions-send-followup-custody.ts b/src/agents/tools/sessions-send-followup-custody.ts
+index 7bc7921c664..77c262a549c 100644
+--- a/src/agents/tools/sessions-send-followup-custody.ts
++++ b/src/agents/tools/sessions-send-followup-custody.ts
+@@ -199,6 +199,7 @@ export async function prepareSessionsSendFollowup(params: {
+       requesterAgentId: params.requesterAgentId,
+       targetSessionKey: params.targetSessionKey,
+       targetAgentId: params.targetAgentId,
++      ...(caller.requesterCaller ? { requesterCaller: caller.requesterCaller } : {}),
+       custody: {
+         signal,
+         assertCurrent,
+diff --git a/src/agents/tools/sessions-send-followup.ts b/src/agents/tools/sessions-send-followup.ts
+index 6a47bf04fa3..9ad469e0530 100644
+--- a/src/agents/tools/sessions-send-followup.ts
++++ b/src/agents/tools/sessions-send-followup.ts
+@@ -92,6 +92,7 @@ export async function dispatchSessionsSendFollowup(
+ ) {
+   const assertCallerCurrent = captureGatewayToolCallerAssertion();
+   const instance = getGatewayToolCallerIdentity()?.operationalRunInstance;
++  const requesterCaller = getGatewayToolCallerIdentity()?.requesterCaller;
+   const completionChild = options.watch
+     ? getLatestLiveSubagentRunByChildSessionKey(
+         params.sessionStoreTarget.canonicalKey,
+@@ -184,6 +185,7 @@ export async function dispatchSessionsSendFollowup(
+               requesterSessionKey: options.requesterSessionKey,
+               requesterAgentId: options.requesterAgentId,
+               requesterTurnRunId: completionTurn,
++              requesterCaller,
+               assertCurrent: assertCompletionCurrent,
+             });
+           }
+@@ -204,6 +206,7 @@ export async function dispatchSessionsSendFollowup(
+               requesterAgentId: options.requesterAgentId,
+               requesterTurnRunId: completionTurn,
+               requesterOrigin: replyContext.requesterOrigin,
++              requesterCaller,
+               task: options.message,
+               cleanup: "keep",
+               spawnMode: "session",
+diff --git a/src/agents/tools/sessions-send-owner-continuation.test.ts b/src/agents/tools/sessions-send-owner-continuation.test.ts
+index e01ae692e0b..abf2fa424bc 100644
+--- a/src/agents/tools/sessions-send-owner-continuation.test.ts
++++ b/src/agents/tools/sessions-send-owner-continuation.test.ts
+@@ -107,7 +107,11 @@ vi.mock("../../sessions/session-participant-recording.js", () => ({
+ const SESSION = "agent:main:requester";
+ const CHILD = "agent:main:subagent:worker";
+ const SESSION_ID = `${SESSION}-id`;
+-async function inRun<T>(runId: string, work: () => Promise<T>) {
++async function inRun<T>(
++  runId: string,
++  work: () => Promise<T>,
++  requesterCaller?: FollowupRequest["requesterCaller"],
++) {
+   const { operationalRunInstance } = createTestAdmittedRunContext(runId);
+   const approvalAuthority = claimAgentRunDelegatedAuthority(operationalRunInstance);
+   registerAgentRunContext(runId, {
+@@ -123,6 +127,7 @@ async function inRun<T>(runId: string, work: () => Promise<T>) {
+         operationalRunInstance,
+         approvalAuthority,
+         receiptAuthority: () => validateAgentRunDelegatedAuthority(approvalAuthority),
++        ...(requesterCaller ? { requesterCaller } : {}),
+       },
+       work,
+     );
+@@ -140,6 +145,34 @@ afterEach(() => {
+ });
+ 
+ describe("child followup requester continuation", () => {
++  it("captures the sending turn's caller for the child's reply", async () => {
++    const requesterCaller = {
++      messageProvider: "telegram",
++      senderId: "owner",
++      senderIsOwner: true,
++      disableTools: false,
++      traceAuthorized: true,
++    };
++    const request = await inRun(
++      "original",
++      () =>
++        prepareSessionsSendFollowup({
++          runId: "child-followup",
++          requesterTurnRunId: "original",
++          requesterAgentId: "main",
++          requesterSessionKey: SESSION,
++          targetAgentId: "main",
++          targetSessionKey: CHILD,
++        }),
++      requesterCaller,
++    );
++    try {
++      expect(request?.requesterCaller).toEqual(requesterCaller);
++    } finally {
++      request?.custody.release();
++    }
++  });
++
+   it("retains one timed-out inline result through busy parent admission and execution", async () => {
+     vi.useFakeTimers();
+     const request = await inRun("original", () =>
+diff --git a/src/agents/tools/sessions-send-reply-flow.ts b/src/agents/tools/sessions-send-reply-flow.ts
+index 10d4a8b4ec3..fcaa1183db1 100644
+--- a/src/agents/tools/sessions-send-reply-flow.ts
++++ b/src/agents/tools/sessions-send-reply-flow.ts
+@@ -84,6 +84,13 @@ export function startSessionsSendReplyFlow(
+                 threadId: stringifyRouteThreadId(params.requesterOrigin?.threadId),
+               },
+               privateCompletion: true,
++              delegatedToolPolicyHandoff: {
++                sourceSessionKey: request.targetSessionKey,
++                targetSessionKey: request.requesterSessionKey,
++                targetSessionId: request.requesterSessionId,
++                idempotencyKey,
++                ...(request.requesterCaller ? { requesterCaller: request.requesterCaller } : {}),
++              },
+               expectFinal: true,
+               onAccepted: (payload) => {
+                 const receipt = asOptionalRecord(payload);
 diff --git a/src/agents/tools/sessions-spawn-tool.ts b/src/agents/tools/sessions-spawn-tool.ts
-index 31557bd664c..3d7a8d31fa7 100644
+index 31557bd664c..2c951f76ed3 100644
 --- a/src/agents/tools/sessions-spawn-tool.ts
 +++ b/src/agents/tools/sessions-spawn-tool.ts
-@@ -650,6 +650,7 @@ export function createSessionsSpawnTool(
-               workspaceDir: opts?.workspaceDir,
-               sessionPermissionPolicy: opts?.sessionPermissionPolicy,
-               requesterRunId: opts?.requesterRunId,
-+              requesterCaller: getGatewayToolCallerIdentity()?.requesterCaller,
+@@ -455,6 +455,7 @@ export function createSessionsSpawnTool(
+         if (opts?.expectedParentSessionId && !expectedParentSessionKey) {
+           throw new Error("Exact parent session access requires a session key");
+         }
++        const requesterCaller = getGatewayToolCallerIdentity()?.requesterCaller;
+         const spawnVisible = () =>
+           maybeSpawnVisibleSession({
+             raw: params,
+@@ -471,6 +472,7 @@ export function createSessionsSpawnTool(
+               onSpawnEffectsStart,
+               assertActive,
+               signal: executionSignal,
++              requesterCaller,
              },
-             parentExecutionIdentityToken,
-           ),
+           });
+         const visibleResult =
+@@ -567,6 +569,7 @@ export function createSessionsSpawnTool(
+           sandboxed: opts?.sandboxed,
+           inheritedToolAllowlist: opts?.inheritedToolAllowlist,
+           inheritedToolDenylist: opts?.inheritedToolDenylist,
++          requesterCaller,
+         });
+ 
+         if (runtime === "acp") {
+diff --git a/src/agents/tools/sessions-spawn-tool.visible.test.ts b/src/agents/tools/sessions-spawn-tool.visible.test.ts
+index ae140069ed1..9a42462c2b4 100644
+--- a/src/agents/tools/sessions-spawn-tool.visible.test.ts
++++ b/src/agents/tools/sessions-spawn-tool.visible.test.ts
+@@ -6,6 +6,7 @@ import {
+   expectRegisteredSubagentRun,
+   supportedSpawnModelChoice,
+ } from "../subagents/spawn/subagent-spawn.test-helpers.js";
++import { withGatewayToolCallerIdentity } from "./gateway-caller-context.js";
+ 
+ const { hoisted } = await import("./sessions-spawn-tool.mocks.test-support.js");
+ let createSessionsSpawnTool: typeof import("./sessions-spawn-tool.js").createSessionsSpawnTool;
+@@ -127,4 +128,34 @@ describe("sessions_spawn visible work receipts", () => {
+       runId: "run-visible-restricted",
+     });
+   });
++
++  it("records the requesting turn's caller on a visible run", async () => {
++    hoisted.inProcessCreationMock.mockResolvedValue({
++      key: "agent:main:dashboard:caller-child",
++      runStarted: true,
++      runId: "run-visible-caller",
++    });
++    const requesterCaller = {
++      messageProvider: "telegram",
++      senderId: "owner",
++      senderIsOwner: true,
++      disableTools: false,
++      traceAuthorized: true,
++    };
++    const registerRun = vi.fn();
++    const tool = createSessionsSpawnTool({
++      agentSessionKey: "agent:main:main",
++      config: { agents: { defaults: { model: "mock-provider/primary" }, entries: { main: {} } } },
++      registerRun,
++      countActiveRuns: () => 0,
++    });
++
++    const result = await withGatewayToolCallerIdentity(
++      { agentId: "main", sessionKey: "agent:main:main", requesterCaller },
++      () => tool.execute("visible-caller", { task: "inspect", visible: true }),
++    );
++
++    expect(result.details).toMatchObject({ status: "accepted", runId: "run-visible-caller" });
++    expectRegisteredSubagentRun(registerRun, { requesterCaller });
++  });
+ });
+diff --git a/src/agents/tools/sessions-spawn-visible.ts b/src/agents/tools/sessions-spawn-visible.ts
+index 2592d53a26c..d887d2e4dad 100644
+--- a/src/agents/tools/sessions-spawn-visible.ts
++++ b/src/agents/tools/sessions-spawn-visible.ts
+@@ -3,6 +3,7 @@ import { normalizeOptionalString } from "@openclaw/normalization-core/string-coe
+ import { Value } from "typebox/value";
+ import { readMissingScopeErrorDetails } from "../../../packages/gateway-protocol/src/gateway-error-details.js";
+ import type { SessionsDispatchResult } from "../../../packages/gateway-protocol/src/schema/session-placement.js";
++import type { ReplyToolAuthorityCaller } from "../../auto-reply/reply/reply-run-registry.contracts.js";
+ import { DEFAULT_SUBAGENT_MAX_SPAWN_DEPTH } from "../../config/agent-limits.js";
+ import { getRuntimeConfig } from "../../config/config.js";
+ import { resolveControlUiSessionUrl } from "../../config/control-ui-link-base.js";
+@@ -96,6 +97,8 @@ export type SessionsSpawnToolOptions = {
+ type VisibleSessionsSpawnOptions = SessionsSpawnToolOptions & {
+   onSpawnEffectsStart?: () => void;
+   assertActive?: () => void;
++  /** Durable caller facts of the requesting turn. */
++  requesterCaller?: ReplyToolAuthorityCaller;
+ };
+ 
+ function correctedVisibleSpawnCall(raw: Record<string, unknown>): string {
+@@ -626,6 +629,7 @@ export async function maybeSpawnVisibleSession(params: {
+               params.options?.agentTo,
+             threadId: params.options?.currentThreadTs ?? params.options?.agentThreadId,
+           }),
++          requesterCaller: params.options?.requesterCaller,
+           requesterDisplayKey: ownership.completionRequesterDisplayKey,
+           task: params.task,
+           taskName: params.taskName,
 diff --git a/src/auto-reply/reply/reply-run-registry.contracts.ts b/src/auto-reply/reply/reply-run-registry.contracts.ts
 index 1188c0fbceb..d5f023c42a3 100644
 --- a/src/auto-reply/reply/reply-run-registry.contracts.ts
@@ -876,6 +1271,162 @@ index 99d54de62a3..7fe60086660 100644
 +    }),
 +  );
 +}
+diff --git a/src/gateway/agent-turn/agent-run-admission-phase.ts b/src/gateway/agent-turn/agent-run-admission-phase.ts
+index ab63e5aafd3..fae48d6d8a7 100644
+--- a/src/gateway/agent-turn/agent-run-admission-phase.ts
++++ b/src/gateway/agent-turn/agent-run-admission-phase.ts
+@@ -598,9 +598,11 @@ export async function prepareAgentRunDispatch(
+         ? consumeSubagentCompletionToolHandoff({
+             handoffId: params.client?.internal?.delegatedToolPolicyHandoffId,
+             sourceTool: userTurn.inputProvenance?.sourceTool,
++            // A completion without internal events names its child only in its provenance.
+             sourceSessionKey:
+               userTurn.inputProvenance?.kind === "inter_session" &&
+-              userTurn.inputProvenance.sourceTool === "subagent_settle"
++              (userTurn.inputProvenance.sourceTool === "subagent_settle" ||
++                params.request.internalEvents === undefined)
+                 ? userTurn.inputProvenance.sourceSessionKey
+                 : completionEvent?.childSessionKey,
+             sourceSessionId: completionEvent?.childSessionId,
+diff --git a/src/gateway/server.private-completion.sessions-send.test-support.ts b/src/gateway/server.private-completion.sessions-send.test-support.ts
+index 9980782d872..0a26da0ee7a 100644
+--- a/src/gateway/server.private-completion.sessions-send.test-support.ts
++++ b/src/gateway/server.private-completion.sessions-send.test-support.ts
+@@ -6,6 +6,7 @@ import {
+   withinTest,
+ } from "../../test/helpers/promise.js";
+ import type { AgentCommandOpts } from "../agents/command/types.js";
++import { runAnnounceAgentCall } from "../agents/subagents/announce/subagent-announce-completion-delivery.js";
+ import { SessionFollowupCompletion } from "../agents/subagents/completion/session-followup-completion.js";
+ import type { FollowupRequest } from "../agents/subagents/completion/session-followup-completion.types.js";
+ import { startSessionsSendReplyFlow } from "../agents/tools/sessions-send-reply-flow.js";
+@@ -169,4 +170,126 @@ export function registerSessionsSendPrivateCompletionTests(
+       }
+     },
+   );
++
++  it.each([
++    ["binds", "agent:main:subagent:named-child"],
++    ["refuses", "agent:main:subagent:other-child"],
++  ])(
++    "%s a completion handoff without internal events by its provenance source",
++    async (outcome, handoffSource) => {
++      const { context, sequence, sessionKey, sessionId, recorder, agentCommandMock } = getFixture();
++      const runId = `announce:sessions-send:handoff-${sequence}:completion`;
++      const requesterCaller = {
++        messageProvider: "telegram",
++        senderId: "owner",
++        senderIsOwner: true,
++        disableTools: false,
++        traceAuthorized: true,
++      };
++      let command: unknown;
++      agentCommandMock.mockImplementationOnce(async (input) => {
++        command = input;
++        await recorder(input).persistApproved();
++        return { payloads: [], meta: { durationMs: 1 } };
++      });
++      const result = await runAnnounceAgentCall({
++        agentParams: {
++          sessionKey,
++          expectedExistingSessionId: sessionId,
++          idempotencyKey: runId,
++          message: "Synthetic child result",
++          deliver: false,
++          sourceReplyDeliveryMode: "message_tool_only",
++          inputProvenance: {
++            kind: "inter_session",
++            sourceTool: "subagent_announce",
++            sourceSessionKey: "agent:main:subagent:named-child",
++          },
++        },
++        privateCompletion: true,
++        expectFinal: true,
++        delegatedToolPolicyHandoff: {
++          sourceSessionKey: handoffSource,
++          targetSessionKey: sessionKey,
++          targetSessionId: sessionId,
++          idempotencyKey: runId,
++          requesterCaller,
++        },
++        isExecutionAllowed: () => true,
++        resolveGatewayContext: () => context,
++      });
++      expect(result).toMatchObject({ status: "ok", inputProcessingCompleted: true });
++      expect(command).toMatchObject({
++        trustedInternalHandoff:
++          outcome === "binds" ? { sourceSessionKey: handoffSource, requesterCaller } : undefined,
++      });
++    },
++  );
++
++  it("continues a sessions_send child reply under the sender's caller", async ({ signal }) => {
++    const { context, sequence, sessionKey, sessionId, recorder, agentCommandMock } = getFixture();
++    const childRunId = `sessions-send-caller-${sequence}`;
++    const childSessionKey = `agent:main:subagent:${childRunId}`;
++    const requesterCaller = {
++      messageProvider: "telegram",
++      senderId: "owner",
++      senderIsOwner: true,
++      disableTools: false,
++      traceAuthorized: true,
++    };
++    const source = new AbortController();
++    const closed = createDeferred<void>();
++    const followup: FollowupRequest = {
++      runId: childRunId,
++      requesterAgentId: "main",
++      requesterSessionKey: sessionKey,
++      requesterSessionId: sessionId,
++      targetAgentId: "main",
++      targetSessionKey: childSessionKey,
++      requesterCaller,
++      custody: {
++        signal: source.signal,
++        assertCurrent: () => source.signal.throwIfAborted(),
++        release: () => {
++          closed.resolve();
++          source.abort();
++        },
++        run<T>(work: () => T): T {
++          return withPluginRuntimeGatewayContextResolver(() => context, work);
++        },
++      },
++    };
++    const completion = SessionFollowupCompletion.bind(followup);
++    completion.markAccepted(childRunId);
++    await completion.settle(childRunId, { status: "ok", replyText: "Synthetic child result" });
++    completion.finishExecution(childRunId);
++    let command: unknown;
++    agentCommandMock.mockImplementationOnce(async (input) => {
++      command = input;
++      await recorder(input).persistApproved();
++      return { payloads: [], meta: { durationMs: 1 } };
++    });
++    try {
++      await startSessionsSendReplyFlow({
++        runId: childRunId,
++        completion,
++        skip: false,
++        targetSessionKey: childSessionKey,
++        targetAgentId: "main",
++        displayKey: childSessionKey,
++        replyTimeoutMs: 10_000,
++        replyMode: "one-way",
++        requesterSessionKey: sessionKey,
++        requesterAgentId: "main",
++        requesterSession: { sessionId },
++      });
++      await withinTest(closed.promise, signal);
++      expect(agentCommandMock).toHaveBeenCalledOnce();
++      expect(command).toMatchObject({
++        trustedInternalHandoff: { sourceSessionKey: childSessionKey, requesterCaller },
++      });
++    } finally {
++      completion.close();
++    }
++  });
+ }
 diff --git a/src/gateway/subagent-completion-tool-handoff.ts b/src/gateway/subagent-completion-tool-handoff.ts
 index b293db96206..00f4f6f0918 100644
 --- a/src/gateway/subagent-completion-tool-handoff.ts

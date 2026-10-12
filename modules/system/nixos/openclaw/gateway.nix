@@ -48,7 +48,7 @@ let
           ;
       };
       patches = [
-        # questions asked after a subagent finishes accept answers from the chat that started it
+        # questions asked after delegated work finishes accept answers from the chat that started it
         ./patches/delegated-completion-question-caller.patch
         # the turn that reports a finished subagent can ask questions at all
         ./patches/completion-turn-question-scope.patch

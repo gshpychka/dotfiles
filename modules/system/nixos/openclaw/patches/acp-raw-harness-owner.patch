@@ -1,4 +1,4 @@
-From ea79fd1c6265f14a76ccdc298de546ae44eadc1a Mon Sep 17 00:00:00 2001
+From 000ec23a7ba5dbc8d307ed7a47056382219a5f88 Mon Sep 17 00:00:00 2001
 From: Glib Shpychka <23005347+gshpychka@users.noreply.github.com>
 Date: Mon, 12 Oct 2026 00:56:17 +0300
 Subject: [PATCH] fix(acp): own raw-harness spawns under the requesting agent
@@ -296,7 +296,7 @@ index 411ce24b330..2d16109a23a 100644
      ok: false,
      error:
 diff --git a/src/agents/subagents/spawn/acp-spawn.test.ts b/src/agents/subagents/spawn/acp-spawn.test.ts
-index 3f54b173eac..dad35f5345b 100644
+index a0d0f838dd9..f4c4a0c852e 100644
 --- a/src/agents/subagents/spawn/acp-spawn.test.ts
 +++ b/src/agents/subagents/spawn/acp-spawn.test.ts
 @@ -453,7 +453,7 @@ function mockSessionStore(entries: Record<string, SessionEntry> = {}) {
@@ -362,10 +362,10 @@ index 3f54b173eac..dad35f5345b 100644
 +    expect(gatewayRequest("agent").params?.sessionKey).toMatch(/^agent:main:acp:/);
 +  });
 +
-   it("strips an inherited OpenClaw auth profile before ACP initialization", async () => {
-     configureSubagentDefaults({ model: "openai/gpt-5.6-luna@openai:test-profile" });
- 
-@@ -1280,65 +1294,91 @@ describe("spawnAcpDirect", () => {
+   it("records the requesting turn's caller on the run", async () => {
+     const requesterCaller = {
+       messageProvider: "telegram",
+@@ -1296,65 +1310,91 @@ describe("spawnAcpDirect", () => {
      expect(gatewayRequest("agent")?.params?.accountId).toBe("work");
    });
  
@@ -511,7 +511,7 @@ index 3f54b173eac..dad35f5345b 100644
  
    it("rejects disallowed ACP agents", async () => {
      hoisted.state.cfg.acp = { enabled: true, backend: "acpx", allowedAgents: ["claudecode"] };
-@@ -1454,8 +1494,8 @@ describe("spawnAcpDirect", () => {
+@@ -1470,8 +1510,8 @@ describe("spawnAcpDirect", () => {
          hoisted.registerSubagentRunMock,
          {
            requesterSessionKey: "global",
@@ -523,10 +523,10 @@ index 3f54b173eac..dad35f5345b 100644
          },
          { assertCurrent: undefined },
 diff --git a/src/agents/subagents/spawn/acp-spawn.ts b/src/agents/subagents/spawn/acp-spawn.ts
-index 88a8e1edb4f..8471f312f6b 100644
+index 6069a93eda2..a02f3af766e 100644
 --- a/src/agents/subagents/spawn/acp-spawn.ts
 +++ b/src/agents/subagents/spawn/acp-spawn.ts
-@@ -266,7 +266,9 @@ export async function spawnAcpDirect(
+@@ -269,7 +269,9 @@ export async function spawnAcpDirect(
        error: targetAgentResult.error,
      };
    }
@@ -537,7 +537,7 @@ index 88a8e1edb4f..8471f312f6b 100644
    const agentPolicyError = resolveAcpAgentPolicyError(cfg, targetAgentId);
    if (agentPolicyError) {
      return {
-@@ -282,7 +284,7 @@ export async function spawnAcpDirect(
+@@ -285,7 +287,7 @@ export async function spawnAcpDirect(
      cfg,
      parentSessionKey,
      requesterAgentId,
@@ -546,7 +546,7 @@ index 88a8e1edb4f..8471f312f6b 100644
      ctx,
    });
    const ownership = resolveSubagentSpawnOwnership({
-@@ -329,7 +331,8 @@ export async function spawnAcpDirect(
+@@ -332,7 +334,8 @@ export async function spawnAcpDirect(
    }
    const resumeAuthorization = validateAcpResumeSessionOwnership({
      cfg,
@@ -556,7 +556,7 @@ index 88a8e1edb4f..8471f312f6b 100644
      backendId,
      requesterSessionKey: requesterInternalKey,
      resumeSessionId: params.resumeSessionId,
-@@ -363,10 +366,10 @@ export async function spawnAcpDirect(
+@@ -366,10 +369,10 @@ export async function spawnAcpDirect(
      requester: requesterState,
    });
  
@@ -569,7 +569,7 @@ index 88a8e1edb4f..8471f312f6b 100644
      requesterSessionKey: ctx.agentSessionKey,
      explicitWorkspaceDir: params.cwd,
    });
-@@ -488,7 +491,7 @@ export async function spawnAcpDirect(
+@@ -491,7 +494,7 @@ export async function spawnAcpDirect(
          inheritedGitContributorProfileIds: inheritSessionGitContributorProfileIds(parentEntry),
          conversationLink: parentEntry?.conversationLink,
        });
@@ -578,7 +578,7 @@ index 88a8e1edb4f..8471f312f6b 100644
        const childSessionPatch = admission.childSessionPatch
          ? {
              spawnDepth: admission.childSessionPatch.spawnDepth,
-@@ -502,7 +505,7 @@ export async function spawnAcpDirect(
+@@ -505,7 +508,7 @@ export async function spawnAcpDirect(
        ctx.assertActive?.();
        childCreationEntry =
          (await upsertSessionEntryCore(
@@ -587,7 +587,7 @@ index 88a8e1edb4f..8471f312f6b 100644
            {
              ...creationStamp,
              spawnedBy: requesterInternalKey,
-@@ -524,7 +527,8 @@ export async function spawnAcpDirect(
+@@ -527,7 +530,8 @@ export async function spawnAcpDirect(
          assertActive: ctx.assertActive,
          cfg,
          sessionKey,
@@ -597,7 +597,7 @@ index 88a8e1edb4f..8471f312f6b 100644
          runtimeMode: spawnMode === "session" ? "persistent" : "oneshot",
          backendId,
          resumeSessionId: params.resumeSessionId,
-@@ -540,7 +544,7 @@ export async function spawnAcpDirect(
+@@ -543,7 +547,7 @@ export async function spawnAcpDirect(
              assertActive: ctx.assertActive,
              cfg,
              sessionKey,
@@ -606,7 +606,7 @@ index 88a8e1edb4f..8471f312f6b 100644
              label: params.label,
              preparedBinding,
              initializedRuntime: initializedSession,
-@@ -560,7 +564,7 @@ export async function spawnAcpDirect(
+@@ -563,7 +567,7 @@ export async function spawnAcpDirect(
        if (childCreationEntry) {
          await recordSessionCreated(cfg, {
            sessionKey,
@@ -615,7 +615,7 @@ index 88a8e1edb4f..8471f312f6b 100644
            entry: childCreationEntry,
          });
        }
-@@ -568,7 +572,7 @@ export async function spawnAcpDirect(
+@@ -571,7 +575,7 @@ export async function spawnAcpDirect(
          childSessionKey: sessionKey,
          childRunId: childIdem,
          requesterSessionKey: requesterInternalKey,
@@ -624,7 +624,7 @@ index 88a8e1edb4f..8471f312f6b 100644
        });
        const startParentRelay = (runId: string) =>
          effectiveStreamToParent && parentSessionKey && parentEventRouting
-@@ -579,6 +583,7 @@ export async function spawnAcpDirect(
+@@ -582,6 +586,7 @@ export async function spawnAcpDirect(
                childSessionKey: sessionKey,
                childSessionId: state.initializedSession.sessionId,
                agentId: targetAgentId,
@@ -632,7 +632,7 @@ index 88a8e1edb4f..8471f312f6b 100644
                env: parentRelayStateEnv,
                eventRouting: parentEventRouting,
                deliveryContext: parentDeliveryCtx,
-@@ -603,14 +608,14 @@ export async function spawnAcpDirect(
+@@ -606,14 +611,14 @@ export async function spawnAcpDirect(
            controllerRef: ownership.controllerSessionKey,
            depth: admission.childSessionPatch?.spawnDepth ?? 1,
            maxDepth: admission.maxSpawnDepth,
@@ -649,7 +649,7 @@ index 88a8e1edb4f..8471f312f6b 100644
          }),
        });
        const runId = readGatewayRunId(response) ?? childIdem;
-@@ -627,7 +632,7 @@ export async function spawnAcpDirect(
+@@ -630,7 +635,7 @@ export async function spawnAcpDirect(
        await cleanupFailedAcpSpawn({
          cfg,
          sessionKey,
@@ -658,7 +658,7 @@ index 88a8e1edb4f..8471f312f6b 100644
          sessionEntry: childCreationEntry,
          deleteTranscript: true,
          closeRuntimeOnFailure,
-@@ -673,7 +678,7 @@ export async function spawnAcpDirect(
+@@ -677,7 +682,7 @@ export async function spawnAcpDirect(
          requesterDisplayKey: ownership.completionRequesterDisplayKey,
          task: params.task,
          taskName: params.taskName,
