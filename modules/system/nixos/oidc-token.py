@@ -73,7 +73,7 @@ def fetch_token() -> str:
     except FileNotFoundError:
         raise Failure(
             f"{SOCKET_PATH} does not exist: the issuer has no active signing key yet "
-            "(sudo oidc-issuer-keygen, then set my.oidcIssuer.activeKid)"
+            "(sudo oidc-issuer-keygen, then set my.oidcIssuer.signer.activeKid)"
         ) from None
     except PermissionError:
         raise Failure(

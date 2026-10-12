@@ -7,3 +7,13 @@ resource "cloudflare_dns_record" "spire" {
   proxied = true
   comment = "SPIRE OIDC discovery provider via reaper-tunnel"
 }
+
+resource "cloudflare_dns_record" "tokens" {
+  zone_id = var.cloudflare_zone_id
+  name    = "tokens.${var.domain_name}"
+  content = "${cloudflare_zero_trust_tunnel_cloudflared.reaper.id}.cfargotunnel.com"
+  type    = "CNAME"
+  ttl     = 1
+  proxied = true
+  comment = "reaper's OIDC token issuer discovery documents (my.oidcIssuer) via reaper-tunnel"
+}

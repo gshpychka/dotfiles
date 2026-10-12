@@ -123,11 +123,17 @@
 
   my.opkssh.enable = true;
 
+  # reaper both signs tokens and publishes the issuer's documents (through
+  # reaper-tunnel, see cloudflare-tunnel.nix); the public keys are in
+  # modules/common/oidc-issuer.nix
   my.oidcIssuer = {
-    enable = true;
-    # kid printed by `sudo oidc-issuer-keygen`; null until the first key is published
-    activeKid = null;
-    clients = [ config.my.user ];
+    signer = {
+      enable = true;
+      # kid printed by `sudo oidc-issuer-keygen`; null until its key is published
+      activeKid = null;
+      clients = [ config.my.user ];
+    };
+    publisher.enable = true;
   };
 
   my.spire = {

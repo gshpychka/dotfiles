@@ -1,15 +1,17 @@
-# OIDC token issuer: processes on this machine trade their Unix identity for a
-# short-lived token from https://tokens.glib.sh/<hostname>, which AWS STS can
-# trust the same way it trusts GitHub Actions' tokens. Each machine that
-# enables this is its own issuer (my.oidcIssuer.issuers.<hostname> in
-# modules/common/oidc-issuer.nix), with its own key and AWS provider.
+# Signing half of the fleet's OIDC token issuer: processes on this machine
+# trade their Unix identity for a short-lived token from my.oidcIssuer.url
+# (https://tokens.glib.sh), which AWS STS can trust the same way it trusts
+# GitHub Actions' tokens. The publishing half, which serves the documents AWS
+# verifies tokens with, is modules/system/nixos/oidc-discovery.nix; both read
+# the issuer's public data from modules/common/oidc-issuer.nix and can run on
+# the same machine or different ones. reaper runs both.
 #
 # - Identity: a token's subject is "<hostname>:<user>", the user the kernel
 #   reports for the connecting process (SO_PEERCRED). Callers send nothing, so
 #   there is no secret to steal and no request to parse. Any process running
 #   as a client user can get that user's token.
-# - Access: only users in my.oidcIssuer.clients. The socket is restricted to
-#   their group, and oidc-issuer.py checks the list again.
+# - Access: only users in my.oidcIssuer.signer.clients. The socket is
+#   restricted to their group, and oidc-issuer.py checks the list again.
 # - Key: ES256, generated inside this machine's TPM2, which refuses to export
 #   it or duplicate it to another TPM2. On disk are only the key wrapped by
 #   this TPM2's storage key, which nothing else can load, and the key's random
@@ -21,35 +23,25 @@
 #   key away, so an attacker's signing ends with their access to the machine.
 #   Still rotate after a compromise: with copies of the files and the auth
 #   value, any later TPM2 access on the machine is enough to sign again.
-# - Publishing: issuing machines serve nothing publicly. buoy serves every
-#   issuer's discovery document and JWKS, built from its publicKeys
-#   (machines/buoy/oidc-discovery.nix).
-#
-# Enabling on a machine (needs a TPM2; check with `systemd-analyze has-tpm2`):
-#   add `<hostname>.publicKeys = [ ];` to my.oidcIssuer.issuers in
-#   modules/common/oidc-issuer.nix
-#   in the machine's config: my.oidcIssuer = { enable = true; clients = [ <users> ]; };
-#   deploy it, then bootstrap a key as below
 #
 # Bootstrap and key rotation:
-#   ssh <machine> sudo oidc-issuer-keygen   # creates a new key in the TPM2, prints its public half
+#   ssh <signer> sudo oidc-issuer-keygen   # creates a new key in the TPM2, prints its public half
 #   (also after a Secure Boot key or dbx update, which leaves the sealed auth
 #   value unusable: it is bound to PCR 7; and after clearing the TPM2, which
 #   destroys the key)
-#   add the printed entry to my.oidcIssuer.issuers.<hostname>.publicKeys
-#   set my.oidcIssuer.activeKid in the machine's config to the printed kid
-#   deploy buoy (publishes the key), wait my.oidcIssuer.jwksCacheSeconds so
-#   relying parties' cached key sets include it, then deploy the machine
-#   (signs with it)
-#   after a rotation, once my.oidcIssuer.tokenLifetime has passed, drop the old
-#   entry and delete /var/lib/oidc-issuer/<old kid>
+#   add the printed entry to my.oidcIssuer.publicKeys
+#   (modules/common/oidc-issuer.nix) and deploy the publisher
+#   wait my.oidcIssuer.jwksCacheSeconds so relying parties' cached key sets
+#   include it, then set my.oidcIssuer.signer.activeKid to the printed kid
+#   and deploy the signer
+#   after a rotation, once my.oidcIssuer.signer.tokenLifetime has passed, drop
+#   the old entry and delete /var/lib/oidc-issuer/<old kid>
 #
-# AWS side, once per issuer and account:
-#   aws iam create-open-id-connect-provider --url https://tokens.glib.sh/<hostname> --client-id-list sts.amazonaws.com
+# AWS side, once per account:
+#   aws iam create-open-id-connect-provider --url https://tokens.glib.sh --client-id-list sts.amazonaws.com
 #   each role's trust policy: Principal.Federated = that provider's ARN,
 #   Action = sts:AssumeRoleWithWebIdentity, Condition.StringEquals =
-#   { "tokens.glib.sh/<hostname>:aud": "sts.amazonaws.com",
-#     "tokens.glib.sh/<hostname>:sub": "<hostname>:<user>" }
+#   { "tokens.glib.sh:aud": "sts.amazonaws.com", "tokens.glib.sh:sub": "reaper:<user>" }
 #
 # Usage, as a client user:
 #   oidc-token claims
@@ -61,11 +53,9 @@
   ...
 }:
 let
-  cfg = config.my.oidcIssuer;
+  issuerCfg = config.my.oidcIssuer;
+  cfg = issuerCfg.signer;
   inherit (config.networking) hostName;
-  # this machine's entry in the fleet's issuer list; null until it is added
-  issuer = cfg.issuers.${hostName} or null;
-
   unitName = "oidc-issuer";
   stateDirectory = "/var/lib/${unitName}";
   socketPath = "/run/${unitName}/token.sock";
@@ -84,19 +74,17 @@ let
 
   tpmDevice = "/dev/tpmrm0";
 
-  activeKey = lib.findFirst (key: key.kid == cfg.activeKid) null (
-    if issuer == null then [ ] else issuer.publicKeys
-  );
+  activeKey = lib.findFirst (key: key.kid == cfg.activeKid) null issuerCfg.publicKeys;
 
   issuerConfig = pkgs.writeText "${unitName}.json" (
     builtins.toJSON {
       # the issuer's name, also the prefix of every subject
       name = hostName;
-      issuer = issuer.url;
-      inherit (cfg) audience clients;
+      issuer = issuerCfg.url;
+      inherit (issuerCfg) audience jwksCacheSeconds;
+      inherit (cfg) clients;
       tokenLifetimeSeconds = cfg.tokenLifetime;
       activeKey = if activeKey == null then null else { inherit (activeKey) kid x y; };
-      inherit (cfg) jwksCacheSeconds;
       inherit stateDirectory keyFiles;
       systemdCreds = lib.getExe' config.systemd.package "systemd-creds";
       tpm2Tools = "${pkgs.tpm2-tools}/bin";
@@ -124,8 +112,8 @@ let
   );
 in
 {
-  options.my.oidcIssuer = {
-    enable = lib.mkEnableOption "the OIDC token issuer for local users";
+  options.my.oidcIssuer.signer = {
+    enable = lib.mkEnableOption "signing OIDC tokens for local users";
     activeKid = lib.mkOption {
       type = lib.types.nullOr lib.types.str;
       default = null;
@@ -158,20 +146,16 @@ in
       {
         assertions = [
           {
-            assertion = issuer != null;
-            message = "my.oidcIssuer.enable needs an issuer for this machine: add my.oidcIssuer.issuers.${hostName} in modules/common/oidc-issuer.nix.";
-          }
-          {
             assertion = cfg.activeKid == null || activeKey != null;
-            message = "my.oidcIssuer.activeKid ${toString cfg.activeKid} is not in my.oidcIssuer.issuers.${hostName}.publicKeys, so AWS could not verify its tokens.";
+            message = "my.oidcIssuer.signer.activeKid ${toString cfg.activeKid} is not in my.oidcIssuer.publicKeys, so AWS could not verify its tokens.";
           }
           {
             assertion = lib.all (user: config.users.users ? ${user}) cfg.clients;
-            message = "my.oidcIssuer.clients must name users.users entries.";
+            message = "my.oidcIssuer.signer.clients must name users.users entries.";
           }
         ];
         warnings = lib.optional (cfg.activeKid == null) ''
-          my.oidcIssuer: no active signing key, so no tokens are issued yet.
+          my.oidcIssuer.signer: no active signing key, so no tokens are issued yet.
           Run `sudo oidc-issuer-keygen` on ${hostName} and follow its output.
         '';
 
