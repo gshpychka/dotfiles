@@ -54,6 +54,8 @@ let
         ./patches/code-mode-question-wait.patch
         # the turn that reports a finished subagent shows its questions in the chat
         ./patches/delivered-run-question-prompts.patch
+        # a Claude Code session belongs to the agent that starts it, so the gateway accepts it
+        ./patches/acp-raw-harness-owner.patch
       ];
     };
     # follows the source's pnpm-lock.yaml

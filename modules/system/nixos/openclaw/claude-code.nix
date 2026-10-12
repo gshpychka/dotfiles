@@ -55,13 +55,6 @@ in
         services.openclaw-gateway = {
           # sessions inherit the gateway's PATH
           servicePath = cfg.hostTools;
-          config.agents.entries.claude.runtime = {
-            type = "acp";
-            acp = {
-              agent = "claude";
-              backend = "acpx";
-            };
-          };
           # The adapter bundled with acpx carries its own `claude`, a binary
           # for generic Linux that NixOS cannot run; it honours this variable.
           environment.CLAUDE_CODE_EXECUTABLE = lib.getExe pkgs.claude-code;
@@ -88,9 +81,10 @@ in
             did.
 
             Sessions run as you, with network access, on the owner's personal
-            Claude plan. Without a `cwd` they start in `${workDir}`: have them
-            clone the repository there. To continue in a clone that exists, pass
-            its directory, such as `${workDir}/<repo>`, as `cwd`.
+            Claude plan. Always pass `cwd`, since a session without one starts in
+            your own workspace: `${workDir}` to have it clone the repository
+            there, or the clone's directory, such as `${workDir}/<repo>`, to
+            continue in one that exists.
             ${lib.optionalString (cfg.github != null) ''
               They push and open pull requests as the agent's GitHub App, like
               your own git and `gh`.

@@ -1,0 +1,672 @@
+From ea79fd1c6265f14a76ccdc298de546ae44eadc1a Mon Sep 17 00:00:00 2001
+From: Glib Shpychka <23005347+gshpychka@users.noreply.github.com>
+Date: Mon, 12 Oct 2026 00:56:17 +0300
+Subject: [PATCH] fix(acp): own raw-harness spawns under the requesting agent
+
+Backport of openclaw/openclaw#166908 (4e7a4aa482a) to 2026.10.1. A
+sessions_spawn ACP target that is a raw harness id now mints, stores and
+dispatches its session under the requesting agent, or the configured ACP
+alias, with the harness as the session's runtime. acp.defaultAgent
+resolves through the same alias lookup as an explicit agentId. Resume
+accepts a record only when its backend and harness match, and also finds
+records stored under the harness id.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01LNTt5yXBj4uDUwJmPGvXLd
+---
+ src/agents/acp-spawn-heartbeat.test.ts        |   2 +-
+ .../spawn/acp-spawn-parent-stream.ts          |   3 +-
+ .../subagents/spawn/acp-spawn-requester.ts    |  56 +++---
+ .../subagents/spawn/acp-spawn-runtime.ts      |  27 +--
+ .../subagents/spawn/acp-spawn-target.test.ts  |  28 +++
+ .../subagents/spawn/acp-spawn-target.ts       |  14 +-
+ src/agents/subagents/spawn/acp-spawn.test.ts  | 162 +++++++++++-------
+ src/agents/subagents/spawn/acp-spawn.ts       |  35 ++--
+ 8 files changed, 195 insertions(+), 132 deletions(-)
+
+diff --git a/src/agents/acp-spawn-heartbeat.test.ts b/src/agents/acp-spawn-heartbeat.test.ts
+index ae45a179426..175ea68f111 100644
+--- a/src/agents/acp-spawn-heartbeat.test.ts
++++ b/src/agents/acp-spawn-heartbeat.test.ts
+@@ -60,7 +60,7 @@ describe("isHeartbeatEnabledForSessionAgent", () => {
+         cfg,
+         parentSessionKey: "global",
+         requesterAgentId: "research",
+-        targetAgentId: "ops",
++        ownerAgentId: "ops",
+         ctx: {},
+       }).heartbeatEnabled,
+     ).toBe(true);
+diff --git a/src/agents/subagents/spawn/acp-spawn-parent-stream.ts b/src/agents/subagents/spawn/acp-spawn-parent-stream.ts
+index e29354a0801..bc1d6486575 100644
+--- a/src/agents/subagents/spawn/acp-spawn-parent-stream.ts
++++ b/src/agents/subagents/spawn/acp-spawn-parent-stream.ts
+@@ -119,6 +119,7 @@ export function startAcpSpawnParentStreamRelay(params: {
+   childSessionKey: string;
+   childSessionId?: string;
+   agentId: string;
++  ownerAgentId?: string;
+   env?: NodeJS.ProcessEnv;
+   eventRouting: EventSessionRoutingPolicy;
+   deliveryContext?: DeliveryContext;
+@@ -137,7 +138,7 @@ export function startAcpSpawnParentStreamRelay(params: {
+   try {
+     if (childSessionId) {
+       recorder = createAcpParentStreamRecorder({
+-        agentId: params.agentId,
++        agentId: params.ownerAgentId ?? params.agentId,
+         env: stateEnv,
+         sessionId: childSessionId,
+         runId,
+diff --git a/src/agents/subagents/spawn/acp-spawn-requester.ts b/src/agents/subagents/spawn/acp-spawn-requester.ts
+index 2e135daf8b1..8eda5c1cbf6 100644
+--- a/src/agents/subagents/spawn/acp-spawn-requester.ts
++++ b/src/agents/subagents/spawn/acp-spawn-requester.ts
+@@ -10,6 +10,7 @@ import type { OpenClawConfig } from "../../../config/types.openclaw.js";
+ import { getSessionBindingService } from "../../../infra/outbound/session-binding-service.js";
+ import {
+   isSubagentSessionKey,
++  normalizeOptionalAgentId,
+   parseAgentSessionKey,
+   resolveAgentIdFromSessionKey,
+ } from "../../../routing/session-key.js";
+@@ -79,7 +80,7 @@ export function resolveAcpSpawnRequesterState(params: {
+   cfg: OpenClawConfig;
+   parentSessionKey?: string;
+   requesterAgentId: string;
+-  targetAgentId: string;
++  ownerAgentId: string;
+   ctx: AcpSpawnRequesterContext;
+ }): AcpSpawnRequesterState {
+   const bindingService = getSessionBindingService();
+@@ -115,7 +116,7 @@ export function resolveAcpSpawnRequesterState(params: {
+         : false,
+     origin: resolveRequesterOriginForChild({
+       cfg: params.cfg,
+-      targetAgentId: params.targetAgentId,
++      targetAgentId: params.ownerAgentId,
+       requesterAgentId: params.requesterAgentId,
+       requesterChannel: params.ctx.agentChannel,
+       requesterAccountId: params.ctx.agentAccountId,
+@@ -148,7 +149,8 @@ export function shouldStreamAcpSpawnToParent(params: {
+ 
+ export function validateAcpResumeSessionOwnership(params: {
+   cfg: OpenClawConfig;
+-  targetAgentId: string;
++  ownerAgentId: string;
++  runtimeAgentId: string;
+   backendId?: string;
+   requesterSessionKey?: string;
+   resumeSessionId?: string;
+@@ -166,29 +168,37 @@ export function validateAcpResumeSessionOwnership(params: {
+   }
+ 
+   const configuredBackend = normalizeOptionalLowercaseString(params.backendId);
+-  const storePath = resolveSessionStorePathCore(params.cfg.session?.store, {
+-    agentId: params.targetAgentId,
+-  });
+-  for (const { sessionKey, entry } of listSessionEntriesReadOnly({ storePath, clone: false })) {
+-    const acp = readAcpSessionMeta({ sessionKey, cfg: params.cfg });
+-    // Resume identifiers are backend-local; requester ownership cannot authorize another backend.
+-    if (
+-      (configuredBackend && normalizeOptionalLowercaseString(acp?.backend) !== configuredBackend) ||
+-      (normalizeOptionalString(acp?.identity?.agentSessionId) !== resumeSessionId &&
+-        normalizeOptionalString(acp?.identity?.acpxSessionId) !== resumeSessionId)
+-    ) {
+-      continue;
+-    }
+-    if (
+-      sessionKey === requesterSessionKey ||
+-      normalizeOptionalString(entry?.spawnedBy) === requesterSessionKey ||
+-      normalizeOptionalString(entry?.parentSessionKey) === requesterSessionKey
+-    ) {
+-      return { ok: true };
++  const runtimeAgentId = normalizeOptionalAgentId(params.runtimeAgentId);
++  // Raw-harness sessions recorded under the harness id stay resumable by their requester.
++  for (const agentId of new Set([params.ownerAgentId, params.runtimeAgentId])) {
++    const storePath = resolveSessionStorePathCore(params.cfg.session?.store, { agentId });
++    for (const { sessionKey, entry } of listSessionEntriesReadOnly({ storePath, clone: false })) {
++      const acp = readAcpSessionMeta({ sessionKey, cfg: params.cfg });
++      // Resume identifiers are local to one backend and harness; requester ownership cannot
++      // authorize another.
++      if (
++        (configuredBackend &&
++          normalizeOptionalLowercaseString(acp?.backend) !== configuredBackend) ||
++        normalizeOptionalAgentId(acp?.agent) !== runtimeAgentId ||
++        (normalizeOptionalString(acp?.identity?.agentSessionId) !== resumeSessionId &&
++          normalizeOptionalString(acp?.identity?.acpxSessionId) !== resumeSessionId)
++      ) {
++        continue;
++      }
++      if (
++        sessionKey === requesterSessionKey ||
++        normalizeOptionalString(entry?.spawnedBy) === requesterSessionKey ||
++        normalizeOptionalString(entry?.parentSessionKey) === requesterSessionKey
++      ) {
++        return { ok: true };
++      }
++      return forbiddenAcpResume();
+     }
+-    break;
+   }
++  return forbiddenAcpResume();
++}
+ 
++function forbiddenAcpResume(): { ok: false; error: string } {
+   return {
+     ok: false,
+     error:
+diff --git a/src/agents/subagents/spawn/acp-spawn-runtime.ts b/src/agents/subagents/spawn/acp-spawn-runtime.ts
+index 9e3db370d5f..8617e137b05 100644
+--- a/src/agents/subagents/spawn/acp-spawn-runtime.ts
++++ b/src/agents/subagents/spawn/acp-spawn-runtime.ts
+@@ -7,8 +7,6 @@ import type { AcpRuntimeSessionMode } from "@openclaw/acp-core/runtime/types";
+ import { normalizeOptionalString } from "@openclaw/normalization-core/string-coerce";
+ import { getAcpSessionManager } from "../../../acp/control-plane/manager.js";
+ import { formatThinkingLevels } from "../../../auto-reply/thinking.js";
+-import { resolveSessionStorePathCore } from "../../../config/sessions/paths.js";
+-import { loadSessionEntry } from "../../../config/sessions/session-accessor.js";
+ import type { SessionEntry } from "../../../config/sessions/types.js";
+ import type { OpenClawConfig } from "../../../config/types.openclaw.js";
+ import { isMissingPathError } from "../../../infra/errors.js";
+@@ -56,8 +54,8 @@ type AcpSpawnInitializedSession = Awaited<
+ 
+ export type AcpSpawnInitializedRuntime = {
+   initialized: AcpSpawnInitializedSession;
+-  sessionId?: string;
+-  sessionEntry: SessionEntry | undefined;
++  sessionId: string;
++  sessionEntry: SessionEntry;
+ };
+ 
+ type AcpSpawnRuntimeOptions = {
+@@ -144,7 +142,8 @@ export async function initializeAcpSpawnRuntime(params: {
+   assertActive?: () => void;
+   cfg: OpenClawConfig;
+   sessionKey: string;
+-  targetAgentId: string;
++  ownerAgentId: string;
++  runtimeAgentId: string;
+   runtimeMode: AcpRuntimeSessionMode;
+   backendId?: string;
+   resumeSessionId?: string;
+@@ -154,22 +153,12 @@ export async function initializeAcpSpawnRuntime(params: {
+   cwd?: string;
+ }): Promise<AcpSpawnInitializedRuntime> {
+   params.assertActive?.();
+-  const storePath = resolveSessionStorePathCore(params.cfg.session?.store, {
+-    agentId: params.targetAgentId,
+-  });
+-  const sessionEntry = loadSessionEntry({
+-    storePath,
+-    sessionKey: params.sessionKey,
+-    agentId: params.targetAgentId,
+-    clone: false,
+-  });
+-  const sessionId = sessionEntry?.sessionId;
+   const initialized = await getAcpSessionManager().initializeSession({
+     assertActive: params.assertActive,
+     cfg: params.cfg,
+     sessionKey: params.sessionKey,
+-    agentId: params.targetAgentId,
+-    agent: params.targetAgentId,
++    agentId: params.ownerAgentId,
++    agent: params.runtimeAgentId,
+     mode: params.runtimeMode,
+     resumeSessionId: params.resumeSessionId,
+     runtimeOptions: params.runtimeOptions,
+@@ -181,8 +170,8 @@ export async function initializeAcpSpawnRuntime(params: {
+ 
+   return {
+     initialized,
+-    sessionId,
+-    sessionEntry,
++    sessionId: initialized.sessionEntry.sessionId,
++    sessionEntry: initialized.sessionEntry,
+   };
+ }
+ 
+diff --git a/src/agents/subagents/spawn/acp-spawn-target.test.ts b/src/agents/subagents/spawn/acp-spawn-target.test.ts
+index 73f04172026..658e72f1c2e 100644
+--- a/src/agents/subagents/spawn/acp-spawn-target.test.ts
++++ b/src/agents/subagents/spawn/acp-spawn-target.test.ts
+@@ -18,4 +18,32 @@ describe("resolveTargetAcpAgentId", () => {
+       }),
+     ).toEqual({ ok: true, agentId: "codex" });
+   });
++
++  it.each(["reviewer", undefined])(
++    "resolves configured alias ownership for explicit or default targets (%s)",
++    (requestedAgentId) => {
++      expect(
++        resolveTargetAcpAgentId({
++          requestedAgentId,
++          cfg: {
++            acp: { defaultAgent: "reviewer" },
++            agents: {
++              entries: {
++                reviewer: { runtime: { type: "acp", acp: { agent: "codex" } } },
++              },
++            },
++          },
++        }),
++      ).toMatchObject({ ok: true, agentId: "codex", configAgentId: "reviewer" });
++    },
++  );
++
++  it("leaves a raw harness without a configured OpenClaw owner id", () => {
++    expect(
++      resolveTargetAcpAgentId({
++        requestedAgentId: "cursor",
++        cfg: { agents: { entries: { main: {} } } },
++      }),
++    ).toEqual({ ok: true, agentId: "cursor" });
++  });
+ });
+diff --git a/src/agents/subagents/spawn/acp-spawn-target.ts b/src/agents/subagents/spawn/acp-spawn-target.ts
+index 411ce24b330..2d16109a23a 100644
+--- a/src/agents/subagents/spawn/acp-spawn-target.ts
++++ b/src/agents/subagents/spawn/acp-spawn-target.ts
+@@ -39,7 +39,8 @@ export function resolveTargetAcpAgentId(params: {
+   if (normalizedRequest && !normalizedRequest.ok) {
+     return { ok: false, error: `agentId "${params.requestedAgentId}" was not found` };
+   }
+-  const requested = normalizedRequest?.value;
++  const requested =
++    normalizedRequest?.value ?? normalizeOptionalAgentId(params.cfg.acp?.defaultAgent);
+   if (requested) {
+     const configuredAgent = resolveAgentEntry(params.cfg, requested);
+     if (configuredAgent?.runtime?.type === "acp") {
+@@ -66,17 +67,6 @@ export function resolveTargetAcpAgentId(params: {
+     });
+   }
+ 
+-  const configuredDefault = normalizeOptionalAgentId(params.cfg.acp?.defaultAgent);
+-  if (configuredDefault) {
+-    const configuredAgent = resolveAgentEntry(params.cfg, configuredDefault);
+-    return resolveAcpAgentTarget({
+-      cfg: params.cfg,
+-      agentId: configuredDefault,
+-      agentBackend:
+-        configuredAgent?.runtime?.type === "acp" ? configuredAgent.runtime.acp?.backend : undefined,
+-    });
+-  }
+-
+   return {
+     ok: false,
+     error:
+diff --git a/src/agents/subagents/spawn/acp-spawn.test.ts b/src/agents/subagents/spawn/acp-spawn.test.ts
+index 3f54b173eac..dad35f5345b 100644
+--- a/src/agents/subagents/spawn/acp-spawn.test.ts
++++ b/src/agents/subagents/spawn/acp-spawn.test.ts
+@@ -453,7 +453,7 @@ function mockSessionStore(entries: Record<string, SessionEntry> = {}) {
+     () =>
+       new Proxy(entries, {
+         get(target, prop) {
+-          if (typeof prop === "string" && prop.startsWith("agent:codex:acp:")) {
++          if (typeof prop === "string" && prop.includes(":acp:")) {
+             return { sessionId: "sess-123", updatedAt: Date.now() };
+           }
+           return typeof prop === "string" ? target[prop] : undefined;
+@@ -538,6 +538,7 @@ describe("spawnAcpDirect", () => {
+       const cwd = typeof args.cwd === "string" ? args.cwd : undefined;
+       return {
+         closeRuntimeOnFailure: hoisted.closeRuntimeOnFailureMock,
++        sessionEntry: { sessionId: "sess-123", updatedAt: Date.now() },
+         runtime: {
+           close: vi.fn().mockResolvedValue(undefined),
+         },
+@@ -646,7 +647,7 @@ describe("spawnAcpDirect", () => {
+     expect(agentDispatchAttempts).toBe(2);
+     const accepted = expectAcceptedSpawn(result);
+     expect(accepted.runId).toBe("accepted-acp-run");
+-    expect(accepted.childSessionKey).toMatch(/^agent:codex:acp:/);
++    expect(accepted.childSessionKey).toMatch(/^agent:main:acp:/);
+   });
+ 
+   it("forwards ACP lineage with unsupported external native actions and the exact parent token", async () => {
+@@ -701,7 +702,7 @@ describe("spawnAcpDirect", () => {
+     }
+   });
+ 
+-  it.each(["configured owner", "wrong backend", "wrong requester"] as const)(
++  it.each(["configured owner", "wrong backend", "wrong requester", "wrong harness"])(
+     "authorizes resume against the %s",
+     async (scenario) => {
+       const cfg = hoisted.state.cfg;
+@@ -747,8 +748,11 @@ describe("spawnAcpDirect", () => {
+       hoisted.readAcpSessionMetaMock.mockImplementation((params: { sessionKey?: string }) =>
+         params.sessionKey === sessionKey
+           ? {
+-              backend: scenario === "wrong requester" ? "acpx" : "fallback",
+-              agent: "codex",
++              backend:
++                scenario === "wrong requester" || scenario === "wrong harness"
++                  ? "acpx"
++                  : "fallback",
++              agent: scenario === "wrong harness" ? "claude" : "codex",
+               runtimeSessionName: "codex",
+               identity: {
+                 state: "resolved",
+@@ -778,6 +782,16 @@ describe("spawnAcpDirect", () => {
+     },
+   );
+ 
++  it("owns a raw harness spawn under the requesting agent", async () => {
++    expectAcceptedSpawn(await spawn({ agentId: "codex" }));
++    expectInitializeSessionFields({
++      agentId: "main",
++      agent: "codex",
++      sessionKey: expect.stringMatching(/^agent:main:acp:/),
++    });
++    expect(gatewayRequest("agent").params?.sessionKey).toMatch(/^agent:main:acp:/);
++  });
++
+   it("strips an inherited OpenClaw auth profile before ACP initialization", async () => {
+     configureSubagentDefaults({ model: "openai/gpt-5.6-luna@openai:test-profile" });
+ 
+@@ -1280,65 +1294,91 @@ describe("spawnAcpDirect", () => {
+     expect(gatewayRequest("agent")?.params?.accountId).toBe("work");
+   });
+ 
+-  it("uses the target agent's bound account for cross-agent ACP thread spawns", async () => {
+-    const boundRoom = "!room:example.org";
+-    configureChannelBindings("matrix", "bot-alpha");
+-    hoisted.state.cfg.acp = { ...hoisted.state.cfg.acp, allowedAgents: ["codex", "bot-alpha"] };
+-    hoisted.state.cfg.bindings = [
+-      {
+-        type: "route",
+-        agentId: "bot-alpha",
+-        match: {
+-          channel: "matrix",
+-          peer: { kind: "channel", id: boundRoom },
+-          accountId: "bot-alpha",
++  it.each(["bot-alpha", "reviewer", undefined])(
++    "uses the owner's bound account for ACP thread spawn (%s)",
++    async (agentId) => {
++      const boundRoom = "!room:example.org";
++      const ownerAgentId = agentId === "bot-alpha" ? "bot-alpha" : "reviewer";
++      hoisted.state.cfg.channels = {
++        matrix: {
++          threadBindings: { enabled: true, spawnSessions: true },
++          accounts: { "bot-alpha": {}, "bot-beta": {} },
+         },
+-      },
+-    ];
+-    registerBindingAdapter("matrix", "bot-alpha");
+-    mockConversationBinding("matrix", "bot-alpha");
++      };
++      hoisted.state.cfg.acp = {
++        ...hoisted.state.cfg.acp,
++        defaultAgent: "reviewer",
++        allowedAgents: ["codex", "bot-alpha"],
++      };
++      hoisted.state.cfg.agents = {
++        ...hoisted.state.cfg.agents,
++        entries: {
++          main: {},
++          "bot-alpha": {},
++          reviewer: { runtime: { type: "acp", acp: { agent: "codex" } } },
++        },
++      };
++      hoisted.state.cfg.bindings = [
++        {
++          type: "route",
++          agentId: ownerAgentId,
++          match: {
++            channel: "matrix",
++            peer: { kind: "channel", id: boundRoom },
++            accountId: "bot-alpha",
++          },
++        },
++      ];
++      registerBindingAdapter("matrix", "bot-alpha");
++      registerBindingAdapter("matrix", "bot-beta");
++      mockConversationBinding("matrix", ownerAgentId);
+ 
+-    const result = await spawn(
+-      {
+-        agentId: "bot-alpha",
+-        mode: "session",
+-        thread: true,
+-      },
+-      {
+-        agentSessionKey: "agent:main:matrix:room:requester",
+-        agentChannel: "matrix",
+-        agentAccountId: "bot-beta",
+-        agentTo: `room:${boundRoom}`,
+-      },
+-    );
++      const result = await spawn(
++        {
++          agentId,
++          mode: "session",
++          thread: true,
++        },
++        {
++          agentSessionKey: "agent:main:matrix:room:requester",
++          agentChannel: "matrix",
++          agentAccountId: "bot-beta",
++          agentTo: `room:${boundRoom}`,
++        },
++      );
+ 
+-    expect(result.status).toBe("accepted");
+-    expectBindingCallFields({
+-      placement: "child",
+-      conversation: {
+-        channel: "matrix",
+-        accountId: "bot-alpha",
+-        conversationId: boundRoom,
+-      },
+-    });
+-    expectRecordFields(gatewayRequest("agent").params, {
+-      deliver: true,
+-      channel: "matrix",
+-      accountId: "bot-alpha",
+-      to: `room:${boundRoom}`,
+-    });
+-    expectRegisteredSubagentRun(
+-      hoisted.registerSubagentRunMock,
+-      {
+-        requesterOrigin: expect.objectContaining({
++      expect(result.status).toBe("accepted");
++      expectInitializeSessionFields({
++        agentId: ownerAgentId,
++        agent: agentId === "bot-alpha" ? "bot-alpha" : "codex",
++      });
++      expectBindingCallFields({
++        placement: "child",
++        conversation: {
+           channel: "matrix",
+           accountId: "bot-alpha",
+-          to: `room:${boundRoom}`,
+-        }),
+-      },
+-      { assertCurrent: undefined },
+-    );
+-  });
++          conversationId: boundRoom,
++        },
++      });
++      expectRecordFields(gatewayRequest("agent").params, {
++        deliver: true,
++        channel: "matrix",
++        accountId: "bot-alpha",
++        to: `room:${boundRoom}`,
++      });
++      expectRegisteredSubagentRun(
++        hoisted.registerSubagentRunMock,
++        {
++          requesterOrigin: expect.objectContaining({
++            channel: "matrix",
++            accountId: "bot-alpha",
++            to: `room:${boundRoom}`,
++          }),
++        },
++        { assertCurrent: undefined },
++      );
++    },
++  );
+ 
+   it("rejects disallowed ACP agents", async () => {
+     hoisted.state.cfg.acp = { enabled: true, backend: "acpx", allowedAgents: ["claudecode"] };
+@@ -1454,8 +1494,8 @@ describe("spawnAcpDirect", () => {
+         hoisted.registerSubagentRunMock,
+         {
+           requesterSessionKey: "global",
+-          childSessionKey: expect.stringMatching(/^agent:codex:acp:/),
+-          agentId: "codex",
++          childSessionKey: expect.stringMatching(/^agent:research:acp:/),
++          agentId: "research",
+           requesterAgentId: "research",
+         },
+         { assertCurrent: undefined },
+diff --git a/src/agents/subagents/spawn/acp-spawn.ts b/src/agents/subagents/spawn/acp-spawn.ts
+index 88a8e1edb4f..8471f312f6b 100644
+--- a/src/agents/subagents/spawn/acp-spawn.ts
++++ b/src/agents/subagents/spawn/acp-spawn.ts
+@@ -266,7 +266,9 @@ export async function spawnAcpDirect(
+       error: targetAgentResult.error,
+     };
+   }
+-  const { agentId: targetAgentId, backendId } = targetAgentResult;
++  const { agentId: targetAgentId, configAgentId, backendId } = targetAgentResult;
++  // A session belongs to an OpenClaw agent, the configured alias or else the requester; the harness is its runtime.
++  const ownerAgentId = configAgentId ?? requesterAgentId;
+   const agentPolicyError = resolveAcpAgentPolicyError(cfg, targetAgentId);
+   if (agentPolicyError) {
+     return {
+@@ -282,7 +284,7 @@ export async function spawnAcpDirect(
+     cfg,
+     parentSessionKey,
+     requesterAgentId,
+-    targetAgentId,
++    ownerAgentId,
+     ctx,
+   });
+   const ownership = resolveSubagentSpawnOwnership({
+@@ -329,7 +331,8 @@ export async function spawnAcpDirect(
+   }
+   const resumeAuthorization = validateAcpResumeSessionOwnership({
+     cfg,
+-    targetAgentId,
++    ownerAgentId,
++    runtimeAgentId: targetAgentId,
+     backendId,
+     requesterSessionKey: requesterInternalKey,
+     resumeSessionId: params.resumeSessionId,
+@@ -363,10 +366,10 @@ export async function spawnAcpDirect(
+     requester: requesterState,
+   });
+ 
+-  const sessionKey = mintSpawnSessionKey({ targetAgentId, backend: "acp" });
++  const sessionKey = mintSpawnSessionKey({ targetAgentId: ownerAgentId, backend: "acp" });
+   const resolvedCwd = resolveSpawnedWorkspaceInheritance({
+     config: cfg,
+-    targetAgentId,
++    targetAgentId: ownerAgentId,
+     requesterSessionKey: ctx.agentSessionKey,
+     explicitWorkspaceDir: params.cwd,
+   });
+@@ -488,7 +491,7 @@ export async function spawnAcpDirect(
+         inheritedGitContributorProfileIds: inheritSessionGitContributorProfileIds(parentEntry),
+         conversationLink: parentEntry?.conversationLink,
+       });
+-      const storePath = resolveSessionStorePathCore(cfg.session?.store, { agentId: targetAgentId });
++      const storePath = resolveSessionStorePathCore(cfg.session?.store, { agentId: ownerAgentId });
+       const childSessionPatch = admission.childSessionPatch
+         ? {
+             spawnDepth: admission.childSessionPatch.spawnDepth,
+@@ -502,7 +505,7 @@ export async function spawnAcpDirect(
+       ctx.assertActive?.();
+       childCreationEntry =
+         (await upsertSessionEntryCore(
+-          { storePath, sessionKey, agentId: targetAgentId },
++          { storePath, sessionKey, agentId: ownerAgentId },
+           {
+             ...creationStamp,
+             spawnedBy: requesterInternalKey,
+@@ -524,7 +527,8 @@ export async function spawnAcpDirect(
+         assertActive: ctx.assertActive,
+         cfg,
+         sessionKey,
+-        targetAgentId,
++        ownerAgentId,
++        runtimeAgentId: targetAgentId,
+         runtimeMode: spawnMode === "session" ? "persistent" : "oneshot",
+         backendId,
+         resumeSessionId: params.resumeSessionId,
+@@ -540,7 +544,7 @@ export async function spawnAcpDirect(
+             assertActive: ctx.assertActive,
+             cfg,
+             sessionKey,
+-            targetAgentId,
++            targetAgentId: ownerAgentId,
+             label: params.label,
+             preparedBinding,
+             initializedRuntime: initializedSession,
+@@ -560,7 +564,7 @@ export async function spawnAcpDirect(
+       if (childCreationEntry) {
+         await recordSessionCreated(cfg, {
+           sessionKey,
+-          agentId: targetAgentId,
++          agentId: ownerAgentId,
+           entry: childCreationEntry,
+         });
+       }
+@@ -568,7 +572,7 @@ export async function spawnAcpDirect(
+         childSessionKey: sessionKey,
+         childRunId: childIdem,
+         requesterSessionKey: requesterInternalKey,
+-        agentId: targetAgentId,
++        agentId: ownerAgentId,
+       });
+       const startParentRelay = (runId: string) =>
+         effectiveStreamToParent && parentSessionKey && parentEventRouting
+@@ -579,6 +583,7 @@ export async function spawnAcpDirect(
+               childSessionKey: sessionKey,
+               childSessionId: state.initializedSession.sessionId,
+               agentId: targetAgentId,
++              ownerAgentId,
+               env: parentRelayStateEnv,
+               eventRouting: parentEventRouting,
+               deliveryContext: parentDeliveryCtx,
+@@ -603,14 +608,14 @@ export async function spawnAcpDirect(
+           controllerRef: ownership.controllerSessionKey,
+           depth: admission.childSessionPatch?.spawnDepth ?? 1,
+           maxDepth: admission.maxSpawnDepth,
+-          targetAgentId,
++          targetAgentId: ownerAgentId,
+           sandbox: params.sandbox === "require" ? "require" : "inherit",
+           inheritedToolAllowlist: ctx.inheritedToolAllowlist,
+           inheritedToolDenylist: ctx.inheritedToolDenylist,
+         },
+         parentExecutionIdentityToken: readParentExecutionIdentity(ctx),
+         participantStorePath: resolveSessionStorePathCore(cfg.session?.store, {
+-          agentId: targetAgentId,
++          agentId: ownerAgentId,
+         }),
+       });
+       const runId = readGatewayRunId(response) ?? childIdem;
+@@ -627,7 +632,7 @@ export async function spawnAcpDirect(
+       await cleanupFailedAcpSpawn({
+         cfg,
+         sessionKey,
+-        agentId: targetAgentId,
++        agentId: ownerAgentId,
+         sessionEntry: childCreationEntry,
+         deleteTranscript: true,
+         closeRuntimeOnFailure,
+@@ -673,7 +678,7 @@ export async function spawnAcpDirect(
+         requesterDisplayKey: ownership.completionRequesterDisplayKey,
+         task: params.task,
+         taskName: params.taskName,
+-        agentId: targetAgentId,
++        agentId: ownerAgentId,
+         requesterAgentId,
+         cleanup: spawnMode === "session" ? "keep" : params.cleanup === "delete" ? "delete" : "keep",
+         label: params.label,
+-- 
+2.55.0
+
