@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 from contextlib import asynccontextmanager
 from types import SimpleNamespace
 
@@ -10,7 +11,7 @@ import numpy as np
 from voice_broker.config import Live
 from voice_broker.live import LiveSession
 from voice_broker.openclaw import ConsultFailed, HistoryUnavailable, Turn
-from voice_broker.protocol import Phase
+from voice_broker.protocol import MIC_RATE, SPEAKER_RATE, Phase
 
 
 class Host:
@@ -34,9 +35,11 @@ class Connection:
         self.events: asyncio.Queue[SimpleNamespace | None] = asyncio.Queue()
         self.commentary: list[dict] = []
         self.started: list[dict] = []
+        # Appended input audio, decoded to SPEAKER_RATE samples, in order.
+        self.audio: list[np.ndarray] = []
         self.session = SimpleNamespace(
             start=self._start,
-            input_audio=SimpleNamespace(append=self._ignore),
+            input_audio=SimpleNamespace(append=self._audio),
             commentary=SimpleNamespace(append=self._comment),
         )
 
@@ -44,8 +47,8 @@ class Connection:
         self.started.append(session)
         await self.events.put(SimpleNamespace(type="session.started"))
 
-    async def _ignore(self, **kwargs) -> None:
-        pass
+    async def _audio(self, audio: str) -> None:
+        self.audio.append(np.frombuffer(base64.b64decode(audio), dtype="<i2"))
 
     async def _comment(self, **kwargs) -> None:
         self.commentary.append(kwargs)
@@ -261,6 +264,57 @@ def test_the_history_keeps_its_newest_within_lives_cap():
     items = started["input"]
     assert len(items) == 128
     assert items[-1]["content"][0]["text"] == "message 199"
+
+
+def block(level: int, ms: int = 10) -> np.ndarray:
+    """`ms` of mic audio at one level."""
+    return np.full(MIC_RATE * ms // 1000, level, dtype=np.int16)
+
+
+async def session_with(conn: Connection) -> LiveSession:
+    @asynccontextmanager
+    async def connect():
+        yield conn
+
+    return LiveSession(
+        Live(model="gpt-live-1", voice="marin", instructions=""), "Kitchen", no_consult, nothing_recent, connect
+    )
+
+
+def test_mic_audio_heard_before_the_session_opens_reaches_it_first():
+    async def main() -> Connection:
+        conn = Connection()
+        session = await session_with(conn)
+        await session.on_mic(block(1000, ms=200))
+        await session.on_mic(block(2000, ms=200))
+        async with session.open(Host()):
+            await session.on_mic(block(-1000, ms=200))
+        return conn
+
+    conn = asyncio.run(main())
+
+    # The resampler lags a few milliseconds, so each level is read well inside its stretch.
+    audio = np.concatenate(conn.audio)
+    assert len(audio) > SPEAKER_RATE * 550 // 1000
+    stretch = SPEAKER_RATE * 200 // 1000
+    levels = [float(np.median(audio[i * stretch + 1000 : i * stretch + 3000])) for i in range(3)]
+    assert np.allclose(levels, [1000, 2000, -1000], atol=5)
+
+
+def test_the_held_audio_keeps_its_newest_fifteen_seconds():
+    async def main() -> Connection:
+        conn = Connection()
+        session = await session_with(conn)
+        for _ in range(200):
+            await session.on_mic(block(1000, ms=100))
+        async with session.open(Host()):
+            pass
+        return conn
+
+    conn = asyncio.run(main())
+
+    held = sum(len(chunk) for chunk in conn.audio)
+    assert SPEAKER_RATE * 14 < held <= SPEAKER_RATE * 15
 
 
 def test_a_call_opens_with_the_agents_words():

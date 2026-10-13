@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import logging
+from collections import deque
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from typing import Any
@@ -35,6 +36,8 @@ _AUDIO_EVENTS = frozenset({"session.output_audio.delta"})
 _APPEND_MAX_BYTES = 500
 # Live takes this many initial messages at most.
 _INPUT_MAX_ITEMS = 128
+# Mic audio held for a session still starting; the device gives a startup 10 s.
+_BACKLOG_MAX_SAMPLES = SPEAKER_RATE * 15
 # Leads the initial messages, which are the agent's conversation before this one.
 _HISTORY_LEAD = "Your text conversation with the user so far; the spoken conversation follows it."
 # Ends the initial messages of a call: the backend is what the instructions call the agent.
@@ -77,6 +80,9 @@ class LiveSession:
         self._to_openai_rate = mic_to_speaker_rate()
         self._conn: AsyncLiveConnection | None = None
         self._host: Host | None = None
+        # Mic audio heard before the session is open, at SPEAKER_RATE, in order.
+        self._backlog: deque[np.ndarray] = deque()
+        self._backlog_samples = 0
         # Transcript fragments in delivery order.
         self._heard: list[Turn] = []
         self._logged = 0
@@ -94,7 +100,6 @@ class LiveSession:
             log.warning("starting without the recent conversation: %s", e)
             history = []
         async with self._connect() as conn:
-            self._conn = conn
             self._host = host
             await conn.session.start(session=self._session_config(history))
             async for event in conn:
@@ -103,6 +108,12 @@ class LiveSession:
                     break
                 if event.type == "error":
                     raise SessionRefused(f"{event.error.message} ({event.error.code})")
+            # What the mic sent so far goes first; a block arriving meanwhile joins the backlog.
+            while self._backlog:
+                samples = self._backlog.popleft()
+                self._backlog_samples -= len(samples)
+                await conn.session.input_audio.append(audio=_audio(samples))
+            self._conn = conn
             try:
                 yield
             finally:
@@ -134,11 +145,21 @@ class LiveSession:
     # -- mic -----------------------------------------------------------------
 
     async def on_mic(self, samples: np.ndarray) -> None:
-        if self._conn is None or len(samples) == 0:
+        if len(samples) == 0:
             return
         upsampled = self._to_openai_rate(samples)
-        if len(upsampled):
-            await self._conn.session.input_audio.append(audio=base64.b64encode(upsampled.tobytes()).decode())
+        if len(upsampled) == 0:
+            return
+        if self._conn is None:
+            self._hold(upsampled)
+            return
+        await self._conn.session.input_audio.append(audio=_audio(upsampled))
+
+    def _hold(self, samples: np.ndarray) -> None:
+        self._backlog.append(samples)
+        self._backlog_samples += len(samples)
+        while self._backlog_samples > _BACKLOG_MAX_SAMPLES:
+            self._backlog_samples -= len(self._backlog.popleft())
 
     # -- OpenAI side ---------------------------------------------------------
 
@@ -251,6 +272,11 @@ def _initial_items(history: list[Turn], opening: str | None) -> list[InitialItem
 
 def _developer(text: str) -> InitialItemParam:
     return {"type": "message", "role": "developer", "content": [{"type": "input_text", "text": text}]}
+
+
+def _audio(samples: np.ndarray) -> str:
+    """SPEAKER_RATE samples as Live's base64 PCM."""
+    return base64.b64encode(samples.tobytes()).decode()
 
 
 def _turns(fragments: list[Turn]) -> list[Turn]:

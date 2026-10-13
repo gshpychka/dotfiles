@@ -103,11 +103,13 @@ class Conversation:
 
     async def run(self) -> EndReason:
         started = time.monotonic()
+        # The device streams from its first frame; the session holds what arrives before it is open.
+        device = asyncio.create_task(self._device_loop(), name="device")
         try:
             async with self._session.open(self):
                 await self.set_phase(Phase.LISTENING)
                 tasks = [
-                    asyncio.create_task(self._device_loop(), name="device"),
+                    device,
                     asyncio.create_task(self._receive(), name="openai"),
                     asyncio.create_task(self._pump_loop(), name="pump"),
                     asyncio.create_task(self._watchdog(started), name="watchdog"),
@@ -124,6 +126,8 @@ class Conversation:
         except SessionRefused as e:
             log.error("openai refused the session: %s", e)
         finally:
+            device.cancel()
+            await asyncio.gather(device, return_exceptions=True)
             self._recorder.close()
             try:
                 await self._device.send(encode_control(ControlType.END))
