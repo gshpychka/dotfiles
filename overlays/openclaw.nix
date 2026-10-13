@@ -32,6 +32,8 @@ in
         ./openclaw/acp-raw-harness-owner.patch
         # a turn carries on after its question is answered by typing
         ./openclaw/question-answer-worker-append.patch
+        # a failed MCP server start logs its URL's origin, so a credential in the path stays out of the journal
+        ./openclaw/mcp-description-origin.patch
       ];
     };
     # follows the source's pnpm-lock.yaml

@@ -1,0 +1,76 @@
+From c9b84b8bde6acb8f8c01542d3ead00b9a794a563 Mon Sep 17 00:00:00 2001
+From: patchwork <patchwork@localhost>
+Date: Tue, 13 Oct 2026 07:48:08 +0300
+Subject: [PATCH] fix(mcp): describe an HTTP server by its URL's origin
+
+The description reaches the log on every failed start or refresh, and a
+URL's path can carry the server's credential.
+---
+ src/agents/mcp-transport-config.test.ts | 8 ++++----
+ src/agents/mcp-transport-config.ts      | 3 +--
+ 2 files changed, 5 insertions(+), 6 deletions(-)
+
+diff --git a/src/agents/mcp-transport-config.test.ts b/src/agents/mcp-transport-config.test.ts
+index 20bae75dc2e..31e2d91a821 100644
+--- a/src/agents/mcp-transport-config.test.ts
++++ b/src/agents/mcp-transport-config.test.ts
+@@ -210,7 +210,7 @@ describe("resolveMcpTransportConfig", () => {
+         Authorization: "Bearer token",
+         "X-Count": "42",
+       },
+-      description: "https://mcp.example.com/sse",
++      description: "https://mcp.example.com",
+     });
+   });
+ 
+@@ -230,7 +230,7 @@ describe("resolveMcpTransportConfig", () => {
+       headers: {
+         NODE_OPTIONS: "allowed-header",
+       },
+-      description: "https://mcp.example.com/sse",
++      description: "https://mcp.example.com",
+     });
+   });
+ 
+@@ -244,7 +244,7 @@ describe("resolveMcpTransportConfig", () => {
+       ...httpDefaults,
+       transportType: "streamable-http",
+       url: "https://mcp.example.com/http",
+-      description: "https://mcp.example.com/http",
++      description: "https://mcp.example.com",
+     });
+   });
+ 
+@@ -257,7 +257,7 @@ describe("resolveMcpTransportConfig", () => {
+     expect(resolved).toEqual({
+       ...httpDefaults,
+       url: "https://mcp.example.com/http",
+-      description: "https://mcp.example.com/http",
++      description: "https://mcp.example.com",
+     });
+   });
+ 
+diff --git a/src/agents/mcp-transport-config.ts b/src/agents/mcp-transport-config.ts
+index 002bd14dcf0..b03ce372d20 100644
+--- a/src/agents/mcp-transport-config.ts
++++ b/src/agents/mcp-transport-config.ts
+@@ -1,7 +1,6 @@
+ /**
+  * Resolves MCP transport command, environment, and timeout configuration.
+  */
+-import { redactSensitiveUrl } from "@openclaw/net-policy/redact-sensitive-url";
+ import {
+   clampPositiveTimerTimeoutMs,
+   resolvePositiveTimerTimeoutMs,
+@@ -142,7 +141,7 @@ function resolveHttpTransportConfig(
+     ...(sslVerify !== undefined ? { sslVerify } : {}),
+     ...(clientCert ? { clientCert } : {}),
+     ...(clientKey ? { clientKey } : {}),
+-    description: redactSensitiveUrl(launch.config.url),
++    description: new URL(launch.config.url).origin,
+     connectionTimeoutMs: getConnectionTimeoutMs(rawServer),
+     requestTimeoutMs: resolveMcpRequestTimeoutMs(rawServer),
+     supportsParallelToolCalls: getBooleanField(rawServer, "supportsParallelToolCalls") ?? false,
+-- 
+2.55.0
+
