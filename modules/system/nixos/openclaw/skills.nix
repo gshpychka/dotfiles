@@ -1,5 +1,5 @@
-# Skills (https://docs.openclaw.ai/tools/skills): a SKILL.md per set of host
-# commands, telling the agent when and how to use them.
+# Skills (https://docs.openclaw.ai/tools/skills) the agent reads when a task
+# matches their description.
 {
   config,
   lib,
@@ -8,35 +8,60 @@
 }:
 let
   cfg = config.my.openclaw;
+  gw = config.services.openclaw-gateway;
 
-  skillsDir = pkgs.runCommand "openclaw-skills" { } (
-    lib.concatStrings (
-      lib.mapAttrsToList (name: skill: ''
-        mkdir -p $out/${name}
-        cp ${pkgs.writeText "${name}-SKILL.md" ''
+  # one directory per skill, holding real files: the loader skips symlinks that leave their root
+  skillDirs = lib.mapAttrsToList (
+    name: skill:
+    toString (
+      pkgs.writeTextFile {
+        name = "openclaw-skill-${name}";
+        destination = "/${name}/SKILL.md";
+        text = ''
           ---
           name: ${name}
-          description: ${builtins.toJSON skill.description}
+          description: ${lib.generators.toYAML { } skill.description}
           ---
-          ${skill.text}''} $out/${name}/SKILL.md
-      '') cfg.skills
+          ${skill.text}'';
+      }
     )
-  );
+  ) cfg.skills;
+
+  # extraDirs is the lowest-precedence skill source; a bundled skill of the same name wins
+  skillsCheck =
+    pkgs.runCommand "openclaw-skills-check"
+      {
+        env = {
+          OPENCLAW_NIX_MODE = "1";
+          OPENCLAW_CONFIG_PATH = pkgs.writeText "openclaw-skills.json" (
+            builtins.toJSON { skills.load.extraDirs = skillDirs; }
+          );
+        };
+      }
+      ''
+        # a writable home and state directory for the CLI, inside the build's scratch directory
+        export HOME=$TMPDIR OPENCLAW_STATE_DIR=$TMPDIR/state
+        # the skills the gateway loads, each with its source, as JSON in $out
+        ${lib.getExe gw.package} skills list --json > $out
+        # fails the build (-e) unless every configured skill loads from extraDirs (source openclaw-extra)
+        ${lib.getExe pkgs.jq} -e --argjson names '${builtins.toJSON (lib.attrNames cfg.skills)}' \
+          '$names - [.skills[] | select(.source == "openclaw-extra") | .name] == []' $out
+      '';
 in
 {
   options.my.openclaw.skills = lib.mkOption {
     default = { };
-    description = "Skills describing the agent's host commands, keyed by name.";
+    description = "Skills the agent gets, keyed by skill name: lowercase letters, digits and hyphens.";
     type = lib.types.attrsOf (
       lib.types.submodule {
         options = {
           description = lib.mkOption {
             type = lib.types.str;
-            description = "One line, under 160 characters, shown to the agent.";
+            description = "What the skill is for, listed in every prompt.";
           };
           text = lib.mkOption {
             type = lib.types.lines;
-            description = "SKILL.md body: when and how to use the commands.";
+            description = "The skill's instructions, which the agent reads when its task matches the description.";
           };
         };
       }
@@ -44,6 +69,7 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    services.openclaw-gateway.config.skills.load.extraDirs = [ "${skillsDir}" ];
+    services.openclaw-gateway.config.skills.load.extraDirs = skillDirs;
+    system.checks = [ skillsCheck ];
   };
 }

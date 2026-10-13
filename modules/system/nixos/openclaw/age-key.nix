@@ -1,8 +1,11 @@
-# The agent's own age key, generated on this host, which sops in its commands
-# decrypts with.
+# Secrets the OpenClaw agent decrypts itself: sops in its commands, with an age
+# key of its own generated on this host.
 #
-# Imperative, one-time: add the key's public half to .sops.yaml:
+# Imperative, once per key, after the gateway's first start generates it: add
+# its public half to the secrets/openclaw/ rule of .sops.yaml, then re-encrypt
+# the files there from a checkout, with the YubiKey or the op age key:
 #   sudo grep '^# public key' /var/lib/openclaw/age-key.txt
+#   find secrets/openclaw -type f -exec sops updatekeys -y {} \;
 {
   config,
   lib,
@@ -11,42 +14,37 @@
 }:
 let
   cfg = config.my.openclaw;
-  gw = config.services.openclaw-gateway;
+  keyFile = "${config.services.openclaw-gateway.stateDir}/age-key.txt";
 
-  # the private key exists only on this host
   generateKey = pkgs.writeShellScript "openclaw-generate-age-key" ''
-    set -euo pipefail
-    [ -e ${cfg.ageKeyFile} ] || ${lib.getExe' pkgs.age "age-keygen"} -o ${cfg.ageKeyFile}
+    # whether nothing exists (`! -e`) at the key's path
+    if ! [ -e ${keyFile} ]; then
+      # a new key pair, written to that path (-o)
+      ${lib.getExe' pkgs.age "age-keygen"} -o ${keyFile}
+    fi
   '';
 in
 {
-  options.my.openclaw.ageKeyFile = lib.mkOption {
-    type = lib.types.str;
-    default = "${gw.stateDir}/age-key.txt";
-    readOnly = true;
-    description = "The agent's own age key.";
-  };
-
   config = lib.mkIf cfg.enable {
     services.openclaw-gateway = {
-      environment.SOPS_AGE_KEY_FILE = cfg.ageKeyFile;
+      # the agent's commands inherit the gateway's environment
+      environment.SOPS_AGE_KEY_FILE = keyFile;
       execStartPre = [ "${generateKey}" ];
     };
 
     my.openclaw = {
-      extraPackages = with pkgs; [
-        sops
-        age
-      ];
-      skills.secrets = {
-        description = "Read and write sops secrets encrypted to your own age key, in a checkout of the owner's dotfiles.";
+      extraPackages = [ pkgs.sops ];
+      skills.sops = {
+        description = "Read and write sops secrets encrypted to your own age key, in a checkout of this host's NixOS config.";
         text = ''
-          `sops` decrypts with your own age key, which never leaves this host.
-          In a checkout of the owner's dotfiles, files under `secrets/openclaw/`
-          are encrypted to you and to the owner, and new files there get the
-          right keys from `.sops.yaml`:
+          `sops` decrypts with your own age key, with no setup. In a checkout of
+          this host's NixOS config, `.sops.yaml` encrypts files under
+          `secrets/openclaw/` to you and to the owner:
 
-          - `sops decrypt secrets/openclaw/<file>` reads one;
+          - `printf '{}\n' | sops encrypt --filename-override secrets/openclaw/<file>.yaml > secrets/openclaw/<file>.yaml`
+            creates an empty one;
+          - `sops decrypt --extract '["<key>"]' secrets/openclaw/<file>` reads
+            one value;
           - `sops set secrets/openclaw/<file> '["<key>"]' '"<value>"'` adds or
             changes a value.
 

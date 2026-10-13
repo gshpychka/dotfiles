@@ -1,28 +1,27 @@
-# Native Codex app-server harness, using the existing OpenClaw ChatGPT profile.
-# The pinned nix-openclaw catalog owns the plugin and its managed Codex binary;
-# no imperative plugin install, global CLI, or credential file is needed.
+# Codex (https://docs.openclaw.ai/plugins/codex-harness): a chat bound with
+# `/codex bind` runs its turns in a Codex app-server, signed in with
+# OpenClaw's OpenAI auth profile.
 {
   config,
   lib,
-  inputs,
   pkgs,
   ...
 }:
 let
   cfg = config.my.openclaw;
-  codexPlugin =
-    inputs.nix-openclaw.packages.${pkgs.stdenv.hostPlatform.system}.openclaw-runtime-plugin-codex;
 in
 {
-  config = lib.mkIf cfg.enable {
+  options.my.openclaw.codex.enable = lib.mkEnableOption "Codex sessions for the agent";
+
+  config = lib.mkIf (cfg.enable && cfg.codex.enable) {
     services.openclaw-gateway.config.plugins = {
-      load.paths = [ codexPlugin.openclawRuntimePlugin.loadPath ];
+      load.paths = [ "${pkgs.openclawRuntimePlugins.codex}" ];
       entries.codex = {
         enabled = true;
         config.appServer = {
-          # Managed stdio bridges the ordered OpenClaw OAuth profile in memory.
-          # Leave command unset so the plugin uses its own pinned binary.
+          # every connection uses the agent's Codex home, the native session catalog's included
           homeScope = "agent";
+          # API-key variables of the gateway's environment, which Codex signs in with when no auth profile applies
           clearEnv = [
             "CODEX_API_KEY"
             "OPENAI_API_KEY"
@@ -30,7 +29,5 @@ in
         };
       };
     };
-    # Keep the default OpenClaw runtime/model and existing Claude ACPX unchanged.
-    # Native Codex is selected explicitly with /codex bind in a separate chat.
   };
 }

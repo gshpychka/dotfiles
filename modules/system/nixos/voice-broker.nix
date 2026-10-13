@@ -133,7 +133,7 @@ in
         ExecStart = "${lib.getExe pkgs.voice-broker} --config ${json.generate "voice-broker.json" cfg.settings}";
         LoadCredential =
           map (name: "${name}:${config.sops.secrets.${sopsName name}.path}") credentialNames
-          ++ [ "${openclawCredential}:${openclaw.secretFile}" ]
+          ++ [ "${openclawCredential}:${openclaw.gatewaySecretFile}" ]
           ++ lib.optional (cfg.identityFile != null) "${identityCredential}:${cfg.identityFile}";
         # the identity while identityFile is missing; a LoadCredential= that
         # finds no file falls back to it (systemd.exec(5), SetCredential=)

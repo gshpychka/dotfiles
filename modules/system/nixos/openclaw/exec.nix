@@ -1,5 +1,5 @@
-# The agent's commands on this host: every session's tools run as the gateway
-# user, across the whole filesystem, without approval.
+# Shell commands on this host, from the agent's tools and from `! <command>` in
+# a chat, without approval (https://docs.openclaw.ai/tools/exec-approvals).
 {
   config,
   lib,
@@ -10,16 +10,11 @@ let
   cfg = config.my.openclaw;
   gw = config.services.openclaw-gateway;
 
-  # host exec approvals, which the gateway keeps in its SQLite state, outside
-  # openclaw.json; host exec follows the stricter of these and tools.exec
+  # host exec approvals (https://docs.openclaw.ai/tools/exec-approvals)
   approvalsFile = pkgs.writeText "openclaw-exec-approvals.json" (
     builtins.toJSON {
-      version = 1;
-      defaults = {
-        security = "full";
-        ask = "off";
-        askFallback = "full";
-      };
+      # an approval prompt no one answers lets the command run
+      defaults.askFallback = "full";
     }
   );
 in
@@ -27,7 +22,7 @@ in
   options.my.openclaw.extraPackages = lib.mkOption {
     type = lib.types.listOf lib.types.package;
     default = [ ];
-    description = "Packages on PATH for the agent's commands.";
+    description = "Packages on PATH for the commands the gateway runs on this host.";
   };
 
   config = lib.mkIf cfg.enable {
@@ -35,21 +30,27 @@ in
       config = {
         tools.exec = {
           host = "gateway";
-          mode = "full";
-          # the wrappers before the system's packages: both hold sudo, and only
-          # the wrapper's is setuid
-          pathPrepend = map (package: "${lib.getBin package}/bin") cfg.extraPackages ++ [
-            config.security.wrapperDir
-            # OpenClaw's login-shell PATH merge is best-effort
-            "/run/current-system/sw/bin"
-          ];
+          # ahead of the login shell's PATH, which OpenClaw puts before the unit's
+          pathPrepend = map (package: "${lib.getBin package}/bin") cfg.extraPackages;
           applyPatch.workspaceOnly = false;
         };
-        # `! <command>` in a chat runs on this host
+        # `! <command>` in a chat, for the senders tools.elevated.allowFrom admits
         commands.bash = true;
       };
-      # non-fatal: the gateway starts on the approvals it already holds
-      execStartPre = [ "-${lib.getExe' gw.package "openclaw"} approvals set --file ${approvalsFile}" ];
+      # the approvals live in SQLite state outside openclaw.json, so each start replaces them
+      # `-`: the gateway starts on the stored approvals when the replacement fails
+      execStartPre = [ "-${lib.getExe gw.package} approvals set --file ${approvalsFile}" ];
     };
+
+    # the unit's PATH, which `! <command>` and the agent's tools inherit
+    systemd.services.${gw.unitName}.path = [
+      # setuid sudo, ahead of the system packages' plain sudo
+      "/run/wrappers"
+    ]
+    ++ cfg.extraPackages
+    ++ [
+      # the system's packages, at a path that outlives rebuilds
+      "/run/current-system/sw"
+    ];
   };
 }

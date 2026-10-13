@@ -1,13 +1,7 @@
 # MCP servers (https://docs.openclaw.ai/tools/mcp) whose tools the agent gets.
-{
-  config,
-  lib,
-  pkgs,
-  ...
-}:
+{ config, lib, ... }:
 let
   cfg = config.my.openclaw;
-  enabledServers = lib.filterAttrs (_: server: server.enable) cfg.mcpServers;
 in
 {
   options.my.openclaw.mcpServers = lib.mkOption {
@@ -16,14 +10,9 @@ in
     type = lib.types.attrsOf (
       lib.types.submodule {
         options = {
-          enable = lib.mkOption {
-            type = lib.types.bool;
-            default = true;
-            description = "Whether the server is connected; its secrets must exist in sopsFile while it is.";
-          };
           settings = lib.mkOption {
-            inherit (pkgs.formats.json { }) type;
-            description = "The server's mcp.servers entry, a url or a command. Strings reference secrets as \${NAME}.";
+            type = lib.types.attrsOf lib.types.json;
+            description = "The server's mcp.servers entry.";
           };
           secrets = lib.mkOption {
             type = lib.types.attrsOf lib.types.str;
@@ -39,9 +28,9 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    my.openclaw.secrets = lib.concatMapAttrs (_: server: server.secrets) enabledServers;
+    my.openclaw.secrets = lib.mkMerge (lib.mapAttrsToList (_: server: server.secrets) cfg.mcpServers);
     services.openclaw-gateway.config.mcp.servers = lib.mapAttrs (
       _: server: server.settings
-    ) enabledServers;
+    ) cfg.mcpServers;
   };
 }

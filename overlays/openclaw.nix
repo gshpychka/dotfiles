@@ -1,13 +1,14 @@
-# OpenClaw from github:gshpychka/nix-openclaw, built on its pinned source with
-# the patches in ./openclaw applied.
-inputs: _final: prev:
+# OpenClaw built from nix-openclaw's pinned source with the patches in
+# ./openclaw applied, and its runtime plugins built against that build.
+inputs: final: prev:
 let
   inherit (prev.stdenv.hostPlatform) system;
+  openclawPackages = inputs.nix-openclaw.packages.${system};
   # the nixpkgs that builds the rest of the gateway; updates to ours leave it unchanged
   openclawPkgs = inputs.nix-openclaw.inputs.nixpkgs.legacyPackages.${system};
 in
 {
-  openclaw = inputs.nix-openclaw.packages.${system}.openclaw-gateway.override (old: {
+  openclaw = openclawPackages.openclaw-gateway.override (old: {
     gatewaySrc = openclawPkgs.applyPatches {
       name = "openclaw-${old.sourceInfo.releaseVersion}-source";
       src = openclawPkgs.fetchFromGitHub {
@@ -36,4 +37,17 @@ in
     # follows the source's pnpm-lock.yaml
     pnpmDepsHash = "sha256-CO2ykEZhdyCVCgQQlNyFZl274VfGzgNl7TbJ6/gMRp8=";
   });
+
+  openclawRuntimePlugins =
+    let
+      # the fork's plugin builder, linking each plugin to the gateway above as its openclaw peer
+      buildPlugin =
+        openclawPkgs.callPackage "${inputs.nix-openclaw}/nix/lib/openclaw-runtime-plugin.nix"
+          {
+            openclawPackage = final.openclaw;
+          };
+    in
+    prev.lib.mapAttrs (_: buildPlugin) (
+      import "${inputs.nix-openclaw}/nix/generated/openclaw-runtime-plugins"
+    );
 }

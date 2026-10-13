@@ -1,36 +1,21 @@
-# The models the agent thinks with, and how their calls authenticate.
+# The models the agent's turns and its memory search call, and the
+# credentials those calls use.
+#
+# Imperative, one-time per authOrder profile: sign in on the host:
+#   openclaw models auth login --provider <provider> --device-code --profile-id <id>
 { config, lib, ... }:
 let
   cfg = config.my.openclaw;
-  models = [
-    cfg.model.primary
-  ]
-  ++ cfg.model.fallbacks
-  ++ lib.optional (cfg.model.utility != null) cfg.model.utility;
-  providers = lib.unique (map (model: lib.head (lib.splitString "/" model)) models);
-  memoryKeyVar = "MEMORY_SEARCH_API_KEY";
+  # the provider half of the primary's provider/model
+  provider = lib.head (lib.splitString "/" cfg.model.primary);
 in
 {
   options.my.openclaw = {
     model = {
       primary = lib.mkOption {
-        type = lib.types.str;
+        type = lib.types.strMatching "[^/]+/.+";
         example = "openai/gpt-6-astra";
-        description = "Model answering every turn, as provider/model.";
-      };
-      fallbacks = lib.mkOption {
-        type = lib.types.listOf lib.types.str;
-        default = [ ];
-        description = "Models tried in order when the primary fails, as provider/model.";
-      };
-      utility = lib.mkOption {
-        type = lib.types.nullOr lib.types.str;
-        default = null;
-        description = ''
-          Model for short internal tasks such as titles and progress
-          narration, as provider/model; null takes the primary provider's
-          small model.
-        '';
+        description = "Default model of the agent's turns, as provider/model.";
       };
       authOrder = lib.mkOption {
         type = lib.types.attrsOf (lib.types.listOf lib.types.str);
@@ -38,48 +23,37 @@ in
         example = {
           openai = [ "openai:chatgpt" ];
         };
-        description = ''
-          Auth profiles model calls try, in order, by provider; a profile
-          comes from `openclaw models auth login --profile-id <id>`.
-        '';
+        description = "Auth profile ids model calls try, in order, by provider.";
       };
     };
 
     memorySearch.apiKey = lib.mkOption {
-      type = lib.types.nullOr lib.types.str;
+      type = lib.types.nullOr (lib.types.attrsOf lib.types.str);
       default = null;
-      example = "openai-api-key";
-      description = ''
-        The sopsFile key holding the API key memory search embeds with; null
-        leaves the embedding credential to OpenClaw's auth lookup.
-      '';
+      example = lib.literalExpression "config.my.openclaw.secretRefs.OPENAI_API_KEY";
+      description = "SecretRef of the API key memory search embeds with, one of secretRefs; null leaves the embedding credential to OpenClaw's auth lookup.";
     };
   };
 
-  config = lib.mkMerge [
-    (lib.mkIf cfg.enable {
-      services.openclaw-gateway.config = {
-        auth.order = cfg.model.authOrder;
-        models.catalogRefresh.enabled = false;
-        agents.defaults = {
-          model = {
-            inherit (cfg.model) primary fallbacks;
+  config = lib.mkIf cfg.enable (
+    lib.mkMerge [
+      {
+        services.openclaw-gateway.config = {
+          agents.defaults = {
+            model.primary = cfg.model.primary;
+            # OpenAI models default to the Codex harness; the agent's turns run on OpenClaw's own runtime
+            models."openai/*".agentRuntime.id = "openclaw";
+            # models a session may switch to: any of the primary's provider
+            modelPolicy.allow = [ "${provider}/*" ];
           };
-          # In auto mode the Codex harness claims openai/* routes; the entry keeps
-          # them on OpenClaw's own runtime and leaves an OpenAI sign-in nothing to
-          # patch in openclaw.json, a write Nix mode refuses.
-          models."openai/*".agentRuntime.id = "openclaw";
-          # the models sessions may select: any of the configured providers'
-          modelPolicy.allow = map (provider: "${provider}/*") providers;
+          auth.order = cfg.model.authOrder;
+          # the model catalog stays the package's own
+          models.catalogRefresh.enabled = false;
         };
-      };
-    })
-    (lib.mkIf (cfg.enable && cfg.model.utility != null) {
-      services.openclaw-gateway.config.agents.defaults.utilityModel = cfg.model.utility;
-    })
-    (lib.mkIf (cfg.enable && cfg.memorySearch.apiKey != null) {
-      my.openclaw.secrets.${memoryKeyVar} = cfg.memorySearch.apiKey;
-      services.openclaw-gateway.config.memory.search.remote.apiKey = cfg.secretRefs.${memoryKeyVar};
-    })
-  ];
+      }
+      (lib.mkIf (cfg.memorySearch.apiKey != null) {
+        services.openclaw-gateway.config.memory.search.remote.apiKey = cfg.memorySearch.apiKey;
+      })
+    ]
+  );
 }

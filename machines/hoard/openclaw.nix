@@ -1,8 +1,6 @@
-# Adding a secret named below (YubiKey or the op age key):
+# Imperative, per secret named below, with the YubiKey or the op age key:
 #   sops set secrets/hoard/openclaw.yaml '["openai-api-key"]' '"<key>"'
 #   sops set secrets/hoard/openclaw.yaml '["elevenlabs-api-key"]' '"<key>"'
-#   sops set secrets/hoard/openclaw.yaml '["telegram-bot-token"]' '"<token from @BotFather>"'
-#   sops set secrets/hoard/openclaw.yaml '["telegram-owner-id"]' '"<numeric id, e.g. from @userinfobot>"'
 #   sops set secrets/hoard/openclaw.yaml '["home-assistant-token"]' '"<long-lived token of a dedicated HA user>"'
 #   sops set secrets/hoard/openclaw.yaml '["home-assistant-admin-mcp-path"]' '"<private_... path from the ha-mcp app log>"'
 { config, ... }:
@@ -32,9 +30,7 @@
 
     model = {
       primary = "openai/gpt-6.1-sol";
-      # the owner's ChatGPT subscription; OpenClaw's runtime takes OPENAI_API_KEY
-      # without an auth order. Sign in once, from a terminal on eve:
-      #   ssh -t hoard openclaw models auth login --provider openai --device-code --profile-id openai:chatgpt
+      # the owner's ChatGPT subscription; OpenClaw's runtime takes OPENAI_API_KEY without an auth order
       authOrder.openai = [ "openai:chatgpt" ];
     };
     secrets = {
@@ -42,7 +38,7 @@
       ELEVENLABS_API_KEY = "elevenlabs-api-key";
     };
     # memory embeddings bill the API key; model calls go to the ChatGPT sign-in
-    memorySearch.apiKey = "openai-api-key";
+    memorySearch.apiKey = config.my.openclaw.secretRefs.OPENAI_API_KEY;
     # spoken replies to voice notes
     tts = {
       provider = "elevenlabs";
@@ -53,7 +49,6 @@
       {
         provider = "elevenlabs";
         model = "scribe_v2";
-        capabilities = [ "audio" ];
       }
     ];
 
@@ -63,7 +58,7 @@
       settings = {
         url = "http://homeassistant.${config.my.domain}:8123/api/mcp";
         transport = "streamable-http";
-        headers.Authorization = "Bearer \${HOME_ASSISTANT_TOKEN}";
+        headers.Authorization = "Bearer ${config.my.openclaw.secretVars.HOME_ASSISTANT_TOKEN}";
       };
       secrets.HOME_ASSISTANT_TOKEN = "home-assistant-token";
     };
@@ -71,7 +66,7 @@
     # administration; its URL path is its only credential.
     mcpServers.home-assistant-admin = {
       settings = {
-        url = "http://homeassistant.${config.my.domain}:9583/\${HOME_ASSISTANT_ADMIN_MCP_PATH}";
+        url = "http://homeassistant.${config.my.domain}:9583/${config.my.openclaw.secretVars.HOME_ASSISTANT_ADMIN_MCP_PATH}";
         transport = "streamable-http";
       };
       secrets.HOME_ASSISTANT_ADMIN_MCP_PATH = "home-assistant-admin-mcp-path";
@@ -85,13 +80,24 @@
     };
 
     claudeCode.enable = true;
+    codex.enable = true;
     onedrive.enable = true;
+
+    root = {
+      publicKey = config.my.sshKeys.openclaw;
+      agentSocket = config.my.tpmSshKey.socket;
+    };
   };
 
   my.tpmSshKey = {
     enable = true;
     user = config.services.openclaw-gateway.user;
   };
-  services.openclaw-gateway.environment.SSH_AUTH_SOCK = config.my.tpmSshKey.socket;
-  my.openclaw.root.sshKey = config.my.sshKeys.openclaw;
+
+  systemd.services.${config.services.openclaw-gateway.unitName}.serviceConfig = {
+    # the gateway and the sessions it spawns stay within 6 of hoard's 15 GB
+    MemoryMax = "6G";
+    # a runaway command's processes stop well short of the host's limit
+    TasksMax = 1024;
+  };
 }

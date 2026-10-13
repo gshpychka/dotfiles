@@ -1,5 +1,5 @@
-# OpenClaw personal-assistant gateway (https://docs.openclaw.ai), built on the
-# nix-openclaw NixOS module (services.openclaw-gateway).
+# The OpenClaw gateway (https://docs.openclaw.ai): the agent's service on this
+# host, its workspace, and its openclaw.json, validated at build time.
 {
   config,
   lib,
@@ -11,23 +11,30 @@ let
   cfg = config.my.openclaw;
   gw = config.services.openclaw-gateway;
 
+  # environment.etc keys are relative to /etc
   configEtcPath = lib.removePrefix "/etc/" gw.configPath;
+  # the rendered openclaw.json
   configFile = config.environment.etc.${configEtcPath}.source;
 
-  # The gateway refuses to start on unknown or legacy keys in a read-only
-  # config, and reports unresolved ${VAR} references only as warnings.
+  # the gateway refuses to start on a config that fails this validation
   configCheck =
     pkgs.runCommand "openclaw-config-check"
       {
-        env = lib.mapAttrs (_: _: "1") cfg.secrets // {
-          OPENCLAW_NIX_MODE = "1";
-          OPENCLAW_CONFIG_PATH = configFile;
-        };
+        env =
+          gw.environment
+          # each secret's variable, so that its ${VAR} references resolve
+          // lib.mapAttrs (_: _: "1") cfg.secrets
+          // {
+            OPENCLAW_CONFIG_PATH = configFile;
+          };
       }
       ''
+        # a writable home and state directory for the CLI, inside the build's scratch directory
         export HOME=$TMPDIR OPENCLAW_STATE_DIR=$TMPDIR/state
-        ${lib.getExe' gw.package "openclaw"} config validate --json | tee $out
-        ${lib.getExe pkgs.jq} -e '.valid and (.warnings | length == 0)' $out > /dev/null
+        # the gateway's own validation, as JSON (--json), shown in the build log and kept as the check's output (tee $out)
+        ${lib.getExe gw.package} config validate --json | tee $out
+        # fails the build (-e) on any warning, such as an unresolved ''${VAR} reference
+        ${lib.getExe pkgs.jq} -e '.warnings == []' $out
       '';
 in
 {
@@ -40,46 +47,48 @@ in
       type = lib.types.str;
       default = "${gw.stateDir}/workspace";
       readOnly = true;
-      description = "The agent's workspace: its home, and the working directory its tools start in.";
+      description = "The agent's workspace (https://docs.openclaw.ai/concepts/agent-workspace).";
     };
   };
 
   config = lib.mkIf cfg.enable {
     services.openclaw-gateway = {
       enable = true;
-      # OpenClaw treats its config as read-only and leaves updates to Nix
+      package = pkgs.openclaw;
+      # Nix mode (https://docs.openclaw.ai/install/nix): Nix owns openclaw.json and the installed package
       environment.OPENCLAW_NIX_MODE = "1";
       config = {
+        # the gateway starts only in local mode
+        gateway.mode = "local";
         agents.defaults = {
           inherit (cfg) workspace;
           userTimezone = config.time.timeZone;
+          # no recurring heartbeat turns (https://docs.openclaw.ai/gateway/heartbeat)
           heartbeat.every = "0m";
         };
         browser.enabled = false;
-        commands.restart = true;
       };
     };
 
     environment.etc.${configEtcPath} = {
-      # only the gateway user reads its config
+      # mkForce: OpenClaw's security audit rates a config others can read as critical
       mode = lib.mkForce "0400";
       inherit (gw) user;
     };
 
-    # for tmpfiles rules inside it: tmpfiles creates a missing parent as root
-    systemd.tmpfiles.rules = [ "d ${cfg.workspace} 0700 ${gw.user} ${gw.group} - -" ];
-
     systemd.services.${gw.unitName} = {
-      # config changes land in /etc without touching the unit
+      # the config file sits in /etc, outside the unit definition systemd compares
       restartTriggers = [ configFile ];
       serviceConfig = {
+        # mkForce: the module's logPath default is a file nothing rotates
         StandardOutput = lib.mkForce "journal";
         StandardError = lib.mkForce "journal";
         UMask = "0077";
-        MemoryMax = "6G";
-        TasksMax = 1024;
       };
     };
+
+    # OpenClaw runs ffmpeg and ffprobe only from fixed system directories, /run/current-system/sw/bin among them
+    environment.systemPackages = [ pkgs.ffmpeg-headless ];
 
     system.checks = [ configCheck ];
   };

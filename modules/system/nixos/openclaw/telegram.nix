@@ -1,14 +1,20 @@
-# The Telegram channel: DMs from the owner, who is also the gateway's owner
-# for chat commands.
+# The Telegram channel: the owner's DMs with the agent's bot.
+#
+# Imperative, one-time: create the bot with @BotFather, then store its token
+# and the owner's numeric user id (from @userinfobot):
+#   sops set <sopsFile> '["telegram-bot-token"]' '"<token>"'
+#   sops set <sopsFile> '["telegram-owner-id"]' '"<numeric id>"'
 { config, lib, ... }:
 let
   cfg = config.my.openclaw;
-  owner = "\${TELEGRAM_OWNER_ID}";
+  ownerId = cfg.secretVars.TELEGRAM_OWNER_ID;
 in
 {
   options.my.openclaw.telegram.enable = lib.mkEnableOption ''
-    the Telegram channel: the bot of sopsFile's telegram-bot-token, answering
-    DMs from the numeric user id in telegram-owner-id only'';
+    the Telegram channel: the bot whose token is sopsFile's
+    telegram-bot-token, in DMs with the user whose numeric id is sopsFile's
+    telegram-owner-id, who is the command owner and runs `! <command>` on
+    this host'';
 
   config = lib.mkIf (cfg.enable && cfg.telegram.enable) {
     my.openclaw.secrets = {
@@ -17,18 +23,16 @@ in
     };
 
     services.openclaw-gateway.config = {
-      plugins.entries.telegram.enabled = true;
       channels.telegram = {
         enabled = true;
         botToken = cfg.secretRefs.TELEGRAM_BOT_TOKEN;
         dmPolicy = "allowlist";
-        allowFrom = [ owner ];
+        allowFrom = [ ownerId ];
         groupPolicy = "disabled";
-        capabilities.inlineButtons = "dm";
       };
-      commands.ownerAllowFrom = [ "telegram:${owner}" ];
-      # senders whose `! <command>` runs on this host
-      tools.elevated.allowFrom.telegram = [ owner ];
+      commands.ownerAllowFrom = [ "telegram:${ownerId}" ];
+      # senders allowed elevated tools, which `! <command>` requires
+      tools.elevated.allowFrom.telegram = [ ownerId ];
     };
   };
 }
