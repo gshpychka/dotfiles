@@ -32,6 +32,18 @@ class Live:
 
 
 @dataclass(frozen=True, slots=True)
+class History:
+    """How much of the agent's conversation the voice starts with."""
+
+    # Newest messages read, at most.
+    max_messages: int
+    # Messages older than this are left out.
+    max_age_s: float
+    # Text of the messages kept, newest first, at most.
+    max_chars: int
+
+
+@dataclass(frozen=True, slots=True)
 class OpenClaw:
     """The OpenClaw gateway that carries out delegated work."""
 
@@ -39,10 +51,13 @@ class OpenClaw:
     url: str
     # The gateway's shared secret.
     token: str
+    # The agent session consults are turns of, and whose transcript the voice starts with.
+    session_key: str
     # Added to the agent's own prompt for every consult.
     instructions: str
     # Backend model for consults; None keeps the agent's own.
     model: str | None
+    history: History
 
 
 @dataclass(frozen=True, slots=True)
@@ -83,12 +98,22 @@ def _live(raw: dict[str, Any]) -> Live:
     return Live(model=raw["model"], voice=raw["voice"], instructions=instructions)
 
 
+def _history(raw: dict[str, Any]) -> History:
+    return History(
+        max_messages=int(raw["max_messages"]),
+        max_age_s=float(raw["max_age_s"]),
+        max_chars=int(raw["max_chars"]),
+    )
+
+
 def _openclaw(raw: dict[str, Any]) -> OpenClaw:
     return OpenClaw(
         url=raw["url"],
         token=_read_secret(raw["token_file"]),
+        session_key=raw["session_key"],
         instructions=raw["instructions"],
         model=raw.get("model"),
+        history=_history(raw["history"]),
     )
 
 

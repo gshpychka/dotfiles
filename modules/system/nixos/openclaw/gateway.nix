@@ -65,6 +65,14 @@ in
       readOnly = true;
       description = "The agent's workspace (https://docs.openclaw.ai/concepts/agent-workspace).";
     };
+
+    mainSessionKey = lib.mkOption {
+      type = lib.types.str;
+      # the default agent, main, under the default DM scope
+      default = "agent:main:main";
+      readOnly = true;
+      description = "Key of the agent's main session, which its direct messages share (https://docs.openclaw.ai/concepts/main-session).";
+    };
   };
 
   config = lib.mkIf cfg.enable {

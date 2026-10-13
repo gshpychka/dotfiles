@@ -1,4 +1,4 @@
-"""Delegation: a scripted Live connection, a recording host and a fake agent."""
+"""Delegation and history: a scripted Live connection, a recording host and a fake agent."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from types import SimpleNamespace
 import numpy as np
 from voice_broker.config import Live
 from voice_broker.live import LiveSession
-from voice_broker.openclaw import ConsultFailed
+from voice_broker.openclaw import ConsultFailed, HistoryUnavailable, Turn
 from voice_broker.protocol import Phase
 
 
@@ -33,13 +33,15 @@ class Connection:
     def __init__(self) -> None:
         self.events: asyncio.Queue[SimpleNamespace | None] = asyncio.Queue()
         self.commentary: list[dict] = []
+        self.started: list[dict] = []
         self.session = SimpleNamespace(
             start=self._start,
             input_audio=SimpleNamespace(append=self._ignore),
             commentary=SimpleNamespace(append=self._comment),
         )
 
-    async def _start(self, session) -> None:
+    async def _start(self, session: dict) -> None:
+        self.started.append(session)
         await self.events.put(SimpleNamespace(type="session.started"))
 
     async def _ignore(self, **kwargs) -> None:
@@ -68,7 +70,15 @@ class Connection:
         return event
 
 
-async def run(script, consult) -> tuple[Connection, Host]:
+async def nothing_recent() -> list[Turn]:
+    return []
+
+
+async def no_consult(task: str) -> str:
+    raise AssertionError("no consult expected")
+
+
+async def run(script, consult=no_consult, recall=nothing_recent) -> tuple[Connection, Host]:
     """Runs a session until `script(conn, session)` returns and its delegated work settles."""
     conn = Connection()
     host = Host()
@@ -77,7 +87,7 @@ async def run(script, consult) -> tuple[Connection, Host]:
     async def connect():
         yield conn
 
-    session = LiveSession(Live(model="gpt-live-1", voice="marin", instructions=""), "Kitchen", consult, connect)
+    session = LiveSession(Live(model="gpt-live-1", voice="marin", instructions=""), "Kitchen", consult, recall, connect)
     async with session.open(host):
         receiving = asyncio.create_task(session.receive())
         await script(conn, session)
@@ -125,14 +135,11 @@ def test_a_new_delegation_supersedes_the_running_consult():
 
 
 def test_a_delegation_with_no_user_speech_asks_for_a_repeat():
-    async def consult(task: str) -> str:
-        raise AssertionError("no consult without a request")
-
     async def script(conn: Connection, session: LiveSession) -> None:
         conn.delegate("dlg_1")
         await settle()
 
-    conn, _ = asyncio.run(run(script, consult))
+    conn, _ = asyncio.run(run(script))
 
     (comment,) = conn.commentary
     assert "repeat" in comment["content"] and comment["delegation_id"] == "dlg_1"
@@ -180,3 +187,51 @@ def test_long_answers_arrive_in_appends_within_the_limit():
     assert len(contents) > 1
     assert all(len(c.encode()) <= 500 for c in contents)
     assert " ".join(contents) == answer
+
+
+async def no_script(conn: Connection, session: LiveSession) -> None:
+    pass
+
+
+def test_the_recent_conversation_leads_the_session():
+    async def recall() -> list[Turn]:
+        return [("user", "Remind me to call mom."), ("assistant", "Noted, at six.")]
+
+    conn, _ = asyncio.run(run(no_script, recall=recall))
+
+    (started,) = conn.started
+    lead, *items = started["input"]
+    assert lead["role"] == "developer" and "spoken conversation" in lead["content"][0]["text"]
+    assert items == [
+        {"type": "message", "role": "user", "content": [{"type": "input_text", "text": "Remind me to call mom."}]},
+        {"type": "message", "role": "assistant", "content": [{"type": "output_text", "text": "Noted, at six."}]},
+    ]
+
+
+def test_no_recent_conversation_means_no_history():
+    conn, _ = asyncio.run(run(no_script))
+
+    (started,) = conn.started
+    assert "input" not in started
+
+
+def test_an_unreadable_conversation_does_not_stop_the_session():
+    async def recall() -> list[Turn]:
+        raise HistoryUnavailable("gateway down")
+
+    conn, _ = asyncio.run(run(no_script, recall=recall))
+
+    (started,) = conn.started
+    assert "input" not in started
+
+
+def test_the_history_keeps_its_newest_within_lives_cap():
+    async def recall() -> list[Turn]:
+        return [("user", f"message {i}") for i in range(200)]
+
+    conn, _ = asyncio.run(run(no_script, recall=recall))
+
+    (started,) = conn.started
+    items = started["input"]
+    assert len(items) == 128
+    assert items[-1]["content"][0]["text"] == "message 199"

@@ -40,14 +40,23 @@ _: {
           Do not guess the result while waiting.
         '';
       };
-      openclaw.instructions = ''
-        This turn comes from a voice speaker in the home. Carry out the latest
-        request in the conversation it quotes. Check the current state before
-        changing something when the request is ambiguous, and before repeating
-        an action an earlier, interrupted request may already have done. Your
-        reply is spoken aloud: one or two short plain sentences with what you
-        changed or found, and no IDs, lists or markup.
-      '';
+      openclaw = {
+        instructions = ''
+          This turn comes from a voice speaker in the home. Carry out the latest
+          request in the conversation it quotes. Check the current state before
+          changing something when the request is ambiguous, and before repeating
+          an action an earlier, interrupted request may already have done. Your
+          reply is spoken aloud: one or two short plain sentences with what you
+          changed or found, and no IDs, lists or markup.
+        '';
+        # the voice starts with the Telegram conversation of the last day
+        history = {
+          max_messages = 40;
+          max_age_s = 24 * 60 * 60;
+          # stays within Live's 8,192-token history, Cyrillic included
+          max_chars = 8000;
+        };
+      };
       idle_timeout_s = 8;
       max_conversation_s = 600;
     };

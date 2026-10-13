@@ -72,9 +72,10 @@ in
       default = { };
       description = ''
         Broker configuration (packages/voice-broker/src/voice_broker/config.py):
-        the Live session, the OpenClaw consult instructions and the
-        conversation timeouts. The listener, credentials, devices, recordings
-        and the gateway's address come from this module.
+        the Live session, the OpenClaw consult instructions, how much of the
+        agent's conversation the voice starts with, and the conversation
+        timeouts. The listener, credentials, devices, recordings and the
+        gateway's address and session come from this module.
       '';
     };
   };
@@ -101,6 +102,7 @@ in
       openclaw = {
         url = openclaw.localUrl;
         token_file = credential openclawCredential;
+        session_key = openclaw.mainSessionKey;
       };
       live = lib.optionalAttrs (cfg.identityFile != null) {
         identity_file = credential identityCredential;

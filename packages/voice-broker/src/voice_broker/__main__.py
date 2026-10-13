@@ -82,7 +82,9 @@ class Broker:
             log.warning("no valid start from %s: %r", device.remote_address, e)
             return
         log.info("woken by %s", start.wake_word)
-        session = LiveSession(self._config.live, state.device.area, self._openclaw.consult, self._connect)
+        session = LiveSession(
+            self._config.live, state.device.area, self._openclaw.consult, self._openclaw.recent, self._connect
+        )
         reason = await Conversation(self._config, state.device.name, device, session, state.aec).run()
         log.info("conversation over: %s", reason)
 

@@ -13,16 +13,17 @@ import base64
 import logging
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
-from typing import Any, Literal
+from typing import Any
 
 import numpy as np
 from openai import AsyncOpenAI
 from openai.resources.live.live import AsyncLiveConnection
+from openai.types.live.initial_item_param import InitialItemParam
 from openai.types.live.session_config_param import SessionConfigParam
 
 from .config import Live
 from .dsp import mic_to_speaker_rate
-from .openclaw import ConsultFailed
+from .openclaw import ConsultFailed, HistoryUnavailable, Role, Turn
 from .protocol import SPEAKER_RATE, Phase
 from .session import Host, SessionRefused, located, placement
 
@@ -32,13 +33,17 @@ log = logging.getLogger(__name__)
 _AUDIO_EVENTS = frozenset({"session.output_audio.delta"})
 # An append carries at most 500 tokens, and every token spans at least one byte.
 _APPEND_MAX_BYTES = 500
+# Live takes this many initial messages at most.
+_INPUT_MAX_ITEMS = 128
+# Leads the initial messages, which are the agent's conversation before this one.
+_HISTORY_LEAD = "Your text conversation with the user so far; the spoken conversation follows it."
 
 # Opens a Live connection; injected so tests can substitute OpenAI.
 LiveConnector = Callable[[], AbstractAsyncContextManager[AsyncLiveConnection]]
 # The agent's answer to a task; raises ConsultFailed.
 Consult = Callable[[str], Awaitable[str]]
-
-Role = Literal["user", "assistant"]
+# The agent's recent conversation; raises HistoryUnavailable.
+Recall = Callable[[], Awaitable[list[Turn]]]
 
 
 def live_connector(client: AsyncOpenAI) -> LiveConnector:
@@ -48,16 +53,17 @@ def live_connector(client: AsyncOpenAI) -> LiveConnector:
 
 
 class LiveSession:
-    def __init__(self, config: Live, area: str, consult: Consult, connect: LiveConnector) -> None:
+    def __init__(self, config: Live, area: str, consult: Consult, recall: Recall, connect: LiveConnector) -> None:
         self._config = config
         self._area = area
         self._consult = consult
+        self._recall = recall
         self._connect = connect
         self._to_openai_rate = mic_to_speaker_rate()
         self._conn: AsyncLiveConnection | None = None
         self._host: Host | None = None
         # Transcript fragments in delivery order.
-        self._heard: list[tuple[Role, str]] = []
+        self._heard: list[Turn] = []
         self._logged = 0
         # Fragments before this index reached the agent in a consult it answered.
         self._consulted = 0
@@ -65,10 +71,15 @@ class LiveSession:
 
     @asynccontextmanager
     async def open(self, host: Host) -> AsyncIterator[None]:
+        try:
+            history = await self._recall()
+        except HistoryUnavailable as e:
+            log.warning("starting without the recent conversation: %s", e)
+            history = []
         async with self._connect() as conn:
             self._conn = conn
             self._host = host
-            await conn.session.start(session=self._session_config())
+            await conn.session.start(session=self._session_config(history))
             async for event in conn:
                 self._log_event(event)
                 if event.type == "session.started":
@@ -89,8 +100,8 @@ class LiveSession:
     def on_playback_finished(self) -> None:
         self._flush_transcripts()
 
-    def _session_config(self) -> SessionConfigParam:
-        return {
+    def _session_config(self, history: list[Turn]) -> SessionConfigParam:
+        config: SessionConfigParam = {
             "model": self._config.model,
             "instructions": located(self._config.instructions, self._area),
             "audio": {
@@ -99,6 +110,9 @@ class LiveSession:
             },
             "delegation": {"type": "client"},
         }
+        if history:
+            config["input"] = _initial_items(history)
+        return config
 
     # -- mic -----------------------------------------------------------------
 
@@ -171,7 +185,7 @@ class LiveSession:
         if not self.busy and not self._host.assistant_audible:
             await self._host.set_phase(Phase.LISTENING)
 
-    def _task(self, heard: list[tuple[Role, str]]) -> str:
+    def _task(self, heard: list[Turn]) -> str:
         said = "\n".join(f"{role}: {text.strip()}" for role, text in _turns(heard))
         return (
             f"{placement(self._area)}\n"
@@ -192,9 +206,22 @@ class LiveSession:
         self._logged = len(self._heard)
 
 
-def _turns(fragments: list[tuple[Role, str]]) -> list[tuple[Role, str]]:
+def _initial_items(history: list[Turn]) -> list[InitialItemParam]:
+    """The newest of `history` as Live's initial messages, led by what they are."""
+    items: list[InitialItemParam] = [
+        {"type": "message", "role": "developer", "content": [{"type": "input_text", "text": _HISTORY_LEAD}]}
+    ]
+    for role, text in history[-(_INPUT_MAX_ITEMS - 1) :]:
+        if role == "user":
+            items.append({"type": "message", "role": "user", "content": [{"type": "input_text", "text": text}]})
+        else:
+            items.append({"type": "message", "role": "assistant", "content": [{"type": "output_text", "text": text}]})
+    return items
+
+
+def _turns(fragments: list[Turn]) -> list[Turn]:
     """Consecutive fragments from one side, joined."""
-    turns: list[tuple[Role, str]] = []
+    turns: list[Turn] = []
     for role, text in fragments:
         if turns and turns[-1][0] == role:
             turns[-1] = (role, turns[-1][1] + text)
