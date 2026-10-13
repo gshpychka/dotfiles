@@ -103,19 +103,15 @@ async def settle() -> None:
         await asyncio.sleep(0)
 
 
-def test_a_new_delegation_supersedes_the_running_consult():
+def test_a_delegation_during_a_consult_waits_for_it():
     tasks: list[str] = []
-    cancelled = asyncio.Event()
+    release = asyncio.Event()
 
     async def consult(task: str) -> str:
         tasks.append(task)
         if len(tasks) == 1:
-            try:
-                await asyncio.Event().wait()
-            except asyncio.CancelledError:
-                cancelled.set()
-                raise
-        return "Done."
+            await release.wait()
+        return f"Done {len(tasks)}."
 
     async def script(conn: Connection, session: LiveSession) -> None:
         conn.user("Turn off the lights.")
@@ -124,14 +120,42 @@ def test_a_new_delegation_supersedes_the_running_consult():
         conn.user(" And the fan.")
         conn.delegate("dlg_2")
         await settle()
+        assert len(tasks) == 1
+        release.set()
 
     conn, host = asyncio.run(run(script, consult))
 
-    assert cancelled.is_set()
-    # The second task carries the first request too: its consult never answered.
-    assert "user: Turn off the lights. And the fan." in tasks[1]
-    assert conn.commentary == [{"content": "Done.", "delegation_id": "dlg_2"}]
+    # The first consult answered at the newest delegation; what was said since got its own.
+    assert "user: Turn off the lights." in tasks[0] and "fan" not in tasks[0]
+    assert "user: And the fan." in tasks[1] and "lights" not in tasks[1]
+    assert conn.commentary == [
+        {"content": "Done 1.", "delegation_id": "dlg_2"},
+        {"content": "Done 2.", "delegation_id": "dlg_2"},
+    ]
     assert host.phases[-1] == Phase.LISTENING
+
+
+def test_a_delegation_without_new_speech_takes_the_running_consults_answer():
+    tasks: list[str] = []
+    release = asyncio.Event()
+
+    async def consult(task: str) -> str:
+        tasks.append(task)
+        await release.wait()
+        return "Done."
+
+    async def script(conn: Connection, session: LiveSession) -> None:
+        conn.user("Turn off the lights.")
+        conn.delegate("dlg_1")
+        await settle()
+        conn.delegate("dlg_2")
+        await settle()
+        release.set()
+
+    conn, _ = asyncio.run(run(script, consult))
+
+    assert len(tasks) == 1
+    assert conn.commentary == [{"content": "Done.", "delegation_id": "dlg_2"}]
 
 
 def test_a_delegation_with_no_user_speech_asks_for_a_repeat():

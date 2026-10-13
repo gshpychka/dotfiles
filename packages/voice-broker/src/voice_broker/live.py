@@ -68,6 +68,8 @@ class LiveSession:
         # Fragments before this index reached the agent in a consult it answered.
         self._consulted = 0
         self._consulting: asyncio.Task[None] | None = None
+        # The newest delegation, which answers go to: a newer one supersedes the old on the model's side.
+        self._delegation: str | None = None
 
     @asynccontextmanager
     async def open(self, host: Host) -> AsyncIterator[None]:
@@ -156,28 +158,36 @@ class LiveSession:
     # -- delegation ----------------------------------------------------------
 
     def _delegate(self, delegation_id: str) -> None:
-        # The new task's transcript holds everything the superseded one did.
-        if self._consulting is not None:
-            log.info("delegation %s supersedes the running consult", delegation_id)
-            self._consulting.cancel()
-        self._consulting = asyncio.create_task(self._run_consult(delegation_id))
+        self._delegation = delegation_id
+        # A running consult is a turn of the agent's own session, so it runs to its end.
+        if self._consulting is None:
+            self._consulting = asyncio.create_task(self._run_consults())
+        else:
+            log.info("delegation %s waits for the running consult", delegation_id)
 
-    async def _run_consult(self, delegation_id: str) -> None:
+    async def _run_consults(self) -> None:
+        """Consults until everything heard is answered at the newest delegation."""
         assert self._conn is not None and self._host is not None
-        upto = len(self._heard)
-        heard = self._heard[self._consulted : upto]
         try:
-            if any(role == "user" for role, _ in heard):
-                try:
-                    answer = await self._consult(self._task(heard))
-                    self._consulted = upto
-                except ConsultFailed as e:
-                    log.warning("consult failed: %s", e)
-                    answer = f"The request failed: {e}"
-            else:
-                answer = "No transcript of the request arrived; ask the user to repeat it."
-            for chunk in _chunks(answer):
-                await self._conn.session.commentary.append(content=chunk, delegation_id=delegation_id)
+            while True:
+                delegation = self._delegation
+                upto = len(self._heard)
+                heard = self._heard[self._consulted : upto]
+                if any(role == "user" for role, _ in heard):
+                    try:
+                        answer = await self._consult(self._task(heard))
+                        self._consulted = upto
+                    except ConsultFailed as e:
+                        log.warning("consult failed: %s", e)
+                        answer = f"The request failed: {e}"
+                else:
+                    answer = "No transcript of the request arrived; ask the user to repeat it."
+                for chunk in _chunks(answer):
+                    await self._conn.session.commentary.append(content=chunk, delegation_id=self._delegation)
+                # A delegation created meanwhile has its answer, unless more was said since.
+                unheard = self._heard[self._consulted :]
+                if self._delegation == delegation or not any(role == "user" for role, _ in unheard):
+                    break
         finally:
             if self._consulting is asyncio.current_task():
                 self._consulting = None
