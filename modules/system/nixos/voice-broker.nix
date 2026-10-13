@@ -138,8 +138,9 @@ in
           ++ [ "${openclawCredential}:${openclaw.gatewaySecretFile}" ]
           ++ lib.optional (cfg.identityFile != null) "${identityCredential}:${cfg.identityFile}";
         # the identity while identityFile is missing; a LoadCredential= that
-        # finds no file falls back to it (systemd.exec(5), SetCredential=)
-        SetCredential = lib.optional (cfg.identityFile != null) "${identityCredential}:";
+        # finds no file falls back to it (systemd.exec(5), SetCredential=).
+        # One space: systemd drops an empty value, and the broker trims it.
+        SetCredential = lib.optional (cfg.identityFile != null) "${identityCredential}: ";
         User = user;
         Group = user;
         StateDirectory = stateDirectory;
