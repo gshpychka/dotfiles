@@ -10,6 +10,8 @@ let
   python = python3.withPackages (p: [
     p.zeroconf
     p.pyserial
+    # esphome.helpers resolves a host name through it
+    p.aioesphomeapi
   ]);
   modules = "${esphome}/${python.sitePackages}";
   uploader = writeShellScriptBin "voice-pe-upload" ''
