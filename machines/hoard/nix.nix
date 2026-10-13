@@ -16,6 +16,8 @@
     clientSpeedFactor = 10;
   };
 
+  my.nixosSwitch.enable = true;
+
   sops.secrets.nixbuild-ssh-key = {
     sopsFile = ../../secrets/hoard/nixbuild-ssh-key.pem;
     format = "binary";
