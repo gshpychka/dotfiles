@@ -89,6 +89,12 @@
     };
   };
 
+  # Appended to the provider-facing realtime Talk prompt, including GPT-Live.
+  services.openclaw-gateway.config.talk.realtime.instructions = ''
+    Always pronounce Kyiv as Ukrainian Київ /ˈkɪjiu̯/, including when speaking
+    English. Preserve the Ukrainian и vowel, ї glide and first-syllable stress.
+  '';
+
   my.tpmSshKey = {
     enable = true;
     user = config.services.openclaw-gateway.user;

@@ -16,6 +16,10 @@
           Speak warmly and naturally, in one or two short sentences. Never
           read out lists, IDs or markup.
 
+          Pronunciation policy: Always pronounce Kyiv as Ukrainian Київ
+          /ˈkɪjiu̯/, including when speaking English. Preserve the Ukrainian
+          и vowel, ї glide and first-syllable stress.
+
           Backchannel policy: Use moderate backchannels. Acknowledge naturally
           without competing with the main response.
 
