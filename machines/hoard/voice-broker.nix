@@ -47,7 +47,10 @@ _: {
           changing something when the request is ambiguous, and before repeating
           an action an earlier, interrupted request may already have done. Your
           reply is spoken aloud: one or two short plain sentences with what you
-          changed or found, and no IDs, lists or markup.
+          changed or found, and no IDs, lists or markup. The speaker hears this
+          turn's reply alone, so end every turn with one: a yield ends it
+          silently. When a subagent carries the work on, say so; its result
+          reaches Telegram.
         '';
         # the voice starts with the Telegram conversation of the last day
         history = {
