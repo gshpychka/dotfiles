@@ -78,7 +78,7 @@ async def no_consult(task: str) -> str:
     raise AssertionError("no consult expected")
 
 
-async def run(script, consult=no_consult, recall=nothing_recent) -> tuple[Connection, Host]:
+async def run(script, consult=no_consult, recall=nothing_recent, opening=None) -> tuple[Connection, Host]:
     """Runs a session until `script(conn, session)` returns and its delegated work settles."""
     conn = Connection()
     host = Host()
@@ -87,7 +87,9 @@ async def run(script, consult=no_consult, recall=nothing_recent) -> tuple[Connec
     async def connect():
         yield conn
 
-    session = LiveSession(Live(model="gpt-live-1", voice="marin", instructions=""), "Kitchen", consult, recall, connect)
+    session = LiveSession(
+        Live(model="gpt-live-1", voice="marin", instructions=""), "Kitchen", consult, recall, connect, opening
+    )
     async with session.open(host):
         receiving = asyncio.create_task(session.receive())
         await script(conn, session)
@@ -259,3 +261,26 @@ def test_the_history_keeps_its_newest_within_lives_cap():
     items = started["input"]
     assert len(items) == 128
     assert items[-1]["content"][0]["text"] == "message 199"
+
+
+def test_a_call_opens_with_the_agents_words():
+    conn, _ = asyncio.run(run(no_script, opening="The oven has been on for two hours."))
+
+    (started,) = conn.started
+    (opening,) = started["input"]
+    assert opening["role"] == "developer"
+    text = opening["content"][0]["text"]
+    assert "The oven has been on for two hours." in text and "Delegate the user's response" in text
+
+
+def test_the_opening_follows_the_history_within_lives_cap():
+    async def recall() -> list[Turn]:
+        return [("user", f"message {i}") for i in range(200)]
+
+    conn, _ = asyncio.run(run(no_script, recall=recall, opening="Dinner is ready."))
+
+    (started,) = conn.started
+    items = started["input"]
+    assert len(items) == 128
+    assert items[0]["role"] == "developer" and items[-2]["content"][0]["text"] == "message 199"
+    assert items[-1]["role"] == "developer" and "Dinner is ready." in items[-1]["content"][0]["text"]

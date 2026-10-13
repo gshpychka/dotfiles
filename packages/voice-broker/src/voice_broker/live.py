@@ -37,6 +37,11 @@ _APPEND_MAX_BYTES = 500
 _INPUT_MAX_ITEMS = 128
 # Leads the initial messages, which are the agent's conversation before this one.
 _HISTORY_LEAD = "Your text conversation with the user so far; the spoken conversation follows it."
+# Ends the initial messages of a call: the backend is what the instructions call the agent.
+_OPENING_LEAD = (
+    "You opened this conversation for the backend, which has something to tell the user. Begin by telling them: "
+    "{opening}\nDelegate the user's response to the backend, whatever it is."
+)
 
 # Opens a Live connection; injected so tests can substitute OpenAI.
 LiveConnector = Callable[[], AbstractAsyncContextManager[AsyncLiveConnection]]
@@ -53,12 +58,22 @@ def live_connector(client: AsyncOpenAI) -> LiveConnector:
 
 
 class LiveSession:
-    def __init__(self, config: Live, area: str, consult: Consult, recall: Recall, connect: LiveConnector) -> None:
+    def __init__(
+        self,
+        config: Live,
+        area: str,
+        consult: Consult,
+        recall: Recall,
+        connect: LiveConnector,
+        opening: str | None = None,
+    ) -> None:
         self._config = config
         self._area = area
         self._consult = consult
         self._recall = recall
         self._connect = connect
+        # What the voice says first, in a conversation the agent opened.
+        self._opening = opening
         self._to_openai_rate = mic_to_speaker_rate()
         self._conn: AsyncLiveConnection | None = None
         self._host: Host | None = None
@@ -112,8 +127,8 @@ class LiveSession:
             },
             "delegation": {"type": "client"},
         }
-        if history:
-            config["input"] = _initial_items(history)
+        if items := _initial_items(history, self._opening):
+            config["input"] = items
         return config
 
     # -- mic -----------------------------------------------------------------
@@ -216,17 +231,26 @@ class LiveSession:
         self._logged = len(self._heard)
 
 
-def _initial_items(history: list[Turn]) -> list[InitialItemParam]:
-    """The newest of `history` as Live's initial messages, led by what they are."""
-    items: list[InitialItemParam] = [
-        {"type": "message", "role": "developer", "content": [{"type": "input_text", "text": _HISTORY_LEAD}]}
-    ]
-    for role, text in history[-(_INPUT_MAX_ITEMS - 1) :]:
-        if role == "user":
-            items.append({"type": "message", "role": "user", "content": [{"type": "input_text", "text": text}]})
-        else:
-            items.append({"type": "message", "role": "assistant", "content": [{"type": "output_text", "text": text}]})
+def _initial_items(history: list[Turn], opening: str | None) -> list[InitialItemParam]:
+    """Live's initial messages: the newest of `history`, led by what it is, then the opening of a call."""
+    items: list[InitialItemParam] = []
+    if history:
+        items.append(_developer(_HISTORY_LEAD))
+        room = _INPUT_MAX_ITEMS - 1 - (1 if opening else 0)
+        for role, text in history[-room:]:
+            if role == "user":
+                items.append({"type": "message", "role": "user", "content": [{"type": "input_text", "text": text}]})
+            else:
+                items.append(
+                    {"type": "message", "role": "assistant", "content": [{"type": "output_text", "text": text}]}
+                )
+    if opening:
+        items.append(_developer(_OPENING_LEAD.format(opening=opening)))
     return items
+
+
+def _developer(text: str) -> InitialItemParam:
+    return {"type": "message", "role": "developer", "content": [{"type": "input_text", "text": text}]}
 
 
 def _turns(fragments: list[Turn]) -> list[Turn]:

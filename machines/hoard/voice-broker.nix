@@ -1,8 +1,10 @@
-_: {
+{ config, ... }:
+{
   my.voice-broker = {
     enable = true;
     sopsFile = ../../secrets/hoard/voice-broker.yaml;
     recordings.enable = false;
+    homeAssistant.url = "http://homeassistant.${config.my.domain}:8123";
 
     settings = {
       live = {

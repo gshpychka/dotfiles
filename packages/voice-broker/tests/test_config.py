@@ -3,11 +3,13 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from voice_broker.config import History, load
+from voice_broker.config import Device, History, load
+
+ROOM = Device("room-assistant", "192.168.1.54", "Room", "esphome.home_assistant_voice_0914cc_start_conversation")
 
 
 def write_config(tmp_path: Path, **live: str) -> Path:
-    for name in ("device-token", "openai-api-key", "openclaw-secret"):
+    for name in ("device-token", "openai-api-key", "openclaw-secret", "ha-token"):
         (tmp_path / name).write_text("secret\n")
     path = tmp_path / "config.json"
     path.write_text(
@@ -17,7 +19,14 @@ def write_config(tmp_path: Path, **live: str) -> Path:
                 "listen_port": 0,
                 "device_token_file": str(tmp_path / "device-token"),
                 "openai_api_key_file": str(tmp_path / "openai-api-key"),
-                "devices": [],
+                "devices": [
+                    {"name": ROOM.name, "address": ROOM.address, "area": ROOM.area, "call_action": ROOM.call_action}
+                ],
+                "calls": {
+                    "socket": str(tmp_path / "call.sock"),
+                    "home_assistant_url": "http://ha.test",
+                    "home_assistant_token_file": str(tmp_path / "ha-token"),
+                },
                 "live": {"model": "gpt-live-1", "voice": "marin", "instructions": "Speak briefly.", **live},
                 "openclaw": {
                     "url": "http://openclaw.test",
@@ -32,6 +41,14 @@ def write_config(tmp_path: Path, **live: str) -> Path:
         )
     )
     return path
+
+
+def test_the_speakers_and_the_calls_are_read(tmp_path: Path) -> None:
+    config = load(write_config(tmp_path))
+    assert config.devices == [ROOM]
+    assert config.calls.socket == tmp_path / "call.sock"
+    assert config.calls.home_assistant_url == "http://ha.test"
+    assert config.calls.home_assistant_token == "secret"
 
 
 def test_the_agents_session_and_history_bounds_are_read(tmp_path: Path) -> None:

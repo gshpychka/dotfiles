@@ -69,6 +69,19 @@ class Device:
     address: str
     # The room it stands in.
     area: str
+    # The Home Assistant action that makes it open a conversation.
+    call_action: str
+
+
+@dataclass(frozen=True, slots=True)
+class Calls:
+    """How the agent opens conversations on the speakers."""
+
+    # Unix socket its requests arrive on.
+    socket: Path
+    # Home Assistant, whose device actions ring the speakers.
+    home_assistant_url: str
+    home_assistant_token: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -80,6 +93,7 @@ class Config:
     devices: list[Device]
     live: Live
     openclaw: OpenClaw
+    calls: Calls
     # Conversation ends after this long with nobody speaking and nothing playing.
     idle_timeout_s: float
     # Hard cap on one conversation, against sessions stuck open and billing.
@@ -117,6 +131,14 @@ def _openclaw(raw: dict[str, Any]) -> OpenClaw:
     )
 
 
+def _calls(raw: dict[str, Any]) -> Calls:
+    return Calls(
+        socket=Path(raw["socket"]),
+        home_assistant_url=raw["home_assistant_url"],
+        home_assistant_token=_read_secret(raw["home_assistant_token_file"]),
+    )
+
+
 def load(path: Path) -> Config:
     raw = json.loads(path.read_text())
     return Config(
@@ -124,9 +146,10 @@ def load(path: Path) -> Config:
         listen_port=int(raw["listen_port"]),
         device_token=_read_secret(raw["device_token_file"]),
         openai_api_key=_read_secret(raw["openai_api_key_file"]),
-        devices=[Device(d["name"], d["address"], d["area"]) for d in raw["devices"]],
+        devices=[Device(d["name"], d["address"], d["area"], d["call_action"]) for d in raw["devices"]],
         live=_live(raw["live"]),
         openclaw=_openclaw(raw["openclaw"]),
+        calls=_calls(raw["calls"]),
         idle_timeout_s=float(raw["idle_timeout_s"]),
         max_conversation_s=float(raw["max_conversation_s"]),
         recordings_dir=Path(raw["recordings_dir"]) if raw.get("recordings_dir") else None,
