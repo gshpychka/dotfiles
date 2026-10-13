@@ -41,6 +41,7 @@
     ./gpu-ai-slice.nix
     ./tty.nix
     ./bay.nix
+    ./twingate.nix
     # ./comfyui.nix
   ];
   networking.hostName = "reaper";
