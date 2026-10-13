@@ -188,7 +188,8 @@ in
         {
           # cd to the root of the git repo
           cdr = "cd $(git rev-parse --show-toplevel)";
-          docker-clean = "docker rmi -f $(docker images -aq) && docker volume prune -f";
+          # remove all docker images, unused volumes and the build cache
+          docker-clean = "docker rmi -f $(docker images -aq); docker volume prune -f; docker builder prune -af";
         }
         (lib.mkIf pkgs.stdenv.hostPlatform.isDarwin {
           dns-flush = "sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder";
