@@ -35,7 +35,7 @@ class Live:
 class History:
     """How much of the agent's conversation the voice starts with."""
 
-    # Newest messages read, at most.
+    # Newest transcript messages read, tool calls and results among them, at most.
     max_messages: int
     # Messages older than this are left out.
     max_age_s: float

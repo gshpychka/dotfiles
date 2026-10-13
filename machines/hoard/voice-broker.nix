@@ -51,7 +51,8 @@ _: {
         '';
         # the voice starts with the Telegram conversation of the last day
         history = {
-          max_messages = 40;
+          # transcript rows, most of them tool calls and results
+          max_messages = 300;
           max_age_s = 24 * 60 * 60;
           # stays within Live's 8,192-token history, Cyrillic included
           max_chars = 8000;
