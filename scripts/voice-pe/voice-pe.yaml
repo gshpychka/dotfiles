@@ -86,7 +86,8 @@ voice_broker:
           id(voice_assistant_phase) = ${voice_assist_replying_phase_id};
         }
     - script.execute: control_leds
-  # Only before any mic audio has been sent to Live. Never replay commands.
+  # The broker holds mic audio until the model listens, so a failed startup
+  # gave the model nothing; Assist starts afresh, with no replay.
   on_startup_failure:
     - mixer_speaker.apply_ducking:
         id: media_mixing_input
