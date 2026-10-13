@@ -138,7 +138,11 @@
           features.cdi = true;
         };
       };
-      autoPrune.enable = true;
+      autoPrune = {
+        enable = true;
+        # also remove tagged images no container uses
+        flags = [ "--all" ];
+      };
     };
   };
 
