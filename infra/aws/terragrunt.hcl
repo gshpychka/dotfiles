@@ -24,3 +24,10 @@ generate "provider" {
     }
   EOF
 }
+
+# The one account this unit may touch, kept in sops rather than the repo.
+# secrets/infra/aws.yaml holds `account_id: "<12 digits>"`, quoted: an ID can
+# start with 0, which a YAML number would drop.
+inputs = {
+  aws_account_id = yamldecode(sops_decrypt_file("${get_repo_root()}/secrets/infra/aws.yaml")).account_id
+}

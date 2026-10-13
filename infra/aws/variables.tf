@@ -8,11 +8,9 @@ variable "user" {
   type        = string
 }
 
-# Deliberately not in the repo: add it to secrets/infra/terraform.env with
-# `sops secrets/infra/terraform.env`. Until then Terraform stops before
-# planning, so nothing runs against an account nobody chose.
+# Set by terragrunt.hcl from secrets/infra/aws.yaml.
 variable "aws_account_id" {
-  description = "The personal AWS account this unit manages (TF_VAR_aws_account_id in secrets/infra/terraform.env)"
+  description = "The personal AWS account this unit manages"
   type        = string
 
   validation {
