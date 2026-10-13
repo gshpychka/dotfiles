@@ -156,22 +156,30 @@ in
 
     my.openclaw.extraPackages = [ pkgs.voice-broker ];
     my.openclaw.skills.voice-call = {
-      description = "Open a spoken conversation on a speaker to tell the owner something and hear the reply, in place of a Home Assistant announcement.";
+      description = "Call a speaker, opening a spoken conversation, whenever the owner's answer is needed now: a question, a choice, a confirmation, or news that calls for a reaction. A Home Assistant announcement is for a notice that needs no reply.";
       text = ''
+        When something needs the owner's answer now, call a speaker: a
+        question that blocks your work, a choice or a confirmation, or news
+        they will want to react to, such as a power outage, a visitor or a
+        failure that needs a decision. A Home Assistant announcement is for a
+        notice that needs no reply; Telegram is for anything that can wait or
+        carries detail. A call interrupts whoever is in the room, so keep it
+        for what matters now.
+
         The speakers, by area: ${
           lib.concatStringsSep ", " (map (host: host.voiceArea) (lib.attrValues voicePes))
         }.
-        To open a conversation on one:
+        To call one:
 
             voice-broker-call --socket ${callSocket} <Area> "<what to tell the owner>"
 
         The speaker chimes, says the opening in its own words, then listens;
         the owner's reply reaches you as a turn of this session, like anything
-        said at a speaker. The command prints `started` once the speaker has
-        picked up, or `failed: <reason>` when the speaker is muted, in a
-        conversation, or unreachable. Keep the opening to one or two spoken
-        sentences; details can follow once the owner engages. A Home Assistant
-        announcement remains the way to say something that needs no reply.
+        said at a speaker, so carry on from there. The command prints
+        `started` once the speaker has picked up, or `failed: <reason>` when
+        the speaker is muted, in a conversation, or unreachable; then write to
+        Telegram instead. Keep the opening to one or two spoken sentences;
+        details can follow once the owner engages.
       '';
     };
 
