@@ -65,3 +65,12 @@ test('transport forwards no caller executable/path/environment; closure prevents
  assert.equal(captured.action,'submit');assert.deepEqual(captured.args,[]);assert.deepEqual(captured.p,p);
  await assert.rejects(transport.submit(q,{assertCurrent(){throw Error('drain closed');}}),/drain closed/);assert.equal(calls,1);
 });
+
+test('durable pending cursor fairly rotates more than 32 failed receipts across restarts',t=>{
+ const f=fixture(t);const ids=Array.from({length:70},(_,i)=>(i+1).toString(16).padStart(32,'0'));
+ for(const requestId of ids)atomic(path.join(f.state,requestId+'.json'),{...p,requestId,phase:'completed',completionAcknowledged:false});
+ const batches=[f.make().pending(),f.make().pending(),f.make().pending()];
+ assert.ok(batches.every(b=>b.length===32));assert.equal(new Set(batches.flat().map(r=>r.requestId)).size,70);
+ assert.equal(fs.statSync(path.join(f.state,'completion-cursor.json')).mode&0o777,0o600);
+ assert.ok(ids.every(id=>f.make().status(id).completionAcknowledged===false));
+});

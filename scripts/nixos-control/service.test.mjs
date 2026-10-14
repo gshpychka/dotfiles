@@ -31,3 +31,14 @@ test('restart outbox sends exact captured route despite 0m heartbeat; platform r
 test('suppressed send and revoked/disabled channel retain durable outbox, never claim delivery',async()=>{
  for(const mode of ['suppressed','disabled','close-during-preparation']){const f=fixture();await f.service.start(f.ctx);f.mode(mode);await f.tick();assert.equal(f.acks.length,0);assert.equal(f.pending.length,1);}
 });
+
+test('failed first route cannot starve healthy receipts; aggregate failure retained',async()=>{
+ let service,tick;const sends=[],acks=[],failures=[];
+ const abort=new AbortController();
+ const api={registerService(s){service=s;},runtime:{config:{current:()=>({channels:{telegram:{enabled:true}}})},channel:{outbound:{async loadAdapter(){return {async sendText(p){p.assertDirectAdapterHandoff();sends.push(p.to);if(p.to==='offline')throw Error('offline');return {channel:'telegram',messageId:'ok'};}};}}}}};
+ const pending=[{...receipt,delivery:{channel:'telegram',to:'offline'}},{...receipt,requestId:'c'.repeat(32),delivery:{channel:'telegram',to:'healthy'}}];
+ registerCompletionService(api,{pendingCompletions:async()=>pending,ackCompletion:async(id)=>acks.push(id)});
+ await service.start({scheduler:{signal:abort.signal,schedule(p){tick=p.run;return {stop:async()=>{}};}},serviceHealth:{clearFailure(){assert.fail('must report aggregate failure');},reportFailure(e){failures.push(e);}},logger:{error(){}}});
+ await tick();assert.deepEqual(sends,['offline','healthy']);assert.deepEqual(acks,['c'.repeat(32)]);assert.equal(failures[0].errors.length,1);
+ abort.abort();await tick();assert.equal(sends.length,2);
+});

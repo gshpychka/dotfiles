@@ -58,8 +58,15 @@ export function createHost({state=STATE,controller=CONTROLLER,run=execFileSync,w
     status:readReconciled,
     pending(){
       if(!fs.existsSync(state))return [];
-      return fs.readdirSync(state).filter(n=>/^[0-9a-f]{32}\.json$/.test(n))
-        .map(n=>readReconciled(n.slice(0,-5))).filter(r=>terminal(r)&&!r.completionAcknowledged).slice(0,32);
+      const pending=fs.readdirSync(state).filter(n=>/^[0-9a-f]{32}\.json$/.test(n)).sort()
+        .map(n=>readReconciled(n.slice(0,-5))).filter(r=>terminal(r)&&!r.completionAcknowledged);
+      if(!pending.length)return [];
+      const cursorFile=path.join(state,'completion-cursor.json');
+      const cursor=fs.existsSync(cursorFile)?JSON.parse(fs.readFileSync(cursorFile,'utf8')).after:'';
+      let start=pending.findIndex(r=>r.requestId>cursor);if(start<0)start=0;
+      const batch=[...pending.slice(start),...pending.slice(0,start)].slice(0,32);
+      // Durable fair rotation survives Gateway restarts; never removes failed receipts.
+      atomic(cursorFile,{after:batch.at(-1).requestId});return batch;
     },
     ack(id,deliveryReceipt){const r=read(id);if(!terminal(r))throw Error('Cannot acknowledge unfinished receipt');
       if(!deliveryReceipt||Object.keys(deliveryReceipt).sort().join(',')!=='channel,messageId'||deliveryReceipt.channel!==r.delivery.channel||typeof deliveryReceipt.messageId!=='string'||!deliveryReceipt.messageId.length||deliveryReceipt.messageId.length>512||/[\r\n\0]/.test(deliveryReceipt.messageId))throw Error('A confirmed matching platform receipt is required');
