@@ -38,6 +38,7 @@
     ./docker.nix
     ./home.nix
     ./openclaw.nix
+    ./openclaw-queued-media.nix
     ./voice-broker.nix
   ];
 
