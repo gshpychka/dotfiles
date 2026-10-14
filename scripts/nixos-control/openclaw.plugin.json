@@ -1,0 +1,28 @@
+{
+  "id": "nixos-control",
+  "name": "NixOS Control",
+  "description": "Owner-only fixed NixOS controller and durable completion receipts.",
+  "version": "0.1.0",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  },
+  "activation": {
+    "onStartup": true
+  },
+  "contracts": {
+    "tools": [
+      "nixos_control",
+      "nixos_control_status"
+    ]
+  },
+  "toolMetadata": {
+    "nixos_control": {
+      "optional": true
+    },
+    "nixos_control_status": {
+      "optional": true
+    }
+  }
+}

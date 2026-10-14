@@ -151,5 +151,7 @@ in
     environment.systemPackages = [ nixos-switch ];
     # for tests/nixos-switch.nix, which activates prebuilt toplevels with it
     system.build.nixosSwitchActivate = activate;
+    # The native host-control adapter pins this existing controller, not another engine.
+    system.build.nixosSwitch = nixos-switch;
   };
 }
