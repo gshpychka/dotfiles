@@ -43,7 +43,17 @@
     tts = {
       provider = "elevenlabs";
       auto = "inbound";
-      providers.elevenlabs.modelId = "eleven_v3";
+      providers.elevenlabs = {
+        modelId = "eleven_v4";
+        # Keep the existing voice identity and normal pacing; v4 has no speaker boost.
+        voiceSettings = {
+          stability = 0.5;
+          similarityBoost = 0.75;
+          style = 0;
+          useSpeakerBoost = false;
+          speed = 1.0;
+        };
+      };
     };
     transcription = [
       {
