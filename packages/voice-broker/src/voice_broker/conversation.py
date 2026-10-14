@@ -26,6 +26,7 @@ from ._aec import EchoCanceller
 from .alignment import AlignedBlock, Aligner
 from .config import Config
 from .dsp import speaker_to_mic_rate
+from .playback_probe import PlaybackProbe
 from .protocol import (
     SPEAKER_RATE,
     ControlType,
@@ -91,6 +92,7 @@ class Conversation:
         self._pending: deque[np.ndarray] = deque()  # SPEAKER_RATE audio not yet sent
         self._pending_samples = 0
         self._sent_samples = 0  # SPEAKER_RATE samples sent this conversation
+        self._playback_probe = PlaybackProbe(SPEAKER_RATE)
         # Stream position just past the last queued audio that carries sound.
         self._sound_end: int | None = None
         self._phase: Phase | None = None
@@ -194,6 +196,9 @@ class Conversation:
                         for block in self._aligner.blocks():
                             await self._process_block(block)
                     case PlayedReport():
+                        metadata = self._playback_probe.report(frame.frames, frame.dac_us, self._sent_samples)
+                        if metadata is not None:
+                            log.info("playback_probe %s", metadata)
                         self._aligner.add_played(frame)
                         self._last_played = time.monotonic()
         except ConnectionClosed:
