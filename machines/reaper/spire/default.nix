@@ -1,4 +1,4 @@
-# SPIRE issuer: the off-the-shelf counterpart of modules/system/nixos/oidc-issuer.nix.
+# SPIRE issuer: the off-the-shelf counterpart of modules/system/nixos/oidc-issuer.
 # SPIRE (https://spiffe.io) signs short-lived JWT-SVIDs that AWS STS trusts
 # through a custom IAM OIDC provider at https://spire.glib.sh, the same way it
 # trusts GitHub Actions' tokens. Everything runs on reaper:

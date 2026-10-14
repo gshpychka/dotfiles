@@ -1,8 +1,7 @@
 # Publishing half of the fleet's OIDC token issuer: serves the discovery
 # document and JWKS that AWS STS fetches to verify tokens. Both are static,
-# built from modules/common/oidc-issuer.nix, so this needs no access to the
-# signer (modules/system/nixos/oidc-issuer.nix) and can run on the same
-# machine or another one.
+# built from my.oidcIssuer, so this needs no access to the signer and can run
+# on any machine.
 #
 # nginx serves them on a loopback port only root can bind. Exposing them is
 # the machine's job: its Cloudflare tunnel routes my.oidcIssuer.host to

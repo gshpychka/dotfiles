@@ -1,4 +1,4 @@
-# AWS side of the OIDC token issuer (modules/system/nixos/oidc-issuer.nix):
+# AWS side of the OIDC token issuer (modules/system/nixos/oidc-issuer):
 # trust its tokens, and a role they can assume.
 #
 # Applying this is what makes AWS accept the issuer's tokens; do it once a key
@@ -10,7 +10,7 @@
 # accepts, so keep trusted roles to what a test can afford to lose.
 
 locals {
-  # my.oidcIssuer.host and my.oidcIssuer.audience in modules/common/oidc-issuer.nix
+  # my.oidcIssuer.host and my.oidcIssuer.audience in modules/system/nixos/oidc-issuer/issuer.nix
   issuer_host = "tokens.${var.domain_name}"
   audience    = "sts.amazonaws.com"
   # the signer's hostname, which prefixes every subject ("<hostname>:<user>")

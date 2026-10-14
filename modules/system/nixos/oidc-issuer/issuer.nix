@@ -1,11 +1,8 @@
 { config, lib, ... }:
 # Public face of the fleet's OIDC token issuer: the issuer URL, its public
 # keys, and the documents a relying party (AWS STS) fetches to verify tokens.
-# Shared because the issuer has two parts that may run on different machines:
-# the signer (modules/system/nixos/oidc-issuer.nix), which needs the issuer
-# URL and the key it signs with, and the publisher
-# (modules/system/nixos/oidc-discovery.nix), which serves these documents.
-# Both run on reaper today.
+# Defined on every NixOS machine, so the signer and the publisher can each run
+# on any of them.
 let
   cfg = config.my.oidcIssuer;
   # The only key type the signer generates: ECDSA P-256, which AWS accepts as ES256.

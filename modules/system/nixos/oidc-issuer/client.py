@@ -22,7 +22,7 @@ import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 
-# substituted by modules/system/nixos/oidc-issuer.nix
+# substituted by signer.nix
 SOCKET_PATH = "@socketPath@"
 ISSUER_UNIT = "@issuerUnit@"
 

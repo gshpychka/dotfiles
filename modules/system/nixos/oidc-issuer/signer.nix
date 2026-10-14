@@ -1,24 +1,21 @@
 # Signing half of the fleet's OIDC token issuer: processes on this machine
 # trade their Unix identity for a short-lived token from my.oidcIssuer.url
 # (https://tokens.glib.sh), which AWS STS can trust the same way it trusts
-# GitHub Actions' tokens. The publishing half, which serves the documents AWS
-# verifies tokens with, is modules/system/nixos/oidc-discovery.nix; both read
-# the issuer's public data from modules/common/oidc-issuer.nix and can run on
-# the same machine or different ones. reaper runs both.
+# GitHub Actions' tokens.
 #
 # - Identity: a token's subject is "<hostname>:<user>", the user the kernel
 #   reports for the connecting process (SO_PEERCRED). Callers send nothing, so
 #   there is no secret to steal and no request to parse. Any process running
 #   as a client user can get that user's token.
 # - Access: only users in my.oidcIssuer.signer.clients. The socket is
-#   restricted to their group, and oidc-issuer.py checks the list again.
+#   restricted to their group, and signer.py checks the list again.
 # - Key: ES256, generated inside this machine's TPM2, which refuses to export
 #   it or duplicate it to another TPM2. On disk are only the key wrapped by
 #   this TPM2's storage key, which nothing else can load, and the key's random
 #   auth value, sealed with systemd-creds to both the TPM2 and the host key in
 #   /var/lib/systemd: it only decrypts on this machine, booted through its own
 #   Secure Boot chain (PCR 7). Each short-lived, sandboxed minting process
-#   gets these from systemd and has the TPM2 sign (oidc-issuer.py, via
+#   gets these from systemd and has the TPM2 sign (signer.py, via
 #   tpm2-tools). Root on the running machine can sign too, but can't take the
 #   key away, so an attacker's signing ends with their access to the machine.
 #   Still rotate after a compromise: with copies of the files and the auth
@@ -30,7 +27,7 @@
 #   value unusable: it is bound to PCR 7; and after clearing the TPM2, which
 #   destroys the key)
 #   add the printed entry to my.oidcIssuer.publicKeys
-#   (modules/common/oidc-issuer.nix) and deploy the publisher
+#   (issuer.nix) and deploy the publisher
 #   wait my.oidcIssuer.jwksCacheSeconds so relying parties' cached key sets
 #   include it, then set my.oidcIssuer.signer.activeKid to the printed kid
 #   and deploy the signer (for the very first key the wait can be skipped:
@@ -98,7 +95,7 @@ let
   issuerTool = pkgs.writers.writePython3Bin unitName {
     libraries = ps: [ ps.cryptography ];
     flakeIgnore = [ "E501" ];
-  } (builtins.readFile ./oidc-issuer.py);
+  } (builtins.readFile ./signer.py);
 
   keygen = pkgs.writeShellApplication {
     name = "oidc-issuer-keygen";
@@ -107,7 +104,7 @@ let
 
   oidcToken = pkgs.writers.writePython3Bin "oidc-token" { flakeIgnore = [ "E501" ]; } (
     lib.replaceStrings [ "@socketPath@" "@issuerUnit@" ] [ socketPath unitName ] (
-      builtins.readFile ./oidc-token.py
+      builtins.readFile ./client.py
     )
   );
 in

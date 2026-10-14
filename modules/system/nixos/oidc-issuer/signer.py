@@ -42,7 +42,7 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.utils import decode_dss_signature
 
 # ES256 is ECDSA over P-256 with SHA-256, matching the JWKS in
-# modules/common/oidc-issuer.nix and the TPM2 key below.
+# issuer.nix and the TPM2 key below.
 ALGORITHM = "ES256"
 CURVE = ec.SECP256R1
 SIGNATURE_HASH = hashes.SHA256
@@ -89,7 +89,7 @@ class KeyFiles(TypedDict):
 
 
 class Config(TypedDict):
-    """Written by modules/system/nixos/oidc-issuer.nix."""
+    """Written by signer.nix."""
 
     name: str
     issuer: str
@@ -236,7 +236,7 @@ def encode_token(
     if not verify(active, signing_input, der):
         raise IssuerError(
             f"the TPM2 key does not match the published key {active['kid']}; "
-            "check my.oidcIssuer.activeKid and my.oidcIssuer.publicKeys"
+            "check my.oidcIssuer.signer.activeKid and my.oidcIssuer.publicKeys"
         )
     return f"{signing_input.decode()}.{b64url(jws_signature(der))}"
 
@@ -397,7 +397,7 @@ def keygen(config: Config) -> int:
     print(f"""Created a new signing key in the TPM2; its files are in {directory}.
 
 Publish it by adding this entry to my.oidcIssuer.publicKeys
-(modules/common/oidc-issuer.nix) and deploying the publishing machine:
+(modules/system/nixos/oidc-issuer/issuer.nix) and deploying the publishing machine:
 
   {{
     kid = "{public["kid"]}";

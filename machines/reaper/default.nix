@@ -125,7 +125,7 @@
 
   # reaper both signs tokens and publishes the issuer's documents (through
   # reaper-tunnel, see cloudflare-tunnel.nix); the public keys are in
-  # modules/common/oidc-issuer.nix
+  # modules/system/nixos/oidc-issuer/issuer.nix
   my.oidcIssuer = {
     signer = {
       enable = true;
