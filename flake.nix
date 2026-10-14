@@ -73,6 +73,10 @@
       url = "github:NixOS/nixos-hardware/master";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    oidc-issuer = {
+      url = "github:gshpychka/oidc-issuer";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     # auto-imports a directory tree of modules
     import-tree.url = "github:vic/import-tree";
   };
@@ -359,7 +363,10 @@
                   fi
                 '';
               };
-              infra = import ./infra/shell.nix { inherit nixpkgs system; };
+              infra = import ./infra/shell.nix {
+                inherit nixpkgs system;
+                inherit (inputs) oidc-issuer;
+              };
             };
         in
         lib.genAttrs systems mkShell;

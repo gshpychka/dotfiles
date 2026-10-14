@@ -42,7 +42,7 @@
     ./tty.nix
     ./bay.nix
     ./twingate.nix
-    ./spire
+    ./oidc-issuer.nix
     ./cloudflare-tunnel.nix
     # ./comfyui.nix
   ];
@@ -122,26 +122,6 @@
   my.acme.enable = true;
 
   my.opkssh.enable = true;
-
-  # reaper both signs tokens and publishes the issuer's documents (through
-  # reaper-tunnel, see cloudflare-tunnel.nix); the public keys are in
-  # modules/system/nixos/oidc-issuer/issuer.nix
-  my.oidcIssuer = {
-    signer = {
-      enable = true;
-      # kid printed by `sudo oidc-issuer-keygen`; null until its key is published
-      activeKid = "0PHAEBXyufo1YMYRB-k9WKjmXtTAYHbBgBo419SzW2k";
-      clients = [ config.my.user ];
-    };
-    publisher.enable = true;
-  };
-
-  my.spire = {
-    # off until bootstrapped: needs tpmEkHash and the reaper-tunnel
-    # credentials (see machines/reaper/spire/default.nix)
-    enable = false;
-    users = [ config.my.user ];
-  };
 
   my.tailscale = {
     enable = true;

@@ -1,6 +1,7 @@
 {
   nixpkgs,
   system,
+  oidc-issuer,
 }:
 let
   pkgs = import nixpkgs {
@@ -56,5 +57,9 @@ pkgs.mkShell {
     export AWS_CONFIG_FILE=$REPO_ROOT/infra/.home/.aws/config
     export AWS_SHARED_CREDENTIALS_FILE=$REPO_ROOT/infra/.home/.aws/credentials
     export TF_VAR_user="${values.user}"
+    # the oidc-issuer revision flake.lock pins, whose Terraform the units fetch
+    # with git: a copy from the read-only store leaves terragrunt unable to
+    # write its manifest into it
+    export OIDC_ISSUER_REV="${oidc-issuer.rev}"
   '';
 }

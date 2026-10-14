@@ -604,6 +604,26 @@
         "type": "github"
       }
     },
+    "oidc-issuer": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1791985233,
+        "narHash": "sha256-hqhizBpO2UB/JPzqO6VS1C2HKSbCsql1G2Bzx0v+fwU=",
+        "owner": "gshpychka",
+        "repo": "oidc-issuer",
+        "rev": "6e00371663b7289a952ced4b6276c1c959cf495c",
+        "type": "github"
+      },
+      "original": {
+        "owner": "gshpychka",
+        "repo": "oidc-issuer",
+        "type": "github"
+      }
+    },
     "pituitary": {
       "inputs": {
         "home-manager": [
@@ -694,6 +714,7 @@
         "nixos-hardware": "nixos-hardware",
         "nixos-stable": "nixos-stable",
         "nixpkgs": "nixpkgs_4",
+        "oidc-issuer": "oidc-issuer",
         "pituitary": "pituitary",
         "sops-nix": "sops-nix"
       }
