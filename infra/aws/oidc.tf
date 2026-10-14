@@ -1,10 +1,13 @@
 # AWS side of the OIDC token issuer (modules/system/nixos/oidc-issuer.nix):
 # trust its tokens, and a role they can assume.
 #
-# Applying this is what makes AWS accept the issuer's tokens, so do it only
-# once a key is published at https://tokens.<domain> and the open fleet issues
-# in the issuer's PR are fixed: until then, root on any host could mint
-# tokens this account accepts.
+# Applying this is what makes AWS accept the issuer's tokens; do it once a key
+# is published at https://tokens.<domain>. Parked for the proof of concept
+# (see the issuer's PR): root on any host can redirect tokens.<domain> with
+# the shared Cloudflare credentials, and code running as a client user on
+# reaper can likely become root (sudo via the forwarded SSH agent, Nix
+# trusted user). Either way it can mint any reaper token this account
+# accepts, so keep trusted roles to what a test can afford to lose.
 
 locals {
   # my.oidcIssuer.host and my.oidcIssuer.audience in modules/common/oidc-issuer.nix
