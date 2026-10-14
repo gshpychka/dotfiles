@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createControl,registerControl,reconcile,validate} from './core.mjs';
+import {createControl,registerControl,validate,validateDelivery} from './core.mjs';
 const request={operation:'switch',revision:'a'.repeat(40),requestId:'b'.repeat(32)};
-function owner(extra={}) {return {senderIsOwner:true,agentId:'main',sessionKey:'agent:main:main',assertInvocationCurrent(){},...extra};}
+function owner(extra={}) {return {senderIsOwner:true,agentId:'main',sessionKey:'agent:main:main',deliveryContext:{channel:'telegram',to:'100000001'},assertInvocationCurrent(){},...extra};}
 test('strict operations, immutable revision and id, no extra command/path fields',()=>{
   for(const p of [{...request,operation:'restart'},{...request,revision:'main'},
     {...request,revision:'a'.repeat(40)+';id'},{...request,requestId:'../x'},
@@ -24,7 +24,7 @@ test('revocation during awaited preparation blocks final-effect admission',async
   async submit(p,c){await Promise.resolve();current=false;c.assertCurrent();effects++;}});
  await assert.rejects(tool.execute('call',request),/revoked/);assert.equal(effects,0);
 });
-test('accepted receipt survives later revocation; unknown transport error not replayed',async()=>{
+test('internal accepted state remains owned after revocation; unknown transport error not replayed',async()=>{
  let current=true,calls=0;
  const tool=createControl(owner({assertInvocationCurrent(){assert.ok(current);}}),{
   async submit(p,c){calls++;c.assertCurrent();current=false;return {...p,phase:'accepted'};}});
@@ -32,10 +32,10 @@ test('accepted receipt survives later revocation; unknown transport error not re
  const errorTool=createControl(owner(),{async submit(){calls++;throw Error('unknown');}});
  await assert.rejects(errorTool.execute('call',request),/unknown/);assert.equal(calls,2);
 });
-test('durable outbox survives restart and ack occurs only after accepted event',async()=>{
- const disk=[{...request,agentId:'main',sessionKey:'agent:main:main',phase:'completed'}];let ack=0;
- const transport={async pendingCompletions(){return disk.slice();},async ackCompletion(){ack++;disk.shift();}};
- await reconcile(transport,async()=>false);assert.equal(disk.length,1);assert.equal(ack,0);
- await assert.rejects(reconcile(transport,async()=>{throw Error('gateway offline');}));assert.equal(disk.length,1);
- await reconcile(transport,async()=>true);assert.equal(disk.length,0);assert.equal(ack,1);
+test('delivery is host context only; forged argument route or missing host route cannot admit effects',async()=>{
+ let effects=0;const transport={async submit(p,route){effects++;assert.equal(route.delivery.to,'100000001');return {phase:'accepted'};}};
+ await createControl(owner(),transport).execute('id',request);assert.equal(effects,1);
+ await assert.rejects(createControl(owner(),transport).execute('id',{...request,delivery:{channel:'telegram',to:'attacker'}}));
+ await assert.rejects(createControl(owner({deliveryContext:undefined}),transport).execute('id',request),/host-bound delivery route/);assert.equal(effects,1);
+ for(const d of [{channel:'telegram\n',to:'x'},{channel:'telegram',to:'x\n'},{channel:'telegram',to:'x',command:'id'}])assert.throws(()=>validateDelivery(d));
 });

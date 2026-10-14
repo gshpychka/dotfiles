@@ -13,9 +13,9 @@ export function createTransport(invoke=(action,args,input,assertCurrent)=>new Pr
 })) {
  const id=x=>{if(typeof x!=='string'||x.length!==32||!/^[0-9a-f]{32}$/.test(x))throw Error('Invalid receipt id');return x;};
  return {
-  async submit(p,route){validate(p);return invoke('submit',[],JSON.stringify({...p,agentId:route.agentId,sessionKey:route.sessionKey}),route.assertCurrent);},
+  async submit(p,route){validate(p);return invoke('submit',[],JSON.stringify({...p,agentId:route.agentId,sessionKey:route.sessionKey,delivery:route.delivery}),route.assertCurrent);},
   status(requestId,assertCurrent){return invoke('status',[id(requestId)],'',assertCurrent);},
   pendingCompletions(){return invoke('pending',[],'');},
-  ackCompletion(requestId){return invoke('ack',[id(requestId)],'');},
+  ackCompletion(requestId,receipt){return invoke('ack',[id(requestId)],JSON.stringify(receipt));},
  };
 }

@@ -1,21 +1,33 @@
+import {validateDelivery} from './core.mjs';
 export function registerCompletionService(api,transport) {
  let task;
  api.registerService({id:'nixos-control-completions',apiVersion:2,
   async start(ctx){
    const tick=async()=>{
     for(const r of await transport.pendingCompletions()){
-     if(ctx.scheduler.signal.aborted)return;
-     const text='NixOS control receipt '+r.requestId+': '+JSON.stringify(r)+'. Report this actual result to the owner; do not initiate/replay another deployment.';
-     const accepted=api.runtime.system.enqueueSystemEvent(text,{agentId:r.agentId,sessionKey:r.sessionKey,contextKey:'nixos-control:'+r.requestId,replace:true});
-     if(!accepted)continue;
-     // Join one real routed run, not a timer-only wake. Keep outbox on skipped/
-     // failed/offline/draining runs and retry after restart. Delivery is at-least-once.
-     const result=await api.runtime.system.runHeartbeatOnce({agentId:r.agentId,sessionKey:r.sessionKey,reason:'nixos-control-completion',heartbeat:{target:'last'}});
-     if(result.status==='ran')await transport.ackCompletion(r.requestId);
+     ctx.scheduler.signal.throwIfAborted();
+     const route=validateDelivery(r.delivery);
+     // Public native adapter, fixed to the trusted route captured at tool admission.
+     // Do not infer a destination from last-route state or run an owner-like agent.
+     const adapter=await api.runtime.channel.outbound.loadAdapter(route.channel);
+     if(!adapter?.sendText)throw Error('Original completion channel unavailable; receipt retained');
+     const assertCurrent=()=>{
+      ctx.scheduler.signal.throwIfAborted();
+      if(api.runtime.config.current().channels?.[route.channel]?.enabled===false)throw Error('Original completion channel disabled');
+     };
+     assertCurrent();
+     const rollback=r.rollbackConfirmed?' Rollback confirmed.':r.phase==='rollback-incomplete'?' Rollback incomplete.':'';
+     const text='NixOS '+r.operation+' '+r.revision.slice(0,12)+': '+r.phase+'.'+rollback+' Request '+r.requestId+'.';
+     const sent=await adapter.sendText({cfg:api.runtime.config.current(),...route,text,
+       signal:ctx.scheduler.signal,assertDirectAdapterHandoff:assertCurrent});
+     // A reporting run/queued event/silent outcome is NOT platform delivery proof.
+     if(!sent||sent.channel!==route.channel||typeof sent.messageId!=='string'||!sent.messageId.length||
+       (sent.outcome!==undefined&&sent.outcome!=='sent'))throw Error('No confirmed platform completion receipt');
+     await transport.ackCompletion(r.requestId,{channel:sent.channel,messageId:sent.messageId});
     }
    };
    task=ctx.scheduler.schedule({id:'receipts',delayMs:1000,everyMs:15000,run:async()=>{
-    try{await tick();ctx.serviceHealth?.clearFailure();}catch(error){ctx.serviceHealth?.reportFailure(error);ctx.logger.error('NixOS completion reconciliation failed; durable receipts retained');}
+    try{await tick();ctx.serviceHealth?.clearFailure();}catch(error){ctx.serviceHealth?.reportFailure(error);ctx.logger.error('NixOS completion delivery failed; durable receipts retained');}
    }});
   },async stop(){await task?.stop();task=undefined;}
  });

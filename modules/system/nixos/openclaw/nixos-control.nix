@@ -65,6 +65,7 @@ in
     security.sudo.extraRules = [
       {
         users = [ gw.user ];
+        runAs = "root:root";
         commands = [
           {
             command = "${package}/bin/nixos-control-host *";

@@ -1,7 +1,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import fs from 'node:fs';import os from 'node:os';import path from 'node:path';import {EventEmitter} from 'node:events';
 import {createHost,main,atomic} from './host.mjs';import {createTransport} from './transport.mjs';
-const p={operation:'switch',revision:'a'.repeat(40),requestId:'b'.repeat(32),agentId:'main',sessionKey:'agent:main:main'};
+const p={operation:'switch',revision:'a'.repeat(40),requestId:'b'.repeat(32),agentId:'main',sessionKey:'agent:main:main',delivery:{channel:'telegram',to:'100000001'}};
 function fixture(t,{exitCode=0,signal=null,log='',admitFail=false}={}){
  const state=fs.mkdtempSync(path.join(os.tmpdir(),'nixos-control-test-'));t.after(()=>fs.rmSync(state,{recursive:true,force:true}));
  let active=false,activating=false,calls=[],launched=[];
@@ -16,6 +16,7 @@ test('durable intent before external admission, exact id dedupe and conflicting 
  assert.equal(h.submit(p).phase,'accepted');assert.equal(f.calls.filter(c=>c[1][0]!=='show').length,1);
  assert.throws(()=>h.submit({...p,revision:'c'.repeat(40)}),/conflicts/);
  assert.throws(()=>h.submit({...p,sessionKey:'agent:main:other'}),/conflicts/);
+ assert.throws(()=>h.submit({...p,delivery:{channel:'telegram',to:'different'}}),/conflicts/);
 });
 test('busy runner or existing activation blocks second controller without receipt',t=>{
  const f=fixture(t);f.setActivating(true);const h=f.make();assert.throws(()=>h.submit(p),/busy/);
@@ -26,7 +27,9 @@ test('mocked controller only receives fixed executable and operation/revision; t
  const f=fixture(t),h=f.make();h.submit(p);await h.worker(p.requestId);f.setActive(false);
  assert.deepEqual(f.launched,[['/nix/store/fixed-controller/bin/nixos-switch',['switch',p.revision]]]);
  const reopened=f.make();assert.equal(reopened.status(p.requestId).phase,'completed');
- assert.equal(reopened.pending().length,1);reopened.ack(p.requestId);assert.equal(f.make().pending().length,0);
+ assert.equal(reopened.pending().length,1);assert.throws(()=>reopened.ack(p.requestId),/platform receipt/);
+ assert.throws(()=>reopened.ack(p.requestId,{channel:'discord',messageId:'12'}),/matching/);
+ reopened.ack(p.requestId,{channel:'telegram',messageId:'12'});assert.equal(f.make().pending().length,0);
  await assert.rejects(reopened.worker(p.requestId),/replay/);
 });
 test('build uses same controller without switch; rollback evidence and incomplete outcomes retained',async t=>{
@@ -58,7 +61,7 @@ test('receipt tamper ids, shell parameters and extra transport fields rejected b
 test('transport forwards no caller executable/path/environment; closure prevents dispatch',async()=>{
  let calls=0,captured;const transport=createTransport((action,args,input,guard)=>{guard?.();calls++;captured={action,args,p:JSON.parse(input)};return Promise.resolve({phase:'accepted'});});
  const q={operation:p.operation,revision:p.revision,requestId:p.requestId};
- await transport.submit(q,{agentId:'main',sessionKey:'agent:main:main',assertCurrent(){}});
+ await transport.submit(q,{agentId:'main',sessionKey:'agent:main:main',delivery:p.delivery,assertCurrent(){}});
  assert.equal(captured.action,'submit');assert.deepEqual(captured.args,[]);assert.deepEqual(captured.p,p);
  await assert.rejects(transport.submit(q,{assertCurrent(){throw Error('drain closed');}}),/drain closed/);assert.equal(calls,1);
 });

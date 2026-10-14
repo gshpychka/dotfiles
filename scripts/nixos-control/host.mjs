@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {execFileSync, spawn} from 'node:child_process';
-import {validate} from './core.mjs';
+import {validate,validateDelivery} from './core.mjs';
 // Packaging substitutes these constants; no request or plugin config controls them.
 export const STATE = '@STATE@';
 export const CONTROLLER = '@CONTROLLER@';
@@ -30,11 +30,11 @@ export function createHost({state=STATE,controller=CONTROLLER,run=execFileSync,w
   };
   return {
     submit(input) {
-      if(!input||Object.keys(input).sort().join(',')!=='agentId,operation,requestId,revision,sessionKey')throw Error('Invalid submission');
-      const {agentId,sessionKey,...p}=input;validate(p);
+      if(!input||Object.keys(input).sort().join(',')!=='agentId,delivery,operation,requestId,revision,sessionKey')throw Error('Invalid submission');
+      const {agentId,sessionKey,delivery,...p}=input;validate(p);validateDelivery(delivery);
       if(typeof agentId!=='string'||(!/^[a-zA-Z0-9_-]{1,64}$/.test(agentId)||/[\r\n]/.test(agentId))||typeof sessionKey!=='string'||sessionKey.length>512||!sessionKey.startsWith('agent:'+agentId+':')||/[\r\n\0]/.test(sessionKey))throw Error('Invalid host route');
       fs.mkdirSync(state,{recursive:true,mode:0o700});
-      if(fs.existsSync(file(p.requestId))){const r=readReconciled(p.requestId);for(const k of ['operation','revision','agentId','sessionKey'])if(r[k]!==input[k])throw Error('Request id replay conflicts with admitted payload');return r;}
+      if(fs.existsSync(file(p.requestId))){const r=readReconciled(p.requestId);for(const k of ['operation','revision','agentId','sessionKey','delivery'])if(JSON.stringify(r[k])!==JSON.stringify(input[k]))throw Error('Request id replay conflicts with admitted payload');return r;}
       if(running())throw Error('Controller busy; no new intent admitted');
       // All helper invocations are serialized by the package flock wrapper.
       // An unfinished intent with no unit is retained as unknown, never resumed.
@@ -61,7 +61,9 @@ export function createHost({state=STATE,controller=CONTROLLER,run=execFileSync,w
       return fs.readdirSync(state).filter(n=>/^[0-9a-f]{32}\.json$/.test(n))
         .map(n=>readReconciled(n.slice(0,-5))).filter(r=>terminal(r)&&!r.completionAcknowledged).slice(0,32);
     },
-    ack(id){const r=read(id);if(!terminal(r))throw Error('Cannot acknowledge unfinished receipt');r.completionAcknowledged=true;atomic(file(id),r);return {requestId:id,acknowledged:true};},
+    ack(id,deliveryReceipt){const r=read(id);if(!terminal(r))throw Error('Cannot acknowledge unfinished receipt');
+      if(!deliveryReceipt||Object.keys(deliveryReceipt).sort().join(',')!=='channel,messageId'||deliveryReceipt.channel!==r.delivery.channel||typeof deliveryReceipt.messageId!=='string'||!deliveryReceipt.messageId.length||deliveryReceipt.messageId.length>512||/[\r\n\0]/.test(deliveryReceipt.messageId))throw Error('A confirmed matching platform receipt is required');
+      r.completionAcknowledged=true;r.notificationReceipt=deliveryReceipt;atomic(file(id),r);return {requestId:id,acknowledged:true};},
     async worker(id){
       const r=read(id);validate({operation:r.operation,revision:r.revision,requestId:r.requestId});
       if(r.phase!=='accepted')throw Error('Runner refuses replay');
@@ -91,10 +93,10 @@ export async function main(argv,input,{host=createHost(),uid=process.getuid(),su
   if(action==='submit'&&argv.length===1)return host.submit(JSON.parse(input));
   if(action==='status'&&argv.length===2)return host.status(id);
   if(action==='pending'&&argv.length===1)return host.pending();
-  if(action==='ack'&&argv.length===2)return host.ack(id);
+  if(action==='ack'&&argv.length===2)return host.ack(id,JSON.parse(input));
   throw Error('Invalid fixed host operation');
 }
 if(process.argv[1]===import.meta.filename){
-  try {const input=process.argv[2]==='submit'?fs.readFileSync(0,'utf8'):'';if(input.length>4096)throw Error('Request too large');console.log(JSON.stringify(await main(process.argv.slice(2),input)));}
+  try {const input=['submit','ack'].includes(process.argv[2])?fs.readFileSync(0,'utf8'):'';if(input.length>4096)throw Error('Request too large');console.log(JSON.stringify(await main(process.argv.slice(2),input)));}
   catch(error){console.error(error.message);process.exitCode=1;}
 }

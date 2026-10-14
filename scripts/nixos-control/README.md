@@ -14,7 +14,12 @@ nixos-switch controller. No alternate deployment engine; no Gateway policy edits
   admission. Tool names alone are not authorization. Detached jobs do not acquire
   an owner's identity, and owner continuations are accepted only by the SDK's live
   exact-parent authority. A process already admitted is owned work; later revocation
-  does not replay/cancel accepted controller effects or discard its receipt.
+  does not replay/cancel accepted controller effects or discard durable state.
+  The real SDK rechecks authority after asynchronous return: a revoked caller
+  can receive an error even after job admission. The caller already knows the
+  requestId and must query that same ID when authorized again, never manufacture
+  a new ID to retry an unknown outcome. Build QA executes the installed SDK
+  callback binder body under mocked lifecycle dependencies to prove this case.
 * Root-owned immutable helper accepts only the configured openclaw Unix service
   identity via sudo. Its exact executable receives one narrowly scoped NOPASSWD
   rule, not blanket root or arbitrary shell. Existing unrelated sudo rules are
@@ -53,15 +58,24 @@ This does not rollback data migrations or make power loss during activation safe
 ## Restart completion
 
 A version-2 native plugin service uses the host-owned scheduler, reconciling root
-outbox receipts on startup and every 15 seconds. It enqueues a keyed informational
-system event in the original host-resolved agent/session, then joins a routed
-runHeartbeatOnce({heartbeat:{target:'last'}}). Skipped/draining/offline/failed runs
-leave receipts pending; only a ran result acknowledges. This works independently
-of a periodic heartbeat interval (currently disabled). The model is instructed to
-report the receipt, not replay deployment. Completion is at-least-once: a crash
-between successful run and acknowledgement can cause another notice. A ran result
-proves the host completed the reporting run, NOT independently verified network
-receipt by a human; parent control must inspect real delivery during live acceptance.
+outbox receipts on startup and every 15 seconds. It uses the documented native
+channel outbound adapter to send a deterministic notice to the exact channel,
+recipient, account and thread captured from the host's trusted deliveryContext at
+owner tool admission. Route is not a model argument and replay cannot retarget it.
+Missing host delivery context refuses job admission; missing/disabled adapters or
+failed/suppressed sends leave the outbox pending. Service cancellation is checked
+at final platform dispatch, including after asynchronous adapter preparation.
+Only a matching channel and nonempty confirmed platform message ID acknowledges,
+and that delivery receipt is durably recorded by the root helper. No model turn,
+last-route inference, or retained owner's invocation grant is used for completion.
+
+This deliberately does not use runHeartbeatOnce: inspecting the real candidate's
+wake policy showed that the public wrapper cannot provide source/intent and can
+skip with heartbeat.every=0m. Moreover, a ran/silent outcome is not send proof.
+Completion does not enable periodic heartbeats or depend on their cadence.
+Delivery remains at-least-once: a crash after a confirmed platform send but before
+root acknowledgement can cause a duplicate notice with the same request ID.
+A platform receipt proves accepted platform delivery, not that a human read it.
 The owner can always query the durable receipt with nixos_control_status.
 
 ## Files / declarative integration
@@ -96,7 +110,7 @@ its Nix-pinned OpenClaw SDK link; no npm dependency downloads or lifecycle scrip
 
 Build runs all tests and the installed-SDK registration check. Use the printed
 package's share/openclaw-plugin-nixos-control directory as the plugin package.
-It was built remotely on reaper with fourteen passing tests and real SDK smoke
+It was built remotely on reaper with fifteen passing tests and real SDK smoke
 check. Systemd/controller execution remains mocked: no actual build/switch,
 privileged helper invocation, Gateway restart, plugin install or delivery occurred.
 
@@ -132,10 +146,11 @@ completion after the Gateway returns. Accepted/running is never completion.
 
 Installed OpenClaw docs/plugins/building-plugins.md and tool-plugins.md document
 native factories, v2 owner authority, optional tools, manifest contracts and plugin
-installation/reload. sdk-runtime/state-and-system.md documents the heartbeat/event
-APIs. Installed loader-runtime-load-oRN5HKG9.mjs implements runHeartbeatOnce as a
-system facade; it is not the trust-gated dispatchHookAgentTurn/Gateway scope
-elevation route. Local plugins do not magically become bundled/trusted-official:
+installation/reload. sdk-runtime/channel.md documents outbound.loadAdapter;
+the actual candidate SDK defines ChannelOutboundAdapter.sendText, deliveryContext
+and final-dispatch cancellation/authorization guards. This is not the trust-gated
+dispatchHookAgentTurn/Gateway scope elevation route, nor a custom Telegram HTTP
+client. Local plugins do not magically become bundled/trusted-official:
 inspect provenance and do not falsify a trust record or package metadata.
 The installed official plugin inventory/catalog contains no NixOS switch tool;
 admin-http-rpc adds Gateway RPC dispatch, not this operation. Web search was

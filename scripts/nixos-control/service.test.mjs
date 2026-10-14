@@ -1,10 +1,33 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {registerCompletionService} from './service.mjs';
-test('completion uses service lifetime, persists through drain/restart and only a joined ran wake acknowledges',async()=>{
- const pending=[{requestId:'b'.repeat(32),agentId:'main',sessionKey:'agent:main:main',phase:'completed'}];let service,tick,stopped=false,events=[],result={status:'skipped',reason:'draining'},acks=0;
- const api={registerService(s){service=s;},runtime:{system:{enqueueSystemEvent(text,route){events.push(route);return true;},async runHeartbeatOnce(){return result;}}}};
- const transport={async pendingCompletions(){return pending.slice();},async ackCompletion(){acks++;pending.shift();}};
- const ctx={scheduler:{signal:new AbortController().signal,schedule(p){tick=p.run;return{async stop(){stopped=true;}};}},logger:{error(){}},serviceHealth:{clearFailure(){},reportFailure(){}}};
- registerCompletionService(api,transport);assert.equal(service.apiVersion,2);await service.start(ctx);await tick();assert.equal(acks,0);
- await service.stop(ctx);assert.ok(stopped);await service.start(ctx);result={status:'ran'};await tick();assert.equal(acks,1);assert.equal(pending.length,0);
- assert.equal(events[0].sessionKey,'agent:main:main');assert.equal(events[0].contextKey,'nixos-control:'+'b'.repeat(32));
+const receipt={requestId:'b'.repeat(32),agentId:'main',sessionKey:'agent:main:main',operation:'switch',revision:'a'.repeat(40),delivery:{channel:'telegram',to:'100000001',threadId:123},phase:'completed'};
+function fixture(){
+ const pending=[{...receipt}];let service,tick,stopped=false,acks=[],sends=[],mode='offline';const abort=new AbortController();
+ const api={
+  registerService(s){service=s;},
+  runtime:{
+   config:{current(){return {channels:{telegram:{enabled:mode!=='disabled'}},agents:{defaults:{heartbeat:{every:'0m'}}}};}},
+   channel:{outbound:{async loadAdapter(channel){
+    assert.equal(channel,'telegram');
+    return {async sendText(p){
+     if(mode==='close-during-preparation')abort.abort();
+     p.assertDirectAdapterHandoff();sends.push(p);
+     if(mode==='offline')throw Error('offline');
+     if(mode==='suppressed')return {channel,messageId:'12',outcome:'suppressed'};
+     return {channel,messageId:'12',outcome:'sent'};
+    }};
+   }}}
+  }
+ };
+ const transport={async pendingCompletions(){return pending.slice();},async ackCompletion(id,r){acks.push([id,r]);pending.shift();}};
+ const ctx={scheduler:{signal:abort.signal,schedule(p){tick=p.run;return{async stop(){stopped=true;}};}},logger:{error(){}},serviceHealth:{clearFailure(){},reportFailure(){}}};
+ registerCompletionService(api,transport);
+ return {service,ctx,pending,acks,sends,mode(m){mode=m;},tick(){return tick();},stopped(){return stopped;}};
+}
+test('restart outbox sends exact captured route despite 0m heartbeat; platform receipt alone acknowledges',async()=>{
+ const f=fixture();assert.equal(f.service.apiVersion,2);await f.service.start(f.ctx);await f.tick();assert.equal(f.acks.length,0);assert.equal(f.pending.length,1);
+ await f.service.stop(f.ctx);assert.ok(f.stopped());await f.service.start(f.ctx);f.mode('sent');await f.tick();assert.equal(f.acks.length,1);assert.equal(f.pending.length,0);
+ assert.equal(f.sends[0].to,receipt.delivery.to);assert.equal(f.sends[0].threadId,123);assert.deepEqual(f.acks[0],[receipt.requestId,{channel:'telegram',messageId:'12'}]);
+});
+test('suppressed send and revoked/disabled channel retain durable outbox, never claim delivery',async()=>{
+ for(const mode of ['suppressed','disabled','close-during-preparation']){const f=fixture();await f.service.start(f.ctx);f.mode(mode);await f.tick();assert.equal(f.acks.length,0);assert.equal(f.pending.length,1);}
 });
