@@ -18,6 +18,8 @@
 
   my.openclaw = {
     enable = true;
+    # Fixed controller through owner-authorized native tools, never arbitrary shell.
+    nixosControl.enable = true;
     sopsFile = ../../secrets/hoard/openclaw.yaml;
     publicHost = config.services.nginx.virtualHosts.openclaw.serverName;
     trustedProxy = {

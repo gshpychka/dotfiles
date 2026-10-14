@@ -59,6 +59,12 @@ in
   options.my.openclaw = {
     enable = lib.mkEnableOption "the OpenClaw gateway";
 
+    pluginPaths = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [ ];
+      description = "Native plugin paths, merged before rendering the Gateway JSON config.";
+    };
+
     workspace = lib.mkOption {
       type = lib.types.str;
       default = "${gw.stateDir}/workspace";
@@ -91,6 +97,9 @@ in
           heartbeat.every = "0m";
         };
         browser.enabled = false;
+        # The upstream JSON option uses recursiveUpdate, which replaces lists.
+        # Aggregate in a typed Nix list first so one plugin cannot erase another.
+        plugins.load.paths = cfg.pluginPaths;
       };
     };
 

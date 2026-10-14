@@ -14,8 +14,8 @@ in
   options.my.openclaw.codex.enable = lib.mkEnableOption "Codex sessions for the agent";
 
   config = lib.mkIf (cfg.enable && cfg.codex.enable) {
+    my.openclaw.pluginPaths = [ "${pkgs.openclawRuntimePlugins.codex}" ];
     services.openclaw-gateway.config.plugins = {
-      load.paths = [ "${pkgs.openclawRuntimePlugins.codex}" ];
       entries.codex = {
         enabled = true;
         config.appServer = {

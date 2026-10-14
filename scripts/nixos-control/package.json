@@ -1,0 +1,25 @@
+{
+  "name": "@gshpychka/openclaw-nixos-control",
+  "version": "0.1.0",
+  "type": "module",
+  "files": [
+    "*.mjs",
+    "openclaw.plugin.json",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=24.16"
+  },
+  "peerDependencies": {
+    "openclaw": ">=2026.10.1"
+  },
+  "scripts": {
+    "test": "node --test *.test.mjs",
+    "build": "node --check index.mjs && node --check host.mjs && node --check transport.mjs && node --check service.mjs"
+  },
+  "openclaw": {
+    "extensions": [
+      "./index.mjs"
+    ]
+  }
+}
