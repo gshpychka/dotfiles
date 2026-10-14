@@ -34,6 +34,8 @@ in
         ./openclaw/question-answer-worker-append.patch
         # a failed MCP server start logs its URL's origin, so a credential in the path stays out of the journal
         ./openclaw/mcp-description-origin.patch
+        # a turn the agent yields answers an HTTP client with its acknowledgment
+        ./openclaw/yield-acknowledgment-reply.patch
       ];
     };
     # follows the source's pnpm-lock.yaml

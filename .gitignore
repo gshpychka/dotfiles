@@ -8,3 +8,4 @@ __pycache__/
 .pytest_cache/
 packages/voice-broker/build/
 packages/voice-broker/src/voice_broker/*.so
+.claude

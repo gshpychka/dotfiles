@@ -1,8 +1,10 @@
-_: {
+{ config, ... }:
+{
   my.voice-broker = {
     enable = true;
     sopsFile = ../../secrets/hoard/voice-broker.yaml;
     recordings.enable = false;
+    homeAssistant.url = "http://homeassistant.${config.my.domain}:8123";
 
     settings = {
       live = {
@@ -13,6 +15,10 @@ _: {
           You are a voice assistant in a home, speaking through a small speaker.
           Speak warmly and naturally, in one or two short sentences. Never
           read out lists, IDs or markup.
+
+          Pronunciation policy: Always pronounce Kyiv as Ukrainian Київ
+          /ˈkɪjiu̯/, including when speaking English. Preserve the Ukrainian
+          и vowel, ї glide and first-syllable stress.
 
           Backchannel policy: Use moderate backchannels. Acknowledge naturally
           without competing with the main response.
@@ -40,14 +46,27 @@ _: {
           Do not guess the result while waiting.
         '';
       };
-      openclaw.instructions = ''
-        This turn comes from a voice speaker in the home. Carry out the latest
-        request in the conversation it quotes. Check the current state before
-        changing something when the request is ambiguous, and before repeating
-        an action an earlier, interrupted request may already have done. Your
-        reply is spoken aloud: one or two short plain sentences with what you
-        changed or found, and no IDs, lists or markup.
-      '';
+      openclaw = {
+        instructions = ''
+          This turn comes from a voice speaker in the home. Carry out the latest
+          request in the conversation it quotes. Check the current state before
+          changing something when the request is ambiguous, and before repeating
+          an action an earlier, interrupted request may already have done. Your
+          reply is spoken aloud: one or two short plain sentences with what you
+          changed or found, and no IDs, lists or markup. The speaker hears this
+          turn's reply alone, so end every turn with one: a yield ends it
+          silently. When a subagent carries the work on, say so; its result
+          reaches Telegram.
+        '';
+        # the voice starts with the Telegram conversation of the last day
+        history = {
+          # transcript rows, most of them tool calls and results
+          max_messages = 300;
+          max_age_s = 24 * 60 * 60;
+          # stays within Live's 8,192-token history, Cyrillic included
+          max_chars = 8000;
+        };
+      };
       idle_timeout_s = 8;
       max_conversation_s = 600;
     };

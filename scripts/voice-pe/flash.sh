@@ -7,5 +7,8 @@ if [[ $# != 3 || $1 != --confirm-flash ]]; then
 fi
 firmware=$(realpath "$2")
 [[ -f "$firmware/firmware.bin" && -f "$firmware/SHA256SUMS" ]]
-(cd "$firmware"; sha256sum -c SHA256SUMS)
+(
+  cd "$firmware"
+  sha256sum -c SHA256SUMS
+)
 exec voice-pe-upload "$firmware/firmware.bin" "$3"

@@ -15,6 +15,7 @@
         my = {
           ai.enable = true;
           btop.enable = true;
+          cachePrune.enable = true;
           direnv.enable = true;
           git.enable = true;
           gpg.enable = true;

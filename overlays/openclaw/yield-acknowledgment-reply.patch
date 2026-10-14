@@ -1,0 +1,93 @@
+From 6c00cdcd09b046d0d94d4fdf807a4984a30c2d26 Mon Sep 17 00:00:00 2001
+From: Glib Shpychka <23005347+gshpychka@users.noreply.github.com>
+Date: Tue, 13 Oct 2026 20:51:29 +0300
+Subject: [PATCH] fix(gateway): reply to an HTTP client with a yielded turn's
+ acknowledgment
+
+A turn the agent yields ends with no text payload, so the OpenAI-compatible
+endpoints answered "No response from OpenClaw." although the channel path
+delivers the yield's acknowledgment as the reply. The shared result-text
+helper now falls back to that acknowledgment.
+---
+ .../agent-event-assistant-text.test.ts        | 36 +++++++++++++++++++
+ src/gateway/agent-event-assistant-text.ts     | 17 +++++++--
+ 2 files changed, 50 insertions(+), 3 deletions(-)
+ create mode 100644 src/gateway/agent-event-assistant-text.test.ts
+
+diff --git a/src/gateway/agent-event-assistant-text.test.ts b/src/gateway/agent-event-assistant-text.test.ts
+new file mode 100644
+index 00000000..7eb34092
+--- /dev/null
++++ b/src/gateway/agent-event-assistant-text.test.ts
+@@ -0,0 +1,36 @@
++import { describe, expect, it } from "vitest";
++import { resolveAssistantResultText } from "./agent-event-assistant-text.js";
++
++describe("resolveAssistantResultText", () => {
++  it("joins the text payloads", () => {
++    expect(resolveAssistantResultText({ payloads: [{ text: "a" }, { text: "b" }] })).toBe("a\n\nb");
++  });
++
++  it("keeps a text-bearing empty result empty", () => {
++    expect(
++      resolveAssistantResultText({
++        payloads: [{ text: "" }],
++        meta: { yielded: true, yieldAcknowledgment: "Working on it." },
++      }),
++    ).toBe("");
++  });
++
++  it("replies with the acknowledgment of a yielded turn", () => {
++    expect(
++      resolveAssistantResultText({
++        payloads: [],
++        meta: { yielded: true, yieldAcknowledgment: " Working on it. " },
++      }),
++    ).toBe("Working on it.");
++  });
++
++  it("has no reply for a yielded turn without an acknowledgment", () => {
++    expect(resolveAssistantResultText({ payloads: [], meta: { yielded: true } })).toBeUndefined();
++  });
++
++  it("ignores an acknowledgment of a turn that did not yield", () => {
++    expect(
++      resolveAssistantResultText({ payloads: [], meta: { yieldAcknowledgment: "stale" } }),
++    ).toBeUndefined();
++  });
++});
+diff --git a/src/gateway/agent-event-assistant-text.ts b/src/gateway/agent-event-assistant-text.ts
+index 1492d4f7..e6b1ba2d 100644
+--- a/src/gateway/agent-event-assistant-text.ts
++++ b/src/gateway/agent-event-assistant-text.ts
+@@ -24,16 +24,27 @@ type AssistantTextMerge = AssistantTextSnapshot & {
+   appendedText?: string;
+ };
+ 
+-/** A text-bearing empty result clears output; a missing text payload does not. */
++/**
++ * A text-bearing empty result clears output; a missing text payload does not.
++ * A turn the agent yielded replies with its acknowledgment, as a channel turn does.
++ */
+ export function resolveAssistantResultText(result: unknown): string | undefined {
+-  const payloads = asOptionalObjectRecord(result)?.payloads;
++  const record = asOptionalObjectRecord(result);
++  const payloads = record?.payloads;
+   const texts = Array.isArray(payloads)
+     ? payloads.flatMap((payload) => {
+         const text = asOptionalObjectRecord(payload)?.text;
+         return typeof text === "string" ? [text] : [];
+       })
+     : [];
+-  return texts.length > 0 ? texts.filter(Boolean).join("\n\n") : undefined;
++  if (texts.length > 0) {
++    return texts.filter(Boolean).join("\n\n");
++  }
++  const meta = asOptionalObjectRecord(record?.meta);
++  const acknowledgment = meta?.yielded === true ? meta.yieldAcknowledgment : undefined;
++  return typeof acknowledgment === "string" && acknowledgment.trim()
++    ? acknowledgment.trim()
++    : undefined;
+ }
+ 
+ /** Both HTTP transports share buffering; each owns its terminal error policy. */

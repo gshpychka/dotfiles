@@ -22,6 +22,32 @@ improv_serial:
 api:
   encryption: {}
   custom_services: true
+  actions:
+    # The broker's call: Home Assistant runs esphome.<device>_start_conversation
+    # and the device opens a conversation the way the wake-word branch below does.
+    - action: start_conversation
+      then:
+        - if:
+            condition:
+              switch.is_off: master_mute_switch
+            then:
+              - if:
+                  condition:
+                    switch.is_on: wake_sound
+                  then:
+                    - script.execute:
+                        id: play_sound
+                        priority: true
+                        sound_file: "wake_word_triggered_sound"
+                    - delay: 300ms
+              - mixer_speaker.apply_ducking:
+                  id: media_mixing_input
+                  decibel_reduction: 20
+                  duration: 0.0s
+              - lambda: id(voice_assistant_phase) = ${voice_assist_waiting_for_command_phase_id};
+              - script.execute: control_leds
+              - voice_broker.start:
+                  wake_word: ""
 
 # API protobuf dumps at VERY_VERBOSE can contain action arguments.
 logger:
@@ -60,14 +86,20 @@ voice_broker:
           id(voice_assistant_phase) = ${voice_assist_replying_phase_id};
         }
     - script.execute: control_leds
-  # Only before any mic audio has been sent to Live. Never replay commands.
+  # The broker holds mic audio until the model listens, so a failed startup
+  # gave the model nothing; Assist starts afresh, with no replay.
   on_startup_failure:
     - mixer_speaker.apply_ducking:
         id: media_mixing_input
         decibel_reduction: 0
         duration: 1.0s
-    - voice_assistant.start:
-        wake_word: !lambda return wake_word;
+    # a call carries no command to hand to Assist
+    - if:
+        condition:
+          lambda: return !wake_word.empty();
+        then:
+          - voice_assistant.start:
+              wake_word: !lambda return wake_word;
   on_error:
     - lambda: id(voice_assistant_phase) = ${voice_assist_error_phase_id};
     - script.execute: control_leds

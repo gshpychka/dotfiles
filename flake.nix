@@ -286,6 +286,10 @@
           aarch64-darwin.eve = self.darwinConfigurations.eve.config.system.build.toplevel;
           x86_64-linux = {
             iso = self.nixosConfigurations.iso.config.system.build.isoImage;
+            nixos-switch = import ./tests/nixos-switch.nix {
+              inherit inputs;
+              pkgs = nixpkgs.legacyPackages.x86_64-linux;
+            };
           };
         };
 

@@ -41,6 +41,7 @@
     ./gpu-ai-slice.nix
     ./tty.nix
     ./bay.nix
+    ./twingate.nix
     # ./comfyui.nix
   ];
   networking.hostName = "reaper";
@@ -138,7 +139,11 @@
           features.cdi = true;
         };
       };
-      autoPrune.enable = true;
+      autoPrune = {
+        enable = true;
+        # also remove tagged images no container uses
+        flags = [ "--all" ];
+      };
     };
   };
 

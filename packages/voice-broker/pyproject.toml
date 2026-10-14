@@ -10,6 +10,7 @@ dependencies = ["numpy", "openai", "soxr", "websockets"]
 
 [project.scripts]
 voice-broker = "voice_broker.__main__:main"
+voice-broker-call = "voice_broker.calls:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

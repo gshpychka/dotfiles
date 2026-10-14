@@ -17,6 +17,7 @@ from conftest import speechlike
 from voice_broker._aec import EchoCanceller
 from voice_broker.conversation import Conversation, EndReason
 from voice_broker.live import LiveSession
+from voice_broker.openclaw import Turn
 from voice_broker.protocol import (
     MIC_RATE,
     SPEAKER_RATE,
@@ -193,7 +194,10 @@ def run_live(make_config, refuse: bool = False):
             tasks.append(task)
             return "The kitchen lights are off."
 
-        session = LiveSession(config.live, "Kitchen", consult, connect)
+        async def recall() -> list[Turn]:
+            return []
+
+        session = LiveSession(config.live, "Kitchen", consult, recall, connect)
         conversation = Conversation(config, "test", device, session, EchoCanceller(MIC_RATE))
         reason = await asyncio.wait_for(conversation.run(), 15)
         return reason, device, live, tasks

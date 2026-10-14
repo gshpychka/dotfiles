@@ -84,7 +84,7 @@ void VoiceBroker::start(const std::string &wake_word) {
   this->generation_++;
   this->state_ = State::CONNECTING;
   this->high_freq_.start();
-  // Bound connection + model startup; audio withheld until LISTENING.
+  // Bound connection + model startup; the broker holds mic audio until the model listens.
   this->set_timeout("startup", 10000, [this]() {
     if (this->state_ == State::CONNECTING || this->state_ == State::WAITING_READY)
       this->startup_failure_();
@@ -136,6 +136,10 @@ void VoiceBroker::loop() {
           break;
         this->state_ = State::WAITING_READY;
         this->queue_control_(protocol::START, {{"wake_word", this->wake_word_}});
+        // Speech right after the wake word streams while the model starts up.
+        this->mic_samples_ = 0;
+        this->streaming_ = true;
+        this->mic_source_->start();
         break;
       case Event::DISCONNECTED:
         if (this->state_ == State::CONNECTING || this->state_ == State::WAITING_READY) {
@@ -158,9 +162,6 @@ void VoiceBroker::loop() {
             break;
           this->cancel_timeout("startup");
           this->state_ = State::ACTIVE;
-          this->mic_samples_ = 0;
-          this->streaming_ = true;
-          this->mic_source_->start();
         }
         switch (event.phase) {
           case Phase::LISTENING:

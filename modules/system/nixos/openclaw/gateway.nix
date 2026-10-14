@@ -36,6 +36,22 @@ let
         # fails the build (-e) on any warning, such as an unresolved ''${VAR} reference
         ${lib.getExe pkgs.jq} -e '.warnings == []' $out
       '';
+
+  # The unit's ExecStartPost: its start, and with it the switch that started
+  # it (switch-to-configuration exits 4 on a failed start job), succeeds once
+  # the gateway is ready and accepts its own credentials, within TimeoutStartSec.
+  readinessCheck = pkgs.writeShellApplication {
+    name = "openclaw-gateway-readiness";
+    runtimeInputs = [ pkgs.curl ];
+    text = ''
+      # /readyz answers 200 once startup, the state and agent databases, plugins and channels are ready; it takes no credentials
+      until curl --silent --fail --output /dev/null ${cfg.localUrl}/readyz; do
+        sleep 1
+      done
+      # a health call over the gateway's WebSocket, authenticated with the gateway secret in the unit's environment; exits 1 when the gateway rejects it
+      ${lib.getExe gw.package} gateway health
+    '';
+  };
 in
 {
   imports = [ inputs.nix-openclaw.nixosModules.openclaw-gateway ];
@@ -48,6 +64,14 @@ in
       default = "${gw.stateDir}/workspace";
       readOnly = true;
       description = "The agent's workspace (https://docs.openclaw.ai/concepts/agent-workspace).";
+    };
+
+    mainSessionKey = lib.mkOption {
+      type = lib.types.str;
+      # the default agent, main, under the default DM scope
+      default = "agent:main:main";
+      readOnly = true;
+      description = "Key of the agent's main session, which its direct messages share (https://docs.openclaw.ai/concepts/main-session).";
     };
   };
 
@@ -84,6 +108,16 @@ in
         StandardOutput = lib.mkForce "journal";
         StandardError = lib.mkForce "journal";
         UMask = "0077";
+
+        ExecStartPost = [ (lib.getExe readinessCheck) ];
+        # the gateway is ready about 10s after its start in tests/nixos-switch.nix
+        TimeoutStartSec = 120;
+        # On stop, SIGTERM reaches the gateway alone, which drains active
+        # turns before it exits 0; the SIGKILL that follows reaches what its
+        # turns leave behind. The gateway sizes its drain from TimeoutStopUSec.
+        # Both are the values the systemd unit OpenClaw installs itself uses.
+        KillMode = "mixed";
+        TimeoutStopSec = 330;
       };
     };
 

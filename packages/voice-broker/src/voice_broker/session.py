@@ -53,7 +53,7 @@ class ModelSession(Protocol):
         ...
 
     async def on_mic(self, samples: np.ndarray) -> None:
-        """One echo-cancelled block of MIC_RATE audio."""
+        """One echo-cancelled block of MIC_RATE audio, held for the model while the session is not open."""
         ...
 
     def on_playback_finished(self) -> None:

@@ -11,18 +11,20 @@ from __future__ import annotations
 import asyncio
 import base64
 import logging
+from collections import deque
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
-from typing import Any, Literal
+from typing import Any
 
 import numpy as np
 from openai import AsyncOpenAI
 from openai.resources.live.live import AsyncLiveConnection
+from openai.types.live.initial_item_param import InitialItemParam
 from openai.types.live.session_config_param import SessionConfigParam
 
 from .config import Live
 from .dsp import mic_to_speaker_rate
-from .openclaw import ConsultFailed
+from .openclaw import ConsultFailed, HistoryUnavailable, Role, Turn
 from .protocol import SPEAKER_RATE, Phase
 from .session import Host, SessionRefused, located, placement
 
@@ -32,13 +34,24 @@ log = logging.getLogger(__name__)
 _AUDIO_EVENTS = frozenset({"session.output_audio.delta"})
 # An append carries at most 500 tokens, and every token spans at least one byte.
 _APPEND_MAX_BYTES = 500
+# Live takes this many initial messages at most.
+_INPUT_MAX_ITEMS = 128
+# Mic audio held for a session still starting; the device gives a startup 10 s.
+_BACKLOG_MAX_SAMPLES = SPEAKER_RATE * 15
+# Leads the initial messages, which are the agent's conversation before this one.
+_HISTORY_LEAD = "Your text conversation with the user so far; the spoken conversation follows it."
+# Ends the initial messages of a call: the backend is what the instructions call the agent.
+_OPENING_LEAD = (
+    "You opened this conversation for the backend, which has something to tell the user. Begin by telling them: "
+    "{opening}\nDelegate the user's response to the backend, whatever it is."
+)
 
 # Opens a Live connection; injected so tests can substitute OpenAI.
 LiveConnector = Callable[[], AbstractAsyncContextManager[AsyncLiveConnection]]
 # The agent's answer to a task; raises ConsultFailed.
 Consult = Callable[[str], Awaitable[str]]
-
-Role = Literal["user", "assistant"]
+# The agent's recent conversation; raises HistoryUnavailable.
+Recall = Callable[[], Awaitable[list[Turn]]]
 
 
 def live_connector(client: AsyncOpenAI) -> LiveConnector:
@@ -48,33 +61,59 @@ def live_connector(client: AsyncOpenAI) -> LiveConnector:
 
 
 class LiveSession:
-    def __init__(self, config: Live, area: str, consult: Consult, connect: LiveConnector) -> None:
+    def __init__(
+        self,
+        config: Live,
+        area: str,
+        consult: Consult,
+        recall: Recall,
+        connect: LiveConnector,
+        opening: str | None = None,
+    ) -> None:
         self._config = config
         self._area = area
         self._consult = consult
+        self._recall = recall
         self._connect = connect
+        # What the voice says first, in a conversation the agent opened.
+        self._opening = opening
         self._to_openai_rate = mic_to_speaker_rate()
         self._conn: AsyncLiveConnection | None = None
         self._host: Host | None = None
+        # Mic audio heard before the session is open, at SPEAKER_RATE, in order.
+        self._backlog: deque[np.ndarray] = deque()
+        self._backlog_samples = 0
         # Transcript fragments in delivery order.
-        self._heard: list[tuple[Role, str]] = []
+        self._heard: list[Turn] = []
         self._logged = 0
         # Fragments before this index reached the agent in a consult it answered.
         self._consulted = 0
         self._consulting: asyncio.Task[None] | None = None
+        # The newest delegation, which answers go to: a newer one supersedes the old on the model's side.
+        self._delegation: str | None = None
 
     @asynccontextmanager
     async def open(self, host: Host) -> AsyncIterator[None]:
+        try:
+            history = await self._recall()
+        except HistoryUnavailable as e:
+            log.warning("starting without the recent conversation: %s", e)
+            history = []
         async with self._connect() as conn:
-            self._conn = conn
             self._host = host
-            await conn.session.start(session=self._session_config())
+            await conn.session.start(session=self._session_config(history))
             async for event in conn:
                 self._log_event(event)
                 if event.type == "session.started":
                     break
                 if event.type == "error":
                     raise SessionRefused(f"{event.error.message} ({event.error.code})")
+            # What the mic sent so far goes first; a block arriving meanwhile joins the backlog.
+            while self._backlog:
+                samples = self._backlog.popleft()
+                self._backlog_samples -= len(samples)
+                await conn.session.input_audio.append(audio=_audio(samples))
+            self._conn = conn
             try:
                 yield
             finally:
@@ -89,8 +128,8 @@ class LiveSession:
     def on_playback_finished(self) -> None:
         self._flush_transcripts()
 
-    def _session_config(self) -> SessionConfigParam:
-        return {
+    def _session_config(self, history: list[Turn]) -> SessionConfigParam:
+        config: SessionConfigParam = {
             "model": self._config.model,
             "instructions": located(self._config.instructions, self._area),
             "audio": {
@@ -99,15 +138,28 @@ class LiveSession:
             },
             "delegation": {"type": "client"},
         }
+        if items := _initial_items(history, self._opening):
+            config["input"] = items
+        return config
 
     # -- mic -----------------------------------------------------------------
 
     async def on_mic(self, samples: np.ndarray) -> None:
-        if self._conn is None or len(samples) == 0:
+        if len(samples) == 0:
             return
         upsampled = self._to_openai_rate(samples)
-        if len(upsampled):
-            await self._conn.session.input_audio.append(audio=base64.b64encode(upsampled.tobytes()).decode())
+        if len(upsampled) == 0:
+            return
+        if self._conn is None:
+            self._hold(upsampled)
+            return
+        await self._conn.session.input_audio.append(audio=_audio(upsampled))
+
+    def _hold(self, samples: np.ndarray) -> None:
+        self._backlog.append(samples)
+        self._backlog_samples += len(samples)
+        while self._backlog_samples > _BACKLOG_MAX_SAMPLES:
+            self._backlog_samples -= len(self._backlog.popleft())
 
     # -- OpenAI side ---------------------------------------------------------
 
@@ -142,28 +194,36 @@ class LiveSession:
     # -- delegation ----------------------------------------------------------
 
     def _delegate(self, delegation_id: str) -> None:
-        # The new task's transcript holds everything the superseded one did.
-        if self._consulting is not None:
-            log.info("delegation %s supersedes the running consult", delegation_id)
-            self._consulting.cancel()
-        self._consulting = asyncio.create_task(self._run_consult(delegation_id))
+        self._delegation = delegation_id
+        # A running consult is a turn of the agent's own session, so it runs to its end.
+        if self._consulting is None:
+            self._consulting = asyncio.create_task(self._run_consults())
+        else:
+            log.info("delegation %s waits for the running consult", delegation_id)
 
-    async def _run_consult(self, delegation_id: str) -> None:
+    async def _run_consults(self) -> None:
+        """Consults until everything heard is answered at the newest delegation."""
         assert self._conn is not None and self._host is not None
-        upto = len(self._heard)
-        heard = self._heard[self._consulted : upto]
         try:
-            if any(role == "user" for role, _ in heard):
-                try:
-                    answer = await self._consult(self._task(heard))
-                    self._consulted = upto
-                except ConsultFailed as e:
-                    log.warning("consult failed: %s", e)
-                    answer = f"The request failed: {e}"
-            else:
-                answer = "No transcript of the request arrived; ask the user to repeat it."
-            for chunk in _chunks(answer):
-                await self._conn.session.commentary.append(content=chunk, delegation_id=delegation_id)
+            while True:
+                delegation = self._delegation
+                upto = len(self._heard)
+                heard = self._heard[self._consulted : upto]
+                if any(role == "user" for role, _ in heard):
+                    try:
+                        answer = await self._consult(self._task(heard))
+                        self._consulted = upto
+                    except ConsultFailed as e:
+                        log.warning("consult failed: %s", e)
+                        answer = f"The request failed: {e}"
+                else:
+                    answer = "No transcript of the request arrived; ask the user to repeat it."
+                for chunk in _chunks(answer):
+                    await self._conn.session.commentary.append(content=chunk, delegation_id=self._delegation)
+                # A delegation created meanwhile has its answer, unless more was said since.
+                unheard = self._heard[self._consulted :]
+                if self._delegation == delegation or not any(role == "user" for role, _ in unheard):
+                    break
         finally:
             if self._consulting is asyncio.current_task():
                 self._consulting = None
@@ -171,7 +231,7 @@ class LiveSession:
         if not self.busy and not self._host.assistant_audible:
             await self._host.set_phase(Phase.LISTENING)
 
-    def _task(self, heard: list[tuple[Role, str]]) -> str:
+    def _task(self, heard: list[Turn]) -> str:
         advisory = getattr(self._host, "speaker_advisory", lambda: None)()
         speaker_note = ""
         if advisory is not None:
@@ -202,9 +262,36 @@ class LiveSession:
         self._logged = len(self._heard)
 
 
-def _turns(fragments: list[tuple[Role, str]]) -> list[tuple[Role, str]]:
+def _initial_items(history: list[Turn], opening: str | None) -> list[InitialItemParam]:
+    """Live's initial messages: the newest of `history`, led by what it is, then the opening of a call."""
+    items: list[InitialItemParam] = []
+    if history:
+        items.append(_developer(_HISTORY_LEAD))
+        room = _INPUT_MAX_ITEMS - 1 - (1 if opening else 0)
+        for role, text in history[-room:]:
+            if role == "user":
+                items.append({"type": "message", "role": "user", "content": [{"type": "input_text", "text": text}]})
+            else:
+                items.append(
+                    {"type": "message", "role": "assistant", "content": [{"type": "output_text", "text": text}]}
+                )
+    if opening:
+        items.append(_developer(_OPENING_LEAD.format(opening=opening)))
+    return items
+
+
+def _developer(text: str) -> InitialItemParam:
+    return {"type": "message", "role": "developer", "content": [{"type": "input_text", "text": text}]}
+
+
+def _audio(samples: np.ndarray) -> str:
+    """SPEAKER_RATE samples as Live's base64 PCM."""
+    return base64.b64encode(samples.tobytes()).decode()
+
+
+def _turns(fragments: list[Turn]) -> list[Turn]:
     """Consecutive fragments from one side, joined."""
-    turns: list[tuple[Role, str]] = []
+    turns: list[Turn] = []
     for role, text in fragments:
         if turns and turns[-1][0] == role:
             turns[-1] = (role, turns[-1][1] + text)

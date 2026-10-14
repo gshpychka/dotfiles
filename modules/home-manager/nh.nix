@@ -23,7 +23,7 @@ in
       flake = "${config.home.homeDirectory}/dotfiles";
       clean = {
         enable = true;
-        extraArgs = "--keep 5 --kep-since 5d --no-direnv";
+        extraArgs = "--keep 5 --keep-since 5d --no-direnv";
       };
     };
 

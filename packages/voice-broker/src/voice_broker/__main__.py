@@ -19,6 +19,7 @@ from websockets.http11 import Request, Response
 
 from . import config as config_module
 from ._aec import EchoCanceller
+from .calls import Calls
 from .config import Config, Device
 from .conversation import Conversation
 from .live import LiveSession, live_connector
@@ -56,6 +57,11 @@ class Broker:
         self._openclaw = OpenClaw(config.openclaw)
         self._devices = {d.address: _DeviceState(d, EchoCanceller(MIC_RATE)) for d in config.devices}
         self._connect = live_connector(AsyncOpenAI(api_key=config.openai_api_key))
+        self._calls = Calls(config.calls, config.devices, busy=self._in_conversation)
+
+    def _in_conversation(self, address: str) -> bool:
+        current = self._devices[address].current
+        return current is not None and not current.done()
 
     def _authorize(self, connection: ServerConnection, request: Request) -> Response | None:
         if connection.remote_address[0] not in self._devices:
@@ -81,8 +87,19 @@ class Broker:
         except (TimeoutError, ProtocolError, ConnectionClosed) as e:
             log.warning("no valid start from %s: %r", device.remote_address, e)
             return
-        log.info("woken by %s", start.wake_word)
-        session = LiveSession(self._config.live, state.device.area, self._openclaw.consult, self._connect)
+        opening = self._calls.answer(device.remote_address[0])
+        if opening is None:
+            log.info("woken by %s", start.wake_word)
+        else:
+            log.info("answering a call")
+        session = LiveSession(
+            self._config.live,
+            state.device.area,
+            self._openclaw.consult,
+            self._openclaw.recent,
+            self._connect,
+            opening,
+        )
         reason = await Conversation(self._config, state.device.name, device, session, state.aec).run()
         log.info("conversation over: %s", reason)
 
@@ -101,11 +118,13 @@ class Broker:
                 ping_timeout=10,
             ) as server:
                 log.info("listening on %s:%d", self._config.listen_host, self._config.listen_port)
+                calls = await self._calls.serve()
                 stop = asyncio.Event()
                 loop = asyncio.get_running_loop()
                 for sig in (signal.SIGINT, signal.SIGTERM):
                     loop.add_signal_handler(sig, stop.set)
                 await stop.wait()
+                calls.close()
                 server.close()
         finally:
             await self._openclaw.aclose()

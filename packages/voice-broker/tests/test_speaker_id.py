@@ -130,7 +130,7 @@ def test_live_delegation_advisory_and_default():
     from voice_broker.live import LiveSession
     from voice_broker.speaker_id import Result
 
-    s = LiveSession(Live(model="gpt-live-1", voice="marin", instructions=""), "Kitchen", None, None)
+    s = LiveSession(Live(model="gpt-live-1", voice="marin", instructions=""), "Kitchen", None, None, None)
     s._host = SimpleNamespace()
     assert "Local advisory" not in s._task([("user", "hello")])
     s._host.speaker_advisory = lambda: Result(3, 16000, 48000, "a", "matched")
