@@ -35,8 +35,7 @@ in
   # device identity there, so the directory stays writable
   systemd.tmpfiles.rules = [ "d /etc/twingate 0755 root root -" ];
 
-  # the module enables resolved for TUN mode's DNS; HTTP-proxy mode is assumed to resolve resource names inside the
-  # daemon and leave system DNS alone (not verified)
+  # the module enables resolved for TUN mode's DNS; HTTP-proxy mode resolves resource names inside the daemon
   services.resolved.enable = lib.mkForce false;
 
   systemd.services.twingate = {
