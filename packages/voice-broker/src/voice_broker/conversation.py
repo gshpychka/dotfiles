@@ -73,9 +73,19 @@ class DeviceSocket(Protocol):
 
 class Conversation:
     def __init__(
-        self, config: Config, name: str, device: DeviceSocket, session: ModelSession, aec: EchoCanceller
+        self,
+        config: Config,
+        name: str,
+        device: DeviceSocket,
+        session: ModelSession,
+        aec: EchoCanceller,
+        *,
+        speaker_id=None,
     ) -> None:
         self._config = config
+        if speaker_id is not None and config.recordings_dir:
+            raise ValueError("speaker ID trial requires runtime audio recording disabled")
+        self._speaker_id = speaker_id
         self._device = device
         self._session = session
         self._aligner = Aligner()
@@ -125,6 +135,8 @@ class Conversation:
             log.error("openai refused the session: %s", e)
         finally:
             self._recorder.close()
+            if self._speaker_id is not None:
+                self._speaker_id.close()
             try:
                 await self._device.send(encode_control(ControlType.END))
                 await self._device.close()
@@ -150,6 +162,12 @@ class Conversation:
         if not queued or self._sound_end is None:
             return False
         return self._aligner.played_speaker_samples < self._sound_end + _SOUND_HANGOVER
+
+    def speaker_advisory(self):
+        try:
+            return self._speaker_id.snapshot() if self._speaker_id is not None else None
+        except Exception:  # noqa: BLE001 -- optional advisory cannot break consult
+            return None
 
     def play(self, samples: np.ndarray) -> None:
         if len(samples) and (samples.max() > _SILENCE_PEAK or samples.min() < -_SILENCE_PEAK):
@@ -203,6 +221,14 @@ class Conversation:
         if self.assistant_audible:
             self.mark_activity()
         await self._session.on_mic(cleaned)
+        # Stream first. Optional POC never awaits inference or holds Live audio.
+        if self._speaker_id is not None:
+            try:
+                self._speaker_id.feed(cleaned, overlap=self.assistant_audible)
+            except Exception:  # noqa: BLE001 -- advisory must fail open
+                log.warning("speaker ID tap failed; disabling advisory sidecar")
+                self._speaker_id.close()
+                self._speaker_id = None
 
     # -- playback ------------------------------------------------------------
 

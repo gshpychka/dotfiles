@@ -1,0 +1,29 @@
+{
+  "engine": {
+    "name": "sherpa-onnx",
+    "version": "1.13.8",
+    "license": "Apache-2.0"
+  },
+  "weights": {
+    "author": "WeSpeaker / wenet-e2e",
+    "name": "wespeaker-voxceleb-resnet34-LM",
+    "license": "CC-BY-4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "card": "https://huggingface.co/Wespeaker/wespeaker-voxceleb-resnet34-LM/blob/f0c48c298fd835726c27956a5d617bad7115627e/README.md",
+    "upstream": "https://huggingface.co/Wespeaker/wespeaker-voxceleb-resnet34-LM/resolve/f0c48c298fd835726c27956a5d617bad7115627e/voxceleb_resnet34_LM.onnx",
+    "upstream_sha256": "7bb2f06e9df17cdf1ef14ee8a15ab08ed28e8d0ef5054ee135741560df2ec068",
+    "artifact": "https://github.com/k2-fsa/sherpa-onnx/releases/download/speaker-recongition-models/wespeaker_en_voxceleb_resnet34_LM.onnx",
+    "artifact_sha256": "e9848563da86f263117134dfd7ad63c92355b37de492b55e325400c9d9c39012",
+    "conversion": "https://github.com/k2-fsa/sherpa-onnx/blob/1654a3054e0d35f633e4c10c2361fcf3642ad98d/scripts/wespeaker/run.sh",
+    "verification": "ONNX graph SerializeToString byte-identical to pinned official upstream. Sherpa adds metadata only; no retraining. Metadata framework=wespeaker, sample_rate=16000, output_dim=256, normalize_samples=0."
+  },
+  "fixtures": {
+    "author": "Vassil Panayotov, Guoguo Chen, Daniel Povey, Sanjeev Khudanpur; LibriVox readers",
+    "name": "LibriSpeech dev-clean / OpenSLR12",
+    "license": "CC-BY-4.0",
+    "license_source": "https://www.openslr.org/12/",
+    "url": "https://www.openslr.org/resources/12/dev-clean.tar.gz",
+    "changes": "first 1/2/3/5s crops used in memory; no redistributed audio",
+    "archive_sha256": "76f87d090650617fca0cac8f88b9416e0ebf80350acb97b343a85fa903728ab3"
+  }
+}

@@ -3,3 +3,8 @@ result-*
 .direnv
 .DS_Store
 node_modules
+.speaker-id-cache/
+__pycache__/
+.pytest_cache/
+packages/voice-broker/build/
+packages/voice-broker/src/voice_broker/*.so

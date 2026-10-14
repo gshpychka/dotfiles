@@ -1,0 +1,2 @@
+Pinned official upstream graph matches Sherpa artifact exactly; metadata-only adaptation.
+Licensed public fixture archive checksum matches recorded benchmark.

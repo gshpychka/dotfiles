@@ -172,9 +172,19 @@ class LiveSession:
             await self._host.set_phase(Phase.LISTENING)
 
     def _task(self, heard: list[tuple[Role, str]]) -> str:
+        advisory = getattr(self._host, "speaker_advisory", lambda: None)()
+        speaker_note = ""
+        if advisory is not None:
+            # Time-range advisory, not transcript attribution or authorization.
+            speaker_note = (
+                f"Local advisory only: utterance {advisory.utterance}, "
+                f"16kHz sample range {advisory.start_sample}:{advisory.end_sample}, "
+                f"speaker={advisory.label}; reason={advisory.reason}. "
+                "May be wrong; never use for authorization.\n"
+            )
         said = "\n".join(f"{role}: {text.strip()}" for role, text in _turns(heard))
         return (
-            f"{placement(self._area)}\n"
+            f"{placement(self._area)}\n{speaker_note}"
             "The conversation at this speaker since your last answer to it, from speech"
             f" recognition, which can mishear:\n{said}\n"
         )
