@@ -8,16 +8,16 @@
 #   there is no secret to steal and no request to parse. Any process running
 #   as a client user can get that user's token.
 # - Access: only users in my.oidcIssuer.signer.clients. The socket is
-#   restricted to their group, and signer.py checks the list again.
+#   restricted to their group, and the issuer checks the list again.
 # - Key: ES256, generated inside this machine's TPM2, which refuses to export
 #   it or duplicate it to another TPM2. On disk are only the key wrapped by
 #   this TPM2's storage key, which nothing else can load, and the key's random
 #   auth value, sealed with systemd-creds to both the TPM2 and the host key in
 #   /var/lib/systemd: it only decrypts on this machine, booted through its own
 #   Secure Boot chain (PCR 7). Each short-lived, sandboxed minting process
-#   gets these from systemd and has the TPM2 sign (signer.py, via
-#   tpm2-tools). Root on the running machine can sign too, but can't take the
-#   key away, so an attacker's signing ends with their access to the machine.
+#   gets these from systemd and has the TPM2 sign through tpm2-tools. Root on
+#   the running machine can sign too, but can't take the key away, so an
+#   attacker's signing ends with their access to the machine.
 #   Still rotate after a compromise: with copies of the files and the auth
 #   value, any later TPM2 access on the machine is enough to sign again.
 #
@@ -91,22 +91,17 @@ let
     }
   );
 
-  # ruff format owns line width, so flake8's E501 is ignored.
-  issuerTool = pkgs.writers.writePython3Bin unitName {
-    libraries = ps: [ ps.cryptography ];
-    flakeIgnore = [ "E501" ];
-  } (builtins.readFile ./signer.py);
+  issuerTool = lib.getExe' pkgs.oidc-issuer "oidc-issuer";
 
   keygen = pkgs.writeShellApplication {
     name = "oidc-issuer-keygen";
-    text = ''exec ${lib.getExe issuerTool} keygen ${issuerConfig} "$@"'';
+    text = ''exec ${issuerTool} keygen ${issuerConfig} "$@"'';
   };
 
-  oidcToken = pkgs.writers.writePython3Bin "oidc-token" { flakeIgnore = [ "E501" ]; } (
-    lib.replaceStrings [ "@socketPath@" "@issuerUnit@" ] [ socketPath unitName ] (
-      builtins.readFile ./client.py
-    )
-  );
+  oidcToken = pkgs.writeShellApplication {
+    name = "oidc-token";
+    text = ''exec ${lib.getExe' pkgs.oidc-issuer "oidc-token"} --socket ${socketPath} --unit ${unitName} "$@"'';
+  };
 in
 {
   options.my.oidcIssuer.signer = {
@@ -199,7 +194,7 @@ in
             # instances of failed refusals would otherwise pile up in `systemctl --failed`
             unitConfig.CollectMode = "inactive-or-failed";
             serviceConfig = {
-              ExecStart = "${lib.getExe issuerTool} serve ${issuerConfig}";
+              ExecStart = "${issuerTool} serve ${issuerConfig}";
               StandardInput = "socket";
               # logs go to the journal, never down the connection
               StandardOutput = "journal";

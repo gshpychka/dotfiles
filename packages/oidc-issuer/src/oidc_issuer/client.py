@@ -22,10 +22,6 @@ import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 
-# substituted by signer.nix
-SOCKET_PATH = "@socketPath@"
-ISSUER_UNIT = "@issuerUnit@"
-
 # longer than the issuer's RuntimeMaxSec, so a slow issuer is reported, not cut off
 ISSUER_TIMEOUT_SECONDS = 60
 STS_TIMEOUT_SECONDS = 30
@@ -61,33 +57,31 @@ class StsError(Failure):
         self.code = code
 
 
-def fetch_token() -> str:
+def fetch_token(socket_path: str, unit: str) -> str:
     # The issuer identifies this process by its UID; there is nothing to send.
     try:
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as conn:
             conn.settimeout(ISSUER_TIMEOUT_SECONDS)
-            conn.connect(SOCKET_PATH)
+            conn.connect(socket_path)
             chunks = []
             while chunk := conn.recv(4096):
                 chunks.append(chunk)
     except FileNotFoundError:
         raise Failure(
-            f"{SOCKET_PATH} does not exist: the issuer has no active signing key yet "
+            f"{socket_path} does not exist: the issuer has no active signing key yet "
             "(sudo oidc-issuer-keygen, then set my.oidcIssuer.signer.activeKid)"
         ) from None
     except PermissionError:
         raise Failure(
-            f"no access to {SOCKET_PATH}: add this user to my.oidcIssuer.signer.clients "
+            f"no access to {socket_path}: add this user to my.oidcIssuer.signer.clients "
             "(a new group membership applies from the next login)"
         ) from None
     except ConnectionRefusedError:
         raise Failure(
-            f"nothing is listening on {SOCKET_PATH}: is {ISSUER_UNIT}.socket running?"
+            f"nothing is listening on {socket_path}: is {unit}.socket running?"
         ) from None
     if not chunks:
-        raise Failure(
-            f"the issuer answered nothing; see journalctl -u '{ISSUER_UNIT}@*'"
-        )
+        raise Failure(f"the issuer answered nothing; see journalctl -u '{unit}@*'")
     reply = json.loads(b"".join(chunks))
     if "error" in reply:
         raise Failure(f"the issuer refused: {reply['error']}")
@@ -192,6 +186,10 @@ def main() -> int:
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
+    parser.add_argument("--socket", required=True, help="the issuer's socket")
+    parser.add_argument(
+        "--unit", required=True, help="the issuer's systemd unit, for error hints"
+    )
     commands = parser.add_subparsers(dest="command")
     commands.add_parser("token", help="print a fresh token (the default)")
     commands.add_parser("claims", help="print a fresh token's claims")
@@ -216,7 +214,7 @@ def main() -> int:
     args = parser.parse_args()
 
     try:
-        token = fetch_token()
+        token = fetch_token(args.socket, args.unit)
         if args.command == "claims":
             print(json.dumps(decode_claims(token), indent=2))
         elif args.command == "aws":

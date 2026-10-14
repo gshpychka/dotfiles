@@ -41,8 +41,8 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.utils import decode_dss_signature
 
-# ES256 is ECDSA over P-256 with SHA-256, matching the JWKS in
-# issuer.nix and the TPM2 key below.
+# ES256 is ECDSA over P-256 with SHA-256, matching the published JWKS and the
+# TPM2 key below.
 ALGORITHM = "ES256"
 CURVE = ec.SECP256R1
 SIGNATURE_HASH = hashes.SHA256
@@ -89,7 +89,7 @@ class KeyFiles(TypedDict):
 
 
 class Config(TypedDict):
-    """Written by signer.nix."""
+    """The issuer's settings: the JSON file both commands take."""
 
     name: str
     issuer: str
