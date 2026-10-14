@@ -77,7 +77,7 @@ def fetch_token() -> str:
         ) from None
     except PermissionError:
         raise Failure(
-            f"no access to {SOCKET_PATH}: add this user to my.oidcIssuer.clients "
+            f"no access to {SOCKET_PATH}: add this user to my.oidcIssuer.signer.clients "
             "(a new group membership applies from the next login)"
         ) from None
     except ConnectionRefusedError:

@@ -282,7 +282,7 @@ def serve(config: Config) -> int:
     caller = f"{user or f'uid {uid}'} ({describe_process(pid)})"
 
     if user is None or user not in config["clients"]:
-        log(f"refused {caller}: not in my.oidcIssuer.clients")
+        log(f"refused {caller}: not in my.oidcIssuer.signer.clients")
         reply(conn, {"error": f"{user or f'uid {uid}'} is not an OIDC issuer client"})
         return 0
 
