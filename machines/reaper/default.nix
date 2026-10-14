@@ -130,7 +130,7 @@
     signer = {
       enable = true;
       # kid printed by `sudo oidc-issuer-keygen`; null until its key is published
-      activeKid = null;
+      activeKid = "0PHAEBXyufo1YMYRB-k9WKjmXtTAYHbBgBo419SzW2k";
       clients = [ config.my.user ];
     };
     publisher.enable = true;

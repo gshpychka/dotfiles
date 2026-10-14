@@ -128,7 +128,13 @@ in
     # Paste entries printed by `sudo oidc-issuer-keygen` on the signing machine
     # (reaper) here. The publishing machine's tunnel only runs once there is
     # one (machines/reaper/cloudflare-tunnel.nix).
-    my.oidcIssuer.publicKeys = [ ];
+    my.oidcIssuer.publicKeys = [
+      {
+        kid = "0PHAEBXyufo1YMYRB-k9WKjmXtTAYHbBgBo419SzW2k";
+        x = "-4RRmQGoX9GxrfuAf5op_dH1VOwerEzV9gG0wNumCik";
+        y = "nxQwKSRmPlAymGmE32Ly_CB-z6J3hgFGdi2k6tzcmVk";
+      }
+    ];
 
     assertions = [
       {
