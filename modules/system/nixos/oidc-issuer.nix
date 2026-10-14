@@ -33,7 +33,8 @@
 #   (modules/common/oidc-issuer.nix) and deploy the publisher
 #   wait my.oidcIssuer.jwksCacheSeconds so relying parties' cached key sets
 #   include it, then set my.oidcIssuer.signer.activeKid to the printed kid
-#   and deploy the signer
+#   and deploy the signer (for the very first key the wait can be skipped:
+#   until infra/aws creates the AWS provider, nothing has cached a key set)
 #   after a rotation, once my.oidcIssuer.signer.tokenLifetime has passed, drop
 #   the old entry and delete /var/lib/oidc-issuer/<old kid>
 #
