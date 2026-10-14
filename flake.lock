@@ -611,11 +611,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1791985233,
-        "narHash": "sha256-hqhizBpO2UB/JPzqO6VS1C2HKSbCsql1G2Bzx0v+fwU=",
+        "lastModified": 1791986399,
+        "narHash": "sha256-clpiRv9w9LzJ0hIZqJ28vK9bfTFgsuhsa9gj3a8us60=",
         "owner": "gshpychka",
         "repo": "oidc-issuer",
-        "rev": "6e00371663b7289a952ced4b6276c1c959cf495c",
+        "rev": "d44c044e5c38f55eede5488182192ba661bf72aa",
         "type": "github"
       },
       "original": {
