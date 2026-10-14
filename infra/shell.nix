@@ -46,9 +46,13 @@ pkgs.mkShell {
     export TF_VAR_gcp_project_id="${values.gcpProjectId}"
     export TF_VAR_domain_name="${values.domain}"
     export TF_STATE_BUCKET="${values.gcpTfStateBucket}"
-    # like gcloud's, the AWS login lives under infra/.home, apart from any
-    # other AWS profiles on the machine; sign in once with `aws configure sso`
-    # (or `aws configure`) against the personal account infra/aws manages
+    # AWS profiles live under infra/.home, apart from any other AWS profiles
+    # on the machine; sign in once with `aws configure sso` against the
+    # personal account infra/aws manages. Only the profile files move: the
+    # CLI and Terraform's AWS SDK keep the SSO token and credential caches in
+    # ~/.aws/{sso,cli}/cache, so give the SSO session a name no other config
+    # uses. (Moving HOME instead would also move sops' keys.) What keeps
+    # Terraform off any other account is infra/aws's allowed_account_ids.
     export AWS_CONFIG_FILE=$REPO_ROOT/infra/.home/.aws/config
     export AWS_SHARED_CREDENTIALS_FILE=$REPO_ROOT/infra/.home/.aws/credentials
     export TF_VAR_user="${values.user}"
