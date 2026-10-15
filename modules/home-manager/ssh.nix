@@ -1,7 +1,6 @@
 {
   config,
   lib,
-  pkgs,
   osConfig,
   ...
 }:
@@ -12,12 +11,9 @@ in
 {
   options.my.ssh = {
     enable = lib.mkEnableOption "SSH client configuration";
-    opkssh.enable = lib.mkEnableOption "opkssh client, for SSH login with a Google identity";
   };
 
   config = lib.mkIf cfg.enable {
-    home.packages = lib.optional cfg.opkssh.enable pkgs.opkssh;
-
     programs = {
       ssh = {
         enable = true;

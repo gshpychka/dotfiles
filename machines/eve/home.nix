@@ -31,10 +31,7 @@
             enable = true;
             ageIdentity = "1password";
           };
-          ssh = {
-            enable = true;
-            opkssh.enable = true;
-          };
+          ssh.enable = true;
           tmux.enable = true;
           tools.enable = true;
           zsh.enable = true;
