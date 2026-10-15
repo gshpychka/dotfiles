@@ -42,8 +42,6 @@
     ./tty.nix
     ./bay.nix
     ./twingate.nix
-    ./oidc-issuer.nix
-    ./cloudflare-tunnel.nix
     ./rolesanywhere.nix
     # ./comfyui.nix
   ];
