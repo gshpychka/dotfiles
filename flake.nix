@@ -294,6 +294,10 @@
               inherit inputs;
               pkgs = nixpkgs.legacyPackages.x86_64-linux;
             };
+            rolesanywhere = import ./tests/rolesanywhere.nix {
+              inherit inputs;
+              pkgs = nixpkgs.legacyPackages.x86_64-linux;
+            };
           };
         };
 

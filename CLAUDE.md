@@ -1,7 +1,7 @@
 # Nix Dotfiles Configuration
 
 ## Overview
-Personal dotfiles managed with Nix flakes for multiple machines (eve, harbor, reaper, hoard, buoy) plus a bootable installer ISO. Cloud infrastructure for the buoy VPS, plus the AWS side of reaper's OIDC token issuer, is managed with Terraform under `infra/`.
+Personal dotfiles managed with Nix flakes for multiple machines (eve, harbor, reaper, hoard, buoy) plus a bootable installer ISO. Cloud infrastructure for the buoy VPS, plus the AWS side of reaper's IAM Roles Anywhere CA, is managed with Terraform under `infra/`.
 
 ## Architecture
 - `machines/` - Machine-specific configurations
@@ -12,7 +12,7 @@ Personal dotfiles managed with Nix flakes for multiple machines (eve, harbor, re
 - `packages/` - Custom package definitions
 - `secrets/` - SOPS encrypted secrets
 - `tests/` - NixOS VM tests, exposed as flake checks
-- `infra/` - Terraform for cloud infrastructure (GCP VM for buoy, Cloudflare DNS and tunnels, AWS IAM trust for the OIDC token issuer) and the bootstrap GCE image under `infra/nixos/`
+- `infra/` - Terraform for cloud infrastructure (GCP VM for buoy, Cloudflare DNS and tunnels, the IAM Roles Anywhere trust anchor and roles for reaper's CA) and the bootstrap GCE image under `infra/nixos/`
 - `scripts/` - Artifacts for devices outside the flake, one folder per device with a `runbook.md` as its deployment path: `mudi/` (GL.iNet travel router), `kodi/` (CoreELEC Kodi box) and `voice-pe/` (kitchen Home Assistant Voice PE firmware)
 
 ## Standards
