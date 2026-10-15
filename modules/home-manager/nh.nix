@@ -20,7 +20,7 @@ in
   config = lib.mkIf cfg.enable {
     programs.nh = {
       enable = true;
-      flake = "${config.home.homeDirectory}/dotfiles";
+      flake = "${config.home.homeDirectory}/realm";
       clean = {
         enable = true;
         extraArgs = "--keep 5 --keep-since 5d --no-direnv";

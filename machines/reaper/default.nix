@@ -17,7 +17,7 @@
 #         nix shell nixpkgs#sops nixpkgs#gnupg -c find secrets -type f -exec sops updatekeys -y {} \;
 #         git commit -am rekey && git push
 # sbctl create-keys && mkdir -p /mnt/var/lib && cp -a /var/lib/sbctl /mnt/var/lib/
-# nixos-install --flake github:gshpychka/dotfiles#reaper && reboot
+# nixos-install --flake github:gshpychka/realm#reaper && reboot
 # sbctl enroll-keys --microsoft --ignore-immutable   # BIOS in Setup Mode
 {
   pkgs,

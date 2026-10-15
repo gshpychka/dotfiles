@@ -3,7 +3,7 @@
 # 2. Sign into the App Store.
 # 3. xcode-select --install
 # 4. sh <(curl -L https://nixos.org/nix/install)
-# 5. git clone https://github.com/gshpychka/dotfiles.git ~/dotfiles && cd ~/dotfiles
+# 5. git clone https://github.com/gshpychka/realm.git ~/realm && cd ~/realm
 # 6. sudo ssh-keygen -t ed25519 -N "" -f /etc/ssh/ssh_host_ed25519_key
 # 7. set .sops.yaml eve_host: nix-shell -p ssh-to-age --run 'ssh-to-age -i /etc/ssh/ssh_host_ed25519_key.pub'
 # 8. nix shell nixpkgs#sops nixpkgs#gnupg -c find secrets -type f -exec sops updatekeys -y {} \;

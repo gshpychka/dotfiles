@@ -6,7 +6,7 @@
 # on eve: set .sops.yaml harbor_host
 #         nix shell nixpkgs#sops nixpkgs#gnupg -c find secrets -type f -exec sops updatekeys -y {} \;   # YubiKey plugged in
 #         git commit -am rekey && git push
-# sudo nixos-rebuild switch --flake github:gshpychka/dotfiles#harbor
+# sudo nixos-rebuild switch --flake github:gshpychka/realm#harbor
 {
   config,
   ...

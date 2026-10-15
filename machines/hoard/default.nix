@@ -13,7 +13,7 @@
 # on eve: set .sops.yaml hoard_host
 #         nix shell nixpkgs#sops nixpkgs#gnupg -c find secrets -type f -exec sops updatekeys -y {} \;   # YubiKey plugged in
 #         git commit -am rekey && git push
-# nixos-install --flake github:gshpychka/dotfiles#hoard && reboot
+# nixos-install --flake github:gshpychka/realm#hoard && reboot
 # encrypted media drives + TPM2 enrollment: see filesystems.nix
 # TODO: complete bootstrap doc (including arr stack)
 {

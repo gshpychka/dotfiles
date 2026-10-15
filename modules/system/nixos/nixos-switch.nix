@@ -135,7 +135,7 @@ in
 
     repository = lib.mkOption {
       type = lib.types.str;
-      default = "https://github.com/gshpychka/dotfiles.git";
+      default = "https://github.com/gshpychka/realm.git";
       description = "Git URL of the canonical repository of this configuration, whose main holds the commits `nixos-switch` takes.";
     };
   };

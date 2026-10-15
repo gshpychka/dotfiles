@@ -1,7 +1,7 @@
-# Nix Dotfiles Configuration
+# realm
 
 ## Overview
-Personal dotfiles managed with Nix flakes for multiple machines (eve, harbor, reaper, hoard, buoy) plus a bootable installer ISO. Cloud infrastructure for the buoy VPS is managed with Terraform under `infra/`.
+Personal Nix flake configuration for multiple machines (eve, harbor, reaper, hoard, buoy) plus a bootable installer ISO.
 
 ## Architecture
 - `machines/` - Machine-specific configurations
