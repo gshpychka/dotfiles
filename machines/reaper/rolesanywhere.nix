@@ -8,12 +8,11 @@
   my.rolesAnywhere = {
     enable = true;
     clients = [ config.my.user ];
-    # Registering reaper's CA with AWS, the first time and whenever
-    # `journalctl -u rolesanywhere-ca` says it was replaced:
+    # Registering a new CA with AWS, whenever `journalctl -u rolesanywhere-ca`
+    # says it was replaced:
     #   ssh reaper cat /var/lib/rolesanywhere/current/ca.pem > machines/reaper/rolesanywhere-ca.pem
-    #   git add it, and set caCertificate = ./rolesanywhere-ca.pem (first time only)
     #   in the infra shell: cd infra/aws && tg apply
     #   deploy reaper
-    caCertificate = null;
+    caCertificate = ./rolesanywhere-ca.pem;
   };
 }
