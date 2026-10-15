@@ -1,20 +1,33 @@
+import {execFile} from 'node:child_process';
 import {definePluginEntry} from 'openclaw/plugin-sdk/plugin-entry';
-import {registerControl} from './core.mjs';
-import {createTransport} from './transport.mjs';
-import {registerCompletionService} from './service.mjs';
-export default definePluginEntry({id:'nixos-control',name:'NixOS Control',description:'Owner-authorized fixed hoard NixOS controller with durable receipts.',
- register(api){
-  const transport=createTransport();registerControl(api,transport);
-  api.registerTool({contextVersion:2,create(context){
-   if(context.senderIsOwner!==true||typeof context.assertInvocationCurrent!=='function'||context.sandboxed)return null;
-   return {name:'nixos_control_status',label:'NixOS Control Status',description:'Read the durable receipt of an admitted NixOS operation.',
-    parameters:{type:'object',additionalProperties:false,required:['requestId'],properties:{requestId:{type:'string',minLength:32,maxLength:32,pattern:'^[0-9a-f]{32}$'}}},
-    async execute(_id,p){if(Object.keys(p).join(',')!=='requestId')throw Error('Invalid status request');
-     const receipt=await transport.status(p.requestId,context.assertInvocationCurrent);
-     context.assertInvocationCurrent();
-     // Root receipts are private to owner invocations; do not disclose in other contexts.
-     return {content:[{type:'text',text:JSON.stringify(receipt)}],details:{receipt}};
-    }};
-  }},{name:'nixos_control_status',optional:true});
-  registerCompletionService(api,transport);
- }});
+
+export default definePluginEntry({
+  id: 'nixos-control', name: 'NixOS Control',
+  description: 'Owner-only shim for the existing nixos-switch controller.',
+  register(api) {
+    api.registerTool({contextVersion: 2, create(context) {
+      if (context.senderIsOwner !== true || context.sandboxed ||
+          typeof context.assertInvocationCurrent !== 'function') return null;
+      return {
+        name: 'nixos_control', label: 'NixOS Control', executionMode: 'sequential',
+        description: 'Start a detached hoard build or switch. Admission is not completion; inspect journalctl -u nixos-control -u nixos-switch. Do not automatically retry an ambiguous admission.',
+        parameters: {type: 'object', additionalProperties: false,
+          required: ['operation', 'revision'], properties: {
+            operation: {type: 'string', enum: ['build', 'switch']},
+            revision: {type: 'string', pattern: '^[0-9a-f]{40}$'},
+          }},
+        execute(_id, {operation, revision}) {
+          return new Promise((resolve, reject) => {
+            // No awaited preparation between the host guard and fixed dispatch.
+            context.assertInvocationCurrent();
+            execFile('/run/wrappers/bin/sudo', ['-n', '--', '@HELPER@', operation, revision],
+              {encoding: 'utf8', timeout: 20000, maxBuffer: 65536}, (error, stdout, stderr) => {
+                if (error) return reject(new Error('Admission failed or unknown; inspect the journal before retrying. ' + stderr, {cause: error}));
+                resolve({content: [{type: 'text', text: 'Submitted, not completed. ' + stdout + stderr + 'Follow: journalctl -u nixos-control -u nixos-switch --no-pager'}]});
+              });
+          });
+        },
+      };
+    }}, {name: 'nixos_control', optional: true});
+  },
+});
