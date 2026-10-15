@@ -675,6 +675,26 @@
         "type": "github"
       }
     },
+    "rolesanywhere": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1792067795,
+        "narHash": "sha256-K2xMco9zVK4cmvvyFJ9p5rvZXPSlHIIbLvNW3h7vsHE=",
+        "owner": "gshpychka",
+        "repo": "rolesanywhere",
+        "rev": "35fc9321542577a2f933dc5b2670724df6342dbe",
+        "type": "github"
+      },
+      "original": {
+        "owner": "gshpychka",
+        "repo": "rolesanywhere",
+        "type": "github"
+      }
+    },
     "root": {
       "inputs": {
         "bay": "bay",
@@ -695,6 +715,7 @@
         "nixos-stable": "nixos-stable",
         "nixpkgs": "nixpkgs_4",
         "pituitary": "pituitary",
+        "rolesanywhere": "rolesanywhere",
         "sops-nix": "sops-nix"
       }
     },

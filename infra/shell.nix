@@ -1,6 +1,7 @@
 {
   nixpkgs,
   system,
+  rolesanywhere,
 }:
 let
   pkgs = import nixpkgs {
@@ -56,5 +57,9 @@ pkgs.mkShell {
     export AWS_CONFIG_FILE=$REPO_ROOT/infra/.home/.aws/config
     export AWS_SHARED_CREDENTIALS_FILE=$REPO_ROOT/infra/.home/.aws/credentials
     export TF_VAR_user="${values.user}"
+    # the rolesanywhere revision flake.lock pins, whose Terraform infra/aws
+    # fetches with git: a copy from the read-only store leaves terragrunt
+    # unable to write its manifest into it
+    export ROLESANYWHERE_REV="${rolesanywhere.rev}"
   '';
 }

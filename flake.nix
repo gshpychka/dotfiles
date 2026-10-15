@@ -73,6 +73,10 @@
       url = "github:NixOS/nixos-hardware/master";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    rolesanywhere = {
+      url = "github:gshpychka/rolesanywhere";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     # auto-imports a directory tree of modules
     import-tree.url = "github:vic/import-tree";
   };
@@ -290,10 +294,6 @@
               inherit inputs;
               pkgs = nixpkgs.legacyPackages.x86_64-linux;
             };
-            rolesanywhere = import ./tests/rolesanywhere.nix {
-              inherit inputs;
-              pkgs = nixpkgs.legacyPackages.x86_64-linux;
-            };
           };
         };
 
@@ -363,7 +363,10 @@
                   fi
                 '';
               };
-              infra = import ./infra/shell.nix { inherit nixpkgs system; };
+              infra = import ./infra/shell.nix {
+                inherit nixpkgs system;
+                inherit (inputs) rolesanywhere;
+              };
             };
         in
         lib.genAttrs systems mkShell;

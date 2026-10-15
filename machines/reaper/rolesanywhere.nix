@@ -1,11 +1,14 @@
 # AWS credentials for reaper's users through IAM Roles Anywhere
-# (modules/system/nixos/rolesanywhere.nix). infra/aws trusts reaper's CA and
-# holds the roles; its outputs are the ARNs for ~/.aws/config:
+# (github:gshpychka/rolesanywhere). infra/aws trusts reaper's CA and holds the
+# roles; its outputs are the ARNs for ~/.aws/config:
 #   [profile reaper]
-#   credential_process = rolesanywhere-credentials --trust-anchor-arn <trust_anchor_arn> --profile-arn <profile_arn> --role-arn <test_role_arn>
-{ config, ... }:
+#   region = us-east-1
+#   credential_process = rolesanywhere-credentials --trust-anchor-arn <trust_anchor_arn> --profile-arn <profile_arn> --role-arn <role ARN>
+{ config, inputs, ... }:
 {
-  my.rolesAnywhere = {
+  imports = [ inputs.rolesanywhere.nixosModules.default ];
+
+  services.rolesanywhere = {
     enable = true;
     clients = [ config.my.user ];
     # Registering a new CA with AWS, whenever `journalctl -u rolesanywhere-ca`
