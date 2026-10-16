@@ -258,3 +258,9 @@ Rollback must restore the original effective ExecStart pair, not the historical
 system closure above: old broker z76j1mi33p6abl2qwlmwaj0si47220n6 and old config
 2psfk1gha2zrgykyw8qclgjzzr0fzhky, preserving all other service settings/credentials.
 The final compatible package is built, **not activated**.
+
+Final independent read-only QA signed off code 5ec47f9 with no actionable
+blockers, including compatibility, replay CLI/factory and final chat request
+budget. Evidence: /var/lib/openclaw/workspace/tmp/voice-ha-final-qa-20261016.md.
+Chat alone uses temperature=0/max_completion_tokens=32/store=false; do not infer
+those request controls apply to Responses, Decisions or Jev adapters.
