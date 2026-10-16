@@ -14,6 +14,7 @@ from voice_broker.assist import HeardSpeech, HomeTurn, Outcome, ToolUse, Unavail
 from voice_broker.config import Live
 from voice_broker.live import LiveSession, Parallel
 from voice_broker.openclaw import ConsultFailed
+from voice_broker.protocol import Phase
 from voice_broker.routing import RouteDecision, RouteRequest
 
 
@@ -45,9 +46,16 @@ class Ears:
         self.events.put_nowait(HeardSpeech(turn))
 
     def did(
-        self, turn: int, outcome: Outcome, speech: str = "", tools=(), heard="turn on the kitchen light", reason=""
+        self,
+        turn: int,
+        outcome: Outcome,
+        speech: str = "",
+        tools=(),
+        heard="turn on the kitchen light",
+        reason="",
+        asks=False,
     ):
-        self.events.put_nowait(HomeTurn(turn, outcome, speech, heard, tuple(tools), 1000, 9000, reason))
+        self.events.put_nowait(HomeTurn(turn, outcome, speech, heard, tuple(tools), 1000, 9000, reason, asks))
 
 
 class Conn(Connection):
@@ -351,9 +359,12 @@ def test_the_decisions_shadow_only_logs_even_when_it_fails(caplog):
     # Its "ha" changes nothing: the agent answered both.
     assert told(conn) == [("dlg_1", "Rain."), ("dlg_2", "Sun.")]
     assert [r.text for r in requests] == ["Will it rain?", "Will it be sunny?"]
-    assert "decisions shadow: ha" in caplog.text
+    assert "shadow classification: ha" in caplog.text
     # A failure is logged by class, never with its message, which can quote speech.
-    assert "decisions shadow failed: RuntimeError" in caplog.text and "sunny" not in caplog.text.split("failed")[1][:40]
+    assert (
+        "shadow classification failed: RuntimeError" in caplog.text
+        and "sunny" not in caplog.text.split("failed")[1][:40]
+    )
 
 
 def test_a_turn_finishing_after_the_conversation_is_kept_until_done():
@@ -372,3 +383,30 @@ def test_a_turn_finishing_after_the_conversation_is_kept_until_done():
         assert ears.finishing not in live._FINISHING
 
     asyncio.run(main())
+
+
+def test_a_silent_home_assistant_result_after_playback_leaves_the_speaker_listening():
+    ears, agent = Ears(), Agent()
+    host = Host()
+
+    async def script(conn: Conn, session: LiveSession) -> None:
+        # Small talk: GPT-Live answers itself while Home Assistant still works on the same words.
+        ears.hears(1)
+        await settle()
+        ears.did(1, Outcome.ABSTAINED)
+
+    asyncio.run(run(script, ears, agent, host=host))
+    assert host.phases and host.phases[-1] == Phase.LISTENING
+
+
+def test_an_action_with_a_follow_up_question_is_told_as_the_question():
+    ears, agent = Ears(), Agent()
+
+    async def script(conn: Conn, session: LiveSession) -> None:
+        ears.hears(1)
+        ears.did(1, Outcome.ACTED, "Done. Anything else?", tools=ON, asks=True)
+
+    conn = asyncio.run(run(script, ears, agent))
+    (said,) = [content for _, content in told(conn)]
+    assert said.startswith("Home Assistant asks: Done. Anything else?")
+    assert "don't delegate it" in said

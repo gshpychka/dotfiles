@@ -32,14 +32,23 @@ the household runs; the paths below are under homeassistant/components/assist_pi
   only before `intent-start`, because until then nothing has acted. From
   `intent-start` on, a run is waited out and never cancelled or retried: a tool
   call that started finishes even when its run is cancelled (conversation/chat_log.py).
+  Nor is a run cancelled once Home Assistant has its whole utterance (stt-vad-end):
+  the intent stage may already be starting.
+- Lost audio: a backlog past MAX_BACKLOG_S drops its oldest audio. Speech that may
+  have lost its start or middle to such a gap is never acted on: its run is
+  cancelled at stt-vad-start, and the gap moves past it, so the rest of the same
+  utterance is cancelled the same way (GAP_GUARD_S).
 - Echo: speech recognition gets no audio while the assistant is audible, as on
   Home Assistant's own satellites, so GPT-Live's echo cannot become a command;
-  see feed().
+  see feed(). A barge-in passes the last held second on, but only a transcript
+  that comes BARGE_IN_GRACE_S into the assistant's speech counts as one: an
+  earlier one trails the user's previous utterance.
 """
 
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import enum
 import json
 import logging
@@ -67,6 +76,15 @@ _RUN_DEADLINE_S = RUN_TIMEOUT_S + 5
 IDLE_RESTART_S = 6.0
 # Audio kept for the next run when an idle run restarts: speech may be starting in it.
 RESTART_KEEP_S = 1.0
+# Once IDLE_RESTART_S has been sent without speech, the sender waits this long for Home Assistant's
+# verdict on it before restarting: a backlog goes out at socket speed, far ahead of stt-vad-start.
+IDLE_SETTLE_S = 1.0
+# Wall time after which a run that has heard no speech starts afresh, inside Home Assistant's own
+# RUN_TIMEOUT_S, which is wall time too: while the assistant is audible no audio is sent at all.
+IDLE_RUN_AGE_S = RUN_TIMEOUT_S - 15.0
+# Speech Home Assistant detects within this much audio after a gap in the queue may be the rest of an
+# utterance whose start was dropped; such a run is cancelled before it can act on part of the utterance.
+GAP_GUARD_S = 1.0
 # Audio queued for Home Assistant at most. A connection this far behind drops the oldest,
 # and a run that loses audio of its utterance is cancelled before it can act on part of it.
 MAX_BACKLOG_S = 10.0
@@ -76,6 +94,13 @@ BARGE_IN_WAIT_S = 0.5
 # Audio from the end of the assistant's speech that a barge-in passes on. It holds
 # the user's first words, and the last of the echo-cancelled assistant audio.
 BARGE_IN_KEEP_S = 1.0
+# GPT-Live's transcript trails the speech, so a transcript this soon after the assistant became audible
+# is taken for the end of the user's previous utterance, not for speech over the assistant.
+BARGE_IN_GRACE_S = 1.5
+# Before a run is cancelled, messages already on their way are read for this long: one may be intent-start.
+_DRAIN_S = 0.2
+# Speech the segmenter needs before stt-vad-start (vad.py VoiceCommandSegmenter.speech_seconds).
+_MIN_SPEECH_MS = 300
 # Connecting, authenticating and resolving the pipeline.
 _SETUP_TIMEOUT_S = 10.0
 # Waiting for Home Assistant to confirm a command.
@@ -130,6 +155,8 @@ class HomeTurn:
     speech_end: int | None = None
     # A Home Assistant error code or the broker's own reason; never a message.
     reason: str = ""
+    # Its speech is a question Home Assistant waits on, whatever else the turn did.
+    asks: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -180,6 +207,8 @@ class _Restart:
     keep: int
     # Reported as a failed turn when set; an idle restart is not a turn.
     reason: str = ""
+    # The kept audio may continue an utterance whose start is gone: a gap is marked before it.
+    gap: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -192,6 +221,8 @@ class _Frame:
 @dataclass
 class _Run:
     turn: int
+    # The listener's clock when the run was started.
+    started: float = 0.0
     # (run audio offset in samples, frame) of every frame sent, in order.
     sent: list[tuple[int, _Frame]] = field(default_factory=list)
     sent_samples: int = 0
@@ -266,10 +297,14 @@ class HomeListener:
         self._queue: deque[_Frame] = deque()
         self._queued = 0
         self._wake = asyncio.Event()
-        # Audio was dropped from the queue since the run in progress started.
+        # Audio was dropped from the queue since the speech of the run in progress was checked against it.
         self._overrun = False
+        # Conversation sample index of the first audio after the newest gap in what Home Assistant
+        # hears: audio dropped from the queue, or the rest of an utterance a run was cancelled for.
+        self._gap_at: int | None = None
         # The assistant is audible: audio is held, not sent.
         self._holding = False
+        self._holding_since = 0.0
         self._held: deque[_Frame] = deque()
         self._held_samples = 0
         # The assistant stopped being audible: audio waits until a barge-in is ruled in or out.
@@ -294,7 +329,12 @@ class HomeListener:
         self._next_index += len(pcm)
         if audible:
             if not self._holding:
+                if self._deciding_until is not None:
+                    # The assistant speaks again before the last pause was decided: what the
+                    # pause held was heard while it was silent, so it goes on.
+                    self._decide()
                 self._holding = True
+                self._holding_since = self._clock()
                 self._barged_in = False
                 self._held.clear()
                 self._held_samples = 0
@@ -316,6 +356,10 @@ class HomeListener:
 
     def user_heard(self) -> None:
         """GPT-Live heard the user speak; over the assistant, while audio is held."""
+        if self._clock() - self._holding_since < BARGE_IN_GRACE_S:
+            # Most likely the transcript of what the user said before the assistant began: letting it
+            # count would hand the assistant's own echo to speech recognition.
+            return
         if self._holding or self._deciding_until is not None:
             self._barged_in = True
             if self._deciding_until is not None:
@@ -341,7 +385,29 @@ class HomeListener:
         while self._queued > MAX_BACKLOG_S * MIC_RATE:
             self._queued -= len(self._queue.popleft().pcm)
             self._overrun = True
+            self._gap_at = self._queue[0].index
         self._wake.set()
+
+    def _gap_ahead(self) -> None:
+        """Marks a gap before the audio not yet sent: what comes next may continue a cut utterance."""
+        self._gap_at = self._queue[0].index if self._queue else self._next_index
+
+    def _cut(self, run: _Run) -> bool:
+        """Whether `run`'s speech may have lost its start or its middle to a gap."""
+        if self._gap_at is None or not run.sent:
+            return False
+        start = run.speech_start if run.speech_start is not None else run.sent[0][1].index
+        return start - self._gap_at < GAP_GUARD_S * MIC_RATE
+
+    def _past_speech_start(self, run: _Run, reason: str = "") -> _Restart:
+        """Cancels a run whose speech may be cut, keeping what it sent from that speech's detection on.
+
+        The kept audio may be more of the same utterance, so a gap goes before it; or a later
+        utterance, which is not lost. It moves at least _MIN_SPEECH_MS on each time, so the
+        rest of a long utterance is cancelled piece by piece until a pause.
+        """
+        start_ms = max(run.vad_start_ms or 0, _MIN_SPEECH_MS)
+        return _Restart(max(0, run.sent_samples - start_ms * _SAMPLES_PER_MS), reason, gap=True)
 
     def _requeue(self, frames: list[_Frame]) -> None:
         """Audio a run did not use, back at the front of the queue, in order."""
@@ -394,6 +460,14 @@ class HomeListener:
                 if not await self._lost(type(e).__name__, reconnects):
                     return
                 reconnects += 1
+            except Exception as e:  # a bug must not leave the conversation waiting on a turn
+                log.exception("home assistant listener failed")
+                run, self._run = self._run, None
+                if run is not None:
+                    # Uncertain once its intent stage began: _turn decides, from what the run reached.
+                    self._finish(run, f"internal {type(e).__name__}")
+                self.events.put_nowait(Unavailable("internal error"))
+                return
             finally:
                 await ws.close()
 
@@ -430,7 +504,10 @@ class HomeListener:
 
     async def _resolve_pipeline(self, ws: Any) -> str:
         result = await self._command(ws, {"type": "assist_pipeline/pipeline/list"})
-        matches = [p.get("id") for p in result["pipelines"] if p.get("name") == self._pipeline_name]
+        pipelines = result.get("pipelines") if isinstance(result, dict) else None
+        if not isinstance(pipelines, list):
+            raise _Unusable("pipeline list without pipelines")
+        matches = [p.get("id") for p in pipelines if isinstance(p, dict) and p.get("name") == self._pipeline_name]
         if len(matches) != 1 or not isinstance(matches[0], str):
             raise _Unusable(f"{len(matches)} pipelines named {self._pipeline_name!r}")
         return matches[0]
@@ -455,7 +532,7 @@ class HomeListener:
 
     async def _one_run(self, ws: Any) -> None:
         self._turns += 1
-        run = _Run(self._turns)
+        run = _Run(self._turns, self._clock())
         run_id = self._id()
         command: dict[str, Any] = {
             "id": run_id,
@@ -470,14 +547,15 @@ class HomeListener:
         if self._conversation_id is not None:
             command["conversation_id"] = self._conversation_id
         self._run = run
-        self._overrun = False
         restart: asyncio.Future[_Restart] = asyncio.get_running_loop().create_future()
         sender: asyncio.Task[None] | None = None
         await ws.send(json.dumps(command))
         try:
             async with asyncio.timeout(_RUN_DEADLINE_S):
                 while True:
-                    message = await _next(ws, None if run.intent_started else restart)
+                    # Past the end of its audio, Home Assistant may start the intent stage any moment, and an
+                    # intent stage under way is never cancelled: the run is waited out.
+                    message = await _next(ws, None if run.intent_started or run.audio_done else restart)
                     if message is None:
                         await _stopped(sender)
                         sender = None
@@ -490,8 +568,10 @@ class HomeListener:
                             # A pipeline deleted since it was resolved, or a run refused outright.
                             raise _Unusable(f"run refused: {(message.get('error') or {}).get('code')}")
                         continue
-                    event = message.get("event") or {}
-                    kind, data = event.get("type"), event.get("data") or {}
+                    event = message.get("event")
+                    event = event if isinstance(event, dict) else {}
+                    data = event.get("data")
+                    kind, data = event.get("type"), data if isinstance(data, dict) else {}
                     if kind == "run-start":
                         handler = (data.get("runner_data") or {}).get("stt_binary_handler_id")
                         if not isinstance(handler, int) or not 0 <= handler <= 255:
@@ -501,6 +581,20 @@ class HomeListener:
                     if kind == "run-end":
                         break
                     self._on_event(run, kind, data)
+                    if kind == "stt-vad-start" and not run.intent_started:
+                        if self._cut(run):
+                            # Never acted on. An utterance that lost its middle is a turn that did nothing;
+                            # the rest of one whose start is gone is no turn of its own.
+                            assert self._gap_at is not None
+                            lost_middle = run.speech_start is not None and run.speech_start <= self._gap_at
+                            await _stopped(sender)
+                            sender = None
+                            reason = "audio backlog" if lost_middle else ""
+                            await self._restart(ws, run, run_id, self._past_speech_start(run, reason))
+                            return
+                        # Audio dropped before this speech began is no part of it.
+                        self._overrun = False
+                        self.events.put_nowait(HeardSpeech(run.turn))
                     if kind == "stt-vad-end" and run.vad_start_ms is None and not run.intent_started:
                         # The segmenter timed out without speech: never let Whisper's take on silence act.
                         await _stopped(sender)
@@ -527,6 +621,8 @@ class HomeListener:
         """
         await ws.send(json.dumps({"id": self._id(), "type": "unsubscribe_events", "subscription": run_id}))
         self._requeue(run.sent_from(max(0, run.sent_samples - restart.keep)))
+        if restart.gap:
+            self._gap_ahead()
         self._run = None
         if restart.reason:
             self._finish(run, restart.reason)
@@ -536,7 +632,6 @@ class HomeListener:
             case "stt-vad-start":
                 run.vad_start_ms = _ms(data)
                 run.speech_start = run.index_at(run.vad_start_ms)
-                self.events.put_nowait(HeardSpeech(run.turn))
             case "stt-vad-end":
                 run.vad_end_ms = _ms(data)
                 run.speech_end = run.index_at(run.vad_end_ms)
@@ -564,14 +659,24 @@ class HomeListener:
 
     async def _send_audio(self, ws: Any, run: _Run, handler: int, restart: asyncio.Future[_Restart]) -> None:
         prefix = bytes([handler])
+        idle = _Restart(int(RESTART_KEEP_S * MIC_RATE))
         while not self._stopping:
+            age = self._clock() - run.started
+            if run.vad_start_ms is None and age >= IDLE_RUN_AGE_S:
+                restart.set_result(idle)
+                return
             if not self._queue:
                 self._wake.clear()
-                await self._wake.wait()
+                if run.vad_start_ms is None:
+                    # Bounded, so the run's age is checked while the assistant is audible and nothing comes.
+                    with contextlib.suppress(TimeoutError):
+                        await asyncio.wait_for(self._wake.wait(), IDLE_RUN_AGE_S - age)
+                else:
+                    await self._wake.wait()
                 continue
             if self._overrun and run.speech_start is not None and not run.intent_started:
                 # Part of this utterance was dropped: never act on the rest.
-                restart.set_result(_Restart(0, "audio backlog"))
+                restart.set_result(self._past_speech_start(run, "audio backlog"))
                 return
             frame = self._queue.popleft()
             self._queued -= len(frame.pcm)
@@ -579,8 +684,11 @@ class HomeListener:
             run.sent_samples += len(frame.pcm)
             await ws.send(prefix + frame.pcm.astype("<i2").tobytes())
             if run.vad_start_ms is None and run.sent_samples >= IDLE_RESTART_S * MIC_RATE:
-                restart.set_result(_Restart(int(RESTART_KEEP_S * MIC_RATE)))
-                return
+                # Sent is not heard yet: a backlog goes out far faster than Home Assistant reports on it.
+                await asyncio.sleep(IDLE_SETTLE_S)
+                if run.vad_start_ms is None:
+                    restart.set_result(idle)
+                    return
 
     def _finish(self, run: _Run, reason: str = "") -> None:
         turn = _turn(run, self._policy, reason)
@@ -611,12 +719,13 @@ async def _next(ws: Any, restart: asyncio.Future[_Restart] | None) -> dict[str, 
     """The next message, or None once `restart` is set first."""
     if restart is None:
         return _message(await ws.recv())
-    if restart.done():
-        return None
     receive = asyncio.ensure_future(ws.recv())
     await asyncio.wait([receive, restart], return_when=asyncio.FIRST_COMPLETED)
+    if not receive.done():
+        # The restart is set. A message already on its way is handled first: it may be
+        # intent-start, after which nothing is cancelled.
+        await asyncio.wait([receive], timeout=_DRAIN_S)
     if receive.done():
-        # A message that arrived is handled before a restart: it may be intent-start.
         return _message(receive.result())
     # websockets: cancelling recv() loses no message.
     receive.cancel()
@@ -656,8 +765,8 @@ def _turn(run: _Run, policy: ToolPolicy, reason: str) -> HomeTurn:
     """The run's outcome, from what it did rather than what it said."""
     tools = tuple(run.tools)
 
-    def made(outcome: Outcome, speech: str = "", why: str = "") -> HomeTurn:
-        return HomeTurn(run.turn, outcome, speech, run.heard, tools, run.speech_start, run.speech_end, why)
+    def made(outcome: Outcome, speech: str = "", why: str = "", asks: bool = False) -> HomeTurn:
+        return HomeTurn(run.turn, outcome, speech, run.heard, tools, run.speech_start, run.speech_end, why, asks)
 
     if run.output is None:
         why = reason or run.error or "no result"
@@ -671,12 +780,20 @@ def _turn(run: _Run, policy: ToolPolicy, reason: str) -> HomeTurn:
     kinds = {policy.kind(tool) for tool in tools}
     if "non_home" in kinds:
         log.warning("home assistant turn %d used a non-home tool", run.turn)
-    if run.output.get("continue_conversation") is True and response_type != "error" and speech:
-        return made(Outcome.ASKED, speech)
+    # Home Assistant continues the conversation whenever its reply ends in a question
+    # (conversation/chat_log.py), "Done. Anything else?" included: the question is carried
+    # beside what the turn did, never in place of it.
+    asks = run.output.get("continue_conversation") is True and response_type != "error" and bool(speech)
     if "action" in kinds:
-        return made(Outcome.ACTED, speech)
-    if run.processed_locally and targets:
-        return made(Outcome.ACTED if response_type != "query_answer" else Outcome.ANSWERED, speech)
+        return made(Outcome.ACTED, speech, asks=asks)
+    if run.processed_locally and response_type != "error":
+        if targets:
+            return made(Outcome.ACTED if response_type != "query_answer" else Outcome.ANSWERED, speech, asks=asks)
+        if response_type == "action_done":
+            # A local action without targets: a sentence trigger's automation, or a timer.
+            return made(Outcome.ACTED, speech, asks=asks)
+    if asks:
+        return made(Outcome.ASKED, speech, asks=True)
     if "read" in kinds:
         return made(Outcome.ANSWERED, speech)
     if response_type == "error" and not run.processed_locally:

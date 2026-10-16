@@ -325,6 +325,7 @@ class LiveSession:
         task = asyncio.ensure_future(coro)
         self._tasks.add(task)
         task.add_done_callback(self._tasks.discard)
+        task.add_done_callback(_log_failure)
         return task
 
     # -- mic -----------------------------------------------------------------
@@ -571,30 +572,37 @@ class LiveSession:
     async def _listen_home(self) -> None:
         assert self._parallel is not None
         while True:
-            match await self._parallel.home.events.get():
-                case HeardSpeech(turn=turn):
-                    self._slot(turn)
-                case Unavailable(reason=reason):
-                    await self._ready.wait()
-                    assert self._conn is not None
-                    await self._conn.session.instructions.append(
-                        content=_HOME_UNAVAILABLE.format(reason=reason), delegation_id=None
-                    )
-                case HomeTurn() as result:
-                    slot = self._slot(result.turn)
-                    log.info(
-                        "home assistant turn %d heard at samples %s-%s",
-                        result.turn,
-                        result.speech_start,
-                        result.speech_end,
-                    )
-                    if not slot.result.done():
-                        slot.result.set_result(result)
-                    if result.outcome == Outcome.ACTED:
-                        self._latest_action = result.turn
-                        self._observe(result)
-                    if not slot.claimed:
-                        self._spawn(self._tell_alone(slot))
+            event = await self._parallel.home.events.get()
+            try:
+                await self._on_home(event)
+            except Exception:  # one event's failure must not stop the turns after it
+                log.exception("handling a home assistant event failed")
+
+    async def _on_home(self, event: HomeEvent) -> None:
+        match event:
+            case HeardSpeech(turn=turn):
+                self._slot(turn)
+            case Unavailable(reason=reason):
+                await self._ready.wait()
+                assert self._conn is not None
+                await self._conn.session.instructions.append(
+                    content=_HOME_UNAVAILABLE.format(reason=reason), delegation_id=None
+                )
+            case HomeTurn() as result:
+                slot = self._slot(result.turn)
+                log.info(
+                    "home assistant turn %d heard at samples %s-%s",
+                    result.turn,
+                    result.speech_start,
+                    result.speech_end,
+                )
+                if not slot.result.done():
+                    slot.result.set_result(result)
+                if result.outcome == Outcome.ACTED:
+                    self._latest_action = result.turn
+                    self._observe(result)
+                if not slot.claimed:
+                    self._spawn(self._tell_alone(slot))
 
     async def _tell_alone(self, slot: _Slot) -> None:
         """Tells GPT-Live a Home Assistant turn no delegation claims."""
@@ -615,6 +623,10 @@ class LiveSession:
             self._host.mark_activity()
         finally:
             slot.told.set()
+            # Playback that ended while this turn was pending left the speaker thinking; a silent result
+            # starts no playback to end that.
+            if self._host is not None and not self.busy and not self._host.assistant_audible:
+                await self._host.set_phase(Phase.LISTENING)
 
     async def _claimed(self, slots: list[_Slot]) -> _Claimed:
         """What the claimed turns did, waiting a while for any still under way."""
@@ -703,18 +715,29 @@ class LiveSession:
         self._logged = len(self._heard)
 
 
+def _log_failure(task: asyncio.Task[Any]) -> None:
+    """Logs a background task's exception, which nothing else awaits."""
+    if not task.cancelled() and (e := task.exception()) is not None:
+        log.error("background task failed", exc_info=e)
+
+
 async def _log_shadow(shadow: Shadow, request: RouteRequest) -> None:
     try:
         decision = await shadow(request)
     except Exception as e:  # noqa: BLE001 -- the shadow decides nothing; class name only, a message can quote speech
-        log.info("decisions shadow failed: %s", type(e).__name__)
+        log.info("shadow classification failed: %s", type(e).__name__)
         return
-    log.info("decisions shadow: %s confidence=%s in %.0f ms", decision.route, decision.confidence, decision.elapsed_ms)
+    log.info(
+        "shadow classification: %s confidence=%s in %.0f ms", decision.route, decision.confidence, decision.elapsed_ms
+    )
 
 
 def _home_note(result: HomeTurn) -> tuple[str, bool] | None:
     """What GPT-Live is told of a Home Assistant turn, and whether it is to be spoken; None: nothing."""
     match result.outcome:
+        case Outcome.ACTED | Outcome.ANSWERED if result.asks:
+            # It did something and asks a follow-up: the question carries its speech.
+            return _HOME_ASKS.format(question=result.speech), True
         case Outcome.ACTED | Outcome.ANSWERED:
             return (_HOME_SAID.format(speech=result.speech) if result.speech else _HOME_SILENT), True
         case Outcome.ASKED:

@@ -202,8 +202,9 @@ pass, flash other PEs. This firmware change needs no NixOS rebuild.
 
 ## Home Assistant's home-only pipeline
 
-During a Live conversation, Home Assistant hears every utterance and is the
-only thing that acts on the home (`packages/voice-broker/src/voice_broker/assist.py`).
+In parallel mode (`my.voice-broker.mode = "parallel"`), during a Live
+conversation, Home Assistant hears every utterance and is the only thing that
+acts on the home (`packages/voice-broker/src/voice_broker/assist.py`).
 It does this through its own Assist pipeline, named
 `my.voice-broker.homeAssistant.pipeline` on hoard. That pipeline uses a
 dedicated home-only OpenAI agent. The shared agent, `conversation.chatgpt`, is
@@ -238,10 +239,12 @@ counts that as non-home work (`nonHomeTools`), never as home evidence.
 Unexposing them would also take them from "Remote", so that is left to the
 owner.
 
-To undo: delete the "Voice broker home" pipeline, then the agent of the same
-name under the OpenAI Conversation integration. Set
-`my.voice-broker.homeAssistant.pipeline = null` to stop Home Assistant from
-listening.
+`ask_gpt`'s announcement targets a device that was no longer in Home
+Assistant's device registry on 2026-10-17, so its use plays nothing on a speaker.
+
+To undo: first set `my.voice-broker.mode` back to `"gated"` and switch, so Home
+Assistant stops listening. Then delete the "Voice broker home" pipeline, then
+the agent of the same name under the OpenAI Conversation integration.
 
 ## Recording conversations
 

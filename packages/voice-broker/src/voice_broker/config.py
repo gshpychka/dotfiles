@@ -232,7 +232,8 @@ def _openclaw(raw: dict[str, Any]) -> OpenClaw:
         agent=raw.get("agent") or None,
     )
     if openclaw.agent is not None:
-        # The gateway refuses a named agent that differs from the session key's (agents/agent-scope.ts).
+        # The gateway runs the session key's agent whatever agent is named (gateway/openai-compatible-agent-run.ts),
+        # so a mismatch would run, with its tools, another agent than the one named: refused here.
         prefix = f"agent:{openclaw.agent}:"
         for key in (openclaw.session_key, openclaw.observer_session_key):
             if key is not None and not key.startswith(prefix):

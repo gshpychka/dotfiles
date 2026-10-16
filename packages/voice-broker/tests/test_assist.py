@@ -658,7 +658,8 @@ def test_a_barge_in_passes_on_the_last_second_of_held_audio_in_order():
         home = listener(ha, clock=clock)
         home.start()
         feed(home, 2.0, audible=True)
-        # GPT-Live heard the user over the assistant.
+        # GPT-Live heard the user over the assistant, past the grace for a trailing transcript.
+        clock.now += assist.BARGE_IN_GRACE_S
         home.user_heard()
         feed(home, 0.5)
         await until(lambda: ha.runs and len(ha.runs[0].samples) >= int(1.5 * MIC_RATE))
@@ -741,6 +742,11 @@ def outcome(
         # A local answer about nothing in the home, such as the time.
         ({"local": True, "response_type": "query_answer"}, Outcome.ABSTAINED),
         ({"question": True, "speech": "Which light?"}, Outcome.ASKED),
+        # A follow-up question after an action hides nothing: it acted, and asks too.
+        ({"tools": [("intent__HassTurnOn", False)], "question": True, "speech": "Done. Anything else?"}, Outcome.ACTED),
+        # A local action without targets, such as a sentence trigger's automation.
+        ({"local": True}, Outcome.ACTED),
+        ({"local": True, "response_type": "error", "speech": "Sorry"}, Outcome.ABSTAINED),
         ({"response_type": "error", "speech": "Error talking to OpenAI"}, Outcome.FAILED),
     ],
 )
@@ -753,3 +759,254 @@ def test_a_run_without_its_intent_result_failed_before_the_intent_stage_and_is_u
     assert _turn(run, POLICY, "connection lost").outcome == Outcome.FAILED
     run.intent_started = True
     assert _turn(run, POLICY, "connection lost").outcome == Outcome.UNCERTAIN
+
+
+# -- review findings of 2026-10-17 ------------------------------------------------
+
+
+def test_the_rest_of_an_utterance_that_lost_audio_is_never_acted_on(monkeypatch):
+    # The idle restart is out of the way: this is about the backlog's gap alone.
+    monkeypatch.setattr(assist, "IDLE_RESTART_S", 100.0)
+
+    async def slow(run: Run) -> None:
+        await run.heard(BLOCK)
+        run.event("stt-vad-start", timestamp=10)
+        run.socket.flowing.clear()  # Home Assistant falls behind mid-utterance
+        await asyncio.Event().wait()
+
+    async def would_act_on_the_tail(run: Run) -> None:
+        # The queue's head is the middle of the same utterance: speech at once.
+        await run.heard(BLOCK)
+        run.event("stt-vad-start", timestamp=300)
+        await asyncio.sleep(0.05)
+        if not run.cancelled:
+            run.event("stt-vad-end", timestamp=900)
+            run.intent("Done", tools=[("HassTurnOn", {"name": "light"})])
+
+    async def main():
+        ha = FakeHA(slow, would_act_on_the_tail, would_act_on_the_tail)
+        home = listener(ha)
+        home.start()
+        feed(home, 0.2)
+        await until(lambda: ha.runs and not ha.sockets[0].flowing.is_set())
+        # The utterance began before anything was dropped.
+        await until(lambda: home._run is not None and home._run.vad_start_ms is not None)
+        feed(home, 30.0)  # far past the backlog's bound: its oldest audio is dropped
+        ha.sockets[0].flowing.set()
+        # A fourth run is asked for once the rest has been cancelled twice.
+        await until(lambda: len(ha.run_commands) == 4)
+        await settle()
+        home.stop()
+        return ha, drained(home)
+
+    ha, events = asyncio.run(main())
+    # The cut utterance is told once, as a failure that did nothing.
+    turns = [e for e in events if isinstance(e, HomeTurn)]
+    assert [(t.turn, t.outcome, t.reason) for t in turns] == [(1, Outcome.FAILED, "audio backlog")]
+    # Its rest is cancelled before any intent stage, with no turn of its own: no HeardSpeech for runs 2 and 3.
+    assert all(run.cancelled for run in ha.runs)
+    assert [e.turn for e in events if isinstance(e, HeardSpeech)] == [1]
+    # Each cancellation moved on past the speech it saw, and kept the audio after it for the next run.
+    starts = [int(run.samples[0]) for run in ha.runs[1:]]
+    assert starts[1] == (starts[0] + 300 * MS) % 32768
+
+
+def test_speech_well_after_a_gap_is_heard_as_usual(monkeypatch):
+    monkeypatch.setattr(assist, "IDLE_RESTART_S", 100.0)
+
+    async def acts(run: Run) -> None:
+        await run.heard(int(1.5 * MIC_RATE))
+        # 1.2 s of the run's audio before speech: more than GAP_GUARD_S after the gap at its start.
+        run.event("stt-vad-start", timestamp=1200)
+        run.event("stt-vad-end", timestamp=1500)
+        run.intent("Done", tools=[("HassTurnOn", {"name": "light"})])
+
+    async def main():
+        ha = FakeHA(acts)
+        home = listener(ha)
+        # A gap before the run's first audio, as left by an earlier overrun.
+        home._gap_at = 0
+        home._overrun = True
+        home.start()
+        feed(home, 2.0)
+        event = None
+        while not isinstance(event, HomeTurn):
+            event = await next_event(home)
+        home.stop()
+        return event
+
+    assert asyncio.run(main()).outcome == Outcome.ACTED
+
+
+def test_a_backlog_sent_in_a_burst_waits_for_home_assistants_verdict_before_an_idle_restart(monkeypatch):
+    monkeypatch.setattr(assist, "IDLE_SETTLE_S", 0.2)
+
+    async def speech_late_in_the_backlog(run: Run) -> None:
+        # Home Assistant reports the speech 4 s into the burst a moment after reading it: the
+        # sender, at socket speed, is past 6 s by then.
+        await run.heard(int(4.5 * MIC_RATE))
+        run.event("stt-vad-start", timestamp=4000)
+        run.event("stt-vad-end", timestamp=4600)
+        run.intent("Done", tools=[("HassTurnOn", {"name": "light"})])
+
+    async def main():
+        ha = FakeHA(speech_late_in_the_backlog)
+        home = listener(ha)
+        feed(home, 8.0)  # queued before the run starts, as after a long intent stage
+        home.start()
+        event = None
+        while not isinstance(event, HomeTurn):
+            event = await next_event(home)
+        home.stop()
+        return ha, event
+
+    ha, turn = asyncio.run(main())
+    assert turn.outcome == Outcome.ACTED
+    assert not ha.runs[0].cancelled
+
+
+def test_a_trailing_transcript_as_the_assistant_starts_is_no_barge_in():
+    async def listens(run: Run) -> None:
+        await asyncio.Event().wait()
+
+    async def main():
+        clock = Clock()
+        ha = FakeHA(listens)
+        home = listener(ha, clock=clock)
+        home.start()
+        feed(home, 2.0, audible=True)  # GPT-Live replying
+        home.user_heard()  # the end of the user's previous utterance, transcribed late
+        clock.now += 1.0
+        feed(home, 2.0, audible=True)  # the reply goes on; nobody spoke over it
+        feed(home, 0.1)
+        clock.now += assist.BARGE_IN_WAIT_S
+        feed(home, 0.4)
+        await until(lambda: ha.runs and len(ha.runs[0].samples) >= int(0.4 * MIC_RATE))
+        home.stop()
+        return ha.runs[0].samples
+
+    samples = asyncio.run(main())
+    # Nothing of the assistant's 4 s reaches speech recognition: the run starts after it.
+    assert int(samples[0]) == (4 * MIC_RATE) % 32768
+
+
+def test_a_pause_the_assistant_speaks_again_in_is_not_lost():
+    async def listens(run: Run) -> None:
+        await asyncio.Event().wait()
+
+    async def main():
+        clock = Clock()
+        ha = FakeHA(listens)
+        home = listener(ha, clock=clock)
+        home.start()
+        feed(home, 1.0, audible=True)
+        feed(home, 0.2)  # a pause, still undecided: barge-in or not
+        feed(home, 1.0, audible=True)  # the assistant again
+        clock.now += 5.0
+        feed(home, 0.3)
+        clock.now += assist.BARGE_IN_WAIT_S
+        feed(home, 0.3)
+        await until(lambda: ha.runs and len(ha.runs[0].samples) >= int(0.2 * MIC_RATE))
+        home.stop()
+        return ha.runs[0].samples
+
+    samples = asyncio.run(main())
+    # The pause was heard while the assistant was silent, so it goes on.
+    assert np.array_equal(samples[: int(0.2 * MIC_RATE)], counting(MIC_RATE, int(0.2 * MIC_RATE)))
+
+
+def test_an_idle_run_starts_afresh_before_home_assistants_wall_clock_timeout(monkeypatch):
+    monkeypatch.setattr(assist, "IDLE_RUN_AGE_S", 0.1)
+
+    async def listens(run: Run) -> None:
+        await asyncio.Event().wait()
+
+    async def main():
+        clock = Clock()
+        ha = FakeHA(listens, listens)
+        home = listener(ha, clock=clock)
+        home.start()
+        feed(home, 0.1)
+        await until(lambda: ha.runs)
+        # The assistant speaks on and on: nothing is sent, so no idle restart by audio could come.
+        feed(home, 3.0, audible=True)
+        clock.now += 1.0
+        await until(lambda: len(ha.runs) == 2)
+        home.stop()
+        return ha
+
+    ha = asyncio.run(main())
+    assert ha.runs[0].cancelled
+
+
+def test_a_listener_bug_reports_the_run_it_cut_off_and_home_assistant_unavailable(monkeypatch):
+    def broken(run, delta):
+        raise RuntimeError("bug")
+
+    monkeypatch.setattr(assist, "_record", broken)
+
+    async def acts(run: Run) -> None:
+        await run.heard(BLOCK)
+        run.speech(start_ms=300, end_ms=700)
+        run.intent("Done", tools=[("HassTurnOn", {"name": "light"})])
+
+    async def main():
+        ha = FakeHA(acts)
+        home = listener(ha)
+        home.start()
+        feed(home, 1.5)
+        events = []
+        while not any(isinstance(e, Unavailable) for e in events):
+            events.append(await next_event(home))
+        home.stop()
+        return events
+
+    events = asyncio.run(main())
+    (turn,) = [e for e in events if isinstance(e, HomeTurn)]
+    # It reached the intent stage, so it may have acted; and the conversation is told Home Assistant is gone.
+    assert turn.outcome == Outcome.UNCERTAIN and turn.reason == "internal RuntimeError"
+    assert any(isinstance(e, Unavailable) and e.reason == "internal error" for e in events)
+
+
+def test_a_message_already_on_its_way_is_read_before_a_restart():
+    class Late:
+        async def recv(self) -> str:
+            await asyncio.sleep(0.05)
+            return json.dumps({"id": 1, "type": "event", "event": {"type": "intent-start"}})
+
+    async def main():
+        restart = asyncio.get_running_loop().create_future()
+        restart.set_result(assist._Restart(0, "audio backlog"))
+        return await assist._next(Late(), restart)
+
+    message = asyncio.run(main())
+    assert message is not None and message["event"]["type"] == "intent-start"
+
+
+def test_an_utterance_whose_middle_was_dropped_before_its_speech_was_reported_is_a_turn_that_did_nothing():
+    async def reports_late(run: Run) -> None:
+        await run.heard(BLOCK)
+        run.socket.flowing.clear()  # Home Assistant falls behind before it reports the speech
+        await run.socket.ha.resume.wait()
+        run.event("stt-vad-start", timestamp=10)
+        await asyncio.Event().wait()
+
+    async def main():
+        ha = FakeHA(reports_late)
+        ha.resume = asyncio.Event()
+        home = listener(ha)
+        home.start()
+        feed(home, 0.2)
+        await until(lambda: ha.runs and not ha.sockets[0].flowing.is_set())
+        feed(home, 30.0)
+        ha.resume.set()
+        event = None
+        while not isinstance(event, HomeTurn):
+            event = await next_event(home)
+        ha.sockets[0].flowing.set()
+        home.stop()
+        return event, ha
+
+    turn, ha = asyncio.run(main())
+    assert turn.outcome == Outcome.FAILED and turn.reason == "audio backlog"
+    assert ha.runs[0].cancelled
