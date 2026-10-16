@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">realm</title>
+  <defs>
+    <clipPath id="swatch">
+      <rect x="2" y="2" width="60" height="60" rx="14"/>
+    </clipPath>
+    <linearGradient id="base" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1d2021"/>
+      <stop offset="0.35" stop-color="#282828"/>
+      <stop offset="1" stop-color="#af3a03"/>
+    </linearGradient>
+    <!-- one knit stitch: two loops leaning into a V, centred on the origin -->
+    <path id="stitch" d="M-4.2-3.6c-.4 3.1 2.2 6.6 4.2 7.4c-.2-3-1.6-6.4-4.2-7.4zM4.2-3.6c.4 3.1-2.2 6.6-4.2 7.4c.2-3 1.6-6.4 4.2-7.4z"/>
+    <g id="row">
+      <use href="#stitch" x="5"/>
+      <use href="#stitch" x="14"/>
+      <use href="#stitch" x="23"/>
+      <use href="#stitch" x="32"/>
+      <use href="#stitch" x="41"/>
+      <use href="#stitch" x="50"/>
+      <use href="#stitch" x="59"/>
+    </g>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="url(#base)"/>
+  <g clip-path="url(#swatch)">
+    <use href="#row" y="5" fill="#3c3836"/>
+    <use href="#row" y="11" fill="#3c3836"/>
+    <use href="#row" y="17" fill="#504945"/>
+    <use href="#row" y="23" fill="#af3a03"/>
+    <use href="#row" y="29" fill="#d65d0e"/>
+    <use href="#row" y="35" fill="#d65d0e"/>
+    <use href="#row" y="41" fill="#fe8019"/>
+    <use href="#row" y="47" fill="#fe8019"/>
+    <use href="#row" y="53" fill="#fabd2f"/>
+    <use href="#row" y="59" fill="#fabd2f"/>
+  </g>
+</svg>

@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="268" height="170" viewBox="0 0 268 170" role="img" aria-labelledby="title">
+  <title id="title">hoard: Beelink S12 Pro, N100, x86_64-linux</title>
+  <style>
+    .mono { font-family: 'JetBrains Mono', 'JetBrainsMono Nerd Font', ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace; }
+    .sans { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif; }
+    .chip { fill: #3c3836; }
+    .chip-text { fill: #d5c4a1; font-size: 11.5px; text-anchor: middle; }
+  </style>
+  <rect x="5.5" y="5.5" width="257" height="159" rx="10" fill="#282828" stroke="#3c3836"/>
+  <rect x="23" y="23" width="34" height="34" rx="8" fill="#b8bb26" fill-opacity="0.17"/>
+  <g transform="translate(30 30) scale(0.8333)" fill="none" stroke="#b8bb26" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="13" width="18" height="7" rx="1.5"/>
+    <path d="M5.5 13 8 5h8l2.5 8"/>
+    <path d="M7 16.5h.01M10 16.5h.01"/>
+  </g>
+  <text x="245" y="44" class="mono" font-size="12" text-anchor="end" fill="#b8bb26">x86_64-linux</text>
+  <text x="23" y="89" class="mono" font-size="20" font-weight="800" fill="#fbf1c7">hoard</text>
+  <text x="23" y="109" class="sans" font-size="13" fill="#a89984">Beelink S12 Pro · N100</text>
+  <rect x="23" y="125" width="44" height="20" rx="10" class="chip"/>
+  <text x="45" y="139" class="mono chip-text">plex</text>
+  <rect x="73" y="125" width="78" height="20" rx="10" class="chip"/>
+  <text x="112" y="139" class="mono chip-text">arr stack</text>
+  <rect x="157" y="125" width="71" height="20" rx="10" class="chip"/>
+  <text x="192.5" y="139" class="mono chip-text">openclaw</text>
+</svg>

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="268" height="170" viewBox="0 0 268 170" role="img" aria-labelledby="title">
+  <title id="title">harbor: Raspberry Pi 4, aarch64-linux</title>
+  <style>
+    .mono { font-family: 'JetBrains Mono', 'JetBrainsMono Nerd Font', ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace; }
+    .sans { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif; }
+    .chip { fill: #3c3836; }
+    .chip-text { fill: #d5c4a1; font-size: 11.5px; text-anchor: middle; }
+  </style>
+  <rect x="5.5" y="5.5" width="257" height="159" rx="10" fill="#282828" stroke="#3c3836"/>
+  <rect x="23" y="23" width="34" height="34" rx="8" fill="#8ec07c" fill-opacity="0.17"/>
+  <g transform="translate(30 30) scale(0.8333)" fill="none" stroke="#8ec07c" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="14" width="18" height="6" rx="1.5"/>
+    <path d="M7 17h.01M11 17h.01M16 14V8"/>
+    <path d="M13 6a4 4 0 0 1 6 0M11 3.5a7.5 7.5 0 0 1 10 0"/>
+  </g>
+  <text x="245" y="44" class="mono" font-size="12" text-anchor="end" fill="#8ec07c">aarch64-linux</text>
+  <text x="23" y="89" class="mono" font-size="20" font-weight="800" fill="#fbf1c7">harbor</text>
+  <text x="23" y="109" class="sans" font-size="13" fill="#a89984">Raspberry Pi 4</text>
+  <rect x="23" y="125" width="64" height="20" rx="10" class="chip"/>
+  <text x="55" y="139" class="mono chip-text">dnsmasq</text>
+  <rect x="93" y="125" width="99" height="20" rx="10" class="chip"/>
+  <text x="142.5" y="139" class="mono chip-text">adguard home</text>
+</svg>

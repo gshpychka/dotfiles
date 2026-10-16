@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="268" height="170" viewBox="0 0 268 170" role="img" aria-labelledby="title">
+  <title id="title">buoy: GCP Compute Engine VM, x86_64-linux</title>
+  <style>
+    .mono { font-family: 'JetBrains Mono', 'JetBrainsMono Nerd Font', ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace; }
+    .sans { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif; }
+    .chip { fill: #3c3836; }
+    .chip-text { fill: #d5c4a1; font-size: 11.5px; text-anchor: middle; }
+  </style>
+  <rect x="5.5" y="5.5" width="257" height="159" rx="10" fill="#282828" stroke="#3c3836"/>
+  <rect x="23" y="23" width="34" height="34" rx="8" fill="#fabd2f" fill-opacity="0.17"/>
+  <g transform="translate(30 30) scale(0.8333)" fill="none" stroke="#fabd2f" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M7 18h10a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.2 9.1 4.5 4.5 0 0 0 7 18z"/>
+  </g>
+  <text x="245" y="44" class="mono" font-size="12" text-anchor="end" fill="#fabd2f">x86_64-linux</text>
+  <text x="23" y="89" class="mono" font-size="20" font-weight="800" fill="#fbf1c7">buoy</text>
+  <text x="23" y="109" class="sans" font-size="13" fill="#a89984">GCP Compute Engine VM</text>
+  <rect x="23" y="125" width="51" height="20" rx="10" class="chip"/>
+  <text x="48.5" y="139" class="mono chip-text">gatus</text>
+  <rect x="80" y="125" width="92" height="20" rx="10" class="chip"/>
+  <text x="126" y="139" class="mono chip-text">cloudflared</text>
+</svg>
