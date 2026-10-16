@@ -66,13 +66,13 @@ class OpenClaw:
                 model=_AGENT, input=task, instructions=self._config.instructions
             )
         except OpenAIError as e:
-            raise ConsultFailed(repr(e)) from e
+            raise ConsultFailed(type(e).__name__) from e
         if response.status != "completed":
-            log.warning("consult ended %s: %s", response.status, response.error)
+            log.warning("consult ended status=%s", response.status)
         answer = response.output_text.strip()
         if not answer:
             raise ConsultFailed(f"the agent's turn ended {response.status} with no text")
-        log.info("consult -> %s", answer)
+        log.info("consult completed chars=%d", len(answer))
         return answer
 
     async def recent(self) -> list[Turn]:
@@ -89,7 +89,7 @@ class OpenClaw:
             response.raise_for_status()
             messages = response.json()["messages"]
         except (httpx2.HTTPError, LookupError, TypeError, ValueError) as e:
-            raise HistoryUnavailable(repr(e)) from e
+            raise HistoryUnavailable(type(e).__name__) from e
         if not isinstance(messages, list):
             raise HistoryUnavailable(f"history messages are {type(messages).__name__}")
         turns = _turns(messages, since=time.time() - history.max_age_s)

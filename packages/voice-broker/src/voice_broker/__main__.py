@@ -19,12 +19,16 @@ from websockets.http11 import Request, Response
 
 from . import config as config_module
 from ._aec import EchoCanceller
+from .archive import Archive
 from .calls import Calls
 from .config import Config, Device
 from .conversation import Conversation
+from .dispatch import Dispatcher, agent_task
+from .home_assistant import HomeAssistant
 from .live import LiveSession, live_connector
-from .openclaw import OpenClaw
+from .openclaw import HistoryUnavailable, OpenClaw
 from .protocol import MIC_RATE, ProtocolError, parse_start
+from .routing import NaiveRouter, RouteRequest
 
 log = logging.getLogger("voice_broker")
 
@@ -54,6 +58,9 @@ class _DeviceState:
 class Broker:
     def __init__(self, config: Config) -> None:
         self._config = config
+        if config.routing is not None and config.routing.strategy != "naive":
+            raise ValueError("this branch supports routing.strategy=naive only")
+        self._archive = Archive(config.openclaw, config.routing.archive_dir) if config.routing else None
         self._openclaw = OpenClaw(config.openclaw)
         self._devices = {d.address: _DeviceState(d, EchoCanceller(MIC_RATE)) for d in config.devices}
         self._connect = live_connector(AsyncOpenAI(api_key=config.openai_api_key))
@@ -92,13 +99,50 @@ class Broker:
             log.info("woken by %s", start.wake_word)
         else:
             log.info("answering a call")
+
+        async def recall():
+            try:
+                recent = await self._openclaw.recent()
+            except HistoryUnavailable:
+                log.warning("gateway history unavailable; retaining local voice history")
+                recent = []
+            return recent + (self._archive.recent() if self._archive else [])
+
+        async def agent(request: RouteRequest) -> str:
+            return await self._openclaw.consult(agent_task(request))
+
+        dispatcher = None
+        if routing := self._config.routing:
+            home = HomeAssistant(
+                self._config.calls.home_assistant_url,
+                self._config.calls.home_assistant_token,
+                routing.pipeline,
+                routing.devices.get(state.device.name, ""),
+                is_current=lambda request: session.request_is_current(request),
+            )
+            dispatcher = Dispatcher(
+                NaiveRouter(), home.consult, agent, is_current=lambda request: session.request_is_current(request)
+            )
+
+        async def remember(request: RouteRequest, answer: str) -> None:
+            if self._archive and dispatcher:
+                if dispatcher.last_route == "openclaw":
+                    self._archive.discard(request)
+                else:
+                    await self._archive.record(request, answer)
+
         session = LiveSession(
             self._config.live,
             state.device.area,
             self._openclaw.consult,
-            self._openclaw.recent,
+            recall,
             self._connect,
             opening,
+            routed=dispatcher.consult if dispatcher else None,
+            device=state.device.name,
+            settle_s=routing.settle_s if routing else 0.35,
+            remember=remember if self._archive else None,
+            persist=self._archive.stage if self._archive else None,
         )
         reason = await Conversation(self._config, state.device.name, device, session, state.aec).run()
         log.info("conversation over: %s", reason)

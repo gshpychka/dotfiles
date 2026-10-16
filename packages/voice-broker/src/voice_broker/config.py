@@ -85,6 +85,15 @@ class Calls:
 
 
 @dataclass(frozen=True, slots=True)
+class Routing:
+    strategy: str
+    pipeline: str
+    devices: dict[str, str]
+    settle_s: float = 0.35
+    archive_dir: Path = Path("/var/lib/voice-broker/pending-history")
+
+
+@dataclass(frozen=True, slots=True)
 class Config:
     listen_host: str
     listen_port: int
@@ -101,6 +110,8 @@ class Config:
     # When set, every conversation's mic, reference and echo-cancelled audio
     # is written here for tuning.
     recordings_dir: Path | None
+    # None preserves the existing OpenClaw-only production path.
+    routing: Routing | None = None
 
 
 def _live(raw: dict[str, Any]) -> Live:
@@ -139,6 +150,21 @@ def _calls(raw: dict[str, Any]) -> Calls:
     )
 
 
+def _routing(raw: dict[str, Any] | None) -> Routing | None:
+    if raw is None:
+        return None
+    settle = float(raw.get("settle_s", 0.35))
+    if not 0.1 <= settle <= 2.0:
+        raise ValueError("routing.settle_s must be between 0.1 and 2 seconds")
+    return Routing(
+        raw["strategy"],
+        raw["pipeline"],
+        dict(raw["devices"]),
+        settle,
+        Path(raw.get("archive_dir", "/var/lib/voice-broker/pending-history")),
+    )
+
+
 def load(path: Path) -> Config:
     raw = json.loads(path.read_text())
     return Config(
@@ -153,4 +179,5 @@ def load(path: Path) -> Config:
         idle_timeout_s=float(raw["idle_timeout_s"]),
         max_conversation_s=float(raw["max_conversation_s"]),
         recordings_dir=Path(raw["recordings_dir"]) if raw.get("recordings_dir") else None,
+        routing=_routing(raw.get("routing")),
     )

@@ -11,6 +11,8 @@ from __future__ import annotations
 import asyncio
 import base64
 import logging
+import time
+import uuid
 from collections import deque
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
@@ -26,6 +28,7 @@ from .config import Live
 from .dsp import mic_to_speaker_rate
 from .openclaw import ConsultFailed, HistoryUnavailable, Role, Turn
 from .protocol import SPEAKER_RATE, Phase
+from .routing import RouteRequest
 from .session import Host, SessionRefused, located, placement
 
 log = logging.getLogger(__name__)
@@ -69,8 +72,29 @@ class LiveSession:
         recall: Recall,
         connect: LiveConnector,
         opening: str | None = None,
+        *,
+        routed: Callable[[RouteRequest], Awaitable[str]] | None = None,
+        device: str = "",
+        settle_s: float = 0.35,
+        remember: Callable[[RouteRequest, str], Awaitable[None]] | None = None,
+        persist: Callable[[RouteRequest, str], None] | None = None,
     ) -> None:
         self._config = config
+        self._routed = routed
+        self._remember = remember
+        self._persist = persist
+        self._device = device
+        self._settle_s = settle_s
+        self._conversation_id = uuid.uuid4().hex
+        self._history: list[Turn] = []
+        self._backend_results: list[Turn] = []
+        self._input_revision = 0
+        self._last_user_change = 0.0
+        self._last_user_end: float | None = None
+        self._delegation_offset: float | None = None
+        self._seen_delegations: set[str] = set()
+        self._request_revision = -1
+        self._reply_started: float | None = None
         self._area = area
         self._consult = consult
         self._recall = recall
@@ -99,6 +123,7 @@ class LiveSession:
         except HistoryUnavailable as e:
             log.warning("starting without the recent conversation: %s", e)
             history = []
+        self._history = history
         async with self._connect() as conn:
             self._host = host
             await conn.session.start(session=self._session_config(history))
@@ -119,6 +144,7 @@ class LiveSession:
             finally:
                 if self._consulting is not None:
                     self._consulting.cancel()
+                    await asyncio.gather(self._consulting, return_exceptions=True)
                 self._conn = None
 
     @property
@@ -170,23 +196,36 @@ class LiveSession:
             match event.type:
                 case "session.output_audio.delta":
                     samples = np.frombuffer(base64.b64decode(event.delta), dtype="<i2").astype(np.int16)
+                    if (
+                        self._reply_started is not None
+                        and len(samples)
+                        and np.max(np.abs(samples.astype(np.int32))) > 32
+                    ):
+                        log.info("latency first_reply_ms=%.1f", (time.monotonic() - self._reply_started) * 1000)
+                        self._reply_started = None
                     self._host.play(samples)
                 case "session.input_transcript.delta":
                     self._host.mark_activity()
                     self._hear("user", event.delta)
+                    self._last_user_end = getattr(event, "end_ms", None)
                 case "session.output_transcript.delta":
                     self._hear("assistant", event.delta)
                 case "session.delegation.created":
                     await self._host.set_phase(Phase.THINKING)
-                    self._delegate(event.delegation.id)
+                    if event.delegation.id not in self._seen_delegations:
+                        self._delegation_offset = getattr(event, "offset_ms", None)
+                        self._delegate(event.delegation.id)
                 case "session.closed":
                     log.info("live session closed: %s after %.1f s", event.reason, event.usage.seconds)
                     return
                 case "error":
-                    log.error("openai error: %s (%s)", event.error.message, event.error.code)
+                    log.error("openai error code=%s", event.error.code)
         self._flush_transcripts()
 
     def _hear(self, role: Role, text: str) -> None:
+        if role == "user":
+            self._input_revision += 1
+            self._last_user_change = time.monotonic()
         if self._heard and self._heard[-1][0] != role:
             self._flush_transcripts()
         self._heard.append((role, text))
@@ -194,12 +233,97 @@ class LiveSession:
     # -- delegation ----------------------------------------------------------
 
     def _delegate(self, delegation_id: str) -> None:
+        if delegation_id in self._seen_delegations:
+            return
+        self._seen_delegations.add(delegation_id)
         self._delegation = delegation_id
+        self._reply_started = time.monotonic()
         # A running consult is a turn of the agent's own session, so it runs to its end.
         if self._consulting is None:
-            self._consulting = asyncio.create_task(self._run_consults())
+            self._consulting = asyncio.create_task(self._run_routed() if self._routed else self._run_consults())
         else:
             log.info("delegation %s waits for the running consult", delegation_id)
+
+    def request_is_current(self, request: RouteRequest) -> bool:
+        return self._request_revision == self._input_revision
+
+    async def _settled(self) -> bool:
+        # Live has no final transcript event. A delegation is the trigger, not
+        # a completed utterance. Wait for late fragments; a bound prevents a
+        # continuous speaker or missing transcript from holding execution open.
+        deadline = time.monotonic() + 2.0
+        while time.monotonic() < deadline:
+            revision = self._input_revision
+            await asyncio.sleep(self._settle_s)
+            if revision == self._input_revision:
+                return True
+        return False
+
+    async def _run_routed(self) -> None:
+        assert self._conn is not None and self._host is not None and self._routed is not None
+        try:
+            while True:
+                request = None
+                stable = await self._settled()
+                delegation = self._delegation
+                upto = len(self._heard)
+                heard = self._heard[self._consulted : upto]
+                text = "".join(t for role, t in heard if role == "user").strip()
+                correlated = (
+                    self._last_user_end is not None
+                    and self._delegation_offset is not None
+                    and self._last_user_end <= self._delegation_offset
+                )
+                # Missing timing, continuation after the delegation, and a
+                # visibly unfinished sentence cannot authorize execution.
+                if not stable or not correlated or not text or text[-1] not in ".!?…":
+                    answer = "The request is not complete yet. Please repeat the full request; no action was attempted."
+                    self._consulted = upto
+                else:
+                    request = RouteRequest(
+                        text,
+                        tuple(self._history + _turns(self._heard[: self._consulted]) + self._backend_results),
+                        self._area,
+                        self._device,
+                        self._conversation_id,
+                    )
+                    self._request_revision = self._input_revision
+                    # Consume BEFORE execution: failure/timeout might mean an
+                    # action happened. A new delegation must not replay it.
+                    self._consulted = upto
+                    try:
+                        if self._persist:
+                            self._persist(
+                                request, "Execution started; outcome is unknown. Do not repeat automatically."
+                            )
+                        answer = await self._routed(request)
+                    except OSError:
+                        answer = "History storage is unavailable; no action was attempted."
+                    except ConsultFailed:
+                        answer = "The backend result is uncertain. Check the home before repeating; no other backend was run."
+                if request is not None:
+                    if self._persist:
+                        try:
+                            self._persist(request, answer)
+                        except OSError:
+                            log.error("backend result persistence failed; uncertain execution record retained")
+                    self._backend_results.append(("assistant", "Already handled backend result: " + answer))
+                for chunk in _chunks(answer):
+                    await self._conn.session.commentary.append(content=chunk, delegation_id=self._delegation)
+                if request is not None and self._remember is not None:
+                    try:
+                        await self._remember(request, answer)
+                    except OSError:
+                        log.error("voice history persistence failed; answer already delivered")
+                if self._delegation == delegation:
+                    break
+                if not any(role == "user" for role, _ in self._heard[self._consulted :]):
+                    break
+        finally:
+            self._consulting = None
+            self._host.mark_activity()
+            if not self._host.assistant_audible:
+                await self._host.set_phase(Phase.LISTENING)
 
     async def _run_consults(self) -> None:
         """Consults until everything heard is answered at the newest delegation."""
@@ -243,12 +367,13 @@ class LiveSession:
 
     def _log_event(self, event: Any) -> None:
         if event.type not in _AUDIO_EVENTS:
-            log.info("openai: %r", event)
+            # Transcript, tool output and error details can contain private household content.
+            log.debug("openai event: %s", event.type)
 
     def _flush_transcripts(self) -> None:
         """Transcripts arrive as fragments with no end marker; log each side's run as a line."""
         for role, text in _turns(self._heard[self._logged :]):
-            log.info("%s: %s", role, text.strip())
+            log.debug("transcript role=%s chars=%d", role, len(text))
         self._logged = len(self._heard)
 
 
