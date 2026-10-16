@@ -1111,7 +1111,7 @@ def test_the_first_speech_a_backlog_gap_cuts_is_told_even_when_it_began_after_th
     assert ha.runs[0].cancelled
 
 
-def test_an_assistant_cut_short_right_after_the_user_spoke_is_a_barge_in():
+def test_a_short_reply_with_a_late_transcript_passes_no_echo():
     async def listens(run: Run) -> None:
         await asyncio.Event().wait()
 
@@ -1120,15 +1120,53 @@ def test_an_assistant_cut_short_right_after_the_user_spoke_is_a_barge_in():
         ha = FakeHA(listens)
         home = listener(ha, clock=clock)
         home.start()
-        feed(home, 1.0, audible=True)
+        feed(home, 1.0, audible=True)  # "Sure!"
         clock.now = 0.5
-        home.user_heard()  # within the grace: not yet a barge-in
+        home.user_heard()  # the end of the user's previous utterance, transcribed late
         clock.now = 1.0
-        feed(home, 0.5)  # GPT-Live yielded a second in: it was interrupted
-        await until(lambda: ha.runs and len(ha.runs[0].samples) >= int(1.5 * MIC_RATE))
+        feed(home, 0.1)
+        clock.now = 1.2
+        home.user_heard()  # still trailing, in the window after the reply
+        clock.now = 1.0 + assist.BARGE_IN_WAIT_S
+        feed(home, 0.4)
+        await until(lambda: ha.runs and len(ha.runs[0].samples) >= int(0.4 * MIC_RATE))
         home.stop()
         return ha.runs[0].samples
 
     samples = asyncio.run(main())
-    # The held second, the user's first words in it, goes on before what follows.
-    assert np.array_equal(samples[: int(1.5 * MIC_RATE)], counting(0, int(1.5 * MIC_RATE)))
+    # Nothing of the reply reaches speech recognition: the run starts after it.
+    assert int(samples[0]) == MIC_RATE
+
+
+def test_an_early_interruption_is_never_acted_on_in_part():
+    async def would_act_on_the_rest(run: Run) -> None:
+        # The user goes on talking once the assistant yields: speech from the run's first audio.
+        await run.heard(int(0.5 * MIC_RATE))
+        run.event("stt-vad-start", timestamp=300)
+        await asyncio.sleep(0.05)
+        if not run.cancelled:
+            run.event("stt-vad-end", timestamp=900)
+            run.intent("Done", tools=[("HassTurnOff", {"name": "lights"})])
+
+    async def main():
+        clock = Clock()
+        ha = FakeHA(would_act_on_the_rest)
+        home = listener(ha, clock=clock)
+        home.start()
+        feed(home, 1.0, audible=True)
+        clock.now = 0.3
+        home.user_heard()  # "no, turn off..." within the grace: dropped with the echo
+        clock.now = 1.0
+        feed(home, 0.1)
+        clock.now += assist.BARGE_IN_WAIT_S
+        feed(home, 1.0)  # "...the lights"
+        event = None
+        while not isinstance(event, HomeTurn):
+            event = await next_event(home)
+        home.stop()
+        return event, ha
+
+    turn, ha = asyncio.run(main())
+    # Its start went with the echo, so the rest is cancelled, and told as doing nothing.
+    assert (turn.outcome, turn.reason) == (Outcome.FAILED, "speech over the assistant")
+    assert ha.runs[0].cancelled

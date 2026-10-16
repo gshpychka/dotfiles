@@ -40,10 +40,11 @@ the household runs; the paths below are under homeassistant/components/assist_pi
   utterance is cancelled the same way (GAP_GUARD_S).
 - Echo: speech recognition gets no audio while the assistant is audible, as on
   Home Assistant's own satellites, so GPT-Live's echo cannot become a command;
-  see feed(). A barge-in passes the last held second on. While the assistant
-  speaks, only a transcript BARGE_IN_GRACE_S into it counts as one, since an
-  earlier one trails the user's previous utterance; but an earlier one does when
-  the assistant then stops within that time, as GPT-Live yields to an interruption.
+  see feed(). A barge-in passes the last held second on, but only a transcript
+  BARGE_IN_GRACE_S into the assistant's speech counts as one: an earlier one most
+  likely trails the user's previous utterance, and a short reply looks the same
+  as an early interruption. After such a transcript the held audio is dropped and
+  a gap is marked, so an early interruption is never acted on in part.
 - Lost speech is never acted on in part: a run that ends mid-utterance (a lost
   connection, an error) leaves a gap like a dropped backlog does.
 """
@@ -360,9 +361,6 @@ class HomeListener:
             self._holding = False
             self._deciding_until = self._clock() + BARGE_IN_WAIT_S
             self._undecided = []
-            if self._heard_in_grace and self._clock() - self._holding_since < BARGE_IN_GRACE_S:
-                # The assistant was cut short right after the user spoke: GPT-Live yielded to an interruption.
-                self._barged_in = True
         if self._deciding_until is not None:
             self._undecided.append(frame)
             if self._barged_in or self._clock() >= self._deciding_until:
@@ -372,16 +370,17 @@ class HomeListener:
 
     def user_heard(self) -> None:
         """GPT-Live heard the user speak; over the assistant, while audio is held."""
-        if self._holding and self._clock() - self._holding_since < BARGE_IN_GRACE_S:
+        if not (self._holding or self._deciding_until is not None):
+            return
+        if self._clock() - self._holding_since < BARGE_IN_GRACE_S:
             # Most likely the transcript of what the user said before the assistant began: letting it
-            # count would hand the assistant's own echo to speech recognition. Once the assistant
-            # stops it does count, and so does an assistant cut short right after it (feed).
+            # count would hand the assistant's own echo to speech recognition. It may also be a very
+            # early interruption, which a short reply looks the same as: _decide marks a gap for that.
             self._heard_in_grace = True
             return
-        if self._holding or self._deciding_until is not None:
-            self._barged_in = True
-            if self._deciding_until is not None:
-                self._decide()
+        self._barged_in = True
+        if self._deciding_until is not None:
+            self._decide()
 
     def _decide(self) -> None:
         """Passes on the held audio after a barge-in, or drops it, then everything after it."""
@@ -389,10 +388,16 @@ class HomeListener:
             log.info("barge-in: passing %.1f s of held audio to home assistant", self._held_samples / MIC_RATE)
             for frame in self._held:
                 self._enqueue(frame)
+        elif self._held and self._heard_in_grace:
+            # The user may have spoken over the assistant's first moments, and those words are
+            # dropped with its echo: what follows at once may be the rest of a request.
+            self._gap_at = self._undecided[0].index if self._undecided else self._next_index
+            self._gap_reason = "speech over the assistant"
         self._held.clear()
         self._held_samples = 0
         self._deciding_until = None
         self._barged_in = False
+        self._heard_in_grace = False
         for frame in self._undecided:
             self._enqueue(frame)
         self._undecided = []
@@ -422,7 +427,6 @@ class HomeListener:
         """Marks a gap when `run` ended, already told, before Home Assistant had its whole utterance."""
         if run.vad_start_ms is not None and not run.audio_done:
             self._gap_ahead()
-            self._gap_reason = None
 
     def _past_speech_start(self, run: _Run, reason: str = "") -> _Restart:
         """Cancels a run whose speech may be cut, keeping what it sent from that speech's detection on.
