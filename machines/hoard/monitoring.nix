@@ -21,12 +21,7 @@ in
     ];
   };
 
-  systemd.services.tautulli.after = [ config.systemd.services.plex.name ];
-
   services = {
-    tautulli = {
-      enable = true;
-    };
     homepage-dashboard = {
       enable = true;
       settings = {

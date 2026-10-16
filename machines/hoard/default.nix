@@ -30,6 +30,7 @@
     ./users.nix
     ./frontend.nix
     ./monitoring.nix
+    ./tautulli
     ./downloaders.nix
     ./media.nix
     ./smb.nix
