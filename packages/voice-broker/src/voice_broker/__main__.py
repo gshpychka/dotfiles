@@ -22,9 +22,11 @@ from ._aec import EchoCanceller
 from .calls import Calls
 from .config import Config, Device
 from .conversation import Conversation
-from .live import LiveSession, live_connector
+from .home_assistant import HomeAssistant
+from .live import LiveSession, Routed, live_connector
 from .openclaw import OpenClaw
 from .protocol import MIC_RATE, ProtocolError, parse_start
+from .routing import DecisionsRouter
 
 log = logging.getLogger("voice_broker")
 
@@ -56,8 +58,28 @@ class Broker:
         self._config = config
         self._openclaw = OpenClaw(config.openclaw)
         self._devices = {d.address: _DeviceState(d, EchoCanceller(MIC_RATE)) for d in config.devices}
-        self._connect = live_connector(AsyncOpenAI(api_key=config.openai_api_key))
+        openai = AsyncOpenAI(api_key=config.openai_api_key)
+        self._connect = live_connector(openai)
+        self._router = (
+            DecisionsRouter(openai, config.routing.model, config.routing.timeout_s) if config.routing else None
+        )
         self._calls = Calls(config.calls, config.devices, busy=self._in_conversation)
+
+    def _routed(self, device: Device) -> Routed | None:
+        """Routing for a conversation at `device`, with its own Home Assistant device."""
+        routing = self._config.routing
+        if routing is None:
+            return None
+        assert self._router is not None
+        # config.load requires a device ID of every device while routing is on.
+        assert device.home_assistant_device_id is not None
+        home = HomeAssistant(
+            self._config.calls.home_assistant_url,
+            self._config.calls.home_assistant_token,
+            routing.pipeline,
+            device.home_assistant_device_id,
+        )
+        return Routed(self._router.route, home.converse, routing.pending_question_s, routing.settle_s)
 
     def _in_conversation(self, address: str) -> bool:
         current = self._devices[address].current
@@ -99,6 +121,8 @@ class Broker:
             self._openclaw.recent,
             self._connect,
             opening,
+            # A call answers the agent, so the reply is the agent's whatever it says.
+            self._routed(state.device) if opening is None else None,
         )
         reason = await Conversation(self._config, state.device.name, device, session, state.aec).run()
         log.info("conversation over: %s", reason)

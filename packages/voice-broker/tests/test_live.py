@@ -53,13 +53,23 @@ class Connection:
     async def _comment(self, **kwargs) -> None:
         self.commentary.append(kwargs)
 
-    def user(self, text: str) -> None:
-        self.events.put_nowait(SimpleNamespace(type="session.input_transcript.delta", delta=text))
+    # The Live timeline, in ms: each fragment and delegation lands after the last.
+    clock_ms = 0
+
+    def user(self, text: str, start_ms: int | None = None) -> None:
+        self.clock_ms += 100
+        start = self.clock_ms if start_ms is None else start_ms
+        self.events.put_nowait(
+            SimpleNamespace(type="session.input_transcript.delta", delta=text, start_ms=start, end_ms=start + 100)
+        )
 
     def delegate(self, delegation_id: str) -> None:
+        self.clock_ms += 100
         self.events.put_nowait(
             SimpleNamespace(
-                type="session.delegation.created", delegation=SimpleNamespace(id=delegation_id, target="client")
+                type="session.delegation.created",
+                delegation=SimpleNamespace(id=delegation_id, target="client"),
+                offset_ms=self.clock_ms,
             )
         )
 

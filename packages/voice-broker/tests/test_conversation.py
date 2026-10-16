@@ -158,10 +158,18 @@ class ScriptedLive:
         await self.events.put(SimpleNamespace(type="session.output_transcript.delta", delta="Hi, what can I do?"))
         for delta in speech_deltas(1.0, seed=5):
             await self.events.put(delta)
-        for fragment in ("Turn off ", "the lights."):
-            await self.events.put(SimpleNamespace(type="session.input_transcript.delta", delta=fragment))
+        for start_ms, fragment in ((1000, "Turn off "), (1400, "the lights.")):
+            await self.events.put(
+                SimpleNamespace(
+                    type="session.input_transcript.delta", delta=fragment, start_ms=start_ms, end_ms=start_ms + 400
+                )
+            )
         await self.events.put(
-            SimpleNamespace(type="session.delegation.created", delegation=SimpleNamespace(id="dlg_1", target="client"))
+            SimpleNamespace(
+                type="session.delegation.created",
+                delegation=SimpleNamespace(id="dlg_1", target="client"),
+                offset_ms=2000,
+            )
         )
 
     async def _commentary(self, **kwargs) -> None:

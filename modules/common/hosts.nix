@@ -56,6 +56,15 @@
               default = null;
               description = "Home Assistant area of this Voice PE (null = not a Voice PE)";
             };
+            homeAssistantDeviceId = lib.mkOption {
+              type = lib.types.nullOr lib.types.str;
+              default = null;
+              description = ''
+                Device registry ID of this Voice PE's ESPHome device in Home Assistant,
+                which the voice broker runs home requests as. The router integration
+                registers a second device under the same MAC; that one is not it.
+              '';
+            };
             tailscalePort = lib.mkOption {
               type = lib.types.nullOr lib.types.port;
               default = null;
@@ -115,16 +124,20 @@
         lanIp = "192.168.1.52";
         mac = "1C:AF:4A:0C:6E:76";
       };
-      # Home Assistant Voice PEs
+      # Home Assistant Voice PEs. Device IDs read from Home Assistant's device
+      # registry (config/device_registry/list) on 2026-10-16: the entry whose
+      # config entry is esphome, not the asuswrt router tracker with the same MAC.
       kitchen-assistant = {
         lanIp = "192.168.1.53";
         mac = "20:F8:3B:09:E1:BB";
         voiceArea = "Kitchen";
+        homeAssistantDeviceId = "70f12d431cf502faeefdc782b45c0719";
       };
       room-assistant = {
         lanIp = "192.168.1.54";
         mac = "20:F8:3B:09:14:CC";
         voiceArea = "Room";
+        homeAssistantDeviceId = "9290a2568e3df21ba0fd2d663249c0ca";
       };
 
       # ssh-only entries (not on the LAN / no static lease)

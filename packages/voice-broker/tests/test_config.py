@@ -3,7 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from voice_broker.config import Device, History, load
+import pytest
+from voice_broker.config import Device, History, Routing, load
 
 ROOM = Device("room-assistant", "192.168.1.54", "Room", "esphome.home_assistant_voice_0914cc_start_conversation")
 
@@ -74,3 +75,56 @@ def test_empty_identity_keeps_the_instructions(tmp_path: Path) -> None:
 
 def test_no_identity_file_keeps_the_instructions(tmp_path: Path) -> None:
     assert load(write_config(tmp_path)).live.instructions == "Speak briefly."
+
+
+ROUTING = {
+    "model": "gpt-6-luna",
+    "timeout_s": 1.5,
+    "pipeline": "01jmq3hbakt5r0e136vd886hy9",
+    "pending_question_s": 60,
+    "settle_s": 0.35,
+}
+
+
+def with_routing(path: Path, routing: dict | None, device_id: str | None = "9290a2568e3df21ba0fd2d663249c0ca") -> Path:
+    raw = json.loads(path.read_text())
+    if routing is not None:
+        raw["routing"] = routing
+    if device_id is not None:
+        raw["devices"][0]["home_assistant_device_id"] = device_id
+    path.write_text(json.dumps(raw))
+    return path
+
+
+def test_no_routing_keeps_every_request_with_the_agent(tmp_path: Path) -> None:
+    config = load(write_config(tmp_path))
+    assert config.routing is None and config.devices[0].home_assistant_device_id is None
+
+
+def test_routing_and_the_speakers_home_assistant_device_are_read(tmp_path: Path) -> None:
+    config = load(with_routing(write_config(tmp_path), ROUTING))
+    assert config.routing == Routing("gpt-6-luna", 1.5, "01jmq3hbakt5r0e136vd886hy9", 60.0, 0.35)
+    assert config.devices[0].home_assistant_device_id == "9290a2568e3df21ba0fd2d663249c0ca"
+
+
+def test_routing_needs_every_speakers_home_assistant_device(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="room-assistant"):
+        load(with_routing(write_config(tmp_path), ROUTING, device_id=None))
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"pending_question_s": 300},
+        {"pending_question_s": 0},
+        {"timeout_s": 0},
+        {"timeout_s": 30},
+        {"settle_s": 0},
+        {"settle_s": 1.5},
+        {"pipeline": ""},
+        {"model": ""},
+    ],
+)
+def test_routing_bounds_are_checked(tmp_path: Path, change: dict) -> None:
+    with pytest.raises(ValueError):
+        load(with_routing(write_config(tmp_path), {**ROUTING, **change}))

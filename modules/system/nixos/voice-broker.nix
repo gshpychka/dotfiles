@@ -76,6 +76,38 @@ in
       };
     };
 
+    routing = {
+      enable = lib.mkEnableOption ''
+        classifying each delegated request with OpenAI Decisions (on the
+        broker's OpenAI key) and running it on Home Assistant's conversation
+        agent or on OpenClaw, whichever owns it. Off, OpenClaw answers
+        everything. Every Voice PE needs homeAssistantDeviceId'';
+      model = lib.mkOption {
+        type = lib.types.str;
+        default = "gpt-6-luna";
+        description = "Decisions model; gpt-6-luna is the only one the API takes so far.";
+      };
+      timeoutSeconds = lib.mkOption {
+        type = lib.types.numbers.between 0.1 10;
+        default = 1.5;
+        description = "Classification time limit; past it nothing runs and the user is asked again.";
+      };
+      pipeline = lib.mkOption {
+        type = lib.types.str;
+        description = "ID of the Assist pipeline whose conversation agent home requests go to.";
+      };
+      pendingQuestionSeconds = lib.mkOption {
+        type = lib.types.numbers.between 1 299;
+        default = 60;
+        description = "How long a question Home Assistant asked stays answerable; Home Assistant itself forgets after 5 minutes.";
+      };
+      settleSeconds = lib.mkOption {
+        type = lib.types.numbers.between 0.05 1;
+        default = 0.35;
+        description = "Transcript quiet that marks a delegated request complete.";
+      };
+    };
+
     identityFile = lib.mkOption {
       type = lib.types.nullOr lib.types.str;
       default = "${openclaw.workspace}/IDENTITY.md";
@@ -106,6 +138,11 @@ in
         assertion = openclaw.enable && openclaw.responsesEndpoint.enable;
         message = "my.voice-broker hands delegated work to OpenClaw on this host; enable my.openclaw and its responsesEndpoint.";
       }
+      {
+        assertion =
+          !cfg.routing.enable || lib.all (host: host.homeAssistantDeviceId != null) (lib.attrValues voicePes);
+        message = "my.voice-broker.routing runs home requests as each Voice PE; set my.hosts.<name>.homeAssistantDeviceId for every one.";
+      }
     ];
 
     my.voice-broker.settings = {
@@ -113,12 +150,24 @@ in
       listen_port = cfg.port;
       device_token_file = credential "device-token";
       openai_api_key_file = credential "openai-api-key";
-      devices = lib.mapAttrsToList (name: host: {
-        inherit name;
-        address = host.lanIp;
-        area = host.voiceArea;
-        call_action = callAction host;
-      }) voicePes;
+      devices = lib.mapAttrsToList (
+        name: host:
+        {
+          inherit name;
+          address = host.lanIp;
+          area = host.voiceArea;
+          call_action = callAction host;
+        }
+        // lib.optionalAttrs (host.homeAssistantDeviceId != null) {
+          home_assistant_device_id = host.homeAssistantDeviceId;
+        }
+      ) voicePes;
+      routing = lib.mkIf cfg.routing.enable {
+        inherit (cfg.routing) model pipeline;
+        timeout_s = cfg.routing.timeoutSeconds;
+        pending_question_s = cfg.routing.pendingQuestionSeconds;
+        settle_s = cfg.routing.settleSeconds;
+      };
       recordings_dir = if cfg.recordings.enable then "/var/lib/${recordingsDir}" else null;
       openclaw = {
         url = openclaw.localUrl;

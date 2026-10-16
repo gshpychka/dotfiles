@@ -11,9 +11,11 @@ from __future__ import annotations
 import asyncio
 import base64
 import logging
+import time
 from collections import deque
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
+from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
@@ -24,8 +26,10 @@ from openai.types.live.session_config_param import SessionConfigParam
 
 from .config import Live
 from .dsp import mic_to_speaker_rate
+from .home_assistant import HomeAssistantFailed, HomeReply
 from .openclaw import ConsultFailed, HistoryUnavailable, Role, Turn
 from .protocol import SPEAKER_RATE, Phase
+from .routing import RouteDecision, RouteRequest, RoutingFailed
 from .session import Host, SessionRefused, located, placement
 
 log = logging.getLogger(__name__)
@@ -46,12 +50,47 @@ _OPENING_LEAD = (
     "{opening}\nDelegate the user's response to the backend, whatever it is."
 )
 
+# Routed requests: what Live is told when nothing ran, and how a Home Assistant question reaches the user.
+_NOT_ROUTED = "Nothing was done: the request could not be routed just now. Tell the user and ask them to try again."
+_CLARIFY = "Nothing was done: it is unclear what to act on. Ask the user what they want done."
+_HOME_UNCERTAIN = "Home Assistant gave no answer and may have acted anyway. Tell the user to check before asking again."
+_STILL_SPEAKING = "Nothing was done yet: the user was still speaking. Let them finish, then delegate the whole request."
+_HOME_ASKS = "Home Assistant asks: {question}\nAsk the user this, then delegate their answer, whatever it is."
+# Waiting for the transcript to settle ends here; a longer stream is still speech in progress.
+_SETTLE_MAX_S = 2.0
+# Classifications of one request when more of it keeps arriving while it is classified.
+_ROUTE_ATTEMPTS = 3
+
 # Opens a Live connection; injected so tests can substitute OpenAI.
 LiveConnector = Callable[[], AbstractAsyncContextManager[AsyncLiveConnection]]
 # The agent's answer to a task; raises ConsultFailed.
 Consult = Callable[[str], Awaitable[str]]
 # The agent's recent conversation; raises HistoryUnavailable.
 Recall = Callable[[], Awaitable[list[Turn]]]
+
+
+@dataclass(frozen=True, slots=True)
+class Routed:
+    """Delegated requests classified, then answered by Home Assistant or by the consult."""
+
+    # Picks the backend; raises RoutingFailed.
+    route: Callable[[RouteRequest], Awaitable[RouteDecision]]
+    # Home Assistant's reply to text, continuing a conversation ID; raises HomeAssistantFailed.
+    converse: Callable[[str, str | None], Awaitable[HomeReply]]
+    # How long a question Home Assistant asked stays answerable.
+    pending_question_s: float
+    # Quiet after the last user transcript fragment before a request counts as complete.
+    settle_s: float
+
+
+@dataclass(frozen=True, slots=True)
+class _Pending:
+    """A question Home Assistant asked at this speaker and waits on."""
+
+    conversation_id: str
+    question: str
+    # time.monotonic() past which it is dropped
+    expires: float
 
 
 def live_connector(client: AsyncOpenAI) -> LiveConnector:
@@ -69,10 +108,19 @@ class LiveSession:
         recall: Recall,
         connect: LiveConnector,
         opening: str | None = None,
+        routed: Routed | None = None,
     ) -> None:
         self._config = config
         self._area = area
         self._consult = consult
+        # None: every delegation is a consult.
+        self._routed = routed
+        # This conversation's open Home Assistant question; it dies with the conversation.
+        self._pending: _Pending | None = None
+        # Live timeline start (ms) of each user transcript fragment heard, which the settling wait watches.
+        self._user_starts: list[int] = []
+        # Live timeline position (ms) of the newest delegation.
+        self._delegation_offset: int | None = None
         self._recall = recall
         self._connect = connect
         # What the voice says first, in a conversation the agent opened.
@@ -173,11 +221,13 @@ class LiveSession:
                     self._host.play(samples)
                 case "session.input_transcript.delta":
                     self._host.mark_activity()
+                    self._user_starts.append(event.start_ms)
                     self._hear("user", event.delta)
                 case "session.output_transcript.delta":
                     self._hear("assistant", event.delta)
                 case "session.delegation.created":
                     await self._host.set_phase(Phase.THINKING)
+                    self._delegation_offset = event.offset_ms
                     self._delegate(event.delegation.id)
                 case "session.closed":
                     log.info("live session closed: %s after %.1f s", event.reason, event.usage.seconds)
@@ -197,7 +247,9 @@ class LiveSession:
         self._delegation = delegation_id
         # A running consult is a turn of the agent's own session, so it runs to its end.
         if self._consulting is None:
-            self._consulting = asyncio.create_task(self._run_consults())
+            self._consulting = asyncio.create_task(
+                self._run_consults() if self._routed is None else self._run_routed(self._routed)
+            )
         else:
             log.info("delegation %s waits for the running consult", delegation_id)
 
@@ -230,6 +282,118 @@ class LiveSession:
             self._host.mark_activity()
         if not self.busy and not self._host.assistant_audible:
             await self._host.set_phase(Phase.LISTENING)
+
+    async def _run_routed(self, routed: Routed) -> None:
+        """Like _run_consults, but each request goes to the one backend its classification picks."""
+        assert self._conn is not None and self._host is not None
+        try:
+            while True:
+                delegation = self._delegation
+                answer = await self._answer_routed(routed)
+                for chunk in _chunks(answer):
+                    await self._conn.session.commentary.append(content=chunk, delegation_id=self._delegation)
+                unheard = self._heard[self._consulted :]
+                if self._delegation == delegation or not any(role == "user" for role, _ in unheard):
+                    break
+        finally:
+            if self._consulting is asyncio.current_task():
+                self._consulting = None
+            self._host.mark_activity()
+        if not self.busy and not self._host.assistant_audible:
+            await self._host.set_phase(Phase.LISTENING)
+
+    async def _settled(self, settle_s: float) -> bool:
+        """Whether the user's transcript went quiet for `settle_s`, within _SETTLE_MAX_S.
+
+        Live delegates with no end-of-utterance marker, and the transcript can trail it.
+        """
+        deadline = time.monotonic() + _SETTLE_MAX_S
+        while True:
+            seen = len(self._user_starts)
+            await asyncio.sleep(settle_s)
+            if len(self._user_starts) == seen:
+                return True
+            if time.monotonic() >= deadline:
+                return False
+
+    async def _answer_routed(self, routed: Routed) -> str:
+        """The answer to what the user said since the last request, from the backend it is routed to."""
+        for _ in range(_ROUTE_ATTEMPTS):
+            if not await self._settled(routed.settle_s):
+                # Left unconsumed: the next delegation takes the whole request.
+                return _STILL_SPEAKING
+            offset = self._delegation_offset
+            upto = len(self._heard)
+            heard = self._heard[self._consulted : upto]
+            text = " ".join(t.strip() for role, t in _turns(heard) if role == "user").strip()
+            if not text:
+                return "No transcript of the request arrived; ask the user to repeat it."
+            # Everything said before the request, the voice asking a question included.
+            first = next(i for i, (role, _) in enumerate(heard) if role == "user")
+            context = tuple(_turns(self._heard[: self._consulted + first]))
+            pending = self._pending
+            if pending is not None and pending.expires <= time.monotonic():
+                log.info("dropped an expired Home Assistant question")
+                pending = self._pending = None
+            fragments = len(self._user_starts)
+            request = RouteRequest(text, context, self._area, pending.question if pending else None)
+            try:
+                decision = await routed.route(request)
+            except Exception as e:  # noqa: BLE001 -- classifying acts on nothing, so any failure asks again
+                # Class name only for a bug: its message could quote the request.
+                log.warning("routing failed, nothing run: %s", e if isinstance(e, RoutingFailed) else type(e).__name__)
+                self._pending = None
+                self._consulted = upto
+                return _NOT_ROUTED
+            # The transcript trailed past the settling wait: speech from before the
+            # delegation, so part of this request, arrived while it was classified.
+            # Classify the whole of it instead of running a part.
+            late = self._user_starts[fragments:]
+            if offset is not None and any(start < offset for start in late):
+                log.info("more of the request arrived while routing it; routing it again")
+                continue
+            # Taken whatever happens next: only a new question from Home Assistant opens another.
+            self._pending = None
+            # Consumed before anything runs: a backend that failed may still have
+            # acted, so a later delegation must not run the request again.
+            self._consulted = upto
+            return await self._run_backend(routed, decision, text, heard, pending)
+        return _STILL_SPEAKING
+
+    async def _run_backend(
+        self, routed: Routed, decision: RouteDecision, text: str, heard: list[Turn], pending: _Pending | None
+    ) -> str:
+        log.info(
+            "route %s confidence=%s in %.0f ms%s",
+            decision.route,
+            decision.confidence,
+            decision.elapsed_ms,
+            " answering a Home Assistant question" if pending else "",
+        )
+        match decision.route:
+            case "clarify":
+                return _CLARIFY
+            case "openclaw":
+                try:
+                    return await self._consult(self._task(heard))
+                except ConsultFailed as e:
+                    log.warning("consult failed: %s", e)
+                    return f"The request failed: {e}"
+            case "ha":
+                try:
+                    # A pending question continues even into an unrelated home request: the
+                    # conversation agent sees the change of subject, and only its own context carries over.
+                    reply = await routed.converse(text, pending.conversation_id if pending else None)
+                except HomeAssistantFailed as e:
+                    log.warning("home assistant failed: %s", e)
+                    return _HOME_UNCERTAIN
+                log.info("home assistant -> %s", reply.speech)
+                if reply.continue_conversation and reply.conversation_id is not None:
+                    self._pending = _Pending(
+                        reply.conversation_id, reply.speech, time.monotonic() + routed.pending_question_s
+                    )
+                    return _HOME_ASKS.format(question=reply.speech)
+                return reply.speech
 
     def _task(self, heard: list[Turn]) -> str:
         said = "\n".join(f"{role}: {text.strip()}" for role, text in _turns(heard))

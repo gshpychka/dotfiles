@@ -71,6 +71,28 @@ class Device:
     area: str
     # The Home Assistant action that makes it open a conversation.
     call_action: str
+    # Its ESPHome device in Home Assistant's device registry, which home
+    # requests are run as; None while routing is off.
+    home_assistant_device_id: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class Routing:
+    """Delegated requests split between Home Assistant and OpenClaw (routing.py)."""
+
+    # OpenAI Decisions model that picks the backend.
+    model: str
+    # Past this, the request is not classified and nothing runs.
+    timeout_s: float
+    # The Assist pipeline whose conversation agent home requests go to.
+    pipeline: str
+    # How long a question Home Assistant asked stays answerable. Home
+    # Assistant forgets the conversation after 5 minutes idle
+    # (helpers/chat_session.py CONVERSATION_TIMEOUT), so it must be shorter.
+    pending_question_s: float
+    # Quiet after the last transcript fragment before a request counts as
+    # complete: Live delegates without marking the end of the utterance.
+    settle_s: float
 
 
 @dataclass(frozen=True, slots=True)
@@ -101,6 +123,8 @@ class Config:
     # When set, every conversation's mic, reference and echo-cancelled audio
     # is written here for tuning.
     recordings_dir: Path | None
+    # None sends every delegated request to OpenClaw.
+    routing: Routing | None = None
 
 
 def _live(raw: dict[str, Any]) -> Live:
@@ -139,18 +163,49 @@ def _calls(raw: dict[str, Any]) -> Calls:
     )
 
 
+def _routing(raw: dict[str, Any]) -> Routing:
+    routing = Routing(
+        model=raw["model"],
+        timeout_s=float(raw["timeout_s"]),
+        pipeline=raw["pipeline"],
+        pending_question_s=float(raw["pending_question_s"]),
+        settle_s=float(raw["settle_s"]),
+    )
+    if not routing.model or not routing.pipeline:
+        raise ValueError("routing needs a model and a pipeline")
+    if not 0 < routing.timeout_s <= 10:
+        raise ValueError("routing.timeout_s must be in (0, 10]")
+    if not 0 < routing.pending_question_s < 300:
+        raise ValueError("routing.pending_question_s must be in (0, 300): Home Assistant forgets after 5 minutes")
+    # A longer wait would leave the settling cap (live._SETTLE_MAX_S) a single window.
+    if not 0 < routing.settle_s <= 1:
+        raise ValueError("routing.settle_s must be in (0, 1]")
+    return routing
+
+
+def _device(raw: dict[str, Any]) -> Device:
+    return Device(
+        raw["name"], raw["address"], raw["area"], raw["call_action"], raw.get("home_assistant_device_id") or None
+    )
+
+
 def load(path: Path) -> Config:
     raw = json.loads(path.read_text())
+    devices = [_device(d) for d in raw["devices"]]
+    routing = _routing(raw["routing"]) if raw.get("routing") else None
+    if routing is not None and (unplaced := [d.name for d in devices if d.home_assistant_device_id is None]):
+        raise ValueError(f"routing needs home_assistant_device_id for {', '.join(unplaced)}")
     return Config(
         listen_host=raw["listen_host"],
         listen_port=int(raw["listen_port"]),
         device_token=_read_secret(raw["device_token_file"]),
         openai_api_key=_read_secret(raw["openai_api_key_file"]),
-        devices=[Device(d["name"], d["address"], d["area"], d["call_action"]) for d in raw["devices"]],
+        devices=devices,
         live=_live(raw["live"]),
         openclaw=_openclaw(raw["openclaw"]),
         calls=_calls(raw["calls"]),
         idle_timeout_s=float(raw["idle_timeout_s"]),
         max_conversation_s=float(raw["max_conversation_s"]),
         recordings_dir=Path(raw["recordings_dir"]) if raw.get("recordings_dir") else None,
+        routing=routing,
     )

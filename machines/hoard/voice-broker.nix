@@ -5,6 +5,14 @@
     sopsFile = ../../secrets/hoard/voice-broker.yaml;
     recordings.enable = false;
     homeAssistant.url = "http://homeassistant.${config.my.domain}:8123";
+    routing = {
+      enable = true;
+      # "Remote" (conversation.chatgpt, an LLM agent that can ask which device
+      # is meant), Home Assistant's preferred pipeline as of 2026-10-16
+      # (assist_pipeline/pipeline/list). The Voice PEs' own pipeline selects
+      # don't apply: the broker, not the satellite, runs the pipeline.
+      pipeline = "01jmq3hbakt5r0e136vd886hy9";
+    };
 
     settings = {
       live = {
@@ -37,6 +45,11 @@
             conversation: current information, something to remember or
             recall, or a task to carry out.
           - A correction changes the work already requested.
+          - The user answers a question the backend asked, even with one word
+            such as a room, yes or no. The backend asked it, so it decides.
+
+          When the backend's result is a question, ask it and wait for the
+          answer. Never answer it yourself or assume who is speaking.
 
           Do not delegate to the backend when:
           - You can answer from the conversation or a still-current result.
