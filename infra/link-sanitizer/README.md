@@ -11,9 +11,10 @@ Telegram bot that replies to messages whose links carry tracking parameters
 From this directory, in the infra shell:
 
 ```sh
-# once: the bot token and an AWS profile
+# once: the bot token, an AWS profile and the account's Alchemy assets bucket
 sops ../../secrets/infra/link-sanitizer.env  # TELEGRAM_BOT_TOKEN=<token from @BotFather>
 bun alchemy profile edit --add AWS
+bun alchemy provider aws bootstrap --aws-profile "$(aws configure list-profiles)"
 
 bun install --frozen-lockfile
 bun run deploy
