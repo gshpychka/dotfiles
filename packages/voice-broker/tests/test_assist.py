@@ -746,6 +746,8 @@ def outcome(
         ({"tools": [("intent__HassTurnOn", False)], "question": True, "speech": "Done. Anything else?"}, Outcome.ACTED),
         # A local action without targets, such as a sentence trigger's automation.
         ({"local": True}, Outcome.ACTED),
+        # "Never mind" (HassNevermind): local, no targets, no speech, nothing done.
+        ({"local": True, "speech": ""}, Outcome.ABSTAINED),
         ({"local": True, "response_type": "error", "speech": "Sorry"}, Outcome.ABSTAINED),
         ({"response_type": "error", "speech": "Error talking to OpenAI"}, Outcome.FAILED),
     ],
@@ -876,7 +878,7 @@ def test_a_trailing_transcript_as_the_assistant_starts_is_no_barge_in():
         home.start()
         feed(home, 2.0, audible=True)  # GPT-Live replying
         home.user_heard()  # the end of the user's previous utterance, transcribed late
-        clock.now += 1.0
+        clock.now += 4.0
         feed(home, 2.0, audible=True)  # the reply goes on; nobody spoke over it
         feed(home, 0.1)
         clock.now += assist.BARGE_IN_WAIT_S
@@ -1010,3 +1012,123 @@ def test_an_utterance_whose_middle_was_dropped_before_its_speech_was_reported_is
     turn, ha = asyncio.run(main())
     assert turn.outcome == Outcome.FAILED and turn.reason == "audio backlog"
     assert ha.runs[0].cancelled
+
+
+# -- re-review findings ----------------------------------------------------------
+
+
+def test_speech_reported_while_an_idle_restart_is_pending_voids_the_restart(monkeypatch):
+    monkeypatch.setattr(assist, "IDLE_SETTLE_S", 0.1)
+
+    async def late_vad(run: Run) -> None:
+        await run.heard(int(assist.IDLE_RESTART_S * MIC_RATE))
+        await asyncio.sleep(assist.IDLE_SETTLE_S + 0.05)  # the restart is set; messages are being drained
+        run.event("stt-vad-start", timestamp=5800)
+        await asyncio.Event().wait()
+
+    async def main():
+        ha = FakeHA(late_vad)
+        home = listener(ha)
+        home.start()
+        feed(home, 8.0)
+        await until(lambda: home._run is not None and home._run.vad_start_ms is not None)
+        await asyncio.sleep(0.4)
+        sent = len(ha.runs[0].samples)
+        home.stop()
+        return ha, drained(home), sent
+
+    ha, events, sent = asyncio.run(main())
+    # The run goes on with its turn open, and its audio flows past the idle limit.
+    assert not ha.runs[0].cancelled and len(ha.run_commands) == 1
+    assert [e for e in events if isinstance(e, HeardSpeech)] == [HeardSpeech(1)]
+    assert sent > assist.IDLE_RESTART_S * MIC_RATE
+
+
+def test_after_a_connection_lost_mid_utterance_its_rest_is_never_acted_on():
+    async def lost(run: Run) -> None:
+        await run.heard(BLOCK)
+        run.event("stt-vad-start", timestamp=300)
+        await run.heard(int(0.5 * MIC_RATE))
+        run.socket.flowing.clear()  # stalls; the rest of the utterance queues
+        await asyncio.sleep(0.05)
+        run.socket.drop()
+
+    async def would_act(run: Run) -> None:
+        run.event("stt-vad-start", timestamp=300)
+        await asyncio.sleep(0.05)
+        if not run.cancelled:
+            run.event("stt-vad-end", timestamp=900)
+            run.intent("Done", tools=[("HassTurnOn", {"name": "light"})])
+
+    async def main():
+        ha = FakeHA(lost, would_act)
+        home = listener(ha)
+        home.start()
+        feed(home, 0.6)
+        await until(lambda: ha.runs and not ha.sockets[0].flowing.is_set())
+        feed(home, 2.0)
+        await until(lambda: len(ha.run_commands) == 3, limit=5)
+        await settle()
+        home.stop()
+        return ha, drained(home)
+
+    ha, events = asyncio.run(main())
+    turns = [(e.turn, e.outcome, e.reason) for e in events if isinstance(e, HomeTurn)]
+    assert turns == [(1, Outcome.FAILED, "connection lost")]
+    assert ha.runs[1].cancelled
+
+
+def test_the_first_speech_a_backlog_gap_cuts_is_told_even_when_it_began_after_the_gap():
+    async def reports_after_the_gap(run: Run) -> None:
+        await run.heard(BLOCK)
+        run.socket.flowing.clear()
+        await run.socket.ha.resume.wait()
+        # 0.2 s of the run's audio before the gap, then speech 0.2 s after it: within GAP_GUARD_S.
+        await run.heard(int(0.5 * MIC_RATE))
+        run.event("stt-vad-start", timestamp=400)
+        await asyncio.Event().wait()
+
+    async def main():
+        ha = FakeHA(reports_after_the_gap)
+        ha.resume = asyncio.Event()
+        home = listener(ha)
+        home.start()
+        feed(home, 0.2)
+        await until(lambda: ha.runs and not ha.sockets[0].flowing.is_set())
+        feed(home, 30.0)
+        ha.sockets[0].flowing.set()
+        ha.resume.set()
+        events = []
+        while not any(isinstance(e, HomeTurn) for e in events):
+            events.append(await next_event(home))
+        home.stop()
+        return events, ha
+
+    events, ha = asyncio.run(main())
+    # It may be a request of its own: GPT-Live hears that Home Assistant did nothing with it.
+    assert events == [HeardSpeech(1), events[-1]]
+    assert (events[-1].outcome, events[-1].reason) == (Outcome.FAILED, "audio backlog")
+    assert ha.runs[0].cancelled
+
+
+def test_an_assistant_cut_short_right_after_the_user_spoke_is_a_barge_in():
+    async def listens(run: Run) -> None:
+        await asyncio.Event().wait()
+
+    async def main():
+        clock = Clock()
+        ha = FakeHA(listens)
+        home = listener(ha, clock=clock)
+        home.start()
+        feed(home, 1.0, audible=True)
+        clock.now = 0.5
+        home.user_heard()  # within the grace: not yet a barge-in
+        clock.now = 1.0
+        feed(home, 0.5)  # GPT-Live yielded a second in: it was interrupted
+        await until(lambda: ha.runs and len(ha.runs[0].samples) >= int(1.5 * MIC_RATE))
+        home.stop()
+        return ha.runs[0].samples
+
+    samples = asyncio.run(main())
+    # The held second, the user's first words in it, goes on before what follows.
+    assert np.array_equal(samples[: int(1.5 * MIC_RATE)], counting(0, int(1.5 * MIC_RATE)))
