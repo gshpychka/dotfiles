@@ -11,10 +11,10 @@
       routing = {
         strategy = "classifier";
         classifier = {
-          provider = "compatible";
+          # Endpoint verified, current account POST returns 403: capability-test branch.
+          provider = "decisions";
           base_url = "https://api.openai.com/v1";
-          model = "gpt-4.1-mini";
-          api = "chat";
+          model = "gpt-6-luna";
           timeout_s = 1.5;
           # Reuses existing openai-api-key systemd credential, never inline.
         };
