@@ -1,0 +1,638 @@
+{
+  "mode": "synthetic_shadow_no_actuators",
+  "inference_call_cap": 56,
+  "estimated_cost_cap_usd": 0.1,
+  "models_get_calls": 1,
+  "models": [
+    {
+      "model": "gpt-4.1-nano",
+      "prices_per_million_usd": {
+        "input": 0.1,
+        "cached_input": 0.025,
+        "output": 0.4
+      },
+      "cases": [
+        {
+          "case_id": "en-light",
+          "expected": "ha",
+          "actual": "ha",
+          "error": null,
+          "elapsed_ms": 1097.8541560471058,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-nano-2025-04-14",
+          "http_ms": 1097.5857800804079
+        },
+        {
+          "case_id": "uk-light",
+          "expected": "ha",
+          "actual": "ha",
+          "error": null,
+          "elapsed_ms": 841.6209670249373,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-nano-2025-04-14",
+          "http_ms": 841.4111009333283
+        },
+        {
+          "case_id": "en-scene",
+          "expected": "ha",
+          "actual": "ha",
+          "error": null,
+          "elapsed_ms": 922.1980900038034,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-nano-2025-04-14",
+          "http_ms": 922.0466958358884
+        },
+        {
+          "case_id": "uk-scene",
+          "expected": "ha",
+          "actual": "ha",
+          "error": null,
+          "elapsed_ms": 1026.8592501524836,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-nano-2025-04-14",
+          "http_ms": 1026.7206928692758
+        },
+        {
+          "case_id": "en-temp",
+          "expected": "ha",
+          "actual": "clarify",
+          "error": null,
+          "elapsed_ms": 664.6243392024189,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-nano-2025-04-14",
+          "http_ms": 664.4521139096469
+        },
+        {
+          "case_id": "uk-temp",
+          "expected": "ha",
+          "actual": "clarify",
+          "error": null,
+          "elapsed_ms": 655.3619590122253,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-nano-2025-04-14",
+          "http_ms": 655.2111110650003
+        },
+        {
+          "case_id": "en-weather",
+          "expected": "openclaw",
+          "actual": "openclaw",
+          "error": null,
+          "elapsed_ms": 663.981628138572,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-nano-2025-04-14",
+          "http_ms": 663.8148101046681
+        },
+        {
+          "case_id": "uk-weather",
+          "expected": "openclaw",
+          "actual": "openclaw",
+          "error": null,
+          "elapsed_ms": 1168.258602032438,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-nano-2025-04-14",
+          "http_ms": 1168.0792849510908
+        },
+        {
+          "case_id": "en-code",
+          "expected": "openclaw",
+          "actual": "openclaw",
+          "error": null,
+          "elapsed_ms": 689.6718260832131,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-nano-2025-04-14",
+          "http_ms": 689.5453629549593
+        },
+        {
+          "case_id": "uk-code",
+          "expected": "openclaw",
+          "actual": "openclaw",
+          "error": null,
+          "elapsed_ms": 529.0851700119674,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-nano-2025-04-14",
+          "http_ms": 528.8795691449195
+        },
+        {
+          "case_id": "en-ambiguous",
+          "expected": "clarify",
+          "actual": "ha",
+          "error": null,
+          "elapsed_ms": 971.9750310759991,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-nano-2025-04-14",
+          "http_ms": 971.8055659905076
+        },
+        {
+          "case_id": "uk-ambiguous",
+          "expected": "clarify",
+          "actual": "ha",
+          "error": null,
+          "elapsed_ms": 616.5016561280936,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-nano-2025-04-14",
+          "http_ms": 616.3658609148115
+        },
+        {
+          "case_id": "en-follow-home",
+          "expected": "ha",
+          "actual": "ha",
+          "error": null,
+          "elapsed_ms": 586.0433061607182,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-nano-2025-04-14",
+          "http_ms": 585.8767251484096
+        },
+        {
+          "case_id": "uk-follow-home",
+          "expected": "ha",
+          "actual": "ha",
+          "error": null,
+          "elapsed_ms": 554.2163429781795,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-nano-2025-04-14",
+          "http_ms": 554.0479908231646
+        },
+        {
+          "case_id": "en-follow-weather",
+          "expected": "openclaw",
+          "actual": "openclaw",
+          "error": null,
+          "elapsed_ms": 531.5599190071225,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-nano-2025-04-14",
+          "http_ms": 531.3845230266452
+        },
+        {
+          "case_id": "uk-follow-weather",
+          "expected": "openclaw",
+          "actual": "openclaw",
+          "error": null,
+          "elapsed_ms": 562.485835980624,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-nano-2025-04-14",
+          "http_ms": 562.28057295084
+        },
+        {
+          "case_id": "en-follow-empty",
+          "expected": "clarify",
+          "actual": "openclaw",
+          "error": null,
+          "elapsed_ms": 549.4848908856511,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-nano-2025-04-14",
+          "http_ms": 549.2957970127463
+        },
+        {
+          "case_id": "uk-follow-empty",
+          "expected": "clarify",
+          "actual": "openclaw",
+          "error": null,
+          "elapsed_ms": 543.4452590998262,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-nano-2025-04-14",
+          "http_ms": 543.2682631071657
+        },
+        {
+          "case_id": "en-area",
+          "expected": "ha",
+          "actual": "ha",
+          "error": null,
+          "elapsed_ms": 590.8438318874687,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-nano-2025-04-14",
+          "http_ms": 590.6992270611227
+        },
+        {
+          "case_id": "uk-area",
+          "expected": "ha",
+          "actual": "ha",
+          "error": null,
+          "elapsed_ms": 593.7303418759257,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-nano-2025-04-14",
+          "http_ms": 593.5832830145955
+        },
+        {
+          "case_id": "en-mixed",
+          "expected": "openclaw",
+          "actual": "ha",
+          "error": null,
+          "elapsed_ms": 539.8037899285555,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-nano-2025-04-14",
+          "http_ms": 539.6724150050431
+        },
+        {
+          "case_id": "uk-mixed",
+          "expected": "openclaw",
+          "actual": "ha",
+          "error": null,
+          "elapsed_ms": 557.5732928700745,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-nano-2025-04-14",
+          "http_ms": 557.4015530291945
+        },
+        {
+          "case_id": "en-scene-knowledge",
+          "expected": "openclaw",
+          "actual": "openclaw",
+          "error": null,
+          "elapsed_ms": 558.5023770108819,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-nano-2025-04-14",
+          "http_ms": 558.3454731386155
+        },
+        {
+          "case_id": "uk-scene-knowledge",
+          "expected": "openclaw",
+          "actual": "clarify",
+          "error": null,
+          "elapsed_ms": 564.7211000323296,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-nano-2025-04-14",
+          "http_ms": 564.5332869607955
+        },
+        {
+          "case_id": "en-incomplete",
+          "expected": "clarify",
+          "actual": "ha",
+          "error": null,
+          "elapsed_ms": 599.2866901215166,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-nano-2025-04-14",
+          "http_ms": 599.1461910307407
+        },
+        {
+          "case_id": "uk-incomplete",
+          "expected": "clarify",
+          "actual": "ha",
+          "error": null,
+          "elapsed_ms": 583.4163951221853,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-nano-2025-04-14",
+          "http_ms": 583.2339590415359
+        },
+        {
+          "case_id": "en-weather-device",
+          "expected": "ha",
+          "actual": "ha",
+          "error": null,
+          "elapsed_ms": 500.04164199344814,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-nano-2025-04-14",
+          "http_ms": 499.88290085457265
+        },
+        {
+          "case_id": "uk-weather-device",
+          "expected": "ha",
+          "actual": "ha",
+          "error": null,
+          "elapsed_ms": 508.0041161272675,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-nano-2025-04-14",
+          "http_ms": 507.8312810510397
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 7355,
+        "completion_tokens": 161,
+        "cached_tokens": 0
+      },
+      "successful_http_calls": 28,
+      "failed_http_calls": 0,
+      "samples": 28,
+      "valid_classifications": 28,
+      "accuracy": 0.6071428571428571,
+      "unsafe_ha": 6,
+      "p50_ms": 586.0433061607182,
+      "p95_ms": 1097.8541560471058,
+      "confusion": {
+        "ha->ha": 10,
+        "ha->clarify": 2,
+        "openclaw->openclaw": 7,
+        "clarify->ha": 4,
+        "clarify->openclaw": 2,
+        "openclaw->ha": 2,
+        "openclaw->clarify": 1
+      }
+    },
+    {
+      "model": "gpt-4.1-mini",
+      "prices_per_million_usd": {
+        "input": 0.4,
+        "cached_input": 0.1,
+        "output": 1.6
+      },
+      "cases": [
+        {
+          "case_id": "en-light",
+          "expected": "ha",
+          "actual": "ha",
+          "error": null,
+          "elapsed_ms": 622.3606280982494,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-mini-2025-04-14",
+          "http_ms": 622.2123620100319
+        },
+        {
+          "case_id": "uk-light",
+          "expected": "ha",
+          "actual": "ha",
+          "error": null,
+          "elapsed_ms": 659.6778240054846,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-mini-2025-04-14",
+          "http_ms": 659.4690871424973
+        },
+        {
+          "case_id": "en-scene",
+          "expected": "ha",
+          "actual": "ha",
+          "error": null,
+          "elapsed_ms": 680.3202680312097,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-mini-2025-04-14",
+          "http_ms": 680.0410689320415
+        },
+        {
+          "case_id": "uk-scene",
+          "expected": "ha",
+          "actual": "ha",
+          "error": null,
+          "elapsed_ms": 674.5649268850684,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-mini-2025-04-14",
+          "http_ms": 674.4156279601157
+        },
+        {
+          "case_id": "en-temp",
+          "expected": "ha",
+          "actual": "ha",
+          "error": null,
+          "elapsed_ms": 656.5884549636394,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-mini-2025-04-14",
+          "http_ms": 656.3928970135748
+        },
+        {
+          "case_id": "uk-temp",
+          "expected": "ha",
+          "actual": "ha",
+          "error": null,
+          "elapsed_ms": 1103.1296330038458,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-mini-2025-04-14",
+          "http_ms": 1102.938577067107
+        },
+        {
+          "case_id": "en-weather",
+          "expected": "openclaw",
+          "actual": "openclaw",
+          "error": null,
+          "elapsed_ms": 641.8442230205983,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-mini-2025-04-14",
+          "http_ms": 641.7027409188449
+        },
+        {
+          "case_id": "uk-weather",
+          "expected": "openclaw",
+          "actual": "openclaw",
+          "error": null,
+          "elapsed_ms": 640.7484880182892,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-mini-2025-04-14",
+          "http_ms": 640.5837631318718
+        },
+        {
+          "case_id": "en-code",
+          "expected": "openclaw",
+          "actual": "openclaw",
+          "error": null,
+          "elapsed_ms": 642.0033029280603,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-mini-2025-04-14",
+          "http_ms": 641.8125750496984
+        },
+        {
+          "case_id": "uk-code",
+          "expected": "openclaw",
+          "actual": "openclaw",
+          "error": null,
+          "elapsed_ms": 683.1053111236542,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-mini-2025-04-14",
+          "http_ms": 682.9425031319261
+        },
+        {
+          "case_id": "en-ambiguous",
+          "expected": "clarify",
+          "actual": "clarify",
+          "error": null,
+          "elapsed_ms": 735.6944750063121,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-mini-2025-04-14",
+          "http_ms": 735.5261219199747
+        },
+        {
+          "case_id": "uk-ambiguous",
+          "expected": "clarify",
+          "actual": "clarify",
+          "error": null,
+          "elapsed_ms": 711.1237570643425,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-mini-2025-04-14",
+          "http_ms": 710.8813188970089
+        },
+        {
+          "case_id": "en-follow-home",
+          "expected": "ha",
+          "actual": "ha",
+          "error": null,
+          "elapsed_ms": 604.0596740785986,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-mini-2025-04-14",
+          "http_ms": 603.8811439648271
+        },
+        {
+          "case_id": "uk-follow-home",
+          "expected": "ha",
+          "actual": "ha",
+          "error": null,
+          "elapsed_ms": 632.17713101767,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-mini-2025-04-14",
+          "http_ms": 631.9988698232919
+        },
+        {
+          "case_id": "en-follow-weather",
+          "expected": "openclaw",
+          "actual": "openclaw",
+          "error": null,
+          "elapsed_ms": 765.4169430024922,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-mini-2025-04-14",
+          "http_ms": 765.2646410278976
+        },
+        {
+          "case_id": "uk-follow-weather",
+          "expected": "openclaw",
+          "actual": "openclaw",
+          "error": null,
+          "elapsed_ms": 617.4026920925826,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-mini-2025-04-14",
+          "http_ms": 617.2086549922824
+        },
+        {
+          "case_id": "en-follow-empty",
+          "expected": "clarify",
+          "actual": "clarify",
+          "error": null,
+          "elapsed_ms": 652.2189029492438,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-mini-2025-04-14",
+          "http_ms": 652.0505810622126
+        },
+        {
+          "case_id": "uk-follow-empty",
+          "expected": "clarify",
+          "actual": "clarify",
+          "error": null,
+          "elapsed_ms": 631.2983001116663,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-mini-2025-04-14",
+          "http_ms": 631.1229690909386
+        },
+        {
+          "case_id": "en-area",
+          "expected": "ha",
+          "actual": "ha",
+          "error": null,
+          "elapsed_ms": 791.3640940096229,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-mini-2025-04-14",
+          "http_ms": 791.2027039565146
+        },
+        {
+          "case_id": "uk-area",
+          "expected": "ha",
+          "actual": "ha",
+          "error": null,
+          "elapsed_ms": 614.387109875679,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-mini-2025-04-14",
+          "http_ms": 614.2259989865124
+        },
+        {
+          "case_id": "en-mixed",
+          "expected": "openclaw",
+          "actual": "openclaw",
+          "error": null,
+          "elapsed_ms": 658.7250831071287,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-mini-2025-04-14",
+          "http_ms": 658.5627978201956
+        },
+        {
+          "case_id": "uk-mixed",
+          "expected": "openclaw",
+          "actual": "clarify",
+          "error": null,
+          "elapsed_ms": 641.44157897681,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-mini-2025-04-14",
+          "http_ms": 641.2888411432505
+        },
+        {
+          "case_id": "en-scene-knowledge",
+          "expected": "openclaw",
+          "actual": "openclaw",
+          "error": null,
+          "elapsed_ms": 662.622697185725,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-mini-2025-04-14",
+          "http_ms": 662.4775128439069
+        },
+        {
+          "case_id": "uk-scene-knowledge",
+          "expected": "openclaw",
+          "actual": "openclaw",
+          "error": null,
+          "elapsed_ms": 658.1619491335005,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-mini-2025-04-14",
+          "http_ms": 658.0059679690748
+        },
+        {
+          "case_id": "en-incomplete",
+          "expected": "clarify",
+          "actual": "clarify",
+          "error": null,
+          "elapsed_ms": 600.7475680671632,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-mini-2025-04-14",
+          "http_ms": 600.5762058775872
+        },
+        {
+          "case_id": "uk-incomplete",
+          "expected": "clarify",
+          "actual": "clarify",
+          "error": null,
+          "elapsed_ms": 663.3538960013539,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-mini-2025-04-14",
+          "http_ms": 663.1874258164316
+        },
+        {
+          "case_id": "en-weather-device",
+          "expected": "ha",
+          "actual": "ha",
+          "error": null,
+          "elapsed_ms": 630.3821699693799,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-mini-2025-04-14",
+          "http_ms": 630.2134711295366
+        },
+        {
+          "case_id": "uk-weather-device",
+          "expected": "ha",
+          "actual": "ha",
+          "error": null,
+          "elapsed_ms": 658.9589649811387,
+          "http_status": 200,
+          "returned_model": "gpt-4.1-mini-2025-04-14",
+          "http_ms": 658.8017311878502
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 7355,
+        "completion_tokens": 165,
+        "cached_tokens": 0
+      },
+      "successful_http_calls": 28,
+      "failed_http_calls": 0,
+      "samples": 28,
+      "valid_classifications": 28,
+      "accuracy": 0.9642857142857143,
+      "unsafe_ha": 0,
+      "p50_ms": 656.5884549636394,
+      "p95_ms": 791.3640940096229,
+      "confusion": {
+        "ha->ha": 12,
+        "openclaw->openclaw": 9,
+        "clarify->clarify": 6,
+        "openclaw->clarify": 1
+      }
+    }
+  ],
+  "total_inference_calls": 56,
+  "estimated_cost_usd": 0.004005900000000002,
+  "notes": [
+    "28 cases per model, single pass; small non-held-out sample, no confidence interval",
+    "urllib HTTP transport, fresh connection/TLS per call; includes actual network HTTP time",
+    "No private history, no tools, no provider retry, no Decisions retry",
+    "Prices from official model docs; estimated cost not billing statement"
+  ],
+  "models_get_status": 403
+}

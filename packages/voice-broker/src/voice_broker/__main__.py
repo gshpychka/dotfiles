@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from http import HTTPStatus
 from pathlib import Path
 
+import httpx2
 from openai import AsyncOpenAI
 from websockets.asyncio.server import Server, ServerConnection, serve
 from websockets.exceptions import ConnectionClosed
@@ -28,7 +29,8 @@ from .home_assistant import HomeAssistant
 from .live import LiveSession, live_connector
 from .openclaw import HistoryUnavailable, OpenClaw
 from .protocol import MIC_RATE, ProtocolError, parse_start
-from .routing import NaiveRouter, RouteRequest
+from .router_factory import make_router
+from .routing import RouteRequest
 
 log = logging.getLogger("voice_broker")
 
@@ -58,8 +60,10 @@ class _DeviceState:
 class Broker:
     def __init__(self, config: Config) -> None:
         self._config = config
-        if config.routing is not None and config.routing.strategy != "naive":
-            raise ValueError("this branch supports routing.strategy=naive only")
+        self._routing_http = httpx2.AsyncClient(timeout=2.0, follow_redirects=False)
+        self._router = (
+            make_router(config.routing, config.openai_api_key, self._routing_http) if config.routing else None
+        )
         self._archive = Archive(config.openclaw, config.routing.archive_dir) if config.routing else None
         self._openclaw = OpenClaw(config.openclaw)
         self._devices = {d.address: _DeviceState(d, EchoCanceller(MIC_RATE)) for d in config.devices}
@@ -121,7 +125,7 @@ class Broker:
                 is_current=lambda request: session.request_is_current(request),
             )
             dispatcher = Dispatcher(
-                NaiveRouter(), home.consult, agent, is_current=lambda request: session.request_is_current(request)
+                self._router, home.consult, agent, is_current=lambda request: session.request_is_current(request)
             )
 
         async def remember(request: RouteRequest, answer: str) -> None:
@@ -172,6 +176,7 @@ class Broker:
                 server.close()
         finally:
             await self._openclaw.aclose()
+            await self._routing_http.aclose()
 
 
 def main() -> None:

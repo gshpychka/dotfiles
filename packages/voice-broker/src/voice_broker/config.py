@@ -85,12 +85,23 @@ class Calls:
 
 
 @dataclass(frozen=True, slots=True)
+class Classifier:
+    provider: str
+    base_url: str
+    model: str
+    api: str = "chat"
+    token: str | None = None
+    timeout_s: float = 1.5
+
+
+@dataclass(frozen=True, slots=True)
 class Routing:
     strategy: str
     pipeline: str
     devices: dict[str, str]
     settle_s: float = 0.35
     archive_dir: Path = Path("/var/lib/voice-broker/pending-history")
+    classifier: Classifier | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -156,12 +167,24 @@ def _routing(raw: dict[str, Any] | None) -> Routing | None:
     settle = float(raw.get("settle_s", 0.35))
     if not 0.1 <= settle <= 2.0:
         raise ValueError("routing.settle_s must be between 0.1 and 2 seconds")
+    provider = raw.get("classifier")
+    classifier = None
+    if provider:
+        classifier = Classifier(
+            provider["provider"],
+            provider["base_url"],
+            provider["model"],
+            provider.get("api", "chat"),
+            _read_secret(provider["token_file"]) if provider.get("token_file") else None,
+            float(provider.get("timeout_s", 1.5)),
+        )
     return Routing(
         raw["strategy"],
         raw["pipeline"],
         dict(raw["devices"]),
         settle,
         Path(raw.get("archive_dir", "/var/lib/voice-broker/pending-history")),
+        classifier,
     )
 
 

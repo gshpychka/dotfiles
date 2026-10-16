@@ -9,7 +9,15 @@
     settings = {
       # EXPERIMENTAL comparison branch, not a production routing recommendation.
       routing = {
-        strategy = "naive";
+        strategy = "classifier";
+        classifier = {
+          provider = "compatible";
+          base_url = "https://api.openai.com/v1";
+          model = "gpt-4.1-mini";
+          api = "chat";
+          timeout_s = 1.5;
+          # Reuses existing openai-api-key systemd credential, never inline.
+        };
         pipeline = "01jmq3hbakt5r0e136vd886hy9"; # Existing Remote, unchanged.
         devices = {
           room-assistant = "e96b17992356c46e2324bcdb0325cf13";
