@@ -51,6 +51,7 @@ in
       "/var/lib/maintainerr:/opt/data"
       "${patchDir}/collection-handler.js:/opt/app/apps/server/dist/modules/collections/collection-handler.js:ro"
       "${patchDir}/collections.service.js:/opt/app/apps/server/dist/modules/collections/collections.service.js:ro"
+      "${patchDir}/rule-executor.service.js:/opt/app/apps/server/dist/modules/rules/tasks/rule-executor.service.js:ro"
       "${patchDir}/telegram.js:/opt/app/apps/server/dist/modules/notifications/agents/telegram.js:ro"
     ];
     environment = {
@@ -71,7 +72,9 @@ in
 
   # Only notification event emission / optional Telegram topic routing differs.
   # Extract from an unstarted image, verify hashes, run offline regression tests,
-  # and bind the three patched modules read-only. Cancellation notices survive.
+  # and bind the four patched modules read-only. Cancellation notices survive.
+  # notifications.service.js is extracted only so the tests drive the real
+  # notification dispatcher; it is neither patched nor mounted.
   systemd.services.docker-maintainerr = {
     serviceConfig = {
       RuntimeDirectory = "maintainerr-notification-patch";
@@ -84,10 +87,12 @@ in
       trap '${pkgs.docker}/bin/docker rm "$source" >/dev/null; rm -rf "$temp"' EXIT
       ${pkgs.docker}/bin/docker cp "$source:/opt/app/apps/server/dist/modules/collections/collection-handler.js" "$temp/collection-handler.js"
       ${pkgs.docker}/bin/docker cp "$source:/opt/app/apps/server/dist/modules/collections/collections.service.js" "$temp/collections.service.js"
+      ${pkgs.docker}/bin/docker cp "$source:/opt/app/apps/server/dist/modules/rules/tasks/rule-executor.service.js" "$temp/rule-executor.service.js"
       ${pkgs.docker}/bin/docker cp "$source:/opt/app/apps/server/dist/modules/notifications/agents/telegram.js" "$temp/telegram.js"
+      ${pkgs.docker}/bin/docker cp "$source:/opt/app/apps/server/dist/modules/notifications/notifications.service.js" "$temp/notifications.service.js"
       ${pkgs.nodejs}/bin/node ${notificationFiles}/test.cjs "$temp"
       ${pkgs.nodejs}/bin/node ${notificationFiles}/patch.cjs "$temp"
-      for file in collection-handler.js collections.service.js telegram.js; do
+      for file in collection-handler.js collections.service.js rule-executor.service.js telegram.js; do
         ${pkgs.nodejs}/bin/node --check "$temp/$file"
         install -m 0444 "$temp/$file" "${patchDir}/$file"
       done

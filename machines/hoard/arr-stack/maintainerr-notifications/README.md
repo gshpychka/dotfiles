@@ -23,18 +23,30 @@ also did not reveal a configurable cleanup-reason filter. A broad application
 upgrade is deliberately outside this notification-only fix.
 
 - Successful cleanup calls removeFromCollection with notifyRemoval=false.
-- Existing callers (manual/rule cancellations) retain default true.
+- Manual edits and media-server sync removals/adds retain default true.
+- Rule-owned sync (rule-executor.service.js handleCollection) had two emitters for
+  one change: the collection service (identifier `collection`) and the executor's
+  verified delta (identifier `rulegroup`). The notification dispatcher resolves
+  both to the same rule group and notifiers, so every rule add and rule removal /
+  viewing rescue was sent twice, identically. Upstream main source (checked
+  2026-10-16, latest release v3.30.1) still has both emitters. The executor is now the single owner: it passes
+  notifyAdded=false / notifyRemoval=false on all four add/remove entry points
+  (resolved-link and ordinary), and reports each step's database-verified delta
+  immediately after that step. So a removal failure or abort later in the same run
+  cannot hide an add that already happened; partial changes list only verified
+  items; an unreadable membership list reports nothing rather than guessing.
 - MEDIA_HANDLED emission and all media/state operations are unchanged.
 - Telegram gains optional messageThreadId, only used by a failure-only notifier
   routed to the existing Status topic. Ordinary messages keep their destination.
-- The source image digest and three source hashes are pinned. On upgrade the
+- The source image digest and four patched source hashes (plus the read-only
+  notification dispatcher used by tests) are pinned. On upgrade the
   compatibility patch fails closed and must be reviewed or removed if upstream
   has fixed the underlying issues. Source maps remain upstream maps, so patched
   line offsets can differ slightly in stack traces.
 
 No proxy, notification framework, new scheduler, rule migration or DB rewriting.
 The preStart hook extracts source from an **unstarted** image, validates hashes,
-runs eight offline regression tests, and mounts only three modules read-only.
+runs the offline regression tests, and mounts only four modules read-only.
 
 ## Small declarative settings boundary
 
@@ -55,14 +67,19 @@ A question about declarative configuration does not authorize migrating all rule
 
 ## Offline verification
 
-Extract the three unmodified files from the pinned image into a temporary folder:
-collections/collection-handler.js, collections/collections.service.js, and
-notifications/agents/telegram.js (use their basenames). Then run:
+Extract the unmodified files from the pinned image into a temporary folder:
+collections/collection-handler.js, collections/collections.service.js,
+rules/tasks/rule-executor.service.js, notifications/agents/telegram.js and
+notifications/notifications.service.js (use their basenames). Then run:
 
     node test.cjs /path/to/unmodified-sources
 
 All network calls and state operations in these tests are mocks. Real cleanup or
 Telegram sends are not required to establish the cancellation/cleanup distinction.
+The chain tests run the real executor, collection service, notification
+dispatcher and Telegram agent against an in-memory database / media server and a
+captured HTTP transport. One test runs the unpatched sources and asserts the
+upstream duplicate (two identical POSTs), proving the harness can see it.
 
 ## Rollback / deployment
 
