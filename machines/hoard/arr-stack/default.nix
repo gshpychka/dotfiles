@@ -7,6 +7,8 @@
     ./maintainerr.nix
     ./auth.nix
     ./sync.nix
+    ./settings.nix
+    ./notifications.nix
   ];
 
   services = {

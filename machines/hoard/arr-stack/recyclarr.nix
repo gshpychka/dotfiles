@@ -1,12 +1,90 @@
+# Recyclarr owns, per app, the custom formats, their scores and the "Any"
+# quality profile (qualities, cutoff, upgrade and score thresholds). Nothing
+# else: naming, media management and quality sizes belong to arrSync
+# (./settings.nix), and the assertion below keeps the two from overlapping.
+#
+# Custom formats come from the TRaSH guide by trash_id, or, for formats the
+# guide doesn't have or that are kept as they were defined in the UI, from the
+# local JSON files in ./custom-formats/<app> (a Recyclarr "custom-formats"
+# resource provider). Recyclarr adopts an existing format of the same name, so
+# moving a format here keeps its id and its place in the profile.
+#
+# Preview without writing (read-only; logs and caches go to a scratch copy):
+#   recyclarr sync --preview, with RECYCLARR_CONFIG_DIR/RECYCLARR_DATA_DIR set
+#   to a copy of /var/lib/recyclarr and the API keys substituted
 {
   config,
+  lib,
+  pkgs,
   ...
 }:
 let
   inherit ((import ../ports.nix { inherit config; })) ports;
   secretName = service: "${service}-api-key";
+  stateDir = "/var/lib/recyclarr";
+
+  # local custom formats, by app and file name
+  localFormats = app: ./custom-formats + "/${app}";
+  localFormat = app: name: lib.importJSON (localFormats app + "/${name}.json");
+  # a custom format scored on the Any profile with its score from the UI
+  scored = trashId: score: {
+    trash_ids = [ trashId ];
+    assign_scores_to = [
+      {
+        name = "Any";
+        inherit score;
+      }
+    ];
+  };
+  localScored = app: name: scored (localFormat app name).trash_id;
+
+  settingsFile = (pkgs.formats.yaml { }).generate "recyclarr-settings.yml" {
+    resource_providers =
+      map
+        (app: {
+          name = "realm-${app}";
+          type = "custom-formats";
+          path = "${localFormats app}";
+          service = app;
+        })
+        [
+          "radarr"
+          "sonarr"
+        ];
+  };
+
+  # endpoints arrSync owns; Recyclarr must not manage them too
+  arrSyncOwned = [
+    "media_naming"
+    "media_management"
+    "quality_definition"
+  ];
 in
 {
+  assertions = lib.concatLists (
+    lib.mapAttrsToList (
+      service: instances:
+      lib.mapAttrsToList (instance: settings: {
+        assertion = lib.all (key: !(settings ? ${key})) arrSyncOwned;
+        message = "recyclarr ${service}.${instance}: ${lib.concatStringsSep ", " arrSyncOwned} belong to my.arrSync";
+      }) instances
+    ) config.services.recyclarr.configuration
+  );
+
+  systemd.services.recyclarr = {
+    # the settings file only names the local custom format directories; it
+    # replaces the commented-out default Recyclarr wrote on its first run
+    preStart = lib.mkAfter ''
+      install -m 0600 ${settingsFile} ${stateDir}/settings.yml
+    '';
+    # config.yml holds the API keys: keep the state directory to the service user
+    serviceConfig.StateDirectoryMode = "0700";
+  };
+  # Both read-modify-write Radarr's "Any" profile (Recyclarr all of it but the
+  # language, arrSync the language): one waits for the other's running pass.
+  systemd.services.arr-sync-radarr.after = [ config.systemd.services.recyclarr.name ];
+  systemd.services.arr-sync-sonarr.after = [ config.systemd.services.recyclarr.name ];
+
   services.recyclarr = {
     enable = true;
     group = "media";
@@ -20,11 +98,101 @@ in
           {
             name = "Any";
             min_format_score = 0;
+            min_upgrade_format_score = 1;
             upgrade = {
               allowed = true;
               until_quality = "Remux-2160p";
               until_score = 10000;
             };
+            # highest first, as in the UI, members of a group too
+            qualities = [
+              {
+                name = "Raw-HD";
+                enabled = false;
+              }
+              {
+                name = "BR-DISK";
+                enabled = false;
+              }
+              { name = "Remux-2160p"; }
+              { name = "Bluray-2160p"; }
+              { name = "Remux-1080p"; }
+              {
+                name = "WEB-2160p";
+                qualities = [
+                  "WEBDL-2160p"
+                  "WEBRip-2160p"
+                ];
+              }
+              { name = "HDTV-2160p"; }
+              { name = "Bluray-1080p"; }
+              {
+                # a group named like one of its qualities
+                name = "WEBRip-1080p";
+                qualities = [
+                  "WEBDL-1080p"
+                  "WEBRip-1080p"
+                ];
+              }
+              { name = "HDTV-1080p"; }
+              { name = "Bluray-720p"; }
+              {
+                name = "WEBRip-720p";
+                enabled = false;
+              }
+              { name = "WEBDL-720p"; }
+              { name = "HDTV-720p"; }
+              {
+                name = "Bluray-576p";
+                enabled = false;
+              }
+              {
+                name = "Bluray-480p";
+                enabled = false;
+              }
+              {
+                name = "WEBDL-480p";
+                enabled = false;
+              }
+              {
+                name = "WEBRip-480p";
+                enabled = false;
+              }
+              { name = "DVD-R"; }
+              { name = "DVD"; }
+              {
+                name = "SDTV";
+                enabled = false;
+              }
+              {
+                name = "DVDSCR";
+                enabled = false;
+              }
+              {
+                name = "REGIONAL";
+                enabled = false;
+              }
+              {
+                name = "TELECINE";
+                enabled = false;
+              }
+              {
+                name = "TELESYNC";
+                enabled = false;
+              }
+              {
+                name = "CAM";
+                enabled = false;
+              }
+              {
+                name = "WORKPRINT";
+                enabled = false;
+              }
+              {
+                name = "Unknown";
+                enabled = false;
+              }
+            ];
           }
         ];
         custom_formats = [
@@ -150,6 +318,24 @@ in
               }
             ];
           }
+          # guide formats outside the lists above, scored as set in the UI
+          (scored "e9001909a4c88013a359d0b9920d7bea" 0) # Theatrical Cut
+          (scored "09d9dd29a0fc958f9796e65c2a8864b4" 25) # Open Matte
+          # local formats (./custom-formats/radarr), scored as set in the UI;
+          # the tiers and SDR are older revisions of the guide's, kept as they are
+          (localScored "radarr" "uhd-bluray-tier-01" 1800)
+          (localScored "radarr" "uhd-bluray-tier-02" 1750)
+          (localScored "radarr" "uhd-bluray-tier-03" 1700)
+          (localScored "radarr" "hd-bluray-tier-01" 1800)
+          (localScored "radarr" "hd-bluray-tier-02" 1750)
+          (localScored "radarr" "hd-bluray-tier-03" 1700)
+          (localScored "radarr" "sdr" 0)
+          (localScored "radarr" "not-english-or-ukrainian" (-15000))
+          (localScored "radarr" "original-english-audio-missing" (-15000))
+          (localScored "radarr" "ukrainian" 100)
+          (localScored "radarr" "russian" (-100))
+          (localScored "radarr" "upscaled-custom" (-10000))
+          (localScored "radarr" "scr-executable-junk" 0)
         ];
       };
       sonarr.sonarr = {
@@ -161,11 +347,69 @@ in
           {
             name = "Any";
             min_format_score = 0;
+            min_upgrade_format_score = 1;
             upgrade = {
               allowed = true;
               until_quality = "Bluray-2160p Remux";
               until_score = 10000;
             };
+            # highest first, as in the UI, members of a group too
+            qualities = [
+              { name = "Bluray-2160p Remux"; }
+              {
+                name = "Bluray-2160p";
+                enabled = false;
+              }
+              { name = "Bluray-1080p Remux"; }
+              {
+                name = "WEB 2160p";
+                qualities = [
+                  "WEBDL-2160p"
+                  "WEBRip-2160p"
+                ];
+              }
+              { name = "HDTV-2160p"; }
+              { name = "Bluray-1080p"; }
+              {
+                name = "WEB 1080p";
+                qualities = [
+                  "WEBDL-1080p"
+                  "WEBRip-1080p"
+                ];
+              }
+              {
+                name = "Bluray-720p";
+                enabled = false;
+              }
+              {
+                name = "WEB 720p";
+                qualities = [
+                  "WEBDL-720p"
+                  "WEBRip-720p"
+                ];
+              }
+              {
+                name = "Raw-HD";
+                enabled = false;
+              }
+              { name = "HDTV-1080p"; }
+              { name = "HDTV-720p"; }
+              { name = "WEBRip-480p"; }
+              {
+                name = "SD";
+                qualities = [
+                  "Bluray-576p"
+                  "Bluray-480p"
+                  "DVD"
+                  "WEBDL-480p"
+                  "SDTV"
+                ];
+              }
+              {
+                name = "Unknown";
+                enabled = false;
+              }
+            ];
           }
         ];
         custom_formats = [
@@ -277,6 +521,10 @@ in
               }
             ];
           }
+          # local formats (./custom-formats/sonarr), scored as set in the UI
+          (localScored "sonarr" "upscaled-custom" (-10000))
+          (localScored "sonarr" "ukrainian" 100)
+          (localScored "sonarr" "russian" (-50))
         ];
       };
     };

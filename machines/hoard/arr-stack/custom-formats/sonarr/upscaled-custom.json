@@ -1,0 +1,25 @@
+{
+  "trash_id": "1a9577735c74d9bbca419e729946e0dc",
+  "name": "Upscaled - custom",
+  "includeCustomFormatWhenRenaming": false,
+  "specifications": [
+    {
+      "name": ".Ai.",
+      "implementation": "ReleaseTitleSpecification",
+      "negate": false,
+      "required": false,
+      "fields": {
+        "value": "\\.Ai\\."
+      }
+    },
+    {
+      "name": "AI",
+      "implementation": "ReleaseTitleSpecification",
+      "negate": false,
+      "required": false,
+      "fields": {
+        "value": " AI "
+      }
+    }
+  ]
+}

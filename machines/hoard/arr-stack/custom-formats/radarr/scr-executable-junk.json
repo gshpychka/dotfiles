@@ -1,0 +1,16 @@
+{
+  "trash_id": "036d10091f27392521dff568a5723b32",
+  "name": "scr (executable junk)",
+  "includeCustomFormatWhenRenaming": false,
+  "specifications": [
+    {
+      "name": "scr",
+      "implementation": "ReleaseTitleSpecification",
+      "negate": false,
+      "required": true,
+      "fields": {
+        "value": "scr"
+      }
+    }
+  ]
+}

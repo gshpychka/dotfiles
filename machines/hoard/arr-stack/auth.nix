@@ -7,6 +7,11 @@
 # arr-sync, making the pinned keys reproducible from a clean install and the single
 # source of truth shared across every consumer.
 #
+# Rotating one of these keys is imperative beyond the SOPS edit: arr-sync never
+# writes a SOPS value over a differing live one, so after the switch blank the old
+# key in Prowlarr's application (Settings → Apps) and restart arr-sync-prowlarr,
+# which then fills the new one.
+#
 # `auth.method = "External"` turns the login form off when that app delegates
 # auth to the enabled web gateway; /api keeps requiring X-Api-Key.
 {

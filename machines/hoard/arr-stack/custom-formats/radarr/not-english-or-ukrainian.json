@@ -1,0 +1,27 @@
+{
+  "trash_id": "16972eca02521d6b9c388e006241da80",
+  "name": "Not English or Ukrainian",
+  "includeCustomFormatWhenRenaming": false,
+  "specifications": [
+    {
+      "name": "English",
+      "implementation": "LanguageSpecification",
+      "negate": true,
+      "required": true,
+      "fields": {
+        "value": 1,
+        "exceptLanguage": false
+      }
+    },
+    {
+      "name": "Українська",
+      "implementation": "LanguageSpecification",
+      "negate": true,
+      "required": true,
+      "fields": {
+        "value": 32,
+        "exceptLanguage": false
+      }
+    }
+  ]
+}

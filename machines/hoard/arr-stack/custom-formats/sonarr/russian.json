@@ -1,0 +1,17 @@
+{
+  "trash_id": "076b634416414f8372e0b22ca56f3acf",
+  "name": "російська",
+  "includeCustomFormatWhenRenaming": false,
+  "specifications": [
+    {
+      "name": "російська",
+      "implementation": "LanguageSpecification",
+      "negate": false,
+      "required": true,
+      "fields": {
+        "value": 11,
+        "exceptLanguage": false
+      }
+    }
+  ]
+}
