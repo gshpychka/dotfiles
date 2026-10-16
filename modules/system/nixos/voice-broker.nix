@@ -88,9 +88,11 @@ in
         description = "Decisions model; gpt-6-luna is the only one the API takes so far.";
       };
       timeoutSeconds = lib.mkOption {
-        type = lib.types.numbers.between 0.1 10;
-        default = 1.5;
-        description = "Classification time limit; past it nothing runs and the user is asked again.";
+        # The floor is config.py's MIN_ROUTING_TIMEOUT_S, explained there. A spoken
+        # request usually reaches Decisions cold, on a new connection, and 1.5 s ran out in production.
+        type = lib.types.numbers.between 3 10;
+        default = 4;
+        description = "Classification time limit, connection setup included; past it nothing runs and the user is asked again.";
       };
       pipeline = lib.mkOption {
         type = lib.types.str;

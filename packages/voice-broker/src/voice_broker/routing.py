@@ -125,8 +125,9 @@ class DecisionsRouter:
             async with asyncio.timeout(self._timeout_s):
                 result = await self._client.post("/decisions", cast_to=object, body=body)
         except (OpenAIError, TimeoutError) as e:
-            # Class name only: SDK messages can quote the request.
-            raise RoutingFailed(type(e).__name__) from e
+            # Class name only: SDK messages can quote the request. The elapsed time tells
+            # a budget that ran out from a failure that came back early.
+            raise RoutingFailed(f"{type(e).__name__} after {(time.monotonic() - started) * 1000:.0f} ms") from e
         route, confidence = _answer(result)
         return RouteDecision(route, confidence, (time.monotonic() - started) * 1000)
 

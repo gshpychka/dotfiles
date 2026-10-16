@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 
 import httpx2
 import pytest
 from openai import APIConnectionError, AsyncOpenAI, PermissionDeniedError
+from voice_broker.config import MIN_ROUTING_TIMEOUT_S
 from voice_broker.routing import CHOICES, DecisionsRouter, RouteRequest, RoutingFailed
 
 
@@ -142,9 +144,26 @@ def test_api_errors_fail_without_their_message(error):
     assert "permission" not in str(caught.value) and "decisions" not in str(caught.value)
 
 
-def test_a_slow_answer_times_out():
-    with pytest.raises(RoutingFailed):
+def test_a_slow_answer_times_out_and_says_after_how_long():
+    with pytest.raises(RoutingFailed) as caught:
         route(Client(answer(), delay=1.0), timeout_s=0.05)
+
+    assert re.fullmatch(r"TimeoutError after \d+ ms", str(caught.value))
+
+
+# A cold request on 2026-10-16 22:24 had no answer within 1.5 s, while cold answers took up to 1.12 s.
+COLD_ANSWER_S = 1.6
+
+
+def test_a_cold_answer_ran_out_of_the_old_limit():
+    with pytest.raises(RoutingFailed):
+        route(Client(answer(), delay=COLD_ANSWER_S), timeout_s=1.5)
+
+
+def test_a_cold_answer_routes_within_the_shortest_limit_accepted():
+    decision = route(Client(answer("ha"), delay=COLD_ANSWER_S), timeout_s=MIN_ROUTING_TIMEOUT_S)
+
+    assert decision.route == "ha" and decision.elapsed_ms >= COLD_ANSWER_S * 1000
 
 
 def test_the_real_client_is_configured_without_retries():

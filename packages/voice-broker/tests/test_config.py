@@ -79,7 +79,7 @@ def test_no_identity_file_keeps_the_instructions(tmp_path: Path) -> None:
 
 ROUTING = {
     "model": "gpt-6-luna",
-    "timeout_s": 1.5,
+    "timeout_s": 4,
     "pipeline": "01jmq3hbakt5r0e136vd886hy9",
     "pending_question_s": 60,
     "settle_s": 0.35,
@@ -103,7 +103,7 @@ def test_no_routing_keeps_every_request_with_the_agent(tmp_path: Path) -> None:
 
 def test_routing_and_the_speakers_home_assistant_device_are_read(tmp_path: Path) -> None:
     config = load(with_routing(write_config(tmp_path), ROUTING))
-    assert config.routing == Routing("gpt-6-luna", 1.5, "01jmq3hbakt5r0e136vd886hy9", 60.0, 0.35)
+    assert config.routing == Routing("gpt-6-luna", 4.0, "01jmq3hbakt5r0e136vd886hy9", 60.0, 0.35)
     assert config.devices[0].home_assistant_device_id == "9290a2568e3df21ba0fd2d663249c0ca"
 
 
@@ -118,6 +118,8 @@ def test_routing_needs_every_speakers_home_assistant_device(tmp_path: Path) -> N
         {"pending_question_s": 300},
         {"pending_question_s": 0},
         {"timeout_s": 0},
+        # The limit that ran out on a cold request on 2026-10-16.
+        {"timeout_s": 1.5},
         {"timeout_s": 30},
         {"settle_s": 0},
         {"settle_s": 1.5},

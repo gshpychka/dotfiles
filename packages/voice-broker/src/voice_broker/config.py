@@ -16,6 +16,12 @@ def _read_secret(path: str) -> str:
     return Path(path).read_text().strip()
 
 
+# The shortest routing.timeout_s accepted. A spoken request usually opens a new connection,
+# because requests are usually further apart than httpx2's 5 s keep-alive. DNS, TCP and TLS take
+# 0.3-0.6 s of the limit from hoard. Cold Decisions answers took 0.78-1.12 s, and on
+# 2026-10-16 22:24 a request got no answer within 1.5 s and had to be asked again.
+MIN_ROUTING_TIMEOUT_S = 3.0
+
 # Leads the identity file's text: the assistant's description of itself.
 _IDENTITY_LEAD = "Who you are, in your own words; the backend is your own memory and tools:"
 
@@ -173,8 +179,10 @@ def _routing(raw: dict[str, Any]) -> Routing:
     )
     if not routing.model or not routing.pipeline:
         raise ValueError("routing needs a model and a pipeline")
-    if not 0 < routing.timeout_s <= 10:
-        raise ValueError("routing.timeout_s must be in (0, 10]")
+    if not MIN_ROUTING_TIMEOUT_S <= routing.timeout_s <= 10:
+        raise ValueError(
+            f"routing.timeout_s must be in [{MIN_ROUTING_TIMEOUT_S:g}, 10]: a cold classification ran past 1.5 s"
+        )
     if not 0 < routing.pending_question_s < 300:
         raise ValueError("routing.pending_question_s must be in (0, 300): Home Assistant forgets after 5 minutes")
     # A longer wait would leave the settling cap (live._SETTLE_MAX_S) a single window.
