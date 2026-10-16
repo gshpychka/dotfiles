@@ -55,6 +55,7 @@ class VoiceBroker {
   State state_=State::IDLE;
   uint32_t generation_=0, mic_samples_=0;
   bool streaming_=false, failed=false, queue_ok=true;
+  bool probe_feed_logged_=false, probe_write_logged_=false;
   std::string wake_word_;
   std::string token_="test-token";
   Device mic, speaker, buffer;

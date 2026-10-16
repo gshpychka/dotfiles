@@ -81,6 +81,8 @@ void VoiceBroker::start(const std::string &wake_word) {
     return;
   }
   this->wake_word_ = wake_word;
+  this->probe_feed_logged_ = false;
+  this->probe_write_logged_ = false;
   this->generation_++;
   this->state_ = State::CONNECTING;
   this->high_freq_.start();
@@ -196,6 +198,13 @@ void VoiceBroker::feed_speaker_() {
     if (read == 0)
       return;
   }
+  if (!this->probe_feed_logged_) {
+    const auto &info = this->speaker_->get_audio_stream_info();
+    ESP_LOGI(TAG, "playback_probe first_feed stopped=%d running=%d input_hz=%u bits=%u channels=%u requested_hz=%u",
+             this->speaker_->is_stopped(), this->speaker_->is_running(), info.get_sample_rate(),
+             info.get_bits_per_sample(), info.get_channels(), protocol::SPEAKER_RATE);
+    this->probe_feed_logged_ = true;
+  }
   if (this->speaker_->is_stopped()) {
     this->speaker_->set_audio_stream_info(audio::AudioStreamInfo(16, 1, protocol::SPEAKER_RATE));
     this->speaker_->start();
@@ -204,6 +213,13 @@ void VoiceBroker::feed_speaker_() {
     return;
   size_t written = this->speaker_->play(this->play_holdover_.data() + this->play_holdover_offset_,
                                         this->play_holdover_.size() - this->play_holdover_offset_, 0);
+  if (written > 0 && !this->probe_write_logged_) {
+    const auto &info = this->speaker_->get_audio_stream_info();
+    ESP_LOGI(TAG, "playback_probe first_write input_hz=%u bits=%u channels=%u bytes=%u requested_hz=%u",
+             info.get_sample_rate(), info.get_bits_per_sample(), info.get_channels(),
+             static_cast<unsigned>(written), protocol::SPEAKER_RATE);
+    this->probe_write_logged_ = true;
+  }
   this->play_holdover_offset_ += written;
   if (this->play_holdover_offset_ >= this->play_holdover_.size()) {
     this->play_holdover_.clear();

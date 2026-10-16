@@ -124,6 +124,9 @@ class VoiceBroker : public Component, public api::CustomAPIDevice {
   Trigger<> error_trigger_;
   Trigger<std::string> startup_failure_trigger_;
 
+  // Diagnostic metadata only; reset per conversation, no audio retained.
+  bool probe_feed_logged_{false};
+  bool probe_write_logged_{false};
   State state_{State::IDLE};
   std::string wake_word_;
   // Bumped per conversation; io items and events from older ones are dropped.
