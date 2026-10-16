@@ -199,6 +199,10 @@ class OpenAICompatibleRouter(ClassifierRouter):
                 "model": self.model,
                 "messages": [{"role": "system", "content": policy}, {"role": "user", "content": state}],
                 "stream": False,
+                # Match the bounded, temperature-zero verification requests.
+                "temperature": 0,
+                "max_completion_tokens": 32,
+                "store": False,
             }
             if self.structured_output:
                 body["response_format"] = {
