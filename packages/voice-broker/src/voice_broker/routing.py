@@ -19,6 +19,8 @@ class RouteRequest:
     area: str
     device: str
     conversation_id: str
+    # Optional untrusted metadata, NOT classifier evidence or HA authorization.
+    speaker_advisory: str = ""
 
 
 @dataclass(frozen=True, slots=True)
