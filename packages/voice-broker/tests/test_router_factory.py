@@ -1,5 +1,6 @@
 import asyncio
 import json
+from dataclasses import replace
 
 import httpx2
 import pytest
@@ -19,6 +20,7 @@ def test_factory_reuses_existing_openai_key_and_pool():
 
     def handler(req):
         calls.append(req)
+        assert "IDENTITY_MUST_NOT_CLASSIFY" not in req.content.decode()
         assert req.headers["Authorization"] == "Bearer existing-key"
         body = json.loads(req.content)
         assert body["temperature"] == 0 and body["max_completion_tokens"] == 32 and body["store"] is False
@@ -34,7 +36,9 @@ def test_factory_reuses_existing_openai_key_and_pool():
                 {},
                 classifier=Classifier("compatible", "https://api.openai.com/v1", "gpt-4.1-mini"),
             )
-            result = await make_router(config, "existing-key", http).route(request())
+            result = await make_router(config, "existing-key", http).route(
+                replace(request(), speaker_advisory="IDENTITY_MUST_NOT_CLASSIFY")
+            )
             assert result.route == "ha"
 
     asyncio.run(run())
