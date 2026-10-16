@@ -11,13 +11,19 @@ let
   image = "ghcr.io/maintainerr/maintainerr@sha256:014fcae5d4cfae96bfb239ebe9368751549e9516947435f4e07520add92cf19e";
   patchDir = "/run/maintainerr-notification-patch";
   notificationFiles = ./maintainerr-notifications;
-  statusNotification = pkgs.writeText "maintainerr-status-notification.json" (builtins.toJSON {
-    baseUrl = "http://127.0.0.1:${toString ports.maintainerr}/api";
-    name = "Telegram - Maintainerr failures";
-    credentialSourceName = "Telegram";
-    messageThreadId = 22; # existing media group's Status topic
-    types = [ 32 64 ]; # rule / collection handling failures only
-  });
+  statusNotification = pkgs.writeText "maintainerr-status-notification.json" (
+    builtins.toJSON {
+      baseUrl = "http://127.0.0.1:${toString ports.maintainerr}/api";
+      name = "Telegram - Maintainerr failures";
+      credentialSourceName = "Telegram";
+      messageThreadId = 22; # existing media group's Status topic
+      # rule / collection handling failures only
+      types = [
+        32
+        64
+      ];
+    }
+  );
 in
 {
   users = {
