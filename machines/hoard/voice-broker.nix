@@ -7,6 +7,16 @@
     homeAssistant.url = "http://homeassistant.${config.my.domain}:8123";
 
     settings = {
+      # EXPERIMENTAL comparison branch, not a production routing recommendation.
+      routing = {
+        strategy = "naive";
+        pipeline = "01jmq3hbakt5r0e136vd886hy9"; # Existing Remote, unchanged.
+        devices = {
+          room-assistant = "e96b17992356c46e2324bcdb0325cf13";
+          kitchen-assistant = "1934b52923c293b268f3c9620e874156";
+        };
+        settle_s = 0.35;
+      };
       live = {
         model = "gpt-live-1";
         voice = "marin";
