@@ -1,8 +1,15 @@
-"""Which backend answers a delegated request: Home Assistant, OpenClaw, or neither.
+"""Which backend a delegated request belongs to: Home Assistant, OpenClaw, or neither.
 
-A request is classified before any backend runs and goes to the chosen backend
-alone. Classifying acts on nothing, so a classifier failure asks the user again
-instead of guessing a backend, and never falls back to another classifier.
+The classification has one of two roles, by the broker's mode (config.py):
+- Gated (`routing`): a request is classified before any backend runs and goes
+  to the chosen backend alone. Classifying acts on nothing, so a classifier
+  failure asks the user again instead of guessing a backend, and never falls
+  back to another classifier.
+- Shadow (`home_assistant.shadow`, parallel mode): Home Assistant hears every
+  utterance itself and alone acts on the home (assist.py), so no classification
+  gates anything. Each delegation is classified only to log the answer beside
+  what Home Assistant actually did. It is off unless configured, because each
+  classification is a paid request.
 
 The classifier is pluggable (`Router`). Every provider gets the same policy
 (CHOICES, INSTRUCTIONS) and evidence, and answers with a RouteDecision or
@@ -28,7 +35,7 @@ from typing import Any, Literal, Protocol, assert_never, get_args
 
 from openai import AsyncOpenAI, OpenAIError
 
-from .config import DecisionsProvider, JevProvider, Routing
+from .config import DecisionsProvider, JevProvider, Routing, RoutingShadow
 from .openclaw import Turn
 
 Route = Literal["ha", "openclaw", "clarify"]
@@ -273,8 +280,8 @@ def _choice(answer: Any) -> tuple[Route, float | None]:
     return route, confidence  # type: ignore[return-value]  # checked against Route above
 
 
-def router(routing: Routing, openai: AsyncOpenAI) -> Router:
-    """The router of the configured provider. `openai` is the broker's own client, shared with Live."""
+def router(routing: Routing | RoutingShadow, openai: AsyncOpenAI) -> Router:
+    """The router of the configured provider, gating or shadowing. `openai` is the broker's own client, shared with Live."""
     provider = routing.provider
     match provider:
         case DecisionsProvider():

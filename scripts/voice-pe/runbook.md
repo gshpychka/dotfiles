@@ -200,6 +200,49 @@ Before a rebuild/deployment that interrupts voice, give the user a spoken
 response and obtain deployment authorization. Once the single-PE smoke tests
 pass, flash other PEs. This firmware change needs no NixOS rebuild.
 
+## Home Assistant's home-only pipeline
+
+During a Live conversation, Home Assistant hears every utterance and is the
+only thing that acts on the home (`packages/voice-broker/src/voice_broker/assist.py`).
+It does this through its own Assist pipeline, named
+`my.voice-broker.homeAssistant.pipeline` on hoard. That pipeline uses a
+dedicated home-only OpenAI agent. The shared agent, `conversation.chatgpt`, is
+not used, because its prompt answers general questions. Create the agent and
+pipeline once, before deploying the broker that uses them. Until they exist,
+each conversation tells GPT-Live that Home Assistant is unavailable, and
+nothing in the home changes.
+
+From hoard, with the broker's Home Assistant token on stdin (never printed):
+
+```sh
+sudo cat /run/secrets/voice-broker/home-assistant-token |
+  $(dirname "$(readlink -f "$(command -v voice-broker)")")/voice-broker-ha-setup \
+    --url http://homeassistant.glib.sh:8123 \
+    --backup-dir /var/lib/openclaw/workspace/backups/ha-voice-setup
+```
+
+Run it without `--apply` first. That run only reads Home Assistant, writes a
+0600 backup of the pipelines and agents, and prints what it would create. Then
+run it again with `--apply`. It only ever creates, and is safe to re-run:
+- It copies speech recognition and language from "Remote" unchanged.
+- It sets no TTS and does not touch the preferred pipeline.
+- It never changes or replaces an existing agent, pipeline or exposure.
+- If something differs, it stops and says what.
+
+Check the result in Settings → Voice assistants → "Voice broker home".
+
+Exposure to Assist is set per assistant, not per agent. So the new agent can
+also see the exposed non-home scripts, `ask_gpt` and the weather script. Its
+prompt tells it not to use them for non-home questions. If it does, the broker
+counts that as non-home work (`nonHomeTools`), never as home evidence.
+Unexposing them would also take them from "Remote", so that is left to the
+owner.
+
+To undo: delete the "Voice broker home" pipeline, then the agent of the same
+name under the OpenAI Conversation integration. Set
+`my.voice-broker.homeAssistant.pipeline = null` to stop Home Assistant from
+listening.
+
 ## Recording conversations
 
 To check the echo cancellation against what happened in the room:

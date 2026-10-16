@@ -204,3 +204,107 @@ def test_an_unreadable_conversation_is_unavailable():
     for handler in (missing, unreachable, malformed, not_json):
         with pytest.raises(HistoryUnavailable):
             recent(handler)
+
+
+# -- the voice agent's sessions and the observer -----------------------------
+
+VOICE = {
+    "agent": "voice",
+    "session_key": "agent:voice:main",
+    "history_session_key": "agent:main:main",
+    "observer_session_key": "agent:voice:observer",
+}
+
+
+def voice_call[T](handler: Handler, use: Callable[[OpenClaw], Awaitable[T]]) -> T:
+    async def main() -> T:
+        base = config()
+        voice = OpenClawConfig(**{**{f: getattr(base, f) for f in base.__slots__}, **VOICE})
+        client = OpenClaw(voice, http_client=httpx2.AsyncClient(transport=httpx2.MockTransport(handler)))
+        try:
+            return await use(client)
+        finally:
+            await client.aclose()
+
+    return asyncio.run(main())
+
+
+def test_consults_run_as_the_voice_agent_and_history_still_comes_from_the_main_session():
+    seen: list[tuple[str, str | None]] = []
+    agents: list[str | None] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen.append((request.url.path, request.headers.get("x-openclaw-session-key")))
+        agents.append(request.headers.get("x-openclaw-agent-id"))
+        if request.url.path.endswith("/history"):
+            return httpx2.Response(200, json={"messages": [message("user", text("hi"))]})
+        return httpx2.Response(200, json=answer("Rain after four."))
+
+    async def use(client: OpenClaw) -> tuple[str, list[Turn]]:
+        return await client.consult("Will it rain?"), await client.recent()
+
+    assert voice_call(handler, use) == ("Rain after four.", [("user", "hi")])
+    # The session key picks the agent, and with it the tools; history is read from main's transcript.
+    assert seen[0] == ("/v1/responses", "agent:voice:main")
+    # Named too: with two agents the gateway has no default to fall back on for an unnamed request.
+    assert agents[0] == "voice"
+    assert seen[1][0] == "/sessions/agent:main:main/history"
+
+
+def verdict(arguments: dict | str, name: str = "home_verdict") -> dict:
+    return {
+        "id": "resp_2",
+        "object": "response",
+        "status": "completed",
+        "output": [
+            {
+                "type": "function_call",
+                "id": "fc_1",
+                "call_id": "call_1",
+                "name": name,
+                "arguments": arguments if isinstance(arguments, str) else json.dumps(arguments),
+            }
+        ],
+    }
+
+
+def observe(response: dict) -> tuple[str | None, dict, dict]:
+    sent: list[tuple[dict, dict]] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        sent.append((json.loads(request.content), dict(request.headers)))
+        return httpx2.Response(200, json=response)
+
+    result = voice_call(handler, lambda client: client.observe("evidence"))
+    ((body, headers),) = sent
+    return result, body, headers
+
+
+def test_the_observer_answers_through_one_required_function_call_in_its_own_session():
+    result, body, headers = observe(verdict({"matches": True}))
+    assert result is None
+    assert headers["x-openclaw-session-key"] == "agent:voice:observer"
+    assert headers["x-openclaw-agent-id"] == "voice"
+    assert body["tool_choice"] == {"type": "function", "name": "home_verdict"}
+    assert [t["name"] for t in body["tools"]] == ["home_verdict"]
+    assert "never change anything" in body["instructions"]
+
+
+def test_a_mismatch_is_the_sentence_to_tell():
+    result, _, _ = observe(verdict({"matches": False, "discrepancy": "The hallway light is on, not the kitchen's."}))
+    assert result == "The hallway light is on, not the kitchen's."
+
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        verdict({"matches": False}),
+        verdict({"matches": "no"}),
+        verdict("{not json"),
+        verdict({"matches": True}, name="something_else"),
+        answer("Looks fine to me."),
+    ],
+)
+def test_a_malformed_verdict_is_a_failure_not_a_finding(response):
+    with pytest.raises(ConsultFailed):
+        observe(response)

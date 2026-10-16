@@ -8,7 +8,7 @@ import hmac
 import logging
 import signal
 from contextvars import ContextVar
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from http import HTTPStatus
 from pathlib import Path
 
@@ -19,11 +19,12 @@ from websockets.http11 import Request, Response
 
 from . import config as config_module
 from ._aec import EchoCanceller
+from .assist import HomeListener, ToolPolicy
 from .calls import Calls
 from .config import Config, Device
 from .conversation import Conversation
 from .home_assistant import HomeAssistant
-from .live import LiveSession, Routed, live_connector
+from .live import LiveSession, Mode, Parallel, Routed, live_connector
 from .openclaw import OpenClaw
 from .protocol import MIC_RATE, ProtocolError, parse_start
 from .routing import router
@@ -51,6 +52,9 @@ class _DeviceState:
     # One conversation per device: a new wake word while one is running means
     # the old one is stale (e.g. the device rebooted mid-session).
     current: asyncio.Task[object] | None = None
+    # Held by each Home Assistant run at this device, so the runs of a new
+    # conversation wait for an old one's last to finish.
+    home_runs: asyncio.Lock = field(default_factory=asyncio.Lock)
 
 
 class Broker:
@@ -60,15 +64,23 @@ class Broker:
         self._devices = {d.address: _DeviceState(d, EchoCanceller(MIC_RATE)) for d in config.devices}
         openai = AsyncOpenAI(api_key=config.openai_api_key)
         self._connect = live_connector(openai)
-        self._router = router(config.routing, openai) if config.routing else None
+        # The one classifier, gating (routing) or only shadowing (parallel): config.load allows one mode.
+        classifier = config.routing or (config.home_assistant.shadow if config.home_assistant else None)
+        self._router = router(classifier, openai) if classifier else None
         self._calls = Calls(config.calls, config.devices, busy=self._in_conversation)
 
-    def _routed(self, device: Device) -> Routed | None:
-        """Routing for a conversation at `device`, with its own Home Assistant device."""
+    def _mode(self, state: _DeviceState, opening: str | None) -> Mode:
+        """How a conversation at the device answers delegations, as that device."""
+        if self._config.routing is not None:
+            # A call answers the agent, so the reply is the agent's whatever it says.
+            return self._routed(state.device) if opening is None else None
+        # In a call too: Home Assistant alone acts on the home, whoever opened the conversation.
+        return self._parallel(state)
+
+    def _routed(self, device: Device) -> Routed:
+        """Gated routing for a conversation at `device`, with its own Home Assistant device."""
         routing = self._config.routing
-        if routing is None:
-            return None
-        assert self._router is not None
+        assert routing is not None and self._router is not None
         # config.load requires a device ID of every device while routing is on.
         assert device.home_assistant_device_id is not None
         home = HomeAssistant(
@@ -78,6 +90,24 @@ class Broker:
             device.home_assistant_device_id,
         )
         return Routed(self._router.route, home.converse, routing.pending_question_s, routing.settle_s)
+
+    def _parallel(self, state: _DeviceState) -> Parallel | None:
+        """Home Assistant listening to a conversation at the device, as that device."""
+        home = self._config.home_assistant
+        if home is None:
+            return None
+        # config.load requires a device ID of every device while Home Assistant listens.
+        assert state.device.home_assistant_device_id is not None
+        listener = HomeListener(
+            self._config.calls.home_assistant_url,
+            self._config.calls.home_assistant_token,
+            home.pipeline,
+            state.device.home_assistant_device_id,
+            ToolPolicy(home.read_only_tools, home.non_home_tools),
+            state.home_runs,
+        )
+        observe = self._openclaw.observe if self._config.openclaw.observer_session_key else None
+        return Parallel(listener, observe, self._router.route if self._router else None)
 
     def _in_conversation(self, address: str) -> bool:
         current = self._devices[address].current
@@ -119,8 +149,7 @@ class Broker:
             self._openclaw.recent,
             self._connect,
             opening,
-            # A call answers the agent, so the reply is the agent's whatever it says.
-            self._routed(state.device) if opening is None else None,
+            self._mode(state, opening),
         )
         reason = await Conversation(self._config, state.device.name, device, session, state.aec).run()
         log.info("conversation over: %s", reason)
@@ -140,8 +169,13 @@ class Broker:
                 ping_timeout=10,
             ) as server:
                 log.info("listening on %s:%d", self._config.listen_host, self._config.listen_port)
+                if self._config.home_assistant is not None:
+                    log.info(
+                        "home assistant hears every utterance on pipeline %r", self._config.home_assistant.pipeline
+                    )
                 if self._router is not None:
-                    log.info("routing delegated requests with %s", self._router.label)
+                    role = "routing" if self._config.routing else "shadowing"
+                    log.info("%s delegated requests with %s", role, self._router.label)
                 calls = await self._calls.serve()
                 stop = asyncio.Event()
                 loop = asyncio.get_running_loop()

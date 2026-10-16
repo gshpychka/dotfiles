@@ -4,19 +4,40 @@ GPT-Live listens while it speaks and decides for itself when to talk, yield or
 keep going, so the echo-cancelled mic streams to it continuously and playback
 only ever ends when it stops sending audio. Work it delegates goes to an agent
 as a consult on the conversation's transcript, and GPT-Live speaks the answer.
+
+How a delegation is answered is the conversation's mode (config.py), one of:
+- consults only (no mode): every delegation is a consult;
+- gated (Routed): a classifier picks Home Assistant's text conversation or a
+  consult for each request, and only that one runs;
+- parallel (Parallel), below.
+
+With Home Assistant listening (Parallel), the same audio also reaches Home
+Assistant's own Assist pipeline (assist.py), which alone acts on the home.
+GPT-Live stays the only voice:
+- A delegation goes to the agent, which has no home-action tools, for whatever
+  is not home control. The Home Assistant turns heard by then are claimed by it,
+  and both results go back as one answer.
+- A Home Assistant turn no delegation claims reaches GPT-Live on its own.
+- GPT-Live's transcript never reaches Home Assistant, and Home Assistant's never
+  picks a backend. The two hear the same audio with different speech
+  recognition, so their words are never compared. A delegation claims the
+  Home Assistant turns heard but not yet told, in the order they happened.
+  Their audio offsets are logged, not compared with GPT-Live's timeline, whose
+  time base the API does not document.
 """
 
 from __future__ import annotations
 
 import asyncio
 import base64
+import json
 import logging
 import time
 from collections import deque
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
-from dataclasses import dataclass
-from typing import Any
+from dataclasses import dataclass, field
+from typing import Any, Protocol
 
 import numpy as np
 from openai import AsyncOpenAI
@@ -24,6 +45,7 @@ from openai.resources.live.live import AsyncLiveConnection
 from openai.types.live.initial_item_param import InitialItemParam
 from openai.types.live.session_config_param import SessionConfigParam
 
+from .assist import HeardSpeech, HomeEvent, HomeTurn, Outcome, Unavailable
 from .config import Live
 from .dsp import mic_to_speaker_rate
 from .home_assistant import HomeAssistantFailed, HomeReply
@@ -50,16 +72,45 @@ _OPENING_LEAD = (
     "{opening}\nDelegate the user's response to the backend, whatever it is."
 )
 
-# Routed requests: what Live is told when nothing ran, and how a Home Assistant question reaches the user.
+_NO_TRANSCRIPT = "No transcript of the request arrived; ask the user to repeat it."
+_HOME_UNCERTAIN = "Home Assistant gave no answer and may have acted anyway. Tell the user to check before asking again."
+
+# Gated requests: what Live is told when nothing ran, and how a Home Assistant question reaches the user.
 _NOT_ROUTED = "Nothing was done: the request could not be routed just now. Tell the user and ask them to try again."
 _CLARIFY = "Nothing was done: it is unclear what to act on. Ask the user what they want done."
-_HOME_UNCERTAIN = "Home Assistant gave no answer and may have acted anyway. Tell the user to check before asking again."
 _STILL_SPEAKING = "Nothing was done yet: the user was still speaking. Let them finish, then delegate the whole request."
-_HOME_ASKS = "Home Assistant asks: {question}\nAsk the user this, then delegate their answer, whatever it is."
+_ROUTED_HOME_ASKS = "Home Assistant asks: {question}\nAsk the user this, then delegate their answer, whatever it is."
 # Waiting for the transcript to settle ends here; a longer stream is still speech in progress.
 _SETTLE_MAX_S = 2.0
 # Classifications of one request when more of it keeps arriving while it is classified.
 _ROUTE_ATTEMPTS = 3
+
+# Parallel: how long a finished Home Assistant turn waits for a delegation to claim it before it is told on its own:
+# GPT-Live usually delegates before Home Assistant is done, so this only catches a late delegation.
+_CLAIM_GRACE_S = 1.0
+# After the agent answered a delegation, how much longer its Home Assistant turns may take before the
+# agent's answer goes alone. Home Assistant's result then follows on its own, so GPT-Live is never held long.
+_COMBINE_WAIT_S = 6.0
+# The newest user turns an observation quotes.
+_OBSERVED_TURNS = 3
+
+# What GPT-Live is told about Home Assistant's turns.
+_HOME_SAID = "Home Assistant: {speech}"
+_HOME_SILENT = "Home Assistant: done."
+_HOME_ASKS = "Home Assistant asks: {question}\nAsk the user this. Their answer reaches Home Assistant by itself; don't delegate it."
+_HOME_FAILED = (
+    "Home Assistant could not process what the user just said ({reason}), so it did nothing. If they asked for "
+    "something in the home, tell them it did not happen."
+)
+_HOME_PENDING = "Home Assistant is still working on the home part; its result follows."
+_HOME_UNAVAILABLE = (
+    "Home Assistant is unavailable for this conversation ({reason}). Nothing in the home can be changed or "
+    "checked now: if the user asks, tell them so, and never say it was done."
+)
+_OBSERVED = (
+    "A check of the home after Home Assistant acted found: {discrepancy}\nTell the user, and ask whether to fix "
+    "it. A fix they ask for reaches Home Assistant by itself; don't delegate it."
+)
 
 # Opens a Live connection; injected so tests can substitute OpenAI.
 LiveConnector = Callable[[], AbstractAsyncContextManager[AsyncLiveConnection]]
@@ -67,11 +118,26 @@ LiveConnector = Callable[[], AbstractAsyncContextManager[AsyncLiveConnection]]
 Consult = Callable[[str], Awaitable[str]]
 # The agent's recent conversation; raises HistoryUnavailable.
 Recall = Callable[[], Awaitable[list[Turn]]]
+# A read-only check of what Home Assistant did: None, or a discrepancy to tell. Raises ConsultFailed.
+Observe = Callable[[str], Awaitable[str | None]]
+# A classification logged and never acted on.
+Shadow = Callable[[RouteRequest], Awaitable[RouteDecision]]
+
+
+class HomeEars(Protocol):
+    """Home Assistant listening to the conversation (assist.HomeListener)."""
+
+    events: asyncio.Queue[HomeEvent]
+
+    def feed(self, pcm: np.ndarray, audible: bool) -> None: ...
+    def user_heard(self) -> None: ...
+    def start(self) -> None: ...
+    def stop(self) -> asyncio.Task[None] | None: ...
 
 
 @dataclass(frozen=True, slots=True)
 class Routed:
-    """Delegated requests classified, then answered by Home Assistant or by the consult."""
+    """Gated: delegated requests classified, then answered by Home Assistant or by the consult."""
 
     # Picks the backend; raises RoutingFailed.
     route: Callable[[RouteRequest], Awaitable[RouteDecision]]
@@ -85,12 +151,55 @@ class Routed:
 
 @dataclass(frozen=True, slots=True)
 class _Pending:
-    """A question Home Assistant asked at this speaker and waits on."""
+    """Gated: a question Home Assistant asked at this speaker and waits on."""
 
     conversation_id: str
     question: str
     # time.monotonic() past which it is dropped
     expires: float
+
+
+@dataclass(frozen=True, slots=True)
+class Parallel:
+    """Home Assistant hearing the conversation beside GPT-Live, and owning the home."""
+
+    home: HomeEars
+    # Checks what Home Assistant did, off the critical path; None: no check.
+    observe: Observe | None = None
+    # A classifier's take on each delegation, for the log only; None: no request.
+    shadow: Shadow | None = None
+
+
+# How a conversation's delegations are answered; None: by consults only.
+Mode = Routed | Parallel | None
+
+
+@dataclass
+class _Slot:
+    """One Home Assistant turn on its way to GPT-Live."""
+
+    turn: int
+    result: asyncio.Future[HomeTurn]
+    # A delegation answers with it.
+    claimed: bool = False
+    # GPT-Live is being told, or is never to be.
+    delivered: bool = False
+    # Set once GPT-Live has it: an observation of the turn comes after the turn itself.
+    told: asyncio.Event = field(default_factory=asyncio.Event)
+
+
+@dataclass
+class _Claimed:
+    """A delegation's Home Assistant turns: what to tell GPT-Live, and their outcomes for the log."""
+
+    notes: list[str] = field(default_factory=list)
+    outcomes: list[str] = field(default_factory=list)
+    # The turns this answer tells.
+    slots: list[_Slot] = field(default_factory=list)
+
+
+# Turns finishing after their conversation ended, kept until they end.
+_FINISHING: set[asyncio.Task[None]] = set()
 
 
 def live_connector(client: AsyncOpenAI) -> LiveConnector:
@@ -108,19 +217,28 @@ class LiveSession:
         recall: Recall,
         connect: LiveConnector,
         opening: str | None = None,
-        routed: Routed | None = None,
+        mode: Mode = None,
     ) -> None:
         self._config = config
         self._area = area
         self._consult = consult
-        # None: every delegation is a consult.
-        self._routed = routed
-        # This conversation's open Home Assistant question; it dies with the conversation.
+        # One mode at most, so Home Assistant never both takes a gated request and hears its audio.
+        self._routed = mode if isinstance(mode, Routed) else None
+        self._parallel = mode if isinstance(mode, Parallel) else None
+        # Gated: this conversation's open Home Assistant question; it dies with the conversation.
         self._pending: _Pending | None = None
-        # Live timeline start (ms) of each user transcript fragment heard, which the settling wait watches.
+        # Gated: Live timeline start (ms) of each user transcript fragment heard, which the settling wait watches.
         self._user_starts: list[int] = []
-        # Live timeline position (ms) of the newest delegation.
+        # Gated: Live timeline position (ms) of the newest delegation.
         self._delegation_offset: int | None = None
+        # Parallel: Home Assistant's turns by number, until GPT-Live is told.
+        self._slots: dict[int, _Slot] = {}
+        # The newest Home Assistant turn that acted: an observation of an older one is stale.
+        self._latest_action: int | None = None
+        self._observing: asyncio.Task[None] | None = None
+        self._tasks: set[asyncio.Task[Any]] = set()
+        # The session is open for commentary.
+        self._ready = asyncio.Event()
         self._recall = recall
         self._connect = connect
         # What the voice says first, in a conversation the agent opened.
@@ -142,36 +260,49 @@ class LiveSession:
 
     @asynccontextmanager
     async def open(self, host: Host) -> AsyncIterator[None]:
+        self._host = host
+        if self._parallel is not None:
+            # First: Home Assistant connects while GPT-Live starts, and hears the mic from its first block.
+            self._parallel.home.start()
+            self._spawn(self._listen_home())
         try:
-            history = await self._recall()
-        except HistoryUnavailable as e:
-            log.warning("starting without the recent conversation: %s", e)
-            history = []
-        async with self._connect() as conn:
-            self._host = host
-            await conn.session.start(session=self._session_config(history))
-            async for event in conn:
-                self._log_event(event)
-                if event.type == "session.started":
-                    break
-                if event.type == "error":
-                    raise SessionRefused(f"{event.error.message} ({event.error.code})")
-            # What the mic sent so far goes first; a block arriving meanwhile joins the backlog.
-            while self._backlog:
-                samples = self._backlog.popleft()
-                self._backlog_samples -= len(samples)
-                await conn.session.input_audio.append(audio=_audio(samples))
-            self._conn = conn
             try:
-                yield
-            finally:
-                if self._consulting is not None:
-                    self._consulting.cancel()
-                self._conn = None
+                history = await self._recall()
+            except HistoryUnavailable as e:
+                log.warning("starting without the recent conversation: %s", e)
+                history = []
+            async with self._connect() as conn:
+                await conn.session.start(session=self._session_config(history))
+                async for event in conn:
+                    self._log_event(event)
+                    if event.type == "session.started":
+                        break
+                    if event.type == "error":
+                        raise SessionRefused(f"{event.error.message} ({event.error.code})")
+                # What the mic sent so far goes first; a block arriving meanwhile joins the backlog.
+                while self._backlog:
+                    samples = self._backlog.popleft()
+                    self._backlog_samples -= len(samples)
+                    await conn.session.input_audio.append(audio=_audio(samples))
+                self._conn = conn
+                self._ready.set()
+                try:
+                    yield
+                finally:
+                    if self._consulting is not None:
+                        self._consulting.cancel()
+                    self._conn = None
+        finally:
+            for task in self._tasks:
+                task.cancel()
+            if self._parallel is not None and (finishing := self._parallel.home.stop()) is not None:
+                _FINISHING.add(finishing)
+                finishing.add_done_callback(_FINISHING.discard)
 
     @property
     def busy(self) -> bool:
-        return self._consulting is not None
+        # A Home Assistant turn under way keeps the conversation open for its result.
+        return self._consulting is not None or any(not slot.delivered for slot in self._slots.values())
 
     def on_playback_finished(self) -> None:
         self._flush_transcripts()
@@ -190,11 +321,21 @@ class LiveSession:
             config["input"] = items
         return config
 
+    def _spawn(self, coro: Awaitable[Any]) -> asyncio.Task[Any]:
+        task = asyncio.ensure_future(coro)
+        self._tasks.add(task)
+        task.add_done_callback(self._tasks.discard)
+        return task
+
     # -- mic -----------------------------------------------------------------
 
     async def on_mic(self, samples: np.ndarray) -> None:
         if len(samples) == 0:
             return
+        if self._parallel is not None:
+            # Never awaits: Home Assistant's pace can't hold up GPT-Live.
+            audible = self._host is not None and self._host.assistant_audible
+            self._parallel.home.feed(samples, audible)
         upsampled = self._to_openai_rate(samples)
         if len(upsampled) == 0:
             return
@@ -222,11 +363,14 @@ class LiveSession:
                 case "session.input_transcript.delta":
                     self._host.mark_activity()
                     self._user_starts.append(event.start_ms)
+                    if self._parallel is not None:
+                        self._parallel.home.user_heard()
                     self._hear("user", event.delta)
                 case "session.output_transcript.delta":
                     self._hear("assistant", event.delta)
                 case "session.delegation.created":
                     await self._host.set_phase(Phase.THINKING)
+                    log.info("delegation %s at %d ms", event.delegation.id, event.offset_ms)
                     self._delegation_offset = event.offset_ms
                     self._delegate(event.delegation.id)
                 case "session.closed":
@@ -261,6 +405,11 @@ class LiveSession:
                 delegation = self._delegation
                 upto = len(self._heard)
                 heard = self._heard[self._consulted : upto]
+                # Home Assistant's turns heard by now are this delegation's to tell.
+                slots = [s for s in self._slots.values() if not s.claimed and not s.delivered]
+                for slot in slots:
+                    slot.claimed = True
+                self._shadow(heard)
                 if any(role == "user" for role, _ in heard):
                     try:
                         answer = await self._consult(self._task(heard))
@@ -269,9 +418,16 @@ class LiveSession:
                         log.warning("consult failed: %s", e)
                         answer = f"The request failed: {e}"
                 else:
-                    answer = "No transcript of the request arrived; ask the user to repeat it."
-                for chunk in _chunks(answer):
+                    answer = ""
+                home = await self._claimed(slots)
+                if self._parallel is not None:
+                    log.info("delegation answered: home %s, agent %s", home.outcomes or "none", bool(answer))
+                # Every delegation gets an answer, or GPT-Live waits on it.
+                text = "\n".join(part for part in (*home.notes, answer) if part) or _NO_TRANSCRIPT
+                for chunk in _chunks(text):
                     await self._conn.session.commentary.append(content=chunk, delegation_id=self._delegation)
+                for slot in home.slots:
+                    slot.told.set()
                 # A delegation created meanwhile has its answer, unless more was said since.
                 unheard = self._heard[self._consulted :]
                 if self._delegation == delegation or not any(role == "user" for role, _ in unheard):
@@ -282,6 +438,8 @@ class LiveSession:
             self._host.mark_activity()
         if not self.busy and not self._host.assistant_audible:
             await self._host.set_phase(Phase.LISTENING)
+
+    # -- gated delegation ----------------------------------------------------
 
     async def _run_routed(self, routed: Routed) -> None:
         """Like _run_consults, but each request goes to the one backend its classification picks."""
@@ -327,7 +485,7 @@ class LiveSession:
             heard = self._heard[self._consulted : upto]
             text = " ".join(t.strip() for role, t in _turns(heard) if role == "user").strip()
             if not text:
-                return "No transcript of the request arrived; ask the user to repeat it."
+                return _NO_TRANSCRIPT
             # Everything said before the request, the voice asking a question included.
             first = next(i for i, (role, _) in enumerate(heard) if role == "user")
             context = tuple(_turns(self._heard[: self._consulted + first]))
@@ -392,7 +550,7 @@ class LiveSession:
                     self._pending = _Pending(
                         reply.conversation_id, reply.speech, time.monotonic() + routed.pending_question_s
                     )
-                    return _HOME_ASKS.format(question=reply.speech)
+                    return _ROUTED_HOME_ASKS.format(question=reply.speech)
                 return reply.speech
 
     def _task(self, heard: list[Turn]) -> str:
@@ -402,6 +560,135 @@ class LiveSession:
             "The conversation at this speaker since your last answer to it, from speech"
             f" recognition, which can mishear:\n{said}\n"
         )
+
+    # -- Home Assistant ------------------------------------------------------
+
+    def _slot(self, turn: int) -> _Slot:
+        if (slot := self._slots.get(turn)) is None:
+            slot = self._slots[turn] = _Slot(turn, asyncio.get_running_loop().create_future())
+        return slot
+
+    async def _listen_home(self) -> None:
+        assert self._parallel is not None
+        while True:
+            match await self._parallel.home.events.get():
+                case HeardSpeech(turn=turn):
+                    self._slot(turn)
+                case Unavailable(reason=reason):
+                    await self._ready.wait()
+                    assert self._conn is not None
+                    await self._conn.session.instructions.append(
+                        content=_HOME_UNAVAILABLE.format(reason=reason), delegation_id=None
+                    )
+                case HomeTurn() as result:
+                    slot = self._slot(result.turn)
+                    log.info(
+                        "home assistant turn %d heard at samples %s-%s",
+                        result.turn,
+                        result.speech_start,
+                        result.speech_end,
+                    )
+                    if not slot.result.done():
+                        slot.result.set_result(result)
+                    if result.outcome == Outcome.ACTED:
+                        self._latest_action = result.turn
+                        self._observe(result)
+                    if not slot.claimed:
+                        self._spawn(self._tell_alone(slot))
+
+    async def _tell_alone(self, slot: _Slot) -> None:
+        """Tells GPT-Live a Home Assistant turn no delegation claims."""
+        await asyncio.sleep(_CLAIM_GRACE_S)
+        if slot.claimed or slot.delivered:
+            return
+        slot.delivered = True
+        try:
+            note = _home_note(slot.result.result())
+            if note is None:
+                return
+            await self._ready.wait()
+            assert self._conn is not None and self._host is not None
+            text, speakable = note
+            append = self._conn.session.commentary.append if speakable else self._conn.session.thinking.append
+            for chunk in _chunks(text):
+                await append(content=chunk, delegation_id=None)
+            self._host.mark_activity()
+        finally:
+            slot.told.set()
+
+    async def _claimed(self, slots: list[_Slot]) -> _Claimed:
+        """What the claimed turns did, waiting a while for any still under way."""
+        claimed = _Claimed()
+        if not slots:
+            return claimed
+        await asyncio.wait([slot.result for slot in slots], timeout=_COMBINE_WAIT_S)
+        pending = False
+        for slot in slots:
+            if not slot.result.done():
+                # Released: _listen_home tells GPT-Live on its own once it is done.
+                slot.claimed = False
+                pending = True
+                continue
+            slot.delivered = True
+            claimed.slots.append(slot)
+            result = slot.result.result()
+            claimed.outcomes.append(str(result.outcome))
+            if (note := _home_note(result)) is not None:
+                claimed.notes.append(note[0])
+        if pending:
+            claimed.notes.append(_HOME_PENDING)
+        return claimed
+
+    def _observe(self, result: HomeTurn) -> None:
+        """Checks, off the critical path, that what Home Assistant did matches the request."""
+        assert self._parallel is not None
+        if self._parallel.observe is None:
+            return
+        if self._observing is not None:
+            # A newer action supersedes the check of an older one.
+            self._observing.cancel()
+        self._observing = self._spawn(self._check(self._parallel.observe, result))
+
+    async def _check(self, observe: Observe, result: HomeTurn) -> None:
+        told = self._slot(result.turn).told
+        try:
+            discrepancy = await observe(self._evidence(result))
+        except ConsultFailed as e:
+            log.warning("observation of home assistant turn %d failed: %s", result.turn, e)
+            return
+        if discrepancy is None:
+            log.info("observation of home assistant turn %d: matches", result.turn)
+            return
+        if self._latest_action != result.turn:
+            log.info("observation of home assistant turn %d dropped: a newer action followed", result.turn)
+            return
+        # After Home Assistant's own result, never before it.
+        await told.wait()
+        if self._conn is None or self._latest_action != result.turn:
+            return
+        for chunk in _chunks(_OBSERVED.format(discrepancy=discrepancy)):
+            await self._conn.session.commentary.append(content=chunk, delegation_id=None)
+
+    def _evidence(self, result: HomeTurn) -> str:
+        said = [text.strip() for role, text in _turns(self._heard) if role == "user"][-_OBSERVED_TURNS:]
+        tools = [{"tool": t.name, "args": t.args, "failed": t.failed} for t in result.tools if not t.external]
+        return (
+            f"{placement(self._area)}\n"
+            "The user's latest words, from GPT-Live's speech recognition, which can mishear:\n"
+            + "\n".join(f"- {s}" for s in said)
+            + f"\nWhat Home Assistant heard: {result.heard!r}\n"
+            f"Home Assistant's tool calls: {json.dumps(tools, ensure_ascii=False, default=str)}\n"
+            f"Home Assistant replied: {result.speech!r}\n"
+        )
+
+    def _shadow(self, heard: list[Turn]) -> None:
+        if self._parallel is None or (shadow := self._parallel.shadow) is None:
+            return
+        text = " ".join(t.strip() for role, t in _turns(heard) if role == "user").strip()
+        if not text:
+            return
+        context = tuple(_turns(self._heard[: self._consulted]))
+        self._spawn(_log_shadow(shadow, RouteRequest(text, context, self._area)))
 
     # -- logging -------------------------------------------------------------
 
@@ -414,6 +701,31 @@ class LiveSession:
         for role, text in _turns(self._heard[self._logged :]):
             log.info("%s: %s", role, text.strip())
         self._logged = len(self._heard)
+
+
+async def _log_shadow(shadow: Shadow, request: RouteRequest) -> None:
+    try:
+        decision = await shadow(request)
+    except Exception as e:  # noqa: BLE001 -- the shadow decides nothing; class name only, a message can quote speech
+        log.info("decisions shadow failed: %s", type(e).__name__)
+        return
+    log.info("decisions shadow: %s confidence=%s in %.0f ms", decision.route, decision.confidence, decision.elapsed_ms)
+
+
+def _home_note(result: HomeTurn) -> tuple[str, bool] | None:
+    """What GPT-Live is told of a Home Assistant turn, and whether it is to be spoken; None: nothing."""
+    match result.outcome:
+        case Outcome.ACTED | Outcome.ANSWERED:
+            return (_HOME_SAID.format(speech=result.speech) if result.speech else _HOME_SILENT), True
+        case Outcome.ASKED:
+            return _HOME_ASKS.format(question=result.speech), True
+        case Outcome.UNCERTAIN:
+            return _HOME_UNCERTAIN, True
+        case Outcome.FAILED:
+            # Silent context: it may have been no home request at all.
+            return _HOME_FAILED.format(reason=result.reason), False
+        case Outcome.ABSTAINED:
+            return None
 
 
 def _initial_items(history: list[Turn], opening: str | None) -> list[InitialItemParam]:

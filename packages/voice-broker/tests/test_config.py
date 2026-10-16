@@ -4,7 +4,16 @@ import json
 from pathlib import Path
 
 import pytest
-from voice_broker.config import DecisionsProvider, Device, History, JevProvider, Routing, load
+from voice_broker.config import (
+    DecisionsProvider,
+    Device,
+    History,
+    HomeAssistantAudio,
+    JevProvider,
+    Routing,
+    RoutingShadow,
+    load,
+)
 
 ROOM = Device("room-assistant", "192.168.1.54", "Room", "esphome.home_assistant_voice_0914cc_start_conversation")
 
@@ -200,3 +209,137 @@ def test_decisions_takes_no_openrouter_key(tmp_path: Path) -> None:
     # Decisions runs on the broker's OpenAI key; a stray key file is a config mistake.
     with pytest.raises(ValueError, match="api_key_file is for jev"):
         load(with_routing(write_config(tmp_path), {**jev_routing(tmp_path), "provider": "decisions"}))
+
+
+# -- the voice agent's sessions ------------------------------------------------
+
+
+def test_the_voice_agent_reads_history_from_another_session_and_observes_in_its_own(tmp_path: Path) -> None:
+    path = write_config(tmp_path)
+    raw = json.loads(path.read_text())
+    raw["openclaw"] |= {
+        "agent": "voice",
+        "session_key": "agent:voice:main",
+        "history_session_key": "agent:main:main",
+        "observer_session_key": "agent:voice:observer",
+    }
+    path.write_text(json.dumps(raw))
+    openclaw = load(path).openclaw
+    assert (openclaw.agent, openclaw.session_key, openclaw.history_session_key, openclaw.observer_session_key) == (
+        "voice",
+        "agent:voice:main",
+        "agent:main:main",
+        "agent:voice:observer",
+    )
+
+
+def test_unset_the_agents_sessions_are_the_consult_session_and_none_is_named(tmp_path: Path) -> None:
+    openclaw = load(write_config(tmp_path)).openclaw
+    # Unset: history comes from the consult session, nothing is observed, and no agent is named (gated, as deployed).
+    assert openclaw.history_session_key is None and openclaw.observer_session_key is None
+    assert openclaw.agent is None
+
+
+@pytest.mark.parametrize(
+    "keys",
+    [
+        {"session_key": "agent:main:main"},
+        {"session_key": "agent:voice:main", "observer_session_key": "agent:main:observer"},
+    ],
+)
+def test_a_session_of_another_agent_than_the_named_one_is_refused(tmp_path: Path, keys: dict) -> None:
+    path = write_config(tmp_path)
+    raw = json.loads(path.read_text())
+    raw["openclaw"] |= {"agent": "voice", **keys}
+    path.write_text(json.dumps(raw))
+    with pytest.raises(ValueError, match="is not agent 'voice'"):
+        load(path)
+
+
+# -- parallel: Home Assistant hears the audio ------------------------------------
+
+HOME = {
+    "pipeline": "Voice broker home",
+    "read_only_tools": ["GetLiveContext", "GetDateTime"],
+    "non_home_tools": ["ask_gpt"],
+}
+SHADOW = {"model": "gpt-6-luna", "timeout_s": 4}
+
+
+def with_raw(path: Path, device_id: str | None = "9290a2568e3df21ba0fd2d663249c0ca", **sections: object) -> Path:
+    raw = json.loads(path.read_text())
+    raw.update(sections)
+    if device_id is not None:
+        raw["devices"][0]["home_assistant_device_id"] = device_id
+    path.write_text(json.dumps(raw))
+    return path
+
+
+def test_home_assistant_listening_and_the_speakers_device_are_read(tmp_path: Path) -> None:
+    config = load(with_raw(write_config(tmp_path), home_assistant=HOME))
+    assert config.home_assistant == HomeAssistantAudio(
+        "Voice broker home", frozenset({"GetLiveContext", "GetDateTime"}), frozenset({"ask_gpt"})
+    )
+    assert config.devices[0].home_assistant_device_id == "9290a2568e3df21ba0fd2d663249c0ca"
+    # Listening on its own gates nothing and makes no classifier request.
+    assert config.routing is None and config.home_assistant.shadow is None
+
+
+def test_without_either_mode_home_assistant_neither_listens_nor_is_routed_to(tmp_path: Path) -> None:
+    config = load(write_config(tmp_path))
+    assert config.home_assistant is None and config.routing is None
+
+
+def test_a_decisions_shadow_is_read(tmp_path: Path) -> None:
+    config = load(with_raw(write_config(tmp_path), home_assistant={**HOME, "shadow": SHADOW}))
+    assert config.home_assistant is not None
+    assert config.home_assistant.shadow == RoutingShadow(DecisionsProvider("gpt-6-luna"), 4.0)
+
+
+def test_a_jev_shadow_reads_its_key_through_the_same_provider_config(tmp_path: Path) -> None:
+    shadow = {k: v for k, v in jev_routing(tmp_path).items() if k in ("provider", "model", "api_key_file", "timeout_s")}
+    config = load(with_raw(write_config(tmp_path), home_assistant={**HOME, "shadow": shadow}))
+    assert config.home_assistant is not None
+    assert config.home_assistant.shadow == RoutingShadow(JevProvider("typesafe/jev-1.13", "sk-or-v1-secret"), 4.0)
+    assert "sk-or-v1-secret" not in repr(config)
+
+
+def test_a_jev_shadow_without_a_key_is_refused_with_its_own_name(tmp_path: Path) -> None:
+    shadow = {"provider": "jev", "model": "typesafe/jev-1.13", "timeout_s": 4}
+    with pytest.raises(ValueError, match=r"^home_assistant\.shadow\.provider jev needs api_key_file"):
+        load(with_raw(write_config(tmp_path), home_assistant={**HOME, "shadow": shadow}))
+
+
+def test_home_assistant_needs_every_speakers_device(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="room-assistant"):
+        load(with_raw(write_config(tmp_path), device_id=None, home_assistant=HOME))
+
+
+def test_gated_and_parallel_together_are_refused(tmp_path: Path) -> None:
+    # Home Assistant would act twice on one request: on the gated text, and on the audio.
+    with pytest.raises(ValueError, match="exclusive"):
+        load(with_raw(write_config(tmp_path), routing=ROUTING, home_assistant=HOME))
+
+
+def test_the_undeployed_top_level_shadow_is_refused(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="home_assistant.shadow now"):
+        load(with_raw(write_config(tmp_path), home_assistant=HOME, decisions_shadow=SHADOW))
+
+
+@pytest.mark.parametrize(
+    "home",
+    [
+        {**HOME, "pipeline": ""},
+        # A tool can't be both: the evidence would be ambiguous.
+        {**HOME, "non_home_tools": ["GetLiveContext"]},
+    ],
+)
+def test_home_assistant_settings_are_checked(tmp_path: Path, home: dict) -> None:
+    with pytest.raises(ValueError):
+        load(with_raw(write_config(tmp_path), home_assistant=home))
+
+
+@pytest.mark.parametrize("change", [{"timeout_s": 2.9}, {"timeout_s": 30.5}, {"model": ""}, {"provider": "chat"}])
+def test_shadow_bounds_are_checked(tmp_path: Path, change: dict) -> None:
+    with pytest.raises(ValueError):
+        load(with_raw(write_config(tmp_path), home_assistant={**HOME, "shadow": {**SHADOW, **change}}))

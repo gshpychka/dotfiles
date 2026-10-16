@@ -1,13 +1,18 @@
 """The OpenClaw agent, which carries out the work GPT-Live delegates.
 
 Each consult is one agent turn on the gateway's OpenResponses endpoint
-(https://docs.openclaw.ai/gateway/openresponses-http-api), in the agent's own
-session, so it answers with everything said there. The voice starts with the
-newest turns of that session.
+(https://docs.openclaw.ai/gateway/openresponses-http-api), in the session the
+config names. The gateway takes the agent, and with it the agent's tools, from
+that session key's `agent:<id>:` prefix alone: `model` and the request's own
+tools don't narrow the agent's native or MCP tools. So the voice agent's lack of
+home-action tools is the gateway's tool policy for that agent (my.voice-broker in
+the Nix config), not this client's doing. The voice starts with the newest turns
+of the history session.
 """
 
 from __future__ import annotations
 
+import json
 import logging
 import time
 from typing import Any, Literal
@@ -26,6 +31,34 @@ _AGENT = "openclaw"
 _TIMEOUT_S = 90.0
 # One read of the session's transcript.
 _HISTORY_TIMEOUT_S = 10.0
+# One observation: a few reads of the home's state.
+_OBSERVE_TIMEOUT_S = 45.0
+
+# The observer's answer, as the one client tool it must call.
+_VERDICT_TOOL: dict[str, Any] = {
+    "type": "function",
+    "name": "home_verdict",
+    "description": "Report whether the home's current state matches what the user asked for.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "matches": {"type": "boolean", "description": "True when the state matches, or when it can't be told."},
+            "discrepancy": {
+                "type": "string",
+                "description": "When it does not match: one short spoken sentence for the user saying what differs.",
+            },
+        },
+        "required": ["matches"],
+        "additionalProperties": False,
+    },
+}
+_OBSERVER_INSTRUCTIONS = (
+    "You check, read-only, what Home Assistant just did after a spoken request. Home Assistant alone acts on the "
+    "home; you never change anything and never ask it to. Read the current state of the devices involved, then "
+    "call home_verdict once. Report matches=false only for a clear, concrete difference between what the user "
+    "asked and the state now, such as the wrong room's light or a device left off. Speech recognition can "
+    "mishear, so when the request is unclear, or the state can't be read, report matches=true."
+)
 
 Role = Literal["user", "assistant"]
 # One message of a conversation: who said it and what.
@@ -51,6 +84,7 @@ class OpenClaw:
             api_key=config.token,
             default_headers={
                 "x-openclaw-session-key": config.session_key,
+                **({} if config.agent is None else {"x-openclaw-agent-id": config.agent}),
                 **({} if config.model is None else {"x-openclaw-model": config.model}),
             },
             timeout=_TIMEOUT_S,
@@ -75,10 +109,47 @@ class OpenClaw:
         log.info("consult -> %s", answer)
         return answer
 
+    async def observe(self, evidence: str) -> str | None:
+        """Whether the home now matches what the user asked: None, or the discrepancy to tell them.
+
+        A turn of the observer session. The agent reads the home with its own
+        read-only tools, and answers through one client function call that
+        tool_choice requires (openresponses-http-api.md), so its verdict is
+        structured rather than parsed from prose. Raises ConsultFailed.
+        """
+        assert self._config.observer_session_key is not None
+        try:
+            response = await self._client.responses.create(
+                model=_AGENT,
+                input=evidence,
+                instructions=_OBSERVER_INSTRUCTIONS,
+                tools=[_VERDICT_TOOL],
+                tool_choice={"type": "function", "name": _VERDICT_TOOL["name"]},
+                extra_headers={"x-openclaw-session-key": self._config.observer_session_key},
+                timeout=_OBSERVE_TIMEOUT_S,
+            )
+        except OpenAIError as e:
+            raise ConsultFailed(repr(e)) from e
+        calls = [item for item in response.output if getattr(item, "type", None) == "function_call"]
+        if len(calls) != 1 or calls[0].name != _VERDICT_TOOL["name"]:
+            raise ConsultFailed(f"the observer gave {len(calls)} verdicts")
+        try:
+            verdict = json.loads(calls[0].arguments)
+            matches = verdict["matches"]
+            discrepancy = str(verdict.get("discrepancy") or "").strip()
+        except (ValueError, LookupError, TypeError) as e:
+            raise ConsultFailed(f"malformed verdict: {type(e).__name__}") from e
+        if matches is True:
+            return None
+        if matches is not False or not discrepancy:
+            raise ConsultFailed("verdict without a discrepancy")
+        log.info("observer -> %s", discrepancy)
+        return discrepancy
+
     async def recent(self) -> list[Turn]:
         """The newest turns of the agent's conversation, within the configured history bounds."""
         history = self._config.history
-        session = quote(self._config.session_key, safe="")
+        session = quote(self._config.history_session_key or self._config.session_key, safe="")
         try:
             response = await self._http.get(
                 f"{self._config.url}/sessions/{session}/history",
