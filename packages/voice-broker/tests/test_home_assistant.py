@@ -64,7 +64,8 @@ def test_remote_pipeline_intent_only_and_conversation_continuity():
     async def run():
         req = RouteRequest("What is the temperature?", (), "Room", "speaker", "voice-1")
         assert await home.consult(req) == "It is 22 degrees."
-        assert await home.consult(req) == "It is 22 degrees."
+        follow = RouteRequest(req.text, (("user", req.text),), "Room", "speaker", "voice-1")
+        assert await home.consult(follow) == "It is 22 degrees."
 
     asyncio.run(run())
     first, second = [ws.sent[1] for ws in sockets]
@@ -124,3 +125,42 @@ def test_cross_backend_followup_does_not_use_missing_ha_context():
     home = HomeAssistant("http://ha.test", "secret", "remote", "device", connect)
     result = asyncio.run(home.consult(RouteRequest("Dim them.", (("user", "Lights are on."),), "Room", "d", "v")))
     assert "No action" in result
+
+
+@pytest.mark.parametrize("text", ["Brighter.", "Set brightness to 50%.", "Зроби його яскравішим.", "Вимкни її."])
+def test_cross_backend_continuity_is_reset_without_pronoun_guessing(text):
+    @asynccontextmanager
+    async def connect(*args, **kwargs):
+        raise AssertionError("missing explicit target must clarify")
+        yield
+
+    home = HomeAssistant("http://ha.test", "secret", "remote", "device", connect)
+    home._conversation_id = "old-ha"
+    home._previous_request = "Turn on lights."
+    context = (("user", "Turn on lights."), ("user", "Tell me about coding."))
+    result = asyncio.run(home.consult(RouteRequest(text, context, "Room", "d", "v")))
+    assert "No action" in result and home._conversation_id is None
+
+
+def test_failed_home_turn_cannot_establish_new_continuity():
+    sockets = []
+
+    @asynccontextmanager
+    async def connect(*args, **kwargs):
+        ws = Socket([{"type": "auth_required"}, {"type": "auth_ok"}, event("error")])
+        sockets.append(ws)
+        yield ws
+
+    home = HomeAssistant("http://ha.test", "secret", "remote", "device", connect)
+    home._conversation_id = "old-ha"
+    home._previous_request = "Turn on lights."
+
+    async def run():
+        with pytest.raises(ConsultFailed):
+            await home.consult(RouteRequest("Brighter.", (("user", "Turn on lights."),), "Room", "d", "v"))
+        assert home._conversation_id is None and home._previous_request is None
+        result = await home.consult(RouteRequest("Brighter.", (("user", "Brighter."),), "Room", "d", "v"))
+        assert "No action" in result
+
+    asyncio.run(run())
+    assert len(sockets) == 1

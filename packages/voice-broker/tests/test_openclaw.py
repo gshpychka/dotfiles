@@ -116,7 +116,7 @@ def test_a_failed_turn_fails_once_without_a_retry():
             500, json={"status": "failed", "error": {"code": "api_error", "message": "internal error"}}
         )
 
-    with pytest.raises(ConsultFailed, match="internal error"):
+    with pytest.raises(ConsultFailed, match="InternalServerError"):
         consult(handler)
     assert len(requests) == 1
 
