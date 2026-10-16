@@ -43,6 +43,17 @@ let
   credential = name: "/run/credentials/voice-broker.service/${name}";
   # sops-nix secret names are host-global, so they carry the service name
   sopsName = name: "voice-broker/${name}";
+
+  # Each routing provider's default model. gpt-6-luna is the only model Decisions takes so far;
+  # typesafe/jev-1.13 is the Jev the frozen routing benchmarks measured (its dated endpoint
+  # typesafe/jev-1.13-20260917 answered every call).
+  routingModels = {
+    decisions = "gpt-6-luna";
+    jev = "typesafe/jev-1.13";
+  };
+  # The OpenRouter key, only while Jev classifies: Decisions needs none.
+  jevRouting = cfg.routing.enable && cfg.routing.provider == "jev";
+  openRouterKey = "openrouter-api-key";
 in
 {
   options.my.voice-broker = {
@@ -78,19 +89,35 @@ in
 
     routing = {
       enable = lib.mkEnableOption ''
-        classifying each delegated request with OpenAI Decisions (on the
-        broker's OpenAI key) and running it on Home Assistant's conversation
-        agent or on OpenClaw, whichever owns it. Off, OpenClaw answers
-        everything. Every Voice PE needs homeAssistantDeviceId'';
+        classifying each delegated request (with `provider`) and running it on
+        Home Assistant's conversation agent or on OpenClaw, whichever owns it.
+        Off, OpenClaw answers everything. Every Voice PE needs homeAssistantDeviceId'';
+      provider = lib.mkOption {
+        type = lib.types.enum (lib.attrNames routingModels);
+        default = "decisions";
+        description = ''
+          The classifier (packages/voice-broker/src/voice_broker/routing.py):
+          `decisions`, OpenAI Decisions on the broker's OpenAI key; or `jev`,
+          TypeSafe Jev through OpenRouter's System One API, on the OpenRouter
+          key of `openRouter.sopsFile`. One call per request either way; a
+          failure runs nothing and never falls back to the other.
+        '';
+      };
       model = lib.mkOption {
         type = lib.types.str;
-        default = "gpt-6-luna";
-        description = "Decisions model; gpt-6-luna is the only one the API takes so far.";
+        default = routingModels.${cfg.routing.provider};
+        defaultText = lib.literalMD "per provider: `gpt-6-luna` for decisions, `typesafe/jev-1.13` for jev";
+        description = "The provider's model.";
+      };
+      openRouter.sopsFile = lib.mkOption {
+        type = lib.types.nullOr lib.types.path;
+        default = null;
+        description = "SOPS file holding the flat key ${openRouterKey}, read only when provider is jev.";
       };
       timeoutSeconds = lib.mkOption {
         # The bounds are config.py's MIN_ROUTING_TIMEOUT_S and MAX_ROUTING_TIMEOUT_S, explained there.
-        # A spoken request usually reaches Decisions cold, on a new connection, and 1.5 s ran out in
-        # production. 30 is a diagnostic allowance, not a latency target.
+        # A spoken request usually reaches the classifier cold, on a new connection, and 1.5 s ran out
+        # with Decisions in production. 30 is a diagnostic allowance, not a latency target.
         type = lib.types.numbers.between 3 30;
         default = 4;
         description = "Classification time limit, connection setup included; past it nothing runs and the user is asked again.";
@@ -146,6 +173,22 @@ in
           !cfg.routing.enable || lib.all (host: host.homeAssistantDeviceId != null) (lib.attrValues voicePes);
         message = "my.voice-broker.routing runs home requests as each Voice PE; set my.hosts.<name>.homeAssistantDeviceId for every one.";
       }
+      {
+        # Each provider's API takes only its own models; another's fails every request at runtime.
+        assertion =
+          !cfg.routing.enable
+          || (
+            if cfg.routing.provider == "jev" then
+              lib.hasPrefix "typesafe/jev-" cfg.routing.model
+            else
+              !lib.hasInfix "/" cfg.routing.model
+          );
+        message = "my.voice-broker.routing.model ${cfg.routing.model} is not a ${cfg.routing.provider} model.";
+      }
+      {
+        assertion = !jevRouting || cfg.routing.openRouter.sopsFile != null;
+        message = "my.voice-broker.routing.provider jev classifies on OpenRouter; set routing.openRouter.sopsFile.";
+      }
     ];
 
     my.voice-broker.settings = {
@@ -165,12 +208,17 @@ in
           home_assistant_device_id = host.homeAssistantDeviceId;
         }
       ) voicePes;
-      routing = lib.mkIf cfg.routing.enable {
-        inherit (cfg.routing) model pipeline;
-        timeout_s = cfg.routing.timeoutSeconds;
-        pending_question_s = cfg.routing.pendingQuestionSeconds;
-        settle_s = cfg.routing.settleSeconds;
-      };
+      routing = lib.mkIf cfg.routing.enable (
+        {
+          inherit (cfg.routing) provider model pipeline;
+          timeout_s = cfg.routing.timeoutSeconds;
+          pending_question_s = cfg.routing.pendingQuestionSeconds;
+          settle_s = cfg.routing.settleSeconds;
+        }
+        // lib.optionalAttrs jevRouting {
+          api_key_file = credential openRouterKey;
+        }
+      );
       recordings_dir = if cfg.recordings.enable then "/var/lib/${recordingsDir}" else null;
       openclaw = {
         url = openclaw.localUrl;
@@ -187,15 +235,22 @@ in
       };
     };
 
-    sops.secrets = lib.listToAttrs (
-      map (
-        name:
-        lib.nameValuePair (sopsName name) {
-          inherit (cfg) sopsFile;
-          key = name;
-        }
-      ) credentialNames
-    );
+    sops.secrets =
+      lib.listToAttrs (
+        map (
+          name:
+          lib.nameValuePair (sopsName name) {
+            inherit (cfg) sopsFile;
+            key = name;
+          }
+        ) credentialNames
+      )
+      // lib.optionalAttrs jevRouting {
+        ${sopsName openRouterKey} = {
+          inherit (cfg.routing.openRouter) sopsFile;
+          key = openRouterKey;
+        };
+      };
 
     # Static: loopback access to the OpenClaw gateway is granted per user.
     users.users.${user} = {
@@ -245,6 +300,7 @@ in
         LoadCredential =
           map (name: "${name}:${config.sops.secrets.${sopsName name}.path}") credentialNames
           ++ [ "${openclawCredential}:${openclaw.gatewaySecretFile}" ]
+          ++ lib.optional jevRouting "${openRouterKey}:${config.sops.secrets.${sopsName openRouterKey}.path}"
           ++ lib.optional (cfg.identityFile != null) "${identityCredential}:${cfg.identityFile}";
         # the identity while identityFile is missing; a LoadCredential= that
         # finds no file falls back to it (systemd.exec(5), SetCredential=).

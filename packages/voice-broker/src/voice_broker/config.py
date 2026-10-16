@@ -7,7 +7,7 @@ production) and they are read at startup.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -87,11 +87,32 @@ class Device:
 
 
 @dataclass(frozen=True, slots=True)
+class DecisionsProvider:
+    """OpenAI Decisions, on the broker's OpenAI key."""
+
+    model: str
+
+
+@dataclass(frozen=True, slots=True)
+class JevProvider:
+    """TypeSafe Jev through OpenRouter System One, on an OpenRouter key."""
+
+    model: str
+    # Kept out of repr, so logging the config can't print it.
+    api_key: str = field(repr=False)
+
+
+# The classifier that picks the backend (routing.router builds it).
+Provider = DecisionsProvider | JevProvider
+# routing.provider's names; without one, Decisions, as before the choice existed.
+PROVIDERS = ("decisions", "jev")
+
+
+@dataclass(frozen=True, slots=True)
 class Routing:
     """Delegated requests split between Home Assistant and OpenClaw (routing.py)."""
 
-    # OpenAI Decisions model that picks the backend.
-    model: str
+    provider: Provider
     # Past this, the request is not classified and nothing runs.
     timeout_s: float
     # The Assist pipeline whose conversation agent home requests go to.
@@ -173,16 +194,38 @@ def _calls(raw: dict[str, Any]) -> Calls:
     )
 
 
+def _provider(raw: dict[str, Any]) -> Provider:
+    name = raw.get("provider", "decisions")
+    model = raw["model"]
+    if not isinstance(model, str) or not model:
+        raise ValueError("routing needs a model")
+    key_file = raw.get("api_key_file")
+    match name:
+        case "decisions":
+            if key_file is not None:
+                raise ValueError("routing.api_key_file is for jev: Decisions runs on the broker's OpenAI key")
+            return DecisionsProvider(model)
+        case "jev":
+            if not key_file:
+                raise ValueError("routing.provider jev needs api_key_file, an OpenRouter key")
+            api_key = _read_secret(key_file)
+            if not api_key:
+                raise ValueError("routing.api_key_file is empty")
+            return JevProvider(model, api_key)
+        case _:
+            raise ValueError(f"routing.provider must be one of {', '.join(PROVIDERS)}")
+
+
 def _routing(raw: dict[str, Any]) -> Routing:
     routing = Routing(
-        model=raw["model"],
+        provider=_provider(raw),
         timeout_s=float(raw["timeout_s"]),
         pipeline=raw["pipeline"],
         pending_question_s=float(raw["pending_question_s"]),
         settle_s=float(raw["settle_s"]),
     )
-    if not routing.model or not routing.pipeline:
-        raise ValueError("routing needs a model and a pipeline")
+    if not routing.pipeline:
+        raise ValueError("routing needs a pipeline")
     if not MIN_ROUTING_TIMEOUT_S <= routing.timeout_s <= MAX_ROUTING_TIMEOUT_S:
         raise ValueError(
             f"routing.timeout_s must be in [{MIN_ROUTING_TIMEOUT_S:g}, {MAX_ROUTING_TIMEOUT_S:g}]:"

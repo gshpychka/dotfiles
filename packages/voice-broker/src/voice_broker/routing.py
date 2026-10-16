@@ -1,9 +1,19 @@
 """Which backend answers a delegated request: Home Assistant, OpenClaw, or neither.
 
-A request is classified before any backend runs, by OpenAI Decisions
-(https://developers.openai.com/api/docs/guides/decisions), and goes to the
-chosen backend alone. Classifying acts on nothing, so a classifier failure
-asks the user again instead of guessing a backend.
+A request is classified before any backend runs and goes to the chosen backend
+alone. Classifying acts on nothing, so a classifier failure asks the user again
+instead of guessing a backend, and never falls back to another classifier.
+
+The classifier is pluggable (`Router`). Every provider gets the same policy
+(CHOICES, INSTRUCTIONS) and evidence, and answers with a RouteDecision or
+RoutingFailed; only its request and answer shapes differ:
+- decisions: OpenAI Decisions (https://developers.openai.com/api/docs/guides/decisions),
+  on the broker's OpenAI key.
+- jev: TypeSafe Jev through OpenRouter's System One API (POST /api/v1/systemone,
+  not chat), on an OpenRouter key. The request and answer shapes are the ones the
+  earlier JevRouter (branch test/voice-ha-classifier) and the frozen routing
+  benchmarks sent and checked (workspace reports routing-realistic-retest-2026-10-16.md
+  and jev-openrouter-funded-run2-2026-10-16.md).
 """
 
 from __future__ import annotations
@@ -12,16 +22,18 @@ import asyncio
 import json
 import math
 import time
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Literal, get_args
+from typing import Any, Literal, Protocol, assert_never, get_args
 
 from openai import AsyncOpenAI, OpenAIError
 
+from .config import DecisionsProvider, JevProvider, Routing
 from .openclaw import Turn
 
 Route = Literal["ha", "openclaw", "clarify"]
 
-# Decisions takes a description per choice; these and the instructions are the routing policy.
+# Every provider takes a description per choice; these and the instructions are the routing policy.
 # Ambiguous home commands belong to Home Assistant: its conversation agent is an LLM
 # and asks which device is meant.
 CHOICES: dict[Route, str] = {
@@ -54,6 +66,10 @@ INSTRUCTIONS = (
 # Spoken turns of this conversation the classifier sees, newest last.
 _CONTEXT_TURNS = 12
 
+# OpenRouter's API base; System One is POST <base>/systemone
+# (openrouter.ai/docs/api-reference/systemone, used by the benchmarks above).
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+
 
 class RoutingFailed(Exception):
     """No route: the classifier failed or answered outside the choices."""
@@ -77,8 +93,23 @@ class RouteDecision:
     elapsed_ms: float
 
 
-def evidence(request: RouteRequest) -> str:
-    """The Decisions input. No device name or conversation ID: they decide nothing."""
+class Router(Protocol):
+    """A classifier of delegated requests: one call per request, never retried."""
+
+    # Provider and model, for the log; no secret.
+    label: str
+
+    async def route(self, request: RouteRequest) -> RouteDecision:
+        """Raises RoutingFailed, with a message that quotes neither the request nor the provider."""
+        ...
+
+    async def aclose(self) -> None:
+        """Releases what the router owns."""
+        ...
+
+
+def evidence_state(request: RouteRequest) -> dict[str, Any]:
+    """What the classifier is told. No device name or conversation ID: they decide nothing."""
     state: dict[str, Any] = {
         "text": request.text,
         "context": [{"role": role, "text": text} for role, text in request.context[-_CONTEXT_TURNS:]],
@@ -86,16 +117,19 @@ def evidence(request: RouteRequest) -> str:
     }
     if request.pending_question:
         state["pending_question"] = request.pending_question
-    return json.dumps(state, ensure_ascii=False)
+    return state
 
 
-class DecisionsRouter:
-    """One Decisions request per delegated request, never retried.
+def evidence(request: RouteRequest) -> str:
+    """The evidence as the JSON text Decisions takes as its input."""
+    return json.dumps(evidence_state(request), ensure_ascii=False)
 
-    No confidence threshold: the guide sets thresholds from labelled examples of
-    the application, and the only labelled set (the 100-case benchmark) would
-    make any threshold picked on it in-sample. A low-confidence home route still
-    reaches Home Assistant's LLM, which asks when the target is unclear.
+
+class _ApiRouter(ABC):
+    """One POST through the openai SDK per request, bounded as a whole, never retried.
+
+    Both providers' APIs are JSON over HTTPS with a bearer key, so the SDK's
+    generic `post` is the transport; each subclass has its own request and answer.
     """
 
     def __init__(self, client: AsyncOpenAI, model: str, timeout_s: float) -> None:
@@ -107,9 +141,48 @@ class DecisionsRouter:
         # The SDK's timeout bounds each phase of the request; this bounds all of it.
         self._timeout_s = timeout_s
 
+    @abstractmethod
+    def _request(self, request: RouteRequest) -> tuple[str, dict[str, Any]]:
+        """The path and body of the classification."""
+
+    @abstractmethod
+    def _answer(self, result: Any) -> tuple[Route, float | None]:
+        """The route of a response, checked; raises RoutingFailed."""
+
     async def route(self, request: RouteRequest) -> RouteDecision:
         started = time.monotonic()
-        body = {
+        path, body = self._request(request)
+        try:
+            async with asyncio.timeout(self._timeout_s):
+                result = await self._client.post(path, cast_to=object, body=body)
+        except (OpenAIError, TimeoutError, ValueError) as e:
+            # Class name and HTTP status only: SDK messages can quote the request or the
+            # provider's error text. ValueError is a body that isn't JSON. The elapsed time
+            # tells a budget that ran out from a failure that came back early.
+            status = getattr(e, "status_code", None)
+            raise RoutingFailed(
+                f"{type(e).__name__}{f' {status}' if isinstance(status, int) else ''}"
+                f" after {(time.monotonic() - started) * 1000:.0f} ms"
+            ) from e
+        route, confidence = self._answer(result)
+        return RouteDecision(route, confidence, (time.monotonic() - started) * 1000)
+
+
+class DecisionsRouter(_ApiRouter):
+    """OpenAI Decisions, on the client the broker shares with Live.
+
+    No confidence threshold: the guide sets thresholds from labelled examples of
+    the application, and the only labelled set (the 100-case benchmark) would
+    make any threshold picked on it in-sample. A low-confidence home route still
+    reaches Home Assistant's LLM, which asks when the target is unclear.
+    """
+
+    def __init__(self, client: AsyncOpenAI, model: str, timeout_s: float) -> None:
+        super().__init__(client, model, timeout_s)
+        self.label = f"decisions {model}"
+
+    def _request(self, request: RouteRequest) -> tuple[str, dict[str, Any]]:
+        return "/decisions", {
             "model": self._model,
             "input": evidence(request),
             "questions": [
@@ -121,29 +194,74 @@ class DecisionsRouter:
                 }
             ],
         }
+
+    def _answer(self, result: Any) -> tuple[Route, float | None]:
+        """Decisions answers a list of named answers."""
         try:
-            async with asyncio.timeout(self._timeout_s):
-                result = await self._client.post("/decisions", cast_to=object, body=body)
-        except (OpenAIError, TimeoutError) as e:
-            # Class name only: SDK messages can quote the request. The elapsed time tells
-            # a budget that ran out from a failure that came back early.
-            raise RoutingFailed(f"{type(e).__name__} after {(time.monotonic() - started) * 1000:.0f} ms") from e
-        route, confidence = _answer(result)
-        return RouteDecision(route, confidence, (time.monotonic() - started) * 1000)
+            (answer,) = [a for a in result["answers"] if a.get("name") == "route"]
+        except (LookupError, TypeError, ValueError, AttributeError) as e:
+            raise RoutingFailed(f"unexpected response shape: {type(e).__name__}") from e
+        return _choice(answer)
+
+    async def aclose(self) -> None:
+        """The client is the broker's, shared with Live; nothing of its own to close."""
 
 
-def _answer(result: Any) -> tuple[Route, float | None]:
-    """The route answer of a Decisions response, checked against the choices."""
+class JevRouter(_ApiRouter):
+    """TypeSafe Jev through OpenRouter System One, on a client of its own.
+
+    No confidence threshold, as for Decisions: the 0.7 that removed Jev's unsafe
+    home routes on the first 28 cases was picked on those same cases. On the
+    frozen 96-attempt realistic set it routed every case correctly without one.
+    """
+
+    def __init__(self, client: AsyncOpenAI, model: str, timeout_s: float) -> None:
+        super().__init__(client, model, timeout_s)
+        self._owned = client
+        self.label = f"jev {model}"
+
+    def _request(self, request: RouteRequest) -> tuple[str, dict[str, Any]]:
+        # System One takes the evidence as a JSON object, and its questions keyed by name
+        # with the choices as criteria, unlike Decisions' list.
+        return "/systemone", {
+            "model": self._model,
+            "state": evidence_state(request),
+            "questions": {"route": {"type": "choice", "instructions": INSTRUCTIONS, "criteria": dict(CHOICES)}},
+        }
+
+    def _answer(self, result: Any) -> tuple[Route, float | None]:
+        """System One answers a map of answers by question name."""
+        if isinstance(result, dict) and "error" in result:
+            # OpenRouter can answer 200 with an error object. Its code only: the message can quote the request.
+            error = result["error"]
+            code = error.get("code") if isinstance(error, dict) else None
+            raise RoutingFailed(f"error answer, code {code if isinstance(code, int) else 'unknown'}")
+        try:
+            model = result["model"]
+            answer = result["answers"]["route"]
+        except (LookupError, TypeError) as e:
+            raise RoutingFailed(f"unexpected response shape: {type(e).__name__}") from e
+        # OpenRouter names the model that answered, dated (typesafe/jev-1.13-20260917 for
+        # typesafe/jev-1.13); the benchmarks refused any other, and so does this.
+        if not isinstance(model, str) or not model.startswith(self._model):
+            raise RoutingFailed("answered by another model")
+        return _choice(answer)
+
+    async def aclose(self) -> None:
+        await self._owned.close()
+
+
+def _choice(answer: Any) -> tuple[Route, float | None]:
+    """A choice answer's route and confidence, checked against the choices."""
     try:
-        (answer,) = [a for a in result["answers"] if a.get("name") == "route"]
         if answer["type"] != "choice":
-            # e.g. "refusal"
-            raise RoutingFailed(f"answer type {answer['type']}")
+            # e.g. "refusal"; the type is the provider's text, so it isn't quoted
+            raise RoutingFailed("answer is not a choice")
         route = answer["choice"]
         confidence = answer.get("confidence")
-    except (LookupError, TypeError, ValueError, AttributeError) as e:
+    except (LookupError, TypeError, AttributeError) as e:
         raise RoutingFailed(f"unexpected response shape: {type(e).__name__}") from e
-    if route not in get_args(Route):
+    if not isinstance(route, str) or route not in get_args(Route):
         raise RoutingFailed("choice outside the routes")
     if confidence is not None and (
         isinstance(confidence, bool)
@@ -152,4 +270,18 @@ def _answer(result: Any) -> tuple[Route, float | None]:
         or not 0 <= confidence <= 1
     ):
         raise RoutingFailed("confidence outside [0, 1]")
-    return route, confidence
+    return route, confidence  # type: ignore[return-value]  # checked against Route above
+
+
+def router(routing: Routing, openai: AsyncOpenAI) -> Router:
+    """The router of the configured provider. `openai` is the broker's own client, shared with Live."""
+    provider = routing.provider
+    match provider:
+        case DecisionsProvider():
+            return DecisionsRouter(openai, provider.model, routing.timeout_s)
+        case JevProvider():
+            # Only a client of OpenRouter's carries this key, so it can't reach OpenAI or the reverse.
+            client = AsyncOpenAI(api_key=provider.api_key, base_url=OPENROUTER_BASE_URL)
+            return JevRouter(client, provider.model, routing.timeout_s)
+        case _:
+            assert_never(provider)

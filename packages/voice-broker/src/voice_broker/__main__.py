@@ -26,7 +26,7 @@ from .home_assistant import HomeAssistant
 from .live import LiveSession, Routed, live_connector
 from .openclaw import OpenClaw
 from .protocol import MIC_RATE, ProtocolError, parse_start
-from .routing import DecisionsRouter
+from .routing import router
 
 log = logging.getLogger("voice_broker")
 
@@ -60,9 +60,7 @@ class Broker:
         self._devices = {d.address: _DeviceState(d, EchoCanceller(MIC_RATE)) for d in config.devices}
         openai = AsyncOpenAI(api_key=config.openai_api_key)
         self._connect = live_connector(openai)
-        self._router = (
-            DecisionsRouter(openai, config.routing.model, config.routing.timeout_s) if config.routing else None
-        )
+        self._router = router(config.routing, openai) if config.routing else None
         self._calls = Calls(config.calls, config.devices, busy=self._in_conversation)
 
     def _routed(self, device: Device) -> Routed | None:
@@ -142,6 +140,8 @@ class Broker:
                 ping_timeout=10,
             ) as server:
                 log.info("listening on %s:%d", self._config.listen_host, self._config.listen_port)
+                if self._router is not None:
+                    log.info("routing delegated requests with %s", self._router.label)
                 calls = await self._calls.serve()
                 stop = asyncio.Event()
                 loop = asyncio.get_running_loop()
@@ -152,6 +152,8 @@ class Broker:
                 server.close()
         finally:
             await self._openclaw.aclose()
+            if self._router is not None:
+                await self._router.aclose()
 
 
 def main() -> None:

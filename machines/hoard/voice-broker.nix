@@ -12,11 +12,23 @@
       # (assist_pipeline/pipeline/list). The Voice PEs' own pipeline selects
       # don't apply: the broker, not the satellite, runs the pipeline.
       pipeline = "01jmq3hbakt5r0e136vd886hy9";
+      # The owner's choice on 2026-10-17. On the frozen realistic set (48
+      # spoken cases x 2 passes, workspace report
+      # routing-realistic-retest-2026-10-16.md) Jev routed 96/96 correctly,
+      # p50/p95 357/495 ms; Decisions 92/96 with one unsafe home route, p95
+      # 4451 ms. On the earlier synthetic 100-case set Jev scored lower: 91/100
+      # with 5 unsafe home routes against Decisions' 95/100 and 3, and it sent
+      # 5 of 6 home+non-home mixes home (routing-100-benchmark-2026-10-16.md).
+      provider = "jev";
+      # the owner's OpenRouter key, encrypted to hoard_host as well
+      openRouter.sopsFile = ../../secrets/openclaw/openrouter.yaml;
       # Diagnostic, not a speed fix: on 2026-10-16 23:01 two requests had no
-      # answer within the default 4 s, and none logged an HTTP response.
-      # 30 s shows whether Decisions answers late or not at all (the failure
-      # log gives the elapsed ms). Each request is still one call, no retry,
-      # no fallback. Back to the default once the cause is known.
+      # Decisions answer within the default 4 s, and none logged an HTTP
+      # response. Kept at 30 s for Jev until a new measurement or the owner
+      # says otherwise: Jev's slowest benchmark call took 1.11 s, so the limit
+      # only decides how long a hung request holds the user (the failure log
+      # gives the elapsed ms). Each request is still one call, no retry, no
+      # fallback.
       timeoutSeconds = 30;
     };
 
