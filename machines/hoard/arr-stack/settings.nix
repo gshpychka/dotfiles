@@ -6,17 +6,33 @@
 # Owned here: naming, media management (importing, file management,
 # permissions), download handling (completed/failed download handling),
 # indexer options, import list sync level, UI, Radarr's metadata
-# certification country, the default delay profile, every quality size and the
-# Radarr "Any" profile's language. Recyclarr (./recyclarr.nix) owns the custom
-# formats and the rest of the "Any" profiles; ./sync.nix the root folders,
-# download clients and Prowlarr applications; ./notifications.nix the
-# notifications. Host settings (port, auth, logs, backups) are not declared:
-# the NixOS modules and ./auth.nix own the ones that matter.
+# certification country, the default delay profile, every quality size, the
+# Radarr "Any" profile's language, the saved custom filters (server-side, in
+# /customfilter; which filter a browser has selected is that browser's own
+# local state), the metadata consumers (all off) and the host settings in
+# ./host.nix. Recyclarr (./recyclarr.nix) owns the custom formats and the rest
+# of the "Any" profiles; ./sync.nix the root folders, download clients and
+# Prowlarr applications; ./notifications.nix the notifications;
+# ./import-lists.nix the import lists.
 #
-# Not declared (runtime or owned elsewhere): import lists, import list
-# exclusions, tags (created by Seerr), indexers (pushed by Prowlarr), metadata
-# consumers (all off, the default), custom filters, Sonarr's deprecated
-# language profile.
+# Not declared, as runtime state or owned elsewhere: import list exclusions
+# (added when a movie/series is deleted with "prevent re-adding"), tags other
+# than the import lists' (Seerr creates one per user), indexers (pushed by
+# Prowlarr), Sonarr's language profile (a v3 leftover v4 doesn't use).
+{ ... }:
+let
+  filter = key: type: value: { inherit key type value; };
+  # the app seeds one consumer per implementation; all are off here
+  consumer = id: name: implementation: fields: {
+    inherit
+      id
+      name
+      implementation
+      fields
+      ;
+    enable = false;
+  };
+in
 {
   my.arrSync.targets = {
     radarr = {
@@ -288,6 +304,44 @@
         id = -2;
         name = "Original";
       };
+      customFilters = [
+        {
+          id = 2;
+          type = "movieIndex";
+          label = "Available Monitored";
+          filters = [
+            (filter "monitored" "equal" [ true ])
+            (filter "isAvailable" "equal" [ true ])
+          ];
+        }
+        {
+          id = 3;
+          type = "movieIndex";
+          label = "misc";
+          filters = [ (filter "path" "contains" [ "/misc/" ]) ];
+        }
+      ];
+      metadata = [
+        (consumer 1 "Kodi (XBMC) / Emby" "XbmcMetadata" {
+          movieMetadata = true;
+          useMovieNfo = false;
+          # English
+          movieMetadataLanguage = 1;
+          movieMetadataURL = false;
+          addCollectionName = true;
+          movieImages = true;
+        })
+        (consumer 2 "WDTV" "WdtvMetadata" {
+          movieMetadata = true;
+          movieImages = true;
+        })
+        (consumer 3 "Roksbox" "RoksboxMetadata" {
+          movieMetadata = true;
+          movieImages = true;
+        })
+        (consumer 4 "Emby (Legacy)" "MediaBrowserMetadata" { movieMetadata = true; })
+        (consumer 5 "Kometa" "KometaMetadata" { deprecated = true; })
+      ];
     };
     sonarr = {
       settings = {
@@ -368,6 +422,64 @@
           usenetDelay = 0;
         };
       };
+      customFilters = [
+        {
+          id = 1;
+          type = "queue";
+          label = "Warning";
+          filters = [
+            (filter "status" "equal" [
+              "warning"
+              "fallback"
+              "delay"
+              "failed"
+              "completed"
+            ])
+          ];
+        }
+        {
+          id = 2;
+          type = "releases";
+          label = "Not rejected";
+          filters = [ (filter "rejectionCount" "equal" [ 0 ]) ];
+        }
+        {
+          id = 3;
+          type = "releases";
+          label = "UHD";
+          # Sonarr's fixed quality id 18: WEBDL-2160p
+          filters = [ (filter "quality" "equal" [ 18 ]) ];
+        }
+      ];
+      metadata = [
+        (consumer 1 "Kodi (XBMC) / Emby" "XbmcMetadata" {
+          seriesMetadata = true;
+          seriesMetadataEpisodeGuide = false;
+          seriesMetadataUrl = false;
+          episodeMetadata = true;
+          episodeImageThumb = false;
+          seriesImages = true;
+          seasonImages = true;
+          episodeImages = true;
+        })
+        (consumer 2 "WDTV" "WdtvMetadata" {
+          episodeMetadata = true;
+          seriesImages = true;
+          seasonImages = true;
+          episodeImages = true;
+        })
+        (consumer 3 "Roksbox" "RoksboxMetadata" {
+          episodeMetadata = true;
+          seriesImages = true;
+          seasonImages = true;
+          episodeImages = true;
+        })
+        (consumer 4 "Plex" "PlexMetadata" {
+          seriesPlexMatchFile = true;
+          episodeMappings = true;
+        })
+        (consumer 5 "Kometa" "KometaMetadata" { deprecated = true; })
+      ];
       # MB per minute; null is no limit
       qualityDefinitions = {
         Unknown = {

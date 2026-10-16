@@ -4,8 +4,11 @@ The fake behaves like Radarr/Sonarr v3 where it matters: privacy fields are
 masked as "********" in every response and a mask sent back keeps the stored
 value; providers live in a WAL-mode SQLite database like the real one; the
 create of an enabled provider runs Test() (forceSave or not), and so does a
-changed update of one unless forceSave=true; validation errors echo
-attempted values. Faults (429 with
+changed update of one unless forceSave=true; like Radarr it syncs an import
+list as soon as one is added or changed while enabled (recorded, so tests can
+assert none happened), and validates a list's profile and root folder; the
+host config keeps the login only when the password hash is echoed back;
+validation errors echo attempted values. Faults (429 with
 Retry-After, 5xx, a dropped connection after applying) can be injected.
 
 usage: arr-sync-test.py <dir holding arr_sync.py>
@@ -35,8 +38,16 @@ BOT_TOKEN = "synthetic-bot-token-1"
 OTHER_TOKEN = "synthetic-bot-token-2"
 CHAT_ID = "-100000000001"
 QBIT_PASSWORD = "synthetic-qbit-password"
-SECRETS = [BOT_TOKEN, OTHER_TOKEN, CHAT_ID, QBIT_PASSWORD]
-TABLES = {"downloadclient": "DownloadClients", "notification": "Notifications"}
+PLEX_TOKEN = "synthetic-plex-token-1"
+API_KEY = "synthetic-api-key"
+PASSWORD_HASH = "synthetic-password-hash-base64="
+SECRETS = [BOT_TOKEN, OTHER_TOKEN, CHAT_ID, QBIT_PASSWORD, PLEX_TOKEN]
+TABLES = {
+    "downloadclient": "DownloadClients",
+    "notification": "Notifications",
+    "importlist": "ImportLists",
+    "metadata": "Metadata",
+}
 
 
 def field(name, value, privacy="normal"):
@@ -117,6 +128,74 @@ def qbit_schema():
     }
 
 
+def plex_list_schema():
+    # Radarr's: the token is a plain ("normal") field in the API
+    return {
+        "id": 0,
+        "name": "",
+        "implementation": "PlexImport",
+        "configContract": "PlexListSettings",
+        "enabled": False,
+        "enableAuto": True,
+        "monitor": "movieOnly",
+        "searchOnAdd": True,
+        "minimumAvailability": "released",
+        "qualityProfileId": 0,
+        "rootFolderPath": "",
+        "listType": "plex",
+        "listOrder": 3,
+        "minRefreshInterval": "06:00:00",
+        "tags": [],
+        "fields": [field("accessToken", ""), field("signIn", "startOAuth")],
+    }
+
+
+def sonarr_list_schema():
+    return {
+        "id": 0,
+        "name": "",
+        "implementation": "PlexImport",
+        "configContract": "PlexListSettings",
+        "enableAutomaticAdd": True,
+        "searchForMissingEpisodes": True,
+        "shouldMonitor": "all",
+        "qualityProfileId": 0,
+        "rootFolderPath": "",
+        "tags": [],
+        "fields": [field("accessToken", "")],
+    }
+
+
+def kodi_metadata(resource_id=1):
+    return {
+        "id": resource_id,
+        "name": "Kodi (XBMC) / Emby",
+        "implementation": "XbmcMetadata",
+        "configContract": "XbmcMetadataSettings",
+        "enable": False,
+        "tags": [],
+        "fields": [field("movieMetadata", True), field("movieImages", True)],
+    }
+
+
+def default_host():
+    return {
+        "id": 1,
+        "bindAddress": "*",
+        "port": 7878,
+        "apiKey": API_KEY,
+        "username": "admin",
+        "password": PASSWORD_HASH,
+        "passwordConfirmation": "",
+        "logLevel": "debug",
+        "instanceName": "Radarr",
+        "proxyPassword": "",
+        "backupRetention": 7,
+        # not mapped by Servarr's resource: always answers false
+        "trustCgnatIpAddresses": False,
+    }
+
+
 def default_settings():
     return {
         "config/naming": {
@@ -189,16 +268,25 @@ class FakeServarr:
         self.schemas = {
             "notification": [telegram_schema(), webhook_schema()],
             "downloadclient": [qbit_schema()],
+            "importlist": [plex_list_schema()],
+            "metadata": [kodi_metadata(0)],
         }
-        self.providers = {"notification": [], "downloadclient": []}
+        self.providers = {kind: [] for kind in TABLES}
         self.settings = default_settings()
+        self.host = default_host()
         self.quality_definitions = default_quality_definitions()
         self.profiles = default_profiles()
         self.rootfolders = []
-        self.next_id = {"notification": 1, "downloadclient": 1}
+        self.tags = []
+        self.custom_filters = []
+        self.next_id = {kind: 1 for kind in TABLES}
         self.requests = []
         self.tests_run = []
+        # list syncs Radarr starts on its own when a list is added or changed
+        self.list_syncs = []
         self.faults = []
+        # makes the list validator quote a field's value, as URL validators do
+        self.quote_in_errors = None
         self.lock = threading.Lock()
         con = sqlite3.connect(db_path, check_same_thread=False)
         con.execute("PRAGMA journal_mode=WAL")
@@ -251,8 +339,11 @@ class FakeServarr:
 
     @staticmethod
     def enabled(kind, resource):
-        if kind == "downloadclient":
+        if kind in ("downloadclient", "metadata"):
             return resource.get("enable", False)
+        if kind == "importlist":
+            # Radarr's Enabled, Sonarr's EnableAutomaticAdd
+            return resource.get("enabled", resource.get("enableAutomaticAdd", False))
         return any(
             v for k, v in resource.items() if k.startswith("on") and k[2:3].isupper()
         )
@@ -276,6 +367,27 @@ class FakeServarr:
             ]
         return None
 
+    def validate_list(self, resource):
+        """Radarr's list validators: an existing profile and root folder."""
+        errors = []
+        if self.quote_in_errors:
+            value = next(
+                f["value"]
+                for f in resource["fields"]
+                if f["name"] == self.quote_in_errors
+            )
+            errors.append(
+                {"propertyName": "Url", "errorMessage": f"Invalid Url: '{value}'"}
+            )
+        if resource["qualityProfileId"] not in [p["id"] for p in self.profiles]:
+            errors.append(
+                {"propertyName": "QualityProfileId", "errorMessage": "missing"}
+            )
+        roots = [rf["path"] for rf in self.rootfolders]
+        if resource["rootFolderPath"] not in roots:
+            errors.append({"propertyName": "RootFolderPath", "errorMessage": "missing"})
+        return errors
+
     # -- request handling --------------------------------------------------
 
     def handle(self, method, path, query, body):
@@ -294,6 +406,12 @@ class FakeServarr:
                 return 200, [self.masked(r) for r in self.providers[kind]]
             if path.strip("/") in self.settings:
                 return 200, self.settings[path.strip("/")]
+            if path == "/config/host":
+                return 200, self.host
+            if path == "/tag":
+                return 200, self.tags
+            if path == "/customfilter":
+                return 200, self.custom_filters
             if path == "/qualitydefinition":
                 return 200, self.quality_definitions
             if path == "/qualityprofile":
@@ -307,20 +425,60 @@ class FakeServarr:
                 return 400, errors
             if method == "POST" and not rest:
                 body.pop("id", None)
+                if kind == "importlist":
+                    errors = self.validate_list(body)
+                    if errors:
+                        return 400, errors
                 # Servarr tests every enabled provider it creates, forceSave or not
                 if self.enabled(kind, body):
                     self.tests_run.append((kind, body["name"]))
                 created = self.add(kind, self.merge_fields({}, body))
+                # Radarr syncs an added list at once, unless it is disabled
+                if kind == "importlist" and self.enabled(kind, created):
+                    self.list_syncs.append(created["name"])
                 return 201, self.masked(created)
             if method == "PUT" and len(rest) == 1:
                 old = self.stored(kind, int(rest[0]))
                 new = self.merge_fields(old, body)
                 new["id"] = old["id"]
+                if kind == "importlist":
+                    errors = self.validate_list(new)
+                    if errors:
+                        return 400, errors
                 if self.enabled(kind, new) and not force and new != old:
                     self.tests_run.append((kind, new["name"]))
+                # ... and a changed one
+                if kind == "importlist" and self.enabled(kind, new) and new != old:
+                    self.list_syncs.append(new["name"])
                 self.providers[kind][self.providers[kind].index(old)] = new
                 self.store(kind, new)
                 return 202, self.masked(new)
+        if kind == "tag" and method == "POST" and not rest:
+            existing = next((t for t in self.tags if t["label"] == body["label"]), None)
+            if existing:
+                return 201, existing
+            tag = {"id": max([t["id"] for t in self.tags], default=0) + 1}
+            tag["label"] = body["label"].lower()
+            self.tags.append(tag)
+            return 201, tag
+        if kind == "customfilter" and method == "POST" and not rest:
+            created = dict(
+                body, id=max([f["id"] for f in self.custom_filters], default=0) + 1
+            )
+            self.custom_filters.append(created)
+            return 201, created
+        if kind == "customfilter" and method == "PUT" and len(rest) == 1:
+            index = next(
+                i for i, f in enumerate(self.custom_filters) if f["id"] == int(rest[0])
+            )
+            self.custom_filters[index] = dict(body, id=int(rest[0]))
+            return 202, self.custom_filters[index]
+        if path == "/config/host/1" and method == "PUT":
+            # UserService.Upsert re-hashes only a password differing from the hash
+            if body["password"] != self.host["password"]:
+                body["password"] = "rehashed:" + body["password"]
+            self.host = body
+            return 202, body
         if method == "PUT":
             key = "/".join([kind] + rest[:-1])
             if (
@@ -1053,6 +1211,446 @@ class ArrSyncTest(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 api.request(method, "/notification/1", {})
         self.assertEqual(self.fake.requests, [])
+
+    # -- import lists, tags, metadata, custom filters, host ------------------
+
+    def full_spec(self, **overrides):
+        """The spec plus everything added for completeness, as on hoard."""
+        path = os.path.join(self.dir, "plex-token")
+        with open(path, "w") as handle:
+            handle.write(PLEX_TOKEN + "\n")
+        spec = self.spec(
+            importLists=[
+                {
+                    "id": 1,
+                    "name": "Plex Watchlist",
+                    "implementation": "PlexImport",
+                    "properties": {
+                        "enabled": False,
+                        "enableAuto": False,
+                        "monitor": "movieOnly",
+                        "searchOnAdd": True,
+                        "minimumAvailability": "released",
+                        "rootFolderPath": "/media/movies",
+                    },
+                    "qualityProfile": "Any",
+                    "tagLabels": ["my-plex-watchlist"],
+                    "fields": {"signIn": "startOAuth"},
+                    "secretFields": {"accessToken": path},
+                },
+                {
+                    "id": 3,
+                    "name": "Person",
+                    "implementation": "PlexImport",
+                    "properties": {
+                        "enabled": True,
+                        "enableAuto": True,
+                        "monitor": "movieOnly",
+                        "searchOnAdd": True,
+                        "minimumAvailability": "released",
+                        "rootFolderPath": "/media/movies",
+                    },
+                    "qualityProfile": "Any",
+                    "tagLabels": ["1-someone"],
+                    "fields": {"signIn": "startOAuth"},
+                    "secretFields": {},
+                },
+            ],
+            metadata=[
+                {
+                    "id": 1,
+                    "name": "Kodi (XBMC) / Emby",
+                    "implementation": "XbmcMetadata",
+                    "properties": {"enable": False, "tags": []},
+                    "fields": {"movieMetadata": True, "movieImages": True},
+                    "secretFields": {},
+                }
+            ],
+            customFilters=[
+                {
+                    "id": 2,
+                    "type": "movieIndex",
+                    "label": "misc",
+                    "filters": [
+                        {"key": "path", "type": "contains", "value": ["/misc/"]}
+                    ],
+                }
+            ],
+        )
+        spec["settings"]["config/host"] = {
+            "bindAddress": "*",
+            "username": "admin",
+            "logLevel": "debug",
+            "instanceName": "Radarr",
+            "proxyPassword": "",
+            "backupRetention": 7,
+        }
+        spec.update(overrides)
+        return spec
+
+    def adopted_full(self):
+        self.adopted()
+        self.fake.tags.extend(
+            [
+                {"id": 2, "label": "my-plex-watchlist"},
+                {"id": 4, "label": "1-someone"},
+                # Seerr's tag for another user: never touched
+                {"id": 7, "label": "3-other"},
+            ]
+        )
+        plex = plex_list_schema()
+        plex.update(
+            id=1,
+            name="Plex Watchlist",
+            enabled=False,
+            enableAuto=False,
+            qualityProfileId=5,
+            rootFolderPath="/media/movies",
+            tags=[2],
+        )
+        set_field(plex, "accessToken", PLEX_TOKEN)
+        self.fake.add("importlist", plex)
+        person = plex_list_schema()
+        person.update(
+            id=3,
+            name="Person",
+            enabled=True,
+            enableAuto=True,
+            qualityProfileId=5,
+            rootFolderPath="/media/movies",
+            tags=[4],
+        )
+        self.fake.add("importlist", person)
+        self.fake.add("metadata", kodi_metadata())
+        self.fake.custom_filters.append(
+            {
+                "id": 2,
+                "type": "movieIndex",
+                "label": "misc",
+                "filters": [{"key": "path", "type": "contains", "value": ["/misc/"]}],
+            }
+        )
+
+    def test_full_adoption_writes_nothing_and_syncs_no_list(self):
+        self.adopted_full()
+        db_before = file_digest(self.fake.db_path)
+        host_before = copy.deepcopy(self.fake.host)
+        rc, out = self.preview(self.full_spec())
+        self.assertEqual(rc, 0, out)
+        self.assertIn(
+            "0 write(s), 0 problem(s), 0 mismatch(es), 0 unverifiable, 0 held", out
+        )
+        out = self.apply(self.full_spec())
+        self.assertIn("converged, 0 write(s)", out)
+        self.assertEqual(self.fake.writes(), [])
+        self.assertEqual(self.fake.list_syncs, [])
+        self.assertEqual(self.fake.tests_run, [])
+        self.assertEqual(file_digest(self.fake.db_path), db_before)
+        self.assertEqual(self.fake.host, host_before)
+        self.assertEqual(os.listdir(self.backups), [])
+
+    def test_fresh_install_creates_lists_switched_off_without_a_sync(self):
+        rc, out = self.preview(self.full_spec(), expect_no_changes=False)
+        self.assertIn("would create tag 'my-plex-watchlist'", out)
+        self.assertEqual(self.fake.writes(), [])
+        out, error = self.apply_fails(self.full_spec())
+        self.assertIn("import list changes held", error)
+        self.assertIn("HELD importlist 'Person': created switched off", out)
+        lists = {l["name"]: l for l in self.fake.providers["importlist"]}
+        # created with this install's ids for the profile and the tags
+        labels = {t["id"]: t["label"] for t in self.fake.tags}
+        self.assertEqual(
+            [labels[i] for i in lists["Plex Watchlist"]["tags"]], ["my-plex-watchlist"]
+        )
+        self.assertEqual([labels[i] for i in lists["Person"]["tags"]], ["1-someone"])
+        self.assertEqual(lists["Person"]["qualityProfileId"], 5)
+        self.assertEqual(
+            self.fake.field_value(
+                "importlist", lists["Plex Watchlist"]["id"], "accessToken"
+            ),
+            PLEX_TOKEN,
+        )
+        # nothing enabled, so no test fetch and no sync
+        self.assertFalse(lists["Person"]["enabled"] or lists["Person"]["enableAuto"])
+        self.assertEqual(self.fake.list_syncs, [])
+        self.assertNotIn("importlist", [k for k, _ in self.fake.tests_run])
+        # the disabled list took one write, no forceSave update after it
+        list_writes = [r for r in self.fake.writes() if r[1].startswith("/importlist")]
+        self.assertEqual([r[0] for r in list_writes], ["POST", "POST"])
+        # the root folder exists before the lists that point at it
+        paths = [r[1] for r in self.fake.writes()]
+        self.assertLess(paths.index("/rootfolder"), paths.index("/importlist"))
+        # switched on in the UI: from then on nothing is held or written
+        lists["Person"].update(enabled=True, enableAuto=True)
+        before = len(self.fake.writes())
+        out = self.apply(self.full_spec())
+        self.assertIn("converged, 0 write(s)", out)
+        self.assertEqual(len(self.fake.writes()), before)
+
+    def test_change_to_an_enabled_list_is_held_not_written(self):
+        self.adopted_full()
+        self.fake.stored("importlist", 3)["searchOnAdd"] = False
+        rc, out = self.preview(self.full_spec())
+        self.assertEqual(rc, 1)
+        self.assertIn("HELD importlist 'Person' (id 3): searchOnAdd not written", out)
+        out, error = self.apply_fails(self.full_spec())
+        self.assertEqual(self.fake.writes(), [])
+        self.assertEqual(self.fake.list_syncs, [])
+        self.assertFalse(self.fake.stored("importlist", 3)["searchOnAdd"])
+
+    def test_disabled_list_is_kept_disabled_without_a_sync(self):
+        self.adopted_full()
+        plex = self.fake.stored("importlist", 1)
+        plex["minimumAvailability"] = "announced"
+        self.apply(self.full_spec())
+        self.assertEqual(
+            [(r[0], r[1]) for r in self.fake.writes()], [("PUT", "/importlist/1")]
+        )
+        self.assertEqual(self.fake.writes()[0][2], {"forceSave": ["true"]})
+        self.assertEqual(
+            self.fake.stored("importlist", 1)["minimumAvailability"], "released"
+        )
+        self.assertFalse(self.fake.stored("importlist", 1)["enabled"])
+        self.assertEqual(self.fake.list_syncs, [])
+
+    def test_enabling_a_disabled_list_is_held(self):
+        self.adopted_full()
+        spec = self.full_spec()
+        spec["importLists"][0]["properties"]["enabled"] = True
+        out, _ = self.apply_fails(spec)
+        self.assertIn(
+            "HELD importlist 'Plex Watchlist' (id 1): enabled not written", out
+        )
+        self.assertFalse(self.fake.stored("importlist", 1)["enabled"])
+        self.assertEqual(self.fake.list_syncs, [])
+
+    def test_list_token_differing_from_sops_is_kept(self):
+        self.adopted_full()
+        plex = self.fake.stored("importlist", 1)
+        set_field(plex, "accessToken", "synthetic-plex-token-other")
+        self.fake.store("importlist", plex)
+        rc, out = self.preview(self.full_spec())
+        self.assertEqual(rc, 1)
+        self.assertIn(
+            "field accessToken differs from its secret file; live value kept", out
+        )
+        self.apply_fails(self.full_spec())
+        self.assertEqual(
+            self.fake.field_value("importlist", 1, "accessToken"),
+            "synthetic-plex-token-other",
+        )
+
+    def test_list_without_its_profile_yet_is_skipped(self):
+        self.fake.profiles.clear()
+        out = self.apply(self.full_spec(qualityProfiles={}))
+        self.assertIn("quality profile 'Any' does not exist yet; skipped", out)
+        self.assertEqual(self.fake.providers["importlist"], [])
+
+    def test_tag_order_does_not_matter_and_tags_are_never_removed(self):
+        self.adopted_full()
+        spec = self.full_spec()
+        self.fake.stored("importlist", 1)["tags"] = [7, 2]
+        spec["importLists"][0]["tagLabels"] = ["my-plex-watchlist", "3-other"]
+        self.apply(spec)
+        self.assertEqual(self.fake.writes(), [])
+        # the declared set is the whole set: an extra tag on the list goes
+        self.fake.stored("importlist", 1)["tags"] = [2, 7, 4]
+        self.apply(spec)
+        self.assertEqual(sorted(self.fake.stored("importlist", 1)["tags"]), [2, 7])
+        self.assertIn({"id": 7, "label": "3-other"}, self.fake.tags)
+        self.assertFalse(any(r[0] == "DELETE" for r in self.fake.requests))
+
+    def test_uppercase_tag_label_is_a_problem(self):
+        spec = self.full_spec()
+        spec["importLists"][0]["tagLabels"] = ["My-Plex"]
+        out, _ = self.apply_fails(spec)
+        self.assertIn("tag labels must match [a-z0-9-]+", out)
+        self.assertEqual(self.fake.writes(), [])
+        # Seerr's older "<id> - <name>" form is rejected by Radarr: caught before writing
+        spec["importLists"][0]["tagLabels"] = ["1 - someone"]
+        out, _ = self.apply_fails(spec)
+        self.assertIn("tag labels must match", out)
+        self.assertEqual(self.fake.writes(), [])
+
+    def test_held_list_creates_no_tag(self):
+        self.adopted_full()
+        self.fake.tags.remove({"id": 4, "label": "1-someone"})
+        out, _ = self.apply_fails(self.full_spec())
+        self.assertIn("HELD importlist 'Person' (id 3): tags not written", out)
+        self.assertEqual(self.fake.writes(), [])
+        self.assertNotIn("1-someone", [t["label"] for t in self.fake.tags])
+
+    def test_disabling_an_enabled_list_is_written_without_a_sync(self):
+        self.adopted_full()
+        self.fake.stored("importlist", 1).update(enabled=True)
+        self.apply(self.full_spec())
+        self.assertEqual(
+            [(r[0], r[1]) for r in self.fake.writes()], [("PUT", "/importlist/1")]
+        )
+        self.assertFalse(self.fake.stored("importlist", 1)["enabled"])
+        self.assertEqual(self.fake.list_syncs, [])
+
+    def test_disabled_list_gets_its_auto_add_by_a_second_write(self):
+        spec = self.full_spec()
+        spec["importLists"] = spec["importLists"][:1]
+        spec["importLists"][0]["properties"]["enableAuto"] = True
+        self.apply(spec)
+        list_writes = [r for r in self.fake.writes() if r[1].startswith("/importlist")]
+        self.assertEqual([r[0] for r in list_writes], ["POST", "PUT"])
+        self.assertEqual(list_writes[1][2], {"forceSave": ["true"]})
+        plex = self.fake.providers["importlist"][0]
+        self.assertTrue(plex["enableAuto"] and not plex["enabled"])
+        self.assertEqual(self.fake.list_syncs, [])
+        self.assertEqual(self.fake.tests_run, [("downloadclient", "qBittorrent")])
+
+    def test_sonarr_list_is_created_switched_off_and_held(self):
+        self.fake.schemas["importlist"] = [sonarr_list_schema()]
+        spec = self.full_spec()
+        spec["importLists"] = [
+            {
+                "name": "Shows",
+                "implementation": "PlexImport",
+                "properties": {
+                    "enableAutomaticAdd": True,
+                    "rootFolderPath": "/media/movies",
+                },
+                "qualityProfile": "Any",
+                "tagLabels": [],
+                "fields": {},
+                "secretFields": {},
+            }
+        ]
+        out, _ = self.apply_fails(spec)
+        self.assertIn("HELD importlist 'Shows': created switched off", out)
+        self.assertFalse(self.fake.providers["importlist"][0]["enableAutomaticAdd"])
+        self.assertEqual(self.fake.list_syncs, [])
+        self.assertEqual(self.fake.tests_run, [("downloadclient", "qBittorrent")])
+
+    def test_list_root_folder_must_exist_or_be_declared(self):
+        spec = self.full_spec(rootFolders=[])
+        out, _ = self.apply_fails(spec)
+        self.assertIn("root folder /media/movies is not declared or present", out)
+        self.assertEqual(self.fake.writes(), [])
+
+    def test_secret_quoted_in_an_error_message_is_scrubbed(self):
+        self.fake.quote_in_errors = "accessToken"
+        spec = self.full_spec()
+        spec["importLists"] = spec["importLists"][:1]
+        out, error = self.apply_fails(spec)
+        self.assertIn("Invalid Url: '<redacted>'", error)
+        self.assertNotIn(PLEX_TOKEN, out + error)
+
+    def test_uncertain_tag_create_that_landed_is_not_repeated(self):
+        self.fake.faults.append({"method": "POST", "path": "/tag", "kind": "drop"})
+        spec = self.full_spec()
+        spec["importLists"] = spec["importLists"][:1]
+        self.apply(spec)
+        self.assertEqual([t["label"] for t in self.fake.tags], ["my-plex-watchlist"])
+
+    def test_metadata_consumer_is_kept_off(self):
+        self.adopted_full()
+        self.fake.stored("metadata", 1)["enable"] = True
+        self.apply(self.full_spec())
+        self.assertEqual(
+            [(r[0], r[1]) for r in self.fake.writes()], [("PUT", "/metadata/1")]
+        )
+        self.assertFalse(self.fake.stored("metadata", 1)["enable"])
+
+    def test_custom_filter_rename_is_undone_by_id(self):
+        self.adopted_full()
+        self.fake.custom_filters[0]["label"] = "renamed"
+        self.apply(self.full_spec())
+        self.assertEqual(
+            [(r[0], r[1]) for r in self.fake.writes()], [("PUT", "/customfilter/2")]
+        )
+        self.assertEqual(self.fake.custom_filters[0]["label"], "misc")
+        self.assertEqual(len(self.fake.custom_filters), 1)
+
+    def test_custom_filter_matches_by_type_and_label_after_reinstall(self):
+        self.adopted_full()
+        spec = self.full_spec()
+        spec["customFilters"][0]["id"] = 9
+        rc, out = self.preview(spec)
+        self.assertEqual(rc, 0, out)
+
+    def test_custom_filter_id_of_another_list_type_is_not_taken(self):
+        self.adopted_full()
+        self.fake.custom_filters.append(
+            {"id": 5, "type": "queue", "label": "q", "filters": []}
+        )
+        spec = self.full_spec()
+        spec["customFilters"][0].update(id=5)
+        rc, out = self.preview(spec)
+        self.assertEqual(rc, 0, out)
+        spec["customFilters"][0].update(label="new one")
+        self.apply(spec)
+        self.assertEqual(
+            [(r[0], r[1]) for r in self.fake.writes()], [("POST", "/customfilter")]
+        )
+        self.assertEqual(self.fake.custom_filters[1]["label"], "q")
+
+    def test_duplicate_custom_filters_are_a_problem(self):
+        spec = self.full_spec()
+        spec["customFilters"].append(copy.deepcopy(spec["customFilters"][0]))
+        out, _ = self.apply_fails(spec)
+        self.assertIn("declared type + label are not unique", out)
+
+    def test_host_change_keeps_the_login(self):
+        self.adopted_full()
+        self.fake.host["logLevel"] = "info"
+        self.apply(self.full_spec())
+        self.assertEqual([r[1] for r in self.fake.writes()], ["/config/host/1"])
+        self.assertEqual(self.fake.host["logLevel"], "debug")
+        # the hash went back unchanged, so the password wasn't re-hashed
+        self.assertEqual(self.fake.host["password"], PASSWORD_HASH)
+        self.assertEqual(self.fake.host["apiKey"], API_KEY)
+
+    def test_host_credentials_cant_be_declared(self):
+        for key, value in (("apiKey", "x"), ("password", "x"), ("proxyPassword", "x")):
+            spec = self.full_spec()
+            spec["settings"]["config/host"][key] = value
+            out, _ = self.apply_fails(spec)
+            self.assertIn(f"'{key}' is a credential", out)
+        self.assertEqual(self.fake.writes(), [])
+
+    def test_backup_redacts_host_credentials_and_list_token(self):
+        self.adopted_full()
+        self.fake.settings["config/naming"]["renameMovies"] = False
+        self.apply(self.full_spec())
+        (name,) = os.listdir(self.backups)
+        with open(os.path.join(self.backups, name)) as handle:
+            text = handle.read()
+        for secret in [PLEX_TOKEN, API_KEY, PASSWORD_HASH, QBIT_PASSWORD, BOT_TOKEN]:
+            self.assertNotIn(secret, text)
+        backup = json.loads(text)
+        self.assertEqual(backup["/config/host"]["apiKey"], "<redacted>")
+        self.assertEqual(backup["/config/naming"]["renameMovies"], False)
+        self.assertEqual(backup["/config/host"]["username"], "admin")
+
+    def test_backup_redacts_a_live_secret_differing_from_sops(self):
+        self.adopted_full()
+        plex = self.fake.stored("importlist", 1)
+        set_field(plex, "accessToken", "synthetic-live-token-differs")
+        self.fake.store("importlist", plex)
+        self.fake.settings["config/naming"]["renameMovies"] = False
+        self.apply_fails(self.full_spec())
+        (name,) = os.listdir(self.backups)
+        with open(os.path.join(self.backups, name)) as handle:
+            text = handle.read()
+        self.assertNotIn("synthetic-live-token-differs", text)
+
+    def test_secret_inside_a_longer_string_is_redacted(self):
+        secrets = {"synthetic-feed-id-123"}
+        self.assertEqual(
+            arr_sync.redacted(
+                {"url": "https://rss.example/synthetic-feed-id-123"}, secrets
+            ),
+            {"url": "<redacted>"},
+        )
+        # a short secret only as the whole value
+        self.assertEqual(
+            arr_sync.redacted({"user": "admin-x"}, {"admin"}), {"user": "admin-x"}
+        )
 
     def test_preview_reports_changes_and_never_writes(self):
         rc, out = self.preview(expect_no_changes=False)

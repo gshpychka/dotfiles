@@ -1,9 +1,10 @@
 # Declarative configuration for the Servarr stack.
 #
 # Each `my.arrSync.targets.<name>` describes config to push INTO one app (an *Arr or
-# Prowlarr) over its REST API: root folders, download clients, notifications, settings
-# singletons (config/naming, ...), quality definitions, fields of existing quality
-# profiles and — for Prowlarr — applications. A per-target systemd oneshot runs the
+# Prowlarr) over its REST API: root folders, download clients, notifications, import
+# lists, metadata consumers, custom filters, settings singletons (config/naming,
+# config/host, ...), quality definitions, fields of existing quality profiles and —
+# for Prowlarr — applications. A per-target systemd oneshot runs the
 # bundled `arr-sync` engine, which plans with reads only and then writes just what
 # differs (see arr-sync.py for the matching and secret adoption rules).
 #
@@ -13,7 +14,8 @@
 #
 # Before a deploy that changes this, check it against the live apps without writing:
 #   sudo arr-sync-preview <target> --expect-no-changes
-# (non-zero on a problem, a secret differing from SOPS, or with the flag any write).
+# (non-zero on a problem, a secret differing from SOPS, a held import list change, or
+# with the flag any write).
 # Verify after a deploy: journalctl -u 'arr-sync-*' shows "converged, 0 write(s)" on a
 # second start; before-images of each run that wrote are in /var/lib/arr-sync (0700).
 {
@@ -143,6 +145,73 @@ let
     };
   };
 
+  importListType = lib.types.submodule {
+    options = providerOptions // {
+      properties = lib.mkOption {
+        type = lib.types.attrsOf json;
+        default = { };
+        example = {
+          enabled = true;
+          enableAuto = true;
+          monitor = "movieOnly";
+          rootFolderPath = "/mnt/movies";
+        };
+        description = ''
+          Top-level settings of the list, which differ between apps (Radarr: enabled,
+          enableAuto, monitor, searchOnAdd, minimumAvailability, rootFolderPath; Sonarr:
+          enableAutomaticAdd, shouldMonitor, seriesType, ...). A key the app doesn't
+          have is a problem that writes nothing. listType, listOrder and
+          minRefreshInterval come from the implementation and aren't settable.
+        '';
+      };
+      qualityProfile = lib.mkOption {
+        type = lib.types.str;
+        description = ''
+          Name of the quality profile, resolved to this install's id. While it doesn't
+          exist yet (Recyclarr creates it), the list is skipped.
+        '';
+      };
+      tags = lib.mkOption {
+        type = lib.types.listOf lib.types.str;
+        default = [ ];
+        description = ''
+          The list's tags, by label ([a-z0-9-]+), resolved to this install's ids; this is
+          the whole set, so a tag added to the list in the UI is taken off it again. A
+          missing tag is created; tags themselves are never renamed or deleted.
+        '';
+      };
+    };
+  };
+
+  metadataType = lib.types.submodule {
+    options = providerOptions // {
+      enable = lib.mkOption { type = lib.types.bool; };
+      tags = lib.mkOption {
+        type = lib.types.listOf lib.types.int;
+        default = [ ];
+      };
+    };
+  };
+
+  customFilterType = lib.types.submodule {
+    options = {
+      id = idOption;
+      type = lib.mkOption {
+        type = lib.types.str;
+        example = "movieIndex";
+        description = "The list the filter belongs to (movieIndex, queue, releases, ...).";
+      };
+      label = lib.mkOption {
+        type = lib.types.str;
+        description = "Display name; with the type, the identity used when the id doesn't match.";
+      };
+      filters = lib.mkOption {
+        type = lib.types.listOf json;
+        description = "The filter's conditions, as the API returns them.";
+      };
+    };
+  };
+
   applicationType = lib.types.submodule {
     options = providerOptions // {
       syncLevel = lib.mkOption {
@@ -219,6 +288,27 @@ let
       applications = lib.mkOption {
         type = lib.types.listOf applicationType;
         default = [ ];
+      };
+      importLists = lib.mkOption {
+        type = lib.types.listOf importListType;
+        default = [ ];
+        description = ''
+          Import lists. Saving an enabled list makes the app sync it at once (fetch,
+          add, search), so arr-sync never writes one that ends up enabled: a missing
+          list is created switched off, and a change to an enabled list is held and
+          reported (the run fails) until it is made in the UI. Disabled lists are
+          converged as usual.
+        '';
+      };
+      metadata = lib.mkOption {
+        type = lib.types.listOf metadataType;
+        default = [ ];
+        description = "Metadata consumers (Kodi, Plex, ...); the app seeds one per implementation.";
+      };
+      customFilters = lib.mkOption {
+        type = lib.types.listOf customFilterType;
+        default = [ ];
+        description = "Saved filters of the UI's lists, stored server-side (/customfilter).";
       };
       settings = lib.mkOption {
         type = lib.types.attrsOf (lib.types.attrsOf json);
@@ -301,6 +391,20 @@ let
       applications = map (provider (p: {
         inherit (p) syncLevel;
       })) t.applications;
+      importLists = map (
+        p:
+        provider (p: p.properties) p
+        // {
+          inherit (p) qualityProfile;
+          tagLabels = p.tags;
+        }
+      ) t.importLists;
+      metadata = map (provider (p: {
+        inherit (p) enable tags;
+      })) t.metadata;
+      customFilters = map (
+        f: { inherit (f) type label filters; } // lib.optionalAttrs (f.id != null) { inherit (f) id; }
+      ) t.customFilters;
       waitFor = map (n: {
         name = n;
         inherit (cfg.targets.${n}) url apiVersion apiKeyFile;

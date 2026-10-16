@@ -8,7 +8,9 @@
     ./auth.nix
     ./sync.nix
     ./settings.nix
+    ./host.nix
     ./notifications.nix
+    ./import-lists.nix
   ];
 
   services = {

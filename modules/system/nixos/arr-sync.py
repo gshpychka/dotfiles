@@ -2,11 +2,17 @@
 
 Reads one JSON spec per target app and converges the declared resources:
 - root folders (matched by path, only ever added);
-- providers: download clients, notifications and (Prowlarr) applications,
-  matched by their stable id when the declared id still holds the same
-  implementation, otherwise by name; missing ones are created from the app's
-  own /schema, so the payload always matches the running version;
-- settings singletons such as config/naming or delayprofile/1;
+- providers: download clients, notifications, import lists, metadata
+  consumers and (Prowlarr) applications, matched by their stable id when the
+  declared id still holds the same implementation, otherwise by name; missing
+  ones are created from the app's own /schema, so the payload always matches
+  the running version;
+- an import list's quality profile and tags, declared by profile name and tag
+  label and resolved to this install's ids; a missing tag is created (tags are
+  only ever added: Seerr makes one per user and owns those);
+- custom filters (the saved filters of the UI's lists, kept server-side),
+  matched by id while it holds the same list type, otherwise by type + label;
+- settings singletons such as config/naming, config/host or delayprofile/1;
 - quality definitions, matched by quality name;
 - fields of existing quality profiles, matched by name (never created here:
   Recyclarr owns the profiles and their custom formats).
@@ -32,11 +38,25 @@ A consequence of that rule: when a SOPS value is changed on purpose (say a
 rotated API key), the app keeps the old one and the run fails until the field
 is updated or blanked in the UI; arr-sync then fills or adopts it.
 
-Servarr tests a provider (for a notification: sends a real message) on create
-whenever it is enabled, forceSave or not, and on a changed update of an
-enabled provider unless forceSave=true. A notification is "enabled" when any
-of its event flags is on. So a notification is created with every event off
-(no test) and then given its events by an update with forceSave=true.
+Servarr tests a provider (for a notification: sends a real message; for an
+import list: fetches it) on create whenever it is enabled, forceSave or not,
+and on a changed update of an enabled provider unless forceSave=true. A
+notification is "enabled" when any of its event flags is on. So it is created
+with every event off (no test) and then given its events by an update with
+forceSave=true. Nothing here runs a command: no search, list sync, refresh or
+test is ever requested.
+
+Import lists are stricter: saving an enabled list makes the app sync it at
+once (see IMPORT_LIST_ENABLE), which may add and search media. So no write
+ever leaves a list enabled: a list is created switched off, and a change to a
+list that is (to be) enabled is held, not written, and reported like a
+mismatch, so the run fails until it is made in the UI. Lists that stay
+disabled are converged as usual.
+
+Before-images and output never hold a secret: values read from secret files,
+the API key and credential keys of config/host are replaced by "<redacted>".
+Credential keys of config/host can't be declared at all (see
+CREDENTIAL_SETTINGS).
 
 usage:
   arr-sync apply <spec.json> [backup dir]
@@ -53,6 +73,7 @@ import email.utils
 import http.client
 import json
 import os
+import re
 import socket
 import sqlite3
 import sys
@@ -74,10 +95,33 @@ MASK = "********"
 PROVIDER_TABLES = {
     "downloadclient": "DownloadClients",
     "notification": "Notifications",
+    "importlist": "ImportLists",
+    "metadata": "Metadata",
     "applications": "Applications",
 }
-# Kinds whose create/update must not run Servarr's connection test.
-FORCE_SAVE_KINDS = {"notification"}
+# Kinds whose create/update must not run Servarr's test (a message, a fetch).
+FORCE_SAVE_KINDS = {"notification", "importlist"}
+# An import list's switches: Radarr's enabled/enableAuto, Sonarr's
+# enableAutomaticAdd. All are off when a list is created.
+IMPORT_LIST_SWITCHES = {"enabled", "enableAuto", "enableAutomaticAdd"}
+# The one that makes it "enabled" (ImportListDefinition.Enable): Radarr syncs
+# an enabled list as soon as it is added or changed, Sonarr when it's changed
+# (ImportListUpdatedHandler); the sync fetches the list, stamps its last sync
+# and, with auto-add, adds and searches movies/series. A disabled list skips it.
+IMPORT_LIST_ENABLE = {"enabled", "enableAutomaticAdd"}
+# config/host keys holding credentials. GET returns the API key and the
+# login's salted password hash in clear (passwordConfirmation always empty);
+# declaring them would mean rotating a credential, which arr-sync never does
+# (the API key is pinned through the app's environment, see auth.nix). A PUT
+# echoes the hash back, and Servarr's UserService.Upsert re-hashes only a
+# password that differs from the stored hash, so the login is kept.
+CREDENTIAL_SETTINGS = {"apiKey", "password", "passwordConfirmation"}
+# Credential slots that may only be declared empty ("none set"); a set value
+# would have to come from a secret file, which settings don't take.
+EMPTY_ONLY_SETTINGS = {"proxyUsername", "proxyPassword", "sslCertPassword"}
+REDACTED = "<redacted>"
+# Radarr's tag label rule (Sonarr has none; lowercase is what both store)
+TAG_LABEL = re.compile(r"[a-z0-9-]+")
 
 
 def log(message):
@@ -171,7 +215,8 @@ class Api:
             try:
                 return self._send(method, path, body, query)
             except urllib.error.HTTPError as err:
-                detail = error_detail(err.read())
+                with err:
+                    detail = error_detail(err.read())
                 if err.code == 429 and attempt < RETRIES:
                     delay = retry_delay(attempt, err.headers.get("Retry-After"))
                     log(f"{method} {path} rate limited, retrying in {delay:.0f}s")
@@ -218,6 +263,7 @@ def wait_ready(name, url, version, api_key):
             api._send("GET", "/system/status", None, None)
             return
         except urllib.error.HTTPError as err:
+            err.close()
             # starting up answers 5xx; a 4xx (a wrong API key) won't change
             if err.code < 500:
                 raise SystemExit(f"{name} at {url}: HTTP {err.code}") from err
@@ -283,11 +329,31 @@ class Plan:
         self.problems = []
         self.mismatches = []
         self.unverifiable = []
+        # changes not written because writing them would start a list sync
+        self.held = []
         self.notes = []
         # everything read while planning: the before-image of a write
         self.reads = {}
+        # values read from secret files, redacted from the before-image
+        self.secret_values = set()
+        # tag labels this plan creates
+        self.new_tags = set()
+        # root folder paths present or created by this plan
+        self.root_folders = set()
+        # names of fields declared as secrets: redacted wherever they appear
+        self.secret_fields = set()
 
-    def write(self, method, path, body, summary, query=None, match=None, then=None):
+    def write(
+        self,
+        method,
+        path,
+        body,
+        summary,
+        query=None,
+        match=None,
+        then=None,
+        tag_labels=None,
+    ):
         self.writes.append(
             {
                 "method": method,
@@ -298,6 +364,8 @@ class Plan:
                 "match": match,
                 # a body to PUT on the created resource once its id is known
                 "then": then,
+                # tags created by this run: their ids are filled in when writing
+                "tagLabels": tag_labels,
             }
         )
 
@@ -308,9 +376,78 @@ def read(api, plan, path):
     return value
 
 
+def read_once(api, plan, path):
+    return plan.reads[path] if path in plan.reads else read(api, plan, path)
+
+
 def is_event(key):
     """A notification event flag: onGrab, onUpgrade, ... (not supportsOn*)."""
     return key.startswith("on") and key[2:3].isupper()
+
+
+def is_switch(kind, key):
+    """A key that makes a provider of this kind "enabled" (and so tested)."""
+    if kind == "notification":
+        return is_event(key)
+    return kind == "importlist" and key in IMPORT_LIST_SWITCHES
+
+
+def plan_tag_creates(plan, labels):
+    """Create missing tags, once per run, just before the write that needs them;
+    their ids are filled in when writing (with_tag_ids)."""
+    for tag in labels:
+        if tag not in plan.new_tags:
+            plan.new_tags.add(tag)
+            plan.write(
+                "POST",
+                "/tag",
+                {"label": tag},
+                f"create tag '{tag}'",
+                match={"kind": "tag", "label": tag},
+            )
+
+
+def resolve_refs(api, plan, label, spec, desired, changed):
+    """Set the references declared by logical identity (profile name, tag labels).
+
+    Returns the tag labels that don't exist yet (created only if the resource
+    is written), or None when the resource has to be skipped. Everything the
+    app would reject is a problem here, before anything is written."""
+    root = spec.get("properties", {}).get("rootFolderPath")
+    if root is not None and root.rstrip("/") not in plan.root_folders:
+        plan.problems.append(f"{label}: root folder {root} is not declared or present")
+        return None
+    profile = spec.get("qualityProfile")
+    if profile is not None:
+        ids = {p["name"]: p["id"] for p in read_once(api, plan, "/qualityprofile")}
+        if profile not in ids:
+            # Recyclarr creates the profile; a later run creates this resource
+            plan.notes.append(
+                f"{label}: quality profile '{profile}' does not exist yet; skipped"
+            )
+            return None
+        if "qualityProfileId" not in desired:
+            plan.problems.append(f"{label}: has no quality profile")
+            return None
+        if desired["qualityProfileId"] != ids[profile]:
+            desired["qualityProfileId"] = ids[profile]
+            changed.append("qualityProfile")
+    labels = spec.get("tagLabels")
+    if labels is None:
+        return []
+    # Servarr lowercases labels, and Radarr accepts only these characters
+    bad = [tag for tag in labels if not TAG_LABEL.fullmatch(tag)]
+    if bad:
+        plan.problems.append(f"{label}: tag labels must match [a-z0-9-]+: {bad}")
+        return None
+    live = {tag["label"]: tag["id"] for tag in read_once(api, plan, "/tag")}
+    ids = [live[tag] for tag in labels if tag in live]
+    missing = [tag for tag in labels if tag not in live]
+    # a set in Servarr: order doesn't matter
+    if missing or sorted(desired.get("tags", [])) != sorted(ids):
+        desired["tags"] = ids
+        changed.append("tags")
+    return missing
 
 
 def provider_label(kind, spec):
@@ -377,6 +514,9 @@ def plan_provider(api, plan, secrets, kind, spec, schemas, existing):
             container[key] = value
             changed.append(what)
 
+    pending_tags = resolve_refs(api, plan, label, spec, desired, changed)
+    if pending_tags is None:
+        return
     assign(desired, "name", spec["name"], "name")
     for prop, value in spec.get("properties", {}).items():
         if prop not in desired:
@@ -416,22 +556,41 @@ def plan_provider(api, plan, secrets, kind, spec, schemas, existing):
                 f"{label}: cannot read secret for '{key}': {err.strerror}"
             )
             continue
+        plan.secret_fields.add(key)
+        if value:
+            plan.secret_values.add(value)
         if plan_secret(plan, secrets, kind, label, resource, field, value):
             field["value"] = value
             changed.append(key)
 
     query = {"forceSave": "true"} if kind in FORCE_SAVE_KINDS else None
+    # saving an enabled import list starts a list sync: never written
+    syncs = kind == "importlist" and any(desired.get(k) for k in IMPORT_LIST_ENABLE)
+    if resource is not None and changed and syncs:
+        plan.held.append(
+            f"{label} (id {resource['id']}): {', '.join(changed)} not written, "
+            "saving an enabled list makes the app sync it at once; change it in the UI"
+        )
+        return
     if resource is None:
         desired.pop("id", None)
         create = desired
         then = None
         if kind in FORCE_SAVE_KINDS:
-            # created disabled (no test), enabled by the forceSave update after it
+            # created with its switches off (no test); a notification gets its
+            # events by the forceSave update after it, an import list doesn't
             create = copy.deepcopy(desired)
             for key in create:
-                if is_event(key):
+                if is_switch(kind, key):
                     create[key] = False
-            then = desired
+            # a list stays off: no second write when it's disabled, held otherwise
+            then = desired if create != desired and not syncs else None
+            if syncs:
+                plan.held.append(
+                    f"{label}: created switched off; switch it on in the UI "
+                    "(the app then syncs it at once)"
+                )
+        plan_tag_creates(plan, pending_tags)
         plan.write(
             "POST",
             "/" + kind,
@@ -440,14 +599,17 @@ def plan_provider(api, plan, secrets, kind, spec, schemas, existing):
             query=query,
             match={"kind": kind, "name": spec["name"], "implementation": impl},
             then=then,
+            tag_labels=spec.get("tagLabels") if pending_tags else None,
         )
     elif changed:
+        plan_tag_creates(plan, pending_tags)
         plan.write(
             "PUT",
             f"/{kind}/{resource['id']}",
             desired,
             f"update {label} (id {resource['id']}): {', '.join(changed)}",
             query=query,
+            tag_labels=spec.get("tagLabels") if pending_tags else None,
         )
 
 
@@ -524,6 +686,14 @@ def plan_settings(api, plan, settings):
         for key, value in values.items():
             if key not in current:
                 plan.problems.append(f"settings {path}: unknown setting '{key}'")
+            elif key in CREDENTIAL_SETTINGS:
+                plan.problems.append(
+                    f"settings {path}: '{key}' is a credential; it can't be declared"
+                )
+            elif key in EMPTY_ONLY_SETTINGS and value != "":
+                plan.problems.append(
+                    f"settings {path}: '{key}' is a credential; only empty can be declared"
+                )
             elif current[key] != value:
                 desired[key] = value
                 changed.append(key)
@@ -590,6 +760,62 @@ def plan_quality_profiles(api, plan, profiles):
             )
 
 
+def find_custom_filter(existing, spec):
+    """The live custom filter a declared one stands for, or None.
+
+    Like find_provider: the declared id wins while it holds the same list type
+    and its label isn't taken there by another filter; otherwise type + label."""
+    same_type = [item for item in existing if item["type"] == spec["type"]]
+    by_label = {item["label"]: item for item in same_type}
+    wanted = spec.get("id")
+    if wanted is not None:
+        for item in same_type:
+            if item["id"] == wanted and by_label.get(spec["label"], item) is item:
+                return item
+    return by_label.get(spec["label"])
+
+
+def plan_custom_filters(api, plan, desired):
+    keys = [(spec["type"], spec["label"]) for spec in desired]
+    if len(set(keys)) != len(keys):
+        plan.problems.append("customfilter: declared type + label are not unique")
+        return
+    existing = read(api, plan, "/customfilter")
+    claimed = {}
+    for spec in desired:
+        label = f"custom filter '{spec['label']}' ({spec['type']})"
+        resource = find_custom_filter(existing, spec)
+        body = {key: spec[key] for key in ("type", "label", "filters")}
+        if resource is None:
+            plan.write(
+                "POST",
+                "/customfilter",
+                body,
+                f"create {label}",
+                match={
+                    "kind": "customfilter",
+                    "type": spec["type"],
+                    "label": spec["label"],
+                },
+            )
+            continue
+        if resource["id"] in claimed:
+            plan.problems.append(
+                f"customfilter id {resource['id']} is matched by both "
+                f"'{claimed[resource['id']]}' and '{spec['label']}'"
+            )
+            continue
+        claimed[resource["id"]] = spec["label"]
+        changed = [key for key, value in body.items() if resource.get(key) != value]
+        if changed:
+            plan.write(
+                "PUT",
+                f"/customfilter/{resource['id']}",
+                dict(resource, **body),
+                f"update {label} (id {resource['id']}): {', '.join(changed)}",
+            )
+
+
 def make_plan(api, spec, secrets):
     plan = Plan()
     try:
@@ -600,13 +826,23 @@ def make_plan(api, spec, secrets):
                 spec["rootFolders"],
                 spec.get("rootFolderNeedsProfiles", False),
             )
+        if spec.get("importLists"):
+            live = read_once(api, plan, "/rootfolder")
+            plan.root_folders = {rf["path"].rstrip("/") for rf in live} | {
+                path.rstrip("/") for path in spec.get("rootFolders", [])
+            }
+        # import lists after root folders: they point at one
         for kind, key in (
             ("downloadclient", "downloadClients"),
             ("notification", "notifications"),
+            ("importlist", "importLists"),
+            ("metadata", "metadata"),
             ("applications", "applications"),
         ):
             if spec.get(key):
                 plan_providers(api, plan, secrets, kind, spec[key])
+        if spec.get("customFilters"):
+            plan_custom_filters(api, plan, spec["customFilters"])
         if spec.get("settings"):
             plan_settings(api, plan, spec["settings"])
         if spec.get("qualityDefinitions"):
@@ -629,9 +865,12 @@ def report(name, plan):
         log(f"{name}: {item} differs from its secret file; live value kept")
     for item in plan.unverifiable:
         log(f"{name}: {item} is masked and the database can't confirm it; left as is")
+    for item in plan.held:
+        log(f"{name}: HELD {item}")
     log(
         f"{name}: {len(plan.writes)} write(s), {len(plan.problems)} problem(s), "
-        f"{len(plan.mismatches)} mismatch(es), {len(plan.unverifiable)} unverifiable"
+        f"{len(plan.mismatches)} mismatch(es), {len(plan.unverifiable)} unverifiable, "
+        f"{len(plan.held)} held"
     )
 
 
@@ -641,6 +880,19 @@ def find_created(api, match):
         wanted = match["path"].rstrip("/")
         return next(
             (rf for rf in api.get("/rootfolder") if rf["path"].rstrip("/") == wanted),
+            None,
+        )
+    if match["kind"] == "tag":
+        return next(
+            (tag for tag in api.get("/tag") if tag["label"] == match["label"]), None
+        )
+    if match["kind"] == "customfilter":
+        return next(
+            (
+                item
+                for item in api.get("/customfilter")
+                if item["type"] == match["type"] and item["label"] == match["label"]
+            ),
             None,
         )
     return next(
@@ -677,7 +929,23 @@ def create(api, write):
             api.sleep(delay)
 
 
+def with_tag_ids(api, write):
+    """The write with the ids of tags created earlier in this run filled in."""
+    if not write["tagLabels"]:
+        return write
+    live = {tag["label"]: tag["id"] for tag in api.get("/tag")}
+    missing = [tag for tag in write["tagLabels"] if tag not in live]
+    if missing:
+        raise ApiError("GET", "/tag", 404, f"tags not created: {missing}")
+    ids = [live[tag] for tag in write["tagLabels"]]
+    write = dict(write, body=dict(write["body"], tags=ids))
+    if write["then"] is not None:
+        write["then"] = dict(write["then"], tags=ids)
+    return write
+
+
 def execute(api, write):
+    write = with_tag_ids(api, write)
     if write["method"] != "POST":
         api.request(write["method"], write["path"], write["body"], write["query"])
         return
@@ -685,6 +953,45 @@ def execute(api, write):
     if write["then"] is not None:
         body = dict(write["then"], id=created["id"])
         api.request("PUT", f"{write['path']}/{created['id']}", body, write["query"])
+
+
+def scrub(text, secrets):
+    """Text (an error message) with every secret value replaced by REDACTED."""
+    for secret in sorted(secrets, key=len, reverse=True):
+        text = text.replace(secret, REDACTED)
+    return text
+
+
+def redacted(value, secrets, secret_fields=frozenset()):
+    """A copy of an API response with every secret replaced by REDACTED.
+
+    Covers values from secret files (the import list's Plex token is a plain
+    field in the API), the value of any field named like a declared secret
+    field (also a live value that differs from SOPS), the API key, config/host
+    credential keys and privacy fields the API didn't mask."""
+    if isinstance(value, list):
+        return [redacted(item, secrets, secret_fields) for item in value]
+    if isinstance(value, str):
+        # a long secret also inside a longer string (a URL); a short one (a
+        # user name) only as the whole value
+        hit = any(s == value or (len(s) >= 8 and s in value) for s in secrets)
+        return REDACTED if hit else value
+    if not isinstance(value, dict):
+        return value
+    private_field = (
+        value.get("privacy", "normal") != "normal" or value.get("name") in secret_fields
+    )
+    out = {}
+    for key, item in value.items():
+        secret_key = key in CREDENTIAL_SETTINGS or key in EMPTY_ONLY_SETTINGS
+        if (secret_key or (private_field and key == "value")) and item not in (
+            "",
+            None,
+        ):
+            out[key] = REDACTED
+        else:
+            out[key] = redacted(item, secrets, secret_fields)
+    return out
 
 
 def save_backup(backup_dir, name, plan):
@@ -702,7 +1009,12 @@ def save_backup(backup_dir, name, plan):
     else:
         raise SystemExit(f"{name}: no free before-image name in {backup_dir}")
     with os.fdopen(fd, "w") as handle:
-        json.dump(plan.reads, handle, indent=1, sort_keys=True)
+        json.dump(
+            redacted(plan.reads, plan.secret_values, plan.secret_fields),
+            handle,
+            indent=1,
+            sort_keys=True,
+        )
     log(f"{name}: before-image saved to {path}")
 
 
@@ -731,6 +1043,7 @@ def apply(spec, backup_dir):
     if plan.problems:
         raise SystemExit(f"{name}: nothing written, the plan has problems")
     if plan.writes:
+        plan.secret_values.add(api_key)
         if backup_dir:
             save_backup(backup_dir, name, plan)
         api = Api(spec["url"], spec["apiVersion"], api_key)
@@ -740,7 +1053,7 @@ def apply(spec, backup_dir):
             except (ApiError, Uncertain, OSError, http.client.HTTPException) as err:
                 pending = [w["summary"] for w in plan.writes[done:]]
                 raise SystemExit(
-                    f"{name}: {write['summary']} failed: {err}; "
+                    f"{name}: {write['summary']} failed: {scrub(str(err), plan.secret_values)}; "
                     f"{done} write(s) done, not done: {'; '.join(pending)}"
                 ) from err
             log(f"{name}: {write['summary']}")
@@ -756,6 +1069,8 @@ def apply(spec, backup_dir):
         raise SystemExit(
             f"{name}: secrets differ from or can't be checked against SOPS"
         )
+    if plan.held:
+        raise SystemExit(f"{name}: import list changes held, make them in the UI")
     print(f"{name}: converged, {len(plan.writes)} write(s)", flush=True)
 
 
@@ -767,7 +1082,7 @@ def preview(spec, expect_no_changes):
         ReadOnlyApi(spec["url"], spec["apiVersion"], api_key), spec, secrets
     )
     report(name, plan)
-    failed = plan.problems or plan.mismatches or plan.unverifiable
+    failed = plan.problems or plan.mismatches or plan.unverifiable or plan.held
     return 1 if failed or (expect_no_changes and plan.writes) else 0
 
 
