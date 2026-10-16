@@ -44,14 +44,19 @@ class HomeAssistant:
     async def consult(self, request: RouteRequest) -> str:
         if not self._pipeline or not self._device_id:
             raise ConsultFailed("Home Assistant pipeline/device not configured; no action attempted")
-        # HA has only its own conversation, not the shared Live/OpenClaw history.
-        # An anaphoric follow-up may use it only when the preceding user turn
-        # really was the last turn this HA conversation handled.
-        followup = re.search(r"\b(it|them|that|those|again|and now)\b|це|їх|нього|тепер|знов", request.text.casefold())
+        # Only uninterrupted, confirmed HA turns may share HA context. When
+        # another backend intervenes, discard it and require a named target.
         prior_users = [text for role, text in request.context if role == "user"]
-        if followup and (
-            not self._conversation_id or not prior_users or prior_users[-1].strip() != self._previous_request
-        ):
+        continuous = bool(self._conversation_id and prior_users and prior_users[-1].strip() == self._previous_request)
+        conversation_id = self._conversation_id if continuous else None
+        self._conversation_id = None
+        self._previous_request = None
+        explicit_target = re.search(
+            r"\b(lights?|lamps?|fan|blinds?|curtains?|thermostat|climate|scenes?|heater|speaker|tv|sensor|temperature|humidity|weather station)\b"
+            r"|світл|ламп|вентилятор|штор|термостат|клімат|сцен|опален|колонк|телевізор|датчик|температур|волог|режим сну",
+            request.text.casefold(),
+        )
+        if not continuous and not explicit_target:
             return "Please name the device and full action; this home conversation does not have that earlier context. No action was attempted."
         try:
             async with asyncio.timeout(self._timeout_s):
@@ -71,11 +76,10 @@ class HomeAssistant:
                         "device_id": self._device_id,
                         "timeout": self._timeout_s - 1,
                     }
-                    if self._conversation_id:
-                        command["conversation_id"] = self._conversation_id
+                    if conversation_id:
+                        command["conversation_id"] = conversation_id
                     if not self._is_current(request):
                         return "The request changed while connecting to Home Assistant. No action was attempted."
-                    self._previous_request = request.text.strip()
                     await ws.send(json.dumps(command))
                     output = None
                     async for raw in ws:
@@ -92,10 +96,12 @@ class HomeAssistant:
                             )
                         if kind == "intent-end":
                             output = data["intent_output"]
-                            self._conversation_id = output.get("conversation_id", self._conversation_id)
                         if kind == "run-end":
                             if output is None:
                                 raise ConsultFailed("Home Assistant returned no intent result; not retried")
+                            if output.get("response", {}).get("response_type") != "error":
+                                self._conversation_id = output.get("conversation_id", conversation_id)
+                                self._previous_request = request.text.strip()
                             return _answer(output)
         except (TimeoutError, OSError, WebSocketException, ValueError, KeyError, TypeError) as e:
             raise ConsultFailed("Home Assistant result uncertain; no retry or alternate backend was run") from e
