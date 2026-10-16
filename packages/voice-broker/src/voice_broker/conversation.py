@@ -73,9 +73,19 @@ class DeviceSocket(Protocol):
 
 class Conversation:
     def __init__(
-        self, config: Config, name: str, device: DeviceSocket, session: ModelSession, aec: EchoCanceller
+        self,
+        config: Config,
+        name: str,
+        device: DeviceSocket,
+        session: ModelSession,
+        aec: EchoCanceller,
+        *,
+        speaker_id=None,
     ) -> None:
         self._config = config
+        if speaker_id is not None and config.recordings_dir:
+            raise ValueError("speaker ID trial requires runtime audio recording disabled")
+        self._speaker_id = speaker_id
         self._device = device
         self._session = session
         self._aligner = Aligner()
@@ -129,6 +139,7 @@ class Conversation:
             device.cancel()
             await asyncio.gather(device, return_exceptions=True)
             self._recorder.close()
+            self._close_advisory()
             try:
                 await self._device.send(encode_control(ControlType.END))
                 await self._device.close()
@@ -154,6 +165,20 @@ class Conversation:
         if not queued or self._sound_end is None:
             return False
         return self._aligner.played_speaker_samples < self._sound_end + _SOUND_HANGOVER
+
+    def _close_advisory(self) -> None:
+        sidecar, self._speaker_id = self._speaker_id, None
+        if sidecar is not None:
+            try:
+                sidecar.close()
+            except Exception:  # noqa: BLE001 - optional advisory cannot break cleanup
+                log.warning("speaker advisory cleanup failed")
+
+    def speaker_advisory(self):
+        try:
+            return self._speaker_id.snapshot() if self._speaker_id is not None else None
+        except Exception:  # noqa: BLE001 - advisory cannot break consult
+            return None
 
     def play(self, samples: np.ndarray) -> None:
         if len(samples) and (samples.max() > _SILENCE_PEAK or samples.min() < -_SILENCE_PEAK):
@@ -207,6 +232,13 @@ class Conversation:
         if self.assistant_audible:
             self.mark_activity()
         await self._session.on_mic(cleaned)
+        # Preserve the installed synchronous, queue-only tap AFTER Live streaming.
+        if self._speaker_id is not None:
+            try:
+                self._speaker_id.feed(cleaned, overlap=self.assistant_audible)
+            except Exception:  # noqa: BLE001 - advisory cannot interrupt audio
+                log.warning("speaker advisory tap failed; disabling sidecar")
+                self._close_advisory()
 
     # -- playback ------------------------------------------------------------
 

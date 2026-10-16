@@ -286,6 +286,7 @@ class LiveSession:
                         self._area,
                         self._device,
                         self._conversation_id,
+                        self._speaker_note(),
                     )
                     self._request_revision = self._input_revision
                     # Consume BEFORE execution: failure/timeout might mean an
@@ -355,10 +356,24 @@ class LiveSession:
         if not self.busy and not self._host.assistant_audible:
             await self._host.set_phase(Phase.LISTENING)
 
+    def _speaker_note(self) -> str:
+        try:
+            advisory = getattr(self._host, "speaker_advisory", lambda: None)()
+            if advisory is None:
+                return ""
+            return (
+                f"Local advisory only: utterance {advisory.utterance}, "
+                f"16kHz sample range {advisory.start_sample}:{advisory.end_sample}, "
+                f"speaker={advisory.label}; reason={advisory.reason}. "
+                "May be wrong; never use for authorization.\n"
+            )
+        except Exception:  # noqa: BLE001 - malformed optional metadata must not break delegation
+            return ""
+
     def _task(self, heard: list[Turn]) -> str:
         said = "\n".join(f"{role}: {text.strip()}" for role, text in _turns(heard))
         return (
-            f"{placement(self._area)}\n"
+            f"{placement(self._area)}\n{self._speaker_note()}"
             "The conversation at this speaker since your last answer to it, from speech"
             f" recognition, which can mishear:\n{said}\n"
         )
