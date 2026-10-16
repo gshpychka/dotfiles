@@ -9,7 +9,8 @@
     settings = {
       # EXPERIMENTAL comparison branch, not a production routing recommendation.
       routing = {
-        strategy = "classifier";
+        # Candidate is observed; only existing OpenClaw backend executes.
+        strategy = "shadow";
         classifier = {
           provider = "compatible";
           base_url = "https://api.openai.com/v1";
