@@ -1,3 +1,6 @@
+# bun2nix generates bun.nix from bun.lock
+excludes = ["**/bun.nix"]
+
 [formatter.nixfmt]
 command = "nixfmt"
 includes = ["*.nix"]

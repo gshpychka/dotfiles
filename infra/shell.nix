@@ -1,6 +1,7 @@
 {
   nixpkgs,
   system,
+  bun2nix,
 }:
 let
   pkgs = import nixpkgs {
@@ -31,7 +32,8 @@ pkgs.mkShell {
     terraform
     pkgs.google-cloud-sdk
     pkgs.awscli2
-    pkgs.nodejs
+    pkgs.bun
+    bun2nix.packages.${system}.default
     pkgs.sops
     pkgs.age
     pkgs.terragrunt

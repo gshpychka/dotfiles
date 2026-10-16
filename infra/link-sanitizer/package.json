@@ -4,23 +4,24 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "postinstall": "bun2nix -o bun.nix",
     "typecheck": "tsc",
-    "test": "vitest run",
-    "check": "tsc && vitest run",
-    "dev": "sops exec-env ../../secrets/infra/link-sanitizer.env 'alchemy dev'",
-    "plan": "sops exec-env ../../secrets/infra/link-sanitizer.env 'alchemy plan --stage prod'",
-    "deploy": "sops exec-env ../../secrets/infra/link-sanitizer.env 'alchemy deploy --stage prod'",
-    "destroy": "sops exec-env ../../secrets/infra/link-sanitizer.env 'alchemy destroy --stage prod'",
-    "logs": "sops exec-env ../../secrets/infra/link-sanitizer.env 'alchemy logs --stage prod --tail'"
+    "check": "tsc && bun test",
+    "dev": "sops exec-env ../../secrets/infra/link-sanitizer.env 'bun alchemy dev'",
+    "plan": "sops exec-env ../../secrets/infra/link-sanitizer.env 'bun alchemy plan --stage prod'",
+    "deploy": "sops exec-env ../../secrets/infra/link-sanitizer.env 'bun alchemy deploy --stage prod'",
+    "destroy": "sops exec-env ../../secrets/infra/link-sanitizer.env 'bun alchemy destroy --stage prod'",
+    "logs": "sops exec-env ../../secrets/infra/link-sanitizer.env 'bun alchemy logs --stage prod --tail'"
   },
   "dependencies": {
+    "@effect/platform-bun": "^4.0.4",
     "@effect/platform-node": "^4.0.4",
     "alchemy": "2.0.0-beta.83",
     "effect": "^4.0.4"
   },
   "devDependencies": {
-    "@types/node": "^24.19.2",
-    "typescript": "^6.0.3",
-    "vitest": "^5.0.4"
-  }
+    "@types/bun": "^1.4.3",
+    "typescript": "^6.0.3"
+  },
+  "trustedDependencies": []
 }

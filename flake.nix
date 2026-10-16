@@ -73,6 +73,14 @@
       url = "github:NixOS/nixos-hardware/master";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    # bun.nix's schema varies between versions, so the infra shell's CLI that
+    # writes it and the checks' fetcher that reads it share this input; pinned
+    # to the head of nix-community/bun2nix#110, which accepts the lockfile
+    # versions 2 and 3 that bun 1.3+ writes
+    bun2nix = {
+      url = "github:nix-community/bun2nix/0456acb1b7394fc14c414b056aa889df5124943a";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     # auto-imports a directory tree of modules
     import-tree.url = "github:vic/import-tree";
   };
@@ -232,12 +240,13 @@
             }
           ) { } machines;
           # statix + deadnix lint the flake source per system; statix.toml at the
-          # repo root disables repeated_keys, deadnix runs strict (no exceptions)
+          # repo root disables repeated_keys, deadnix runs strict on all but generated files
           lintChecks = lib.genAttrs systems (
             system:
             let
               pkgs = nixpkgs.legacyPackages.${system};
               piExtensionTypes = pkgs.callPackage ./packages/pi-extension-types.nix { };
+              bun2nix = inputs.bun2nix.packages.${system}.default;
             in
             {
               voice-pe-unit = import ./scripts/voice-pe/checks.nix {
@@ -249,7 +258,7 @@
                 touch $out
               '';
               deadnix = pkgs.runCommand "check-deadnix" { nativeBuildInputs = [ pkgs.deadnix ]; } ''
-                deadnix --fail ${self}
+                deadnix --fail --exclude ${self}/infra/link-sanitizer/bun.nix -- ${self}
                 touch $out
               '';
               # whole-tree format check; copy out of the read-only store so
@@ -282,18 +291,9 @@
               link-sanitizer = pkgs.stdenvNoCC.mkDerivation {
                 name = "check-link-sanitizer";
                 src = "${self}/infra/link-sanitizer";
-                npmDeps = pkgs.importNpmLock.buildNodeModules {
-                  npmRoot = ./infra/link-sanitizer;
-                  inherit (pkgs) nodejs;
-                  # the project's .npmrc, which this build does not read
-                  derivationArgs.npmFlags = [ "--ignore-scripts" ];
-                };
-                nativeBuildInputs = [
-                  pkgs.nodejs
-                  # links npmDeps into a writable node_modules, where vitest keeps its caches
-                  pkgs.importNpmLock.linkNodeModulesHook
-                ];
-                buildPhase = "npm run check";
+                bunDeps = bun2nix.fetchBunDeps { bunNix = ./infra/link-sanitizer/bun.nix; };
+                nativeBuildInputs = [ bun2nix.hook ];
+                buildPhase = "bun run check";
                 installPhase = "touch $out";
               };
             }
@@ -376,7 +376,10 @@
                   fi
                 '';
               };
-              infra = import ./infra/shell.nix { inherit nixpkgs system; };
+              infra = import ./infra/shell.nix {
+                inherit nixpkgs system;
+                inherit (inputs) bun2nix;
+              };
             };
         in
         lib.genAttrs systems mkShell;
