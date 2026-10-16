@@ -30,6 +30,8 @@ pkgs.mkShell {
   buildInputs = [
     terraform
     pkgs.google-cloud-sdk
+    pkgs.awscli2
+    pkgs.nodejs
     pkgs.sops
     pkgs.age
     pkgs.terragrunt
@@ -44,5 +46,13 @@ pkgs.mkShell {
     export TF_VAR_gcp_project_id="${values.gcpProjectId}"
     export TF_VAR_domain_name="${values.domain}"
     export TF_STATE_BUCKET="${values.gcpTfStateBucket}"
+    # Alchemy and AWS profiles live under infra/.home, apart from any others
+    # on the machine. The AWS CLI keeps its SSO token cache in ~/.aws/sso/cache,
+    # so the SSO session needs a name no other config uses.
+    export ALCHEMY_HOME=$REPO_ROOT/infra/.home/.alchemy
+    export AWS_CONFIG_FILE=$REPO_ROOT/infra/.home/.aws/config
+    export AWS_SHARED_CREDENTIALS_FILE=$REPO_ROOT/infra/.home/.aws/credentials
+    # the alchemy CLI exports its traces, metrics and logs to otel.alchemy.run unless set
+    export ALCHEMY_TELEMETRY_DISABLED=1
   '';
 }

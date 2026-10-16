@@ -279,6 +279,23 @@
                     tsc -p src/tsconfig.json
                     touch $out
                   '';
+              link-sanitizer = pkgs.stdenvNoCC.mkDerivation {
+                name = "check-link-sanitizer";
+                src = "${self}/infra/link-sanitizer";
+                npmDeps = pkgs.importNpmLock.buildNodeModules {
+                  npmRoot = ./infra/link-sanitizer;
+                  inherit (pkgs) nodejs;
+                  # the project's .npmrc, which this build does not read
+                  derivationArgs.npmFlags = [ "--ignore-scripts" ];
+                };
+                nativeBuildInputs = [
+                  pkgs.nodejs
+                  # links npmDeps into a writable node_modules, where vitest keeps its caches
+                  pkgs.importNpmLock.linkNodeModulesHook
+                ];
+                buildPhase = "npm run check";
+                installPhase = "touch $out";
+              };
             }
           );
         in

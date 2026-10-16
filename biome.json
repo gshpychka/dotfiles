@@ -5,7 +5,7 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["modules/**/*.ts", "modules/**/*.js", "!**/node_modules"]
+    "includes": ["modules/**/*.ts", "modules/**/*.js", "infra/**/*.ts", "!**/node_modules"]
   },
   "formatter": {
     "indentStyle": "space",
