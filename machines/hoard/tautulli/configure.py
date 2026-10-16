@@ -24,6 +24,11 @@ Plex token, password hash, JWT secret and notifier tokens).
 usage:
   configure.py check <settings.json> <schema.json>
   configure.py apply <settings.json> <schema.json> <configobj dir> <data dir> <config.ini>
+  configure.py preview <same as apply>
+
+preview runs the same logic read-only against the live files before a deploy
+and exits non-zero if any credential would be kept as a mismatch or rotated
+(see preview()); credentials come from $CREDENTIALS_DIRECTORY as in apply.
 """
 
 import json
@@ -135,26 +140,15 @@ def write_atomic(path, write):
         raise
 
 
-def apply(desired, configobj_dir, data_dir, config_path, credentials):
-    sys.path.insert(0, str(configobj_dir))
-    from configobj import ConfigObj  # Tautulli's bundled copy
+def converge(config, desired, credentials, adopted):
+    """Assert desired values into a loaded ConfigObj, in memory only.
 
-    state_path = data_dir / STATE_FILE
-    if state_path.exists():
-        state = json.loads(state_path.read_text())
-    else:
-        snapshot(data_dir, config_path)
-        state = {"adopted": [], "mismatched": []}
-
-    # after the snapshot, which may have created backups/
-    changed_modes = restrict(data_dir)
-    if changed_modes:
-        log(f"restricted permissions on {changed_modes} path(s)")
-    adopted = set(state["adopted"])
-    mismatched = set()
-
-    config = ConfigObj(str(config_path), encoding="utf-8")
-    changes = []
+    Returns (changed keys, adopted credential names, secret outcomes); an
+    outcome is one of match, fill (live empty), rotate (adopted, SOPS
+    changed) or mismatch (differing live value kept, nothing assigned).
+    """
+    adopted = set(adopted)
+    changes, outcomes = [], {}
 
     def assign(section, key, value):
         if section not in config:
@@ -171,14 +165,50 @@ def apply(desired, configobj_dir, data_dir, config_path, credentials):
         name, section, key = secret["credential"], secret["section"], secret["key"]
         value = (credentials / name).read_text().rstrip("\n")
         live = config.get(section, {}).get(key, "")
-        if live == value or live == "" or name in adopted:
-            assign(section, key, value)
-            adopted.add(name)
+        if live == value:
+            outcomes[name] = "match"
+        elif live == "":
+            outcomes[name] = "fill"
+        elif name in adopted:
+            outcomes[name] = "rotate"
         else:
-            mismatched.add(name)
+            outcomes[name] = "mismatch"
+            continue
+        assign(section, key, value)
+        adopted.add(name)
+    return changes, adopted, outcomes
+
+
+def load_config(configobj_dir, config_path):
+    sys.path.insert(0, str(configobj_dir))
+    from configobj import ConfigObj  # Tautulli's bundled copy
+
+    return ConfigObj(str(config_path), encoding="utf-8")
+
+
+def apply(desired, configobj_dir, data_dir, config_path, credentials):
+    state_path = data_dir / STATE_FILE
+    if state_path.exists():
+        state = json.loads(state_path.read_text())
+    else:
+        snapshot(data_dir, config_path)
+        state = {"adopted": [], "mismatched": []}
+
+    # after the snapshot, which may have created backups/
+    changed_modes = restrict(data_dir)
+    if changed_modes:
+        log(f"restricted permissions on {changed_modes} path(s)")
+
+    config = load_config(configobj_dir, config_path)
+    changes, adopted, outcomes = converge(
+        config, desired, credentials, state["adopted"]
+    )
+    mismatched = {name for name, outcome in outcomes.items() if outcome == "mismatch"}
+    for secret in desired["secrets"]:
+        if secret["credential"] in mismatched:
             log(
-                f"{section}.{key} differs from credential {name}; kept the live "
-                "value (no rotation on adoption)"
+                f"{secret['section']}.{secret['key']} differs from credential "
+                f"{secret['credential']}; kept the live value (no rotation on adoption)"
             )
 
     if changes:
@@ -194,6 +224,25 @@ def apply(desired, configobj_dir, data_dir, config_path, credentials):
         )
 
 
+def preview(desired, configobj_dir, data_dir, config_path, credentials):
+    """Read-only dry run of apply against the live files; True if safe.
+
+    Writes nothing. Strict: any credential whose value differs from a
+    non-empty live one fails, whether apply would keep it (mismatch) or
+    overwrite it (rotate), so a deploy can't change a working secret.
+    """
+    state_path = data_dir / STATE_FILE
+    adopted = (
+        json.loads(state_path.read_text())["adopted"] if state_path.exists() else []
+    )
+    config = load_config(configobj_dir, config_path)
+    changes, _, outcomes = converge(config, desired, credentials, adopted)
+    for name, outcome in sorted(outcomes.items()):
+        log(f"preview: credential {name}: {outcome}")
+    log(f"preview: would update {', '.join(changes) or 'nothing'}")
+    return all(outcome in ("match", "fill") for outcome in outcomes.values())
+
+
 def main():
     command, desired_path, schema_path, *rest = sys.argv[1:]
     desired = json.loads(Path(desired_path).read_text())
@@ -202,6 +251,12 @@ def main():
         return
     configobj_dir, data_dir, config_path = map(Path, rest)
     credentials = Path(os.environ["CREDENTIALS_DIRECTORY"])
+    if command == "preview":
+        if not preview(desired, configobj_dir, data_dir, config_path, credentials):
+            raise SystemExit(
+                "tautulli-configure: preview: a credential differs from live"
+            )
+        return
     apply(desired, configobj_dir, data_dir, config_path, credentials)
 
 

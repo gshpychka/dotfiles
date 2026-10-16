@@ -224,6 +224,62 @@ class ConfigureTest(unittest.TestCase):
     def test_hoard_settings_are_valid(self):
         configure.check(HOARD_DESIRED, SCHEMA)
 
+    def test_hoard_plex_token_is_tautullis_own(self):
+        # the shared plex-token (homepage) is not Tautulli's working token
+        credentials = {
+            (s["section"], s["key"]): s["credential"] for s in HOARD_DESIRED["secrets"]
+        }
+        self.assertEqual(credentials["PMS", "pms_token"], "tautulli-plex-token")
+        self.assertNotIn("plex-token", credentials.values())
+
+    def run_preview(self):
+        with contextlib.redirect_stdout(self.output):
+            return configure.preview(
+                DESIRED, CONFIGOBJ, self.data, self.config, self.credentials
+            )
+
+    def assert_untouched(self, before):
+        self.assertEqual(self.config.read_bytes(), before)
+        self.assertEqual(stat.S_IMODE(self.config.stat().st_mode), 0o644)
+        self.assertEqual(self.snapshots(), [])
+
+    def test_preview_of_matching_credentials_passes_and_writes_nothing(self):
+        before = self.config.read_bytes()
+        self.assertTrue(self.run_preview())
+        self.assert_untouched(before)
+        self.assertFalse((self.data / configure.STATE_FILE).exists())
+        self.assertIn("credential plex: match", self.output.getvalue())
+        self.assertIn("would update nothing", self.output.getvalue())
+        self.assert_no_secret_output()
+
+    def test_preview_fails_on_a_differing_unadopted_credential(self):
+        self.write_secrets({"plex": "another-synthetic-token"})
+        before = self.config.read_bytes()
+        self.assertFalse(self.run_preview())
+        self.assert_untouched(before)
+        self.assertIn("credential plex: mismatch", self.output.getvalue())
+        self.assertNotIn("another-synthetic-token", self.output.getvalue())
+
+    def test_preview_fails_before_an_adopted_credential_is_rotated(self):
+        self.run_configure()
+        self.write_secrets({"plex": "rotated-synthetic-token"})
+        before, state = self.config.read_bytes(), self.state()
+        self.output = io.StringIO()
+        self.assertFalse(self.run_preview())
+        self.assertEqual(self.config.read_bytes(), before)
+        self.assertEqual(self.state(), state)
+        self.assertIn("credential plex: rotate", self.output.getvalue())
+        self.assertIn("would update PMS.pms_token", self.output.getvalue())
+        self.assertNotIn("rotated-synthetic-token", self.output.getvalue())
+
+    def test_preview_allows_filling_an_empty_value(self):
+        self.config.write_text(
+            LIVE_INI.replace("pms_token = synthetic-plex-token-xx", 'pms_token = ""')
+        )
+        self.assertTrue(self.run_preview())
+        self.assertIn("credential plex: fill", self.output.getvalue())
+        self.assertIn('pms_token = ""', self.config.read_text())
+
 
 if __name__ == "__main__":
     os.umask(0o022)

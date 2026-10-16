@@ -593,6 +593,47 @@ class ReconcileTest(unittest.TestCase):
         state.write_text(json.dumps({"adopted": ["api"], "mismatched": ["plex"]}))
         self.assertEqual(reconcile.read_state(state, "api"), ["plex"])
 
+    def run_preview(self, desired):
+        desired = {"api_key_credential": "api", **desired}
+        reconcile.check(desired, SCHEMA)
+        api = reconcile.Api(f"http://127.0.0.1:{self.server.server_port}", API_KEY)
+        api.call = reconcile.ReadOnly(api.call)
+        with contextlib.redirect_stdout(self.output):
+            return reconcile.preview(api, desired, SCHEMA, self.tmp, deadline=0)
+
+    def test_preview_of_hoard_state_is_safe_and_writes_nothing(self):
+        self.seed(HOARD_DESIRED["notifiers"])
+        before = copy.deepcopy(self.fake.rows)
+        self.assertTrue(self.run_preview(HOARD_DESIRED))
+        self.assertEqual(self.writes(), [])
+        self.assertEqual(self.fake.rows, before)
+        self.assertEqual(self.output.getvalue().count("would update nothing"), 5)
+        self.assert_no_secret_output()
+
+    def test_preview_flags_a_differing_secret_without_sending_it(self):
+        self.seed([notifier(1), notifier(2)])
+        config = json.loads(self.fake.rows[2]["notifier_config"])
+        config["bot_token"] = "987654321:ANOTHER-synthetic-live-token"
+        self.fake.rows[2]["notifier_config"] = json.dumps(config)
+        self.fake.rows[1]["on_play"] = 1  # non-secret drift is only reported
+        self.assertFalse(self.run_preview({"notifiers": [notifier(1), notifier(2)]}))
+        self.assertIn("notifier 2: secret telegram_bot_token", self.output.getvalue())
+        self.assertIn("notifier 1: would update on_play", self.output.getvalue())
+        self.assertEqual(self.writes(), [])
+        self.assertNotIn("ANOTHER-synthetic-live-token", self.output.getvalue())
+        self.assert_no_secret_output()
+
+    def test_preview_refuses_a_missing_notifier_and_any_write(self):
+        self.seed([notifier(1)])
+        self.assertFalse(self.run_preview({"notifiers": [notifier(1), notifier(2)]}))
+        self.assertIn("notifier 2: missing", self.output.getvalue())
+        self.assertEqual(self.writes(), [])
+        api = reconcile.Api(f"http://127.0.0.1:{self.server.server_port}", API_KEY)
+        api.call = reconcile.ReadOnly(api.call)
+        with self.assertRaisesRegex(reconcile.ReconcileError, "preview refuses"):
+            api.call("set_notifier_config", notifier_id=1, on_play="0")
+        self.assertEqual(self.writes(), [])
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -28,6 +28,12 @@ logged: output names notifier ids and field names only.
 usage:
   reconcile.py check <desired.json> <schema.json>
   reconcile.py apply <desired.json> <schema.json> <base url> <state file>
+  reconcile.py preview <desired.json> <schema.json> <base url>
+
+preview plans against the live notifiers with read commands only and exits
+non-zero if a declared notifier is missing, a change is impossible, or a
+secret field (bot token, chat id) would be overwritten: those are adopted from
+the live database and must already match SOPS.
 """
 
 import json
@@ -99,6 +105,18 @@ class Api:
                         f"Tautulli API not reachable: {error}"
                     ) from None
                 time.sleep(2)
+
+
+class ReadOnly:
+    """Wraps Api.call so preview can never write, whatever plan() returns."""
+
+    def __init__(self, call):
+        self.inner = call
+
+    def __call__(self, cmd, **params):
+        if cmd not in READ_COMMANDS:
+            raise ReconcileError(f"preview refuses API command {cmd}")
+        return self.inner(cmd, **params)
 
 
 def check(desired, schema):
@@ -292,6 +310,28 @@ def reconcile(api, desired, schema, credentials, deadline):
     return changes
 
 
+def preview(api, desired, schema, credentials, deadline):
+    """Read-only plan of reconcile(); True if it would not touch a secret."""
+    live_ids = {n["id"] for n in api.wait(deadline)}
+    safe = True
+    for notifier in sorted(desired["notifiers"], key=lambda n: n["id"]):
+        where = f"notifier {notifier['id']}"
+        if notifier["id"] not in live_ids:
+            log(f"preview: {where}: missing, would be created")
+            safe = False
+            continue
+        live = api.call("get_notifier_config", notifier_id=notifier["id"])
+        params, errors = plan(notifier, live, schema, credentials)
+        secrets = {f"{notifier['agent']}_{key}" for key in notifier["secret_config"]}
+        for error in errors:
+            log(f"preview: {error}")
+        for field in sorted(secrets & set(params)):
+            log(f"preview: {where}: secret {field} differs from live")
+        safe = safe and not errors and not secrets & set(params)
+        log(f"preview: {where}: would update {', '.join(sorted(params)) or 'nothing'}")
+    return safe
+
+
 def main():
     command, desired_path, schema_path, *rest = sys.argv[1:]
     desired = json.loads(Path(desired_path).read_text())
@@ -300,8 +340,16 @@ def main():
         check(desired, schema)
         if command == "check":
             return
-        base_url, state_path = rest
         credentials = Path(os.environ["CREDENTIALS_DIRECTORY"])
+        if command == "preview":
+            (base_url,) = rest
+            api_key = (credentials / desired["api_key_credential"]).read_text().strip()
+            api = Api(base_url, api_key)
+            api.call = ReadOnly(api.call)
+            if not preview(api, desired, schema, credentials, time.monotonic() + 30):
+                raise ReconcileError("preview: not safe to apply")
+            return
+        base_url, state_path = rest
         mismatched = read_state(Path(state_path), desired["api_key_credential"])
         api_key = (credentials / desired["api_key_credential"]).read_text().strip()
         reconcile(

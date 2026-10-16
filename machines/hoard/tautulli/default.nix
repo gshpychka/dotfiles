@@ -26,6 +26,10 @@
 #   # expect "config.ini already converged" and "changes=0"; a "differs from
 #   # credential" line means a SOPS value doesn't match the live one and the
 #   # live one was kept: fix the SOPS value, then restart tautulli
+# Before a deploy that changes a credential, compare SOPS with live read-only:
+# run the built configure.py/reconcile.py "preview" (see their usage) as root
+# with $CREDENTIALS_DIRECTORY holding the decrypted SOPS values; non-zero
+# means a working live credential would be kept as mismatched or replaced.
 # The first start keeps a copy of config.ini and tautulli.db in
 # /var/lib/plexpy/backups/pre-declarative-<UTC>/ (0600, service user only).
 let
@@ -35,10 +39,13 @@ let
 
   # sops secret names double as systemd credential names
   credentials = {
-    # existing secrets/hoard/secrets.yaml entries
+    # existing secrets/hoard/secrets.yaml entry
     apiKey = "tautulli-api-key";
-    plexToken = "plex-token";
     # secrets/openclaw/tautulli.yaml, migrated from the live config.ini/database
+    # Tautulli's own Plex token (the server owner's), not the shared
+    # plex-token: on 2026-10-16 that one was rejected by Plex (401) while
+    # Tautulli's live token worked, so the live one was migrated as is
+    plexToken = "tautulli-plex-token";
     httpUsername = "tautulli-http-username";
     # the stored PBKDF2 hash (http_hashed_password), not a plaintext password
     httpPassword = "tautulli-http-password";
@@ -50,6 +57,7 @@ let
     telegramLegacyChatId = "tautulli-telegram-legacy-chat-id";
   };
   migratedSecrets = with credentials; [
+    plexToken
     httpUsername
     httpPassword
     jwtSecret
@@ -566,8 +574,6 @@ in
   };
 
   sops.secrets = {
-    # also used by homepage-dashboard (monitoring.nix)
-    ${credentials.plexToken}.restartUnits = [ tautulliUnit ];
     ${credentials.apiKey}.restartUnits = [ tautulliUnit ];
   }
   // lib.genAttrs migratedSecrets (_: {
