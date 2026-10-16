@@ -10,7 +10,11 @@
 #
 # Auth uses the app's API key (X-Api-Key). The oneshot runs as root so it can read the
 # SOPS secret files (root:root 0400) referenced by `apiKeyFile` / `secretFields`, and
-# the app's database (read-only) to compare the secrets the API masks.
+# the app's database (read-only) to compare the secrets the API masks and the login.
+#
+# A target's `login` is the one thing written into the app's database instead, by
+# `arr-login-<target>` before the app starts (see below); `journalctl -u 'arr-login-*'`
+# shows "login matches its secret; nothing written" on every start of a set-up app.
 #
 # Before a deploy that changes this, check it against the live apps without writing:
 #   sudo arr-sync-preview <target> --expect-no-changes
@@ -260,6 +264,17 @@ let
           masks. Without it a masked secret can't be checked and is left as it is.
         '';
       };
+      login = lib.mkOption {
+        type = lib.types.nullOr lib.types.str;
+        default = null;
+        description = ''
+          Path to a secret file holding the app's login as stored in its database (table
+          Users): a JSON object with identifier, username, password (the base64 salted
+          hash), salt and iterations. Requires `database`. Before every start of the app
+          `arr-login-<target>` restores it into an app that has no login yet; every run
+          compares it, and a differing login is never touched (the run fails).
+        '';
+      };
       afterUnits = lib.mkOption {
         type = lib.types.listOf lib.types.str;
         default = [ ];
@@ -365,6 +380,7 @@ let
         apiVersion
         apiKeyFile
         database
+        login
         rootFolders
         rootFolderNeedsProfiles
         settings
@@ -443,38 +459,88 @@ in
   config = lib.mkIf cfg.enable {
     environment.systemPackages = [ preview ];
 
-    systemd.services = lib.mapAttrs' (
-      tname: t:
-      let
-        ownUnit = config.systemd.services.${tname}.name;
-      in
-      lib.nameValuePair "arr-sync-${tname}" {
-        description = "Converge ${tname} configuration";
-        after = [ ownUnit ] ++ t.afterUnits;
-        # converges only while the app runs, and again each time it (re)starts:
-        # partOf stops this with the app, so the app's next start runs it again
-        wantedBy = [
-          "multi-user.target"
-          ownUnit
-        ];
-        partOf = [ ownUnit ];
-        # Spec/engine live in the store, so a changed configuration re-runs this on switch.
-        serviceConfig = {
-          Type = "oneshot";
-          RemainAfterExit = true;
-          ExecCondition = "${lib.getExe' pkgs.systemd "systemctl"} is-active --quiet ${ownUnit}";
-          ExecStart = "${lib.getExe engine} apply ${specFile tname t} ${backupDir}";
-          # before-images hold settings as the API returns them: root only
-          StateDirectory = "arr-sync";
-          StateDirectoryMode = "0700";
-          UMask = "0077";
-          # Reads SOPS secret files and the app's database; only talks to localhost APIs.
-          NoNewPrivileges = true;
-          PrivateTmp = true;
-          ProtectHome = true;
-          ProtectSystem = "strict";
-        };
-      }
-    ) cfg.targets;
+    assertions = lib.mapAttrsToList (tname: t: {
+      assertion = t.login == null || t.database != null;
+      message = "my.arrSync.targets.${tname}.login needs the app's database";
+    }) cfg.targets;
+
+    # Restores a target's login into an app that has none (a fresh install), while the
+    # app is stopped: wanted by and ordered before every start of it, and skipped while
+    # it runs. No API can take the hash (see restore_login in arr-sync.py), so this is
+    # the one write into the app's database: a single Users row, only into an empty
+    # table, under an exclusive lock. On the very first start there is no database
+    # yet; the app creates it without a login (arr-sync-<target> then fails, asking
+    # for a restart), and the restart restores it. Imperative step on a fresh install:
+    # `systemctl restart <app>` once after its first start, and don't fill in the
+    # app's "authentication required" prompt before that: the login it creates would
+    # be kept, and both units would fail until the secret matches it. Until the
+    # restart the app runs with its default auth (none), as before arr-sync's first
+    # write. A failure here never keeps the app from starting (it's only wanted).
+    systemd.services =
+      lib.mapAttrs' (
+        tname: t:
+        let
+          app = config.systemd.services.${tname};
+        in
+        lib.nameValuePair "arr-login-${tname}" {
+          description = "Restore ${tname}'s login from its secret";
+          before = [ app.name ];
+          wantedBy = [ app.name ];
+          unitConfig.RequiresMountsFor = [ (dirOf t.database) ];
+          serviceConfig = {
+            Type = "oneshot";
+            # oneshots wait forever by default; a hang must not hold the app's start
+            TimeoutStartSec = 60;
+            # exit 1 (skip) while the app runs; during the app's start job it's still inactive
+            ExecCondition = "${pkgs.runtimeShell} -c '! ${lib.getExe' pkgs.systemd "systemctl"} is-active --quiet ${app.name}'";
+            ExecStart = "${lib.getExe engine} restore-login ${t.database} %d/login";
+            # as the app, so files SQLite creates beside the database stay the app's
+            User = app.serviceConfig.User;
+            Group = app.serviceConfig.Group;
+            # the secret is root-only; systemd hands it over
+            LoadCredential = "login:${t.login}";
+            UMask = "0077";
+            NoNewPrivileges = true;
+            PrivateNetwork = true;
+            PrivateTmp = true;
+            ProtectHome = true;
+            ProtectSystem = "strict";
+            ReadWritePaths = [ (dirOf t.database) ];
+          };
+        }
+      ) (lib.filterAttrs (_: t: t.login != null) cfg.targets)
+      // lib.mapAttrs' (
+        tname: t:
+        let
+          ownUnit = config.systemd.services.${tname}.name;
+        in
+        lib.nameValuePair "arr-sync-${tname}" {
+          description = "Converge ${tname} configuration";
+          after = [ ownUnit ] ++ t.afterUnits;
+          # converges only while the app runs, and again each time it (re)starts:
+          # partOf stops this with the app, so the app's next start runs it again
+          wantedBy = [
+            "multi-user.target"
+            ownUnit
+          ];
+          partOf = [ ownUnit ];
+          # Spec/engine live in the store, so a changed configuration re-runs this on switch.
+          serviceConfig = {
+            Type = "oneshot";
+            RemainAfterExit = true;
+            ExecCondition = "${lib.getExe' pkgs.systemd "systemctl"} is-active --quiet ${ownUnit}";
+            ExecStart = "${lib.getExe engine} apply ${specFile tname t} ${backupDir}";
+            # before-images hold settings as the API returns them: root only
+            StateDirectory = "arr-sync";
+            StateDirectoryMode = "0700";
+            UMask = "0077";
+            # Reads SOPS secret files and the app's database; only talks to localhost APIs.
+            NoNewPrivileges = true;
+            PrivateTmp = true;
+            ProtectHome = true;
+            ProtectSystem = "strict";
+          };
+        }
+      ) cfg.targets;
   };
 }

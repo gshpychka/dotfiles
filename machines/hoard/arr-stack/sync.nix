@@ -27,6 +27,20 @@ let
     "arr-nzbget-username"
     "arr-nzbget-password"
   ];
+  # The UI login (Settings → General → Security, forms auth) of Radarr and Sonarr,
+  # restored on a fresh install by my.arrSync's arr-login-<app>. Copied on 2026-10-16
+  # from each app's Users row (user name, PBKDF2 hash, salt, iterations, identifier),
+  # unchanged: the password itself is in no file. To change the password, change it in
+  # the UI, then copy the new row into SOPS (until then every arr-sync-<app> run fails,
+  # naming the differing keys; the login is never written over), without the value
+  # passing through argv or the terminal, e.g. for Radarr (sqlite3 from nixpkgs#sqlite):
+  #   sudo sqlite3 -readonly -json /var/lib/radarr/.config/Radarr/radarr.db \
+  #     "SELECT Identifier AS identifier, Username AS username, Password AS password,
+  #             Salt AS salt, Iterations AS iterations FROM Users" \
+  #     | jq -c '.[0] | tojson' | sops set --value-stdin secrets/openclaw/arr.yaml '["arr-radarr-login"]'
+  # A fresh install takes one restart of the app after its first start (see arr-login
+  # in modules/system/nixos/arr-sync.nix).
+  loginSecret = app: "arr-${app}-login";
   localUrl = port: "http://localhost:${toString port}";
   gateway = config.my.webGateway;
   hasPlainGatewayVhost =
@@ -200,19 +214,36 @@ let
   };
 in
 {
-  sops.secrets = lib.genAttrs arrSecrets (_: {
-    sopsFile = ../../../secrets/openclaw/arr.yaml;
-    restartUnits = [
-      config.systemd.services.arr-sync-radarr.name
-      config.systemd.services.arr-sync-sonarr.name
-    ];
-  });
+  sops.secrets =
+    lib.genAttrs arrSecrets (_: {
+      sopsFile = ../../../secrets/openclaw/arr.yaml;
+      restartUnits = [
+        config.systemd.services.arr-sync-radarr.name
+        config.systemd.services.arr-sync-sonarr.name
+      ];
+    })
+    // lib.listToAttrs (
+      map
+        (
+          app:
+          lib.nameValuePair (loginSecret app) {
+            sopsFile = ../../../secrets/openclaw/arr.yaml;
+            # a changed secret is compared again; it's restored only into an app without a login
+            restartUnits = [ config.systemd.services."arr-sync-${app}".name ];
+          }
+        )
+        [
+          "radarr"
+          "sonarr"
+        ]
+    );
 
   my.arrSync = {
     enable = true;
     targets = {
       sonarr = arrApi arrs.sonarr // {
         database = database "sonarr" "sonarr.db";
+        login = secret (loginSecret "sonarr");
         afterUnits = downloadClientUnits;
         rootFolders = [ "/mnt/hoard/plex/shows" ];
         downloadClients = [
@@ -228,6 +259,7 @@ in
       };
       radarr = arrApi arrs.radarr // {
         database = database "radarr" "radarr.db";
+        login = secret (loginSecret "radarr");
         afterUnits = downloadClientUnits;
         rootFolders = [
           "/mnt/hoard/plex/movies"

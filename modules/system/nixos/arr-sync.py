@@ -58,15 +58,23 @@ the API key and credential keys of config/host are replaced by "<redacted>".
 Credential keys of config/host can't be declared at all (see
 CREDENTIAL_SETTINGS).
 
+The login (user name and salted password hash) can't be set over the API
+without re-hashing it, so it is restored from its secret file into the app's
+database while the app is stopped, only when the app has none (see
+restore_login); every run compares it with the secret and never writes it.
+
 usage:
   arr-sync apply <spec.json> [backup dir]
   arr-sync preview <spec.json> [--expect-no-changes]
+  arr-sync restore-login <database> <login secret file>
 
 preview plans against the live app with GET requests only and exits non-zero
 on a problem, a secret mismatch or an unverifiable secret, and with
 --expect-no-changes also when any write would happen.
 """
 
+import base64
+import binascii
 import copy
 import datetime
 import email.utils
@@ -81,6 +89,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import uuid
 
 # How long to wait for a target's API to answer before giving up.
 READY_TIMEOUT = 180
@@ -110,12 +119,27 @@ IMPORT_LIST_SWITCHES = {"enabled", "enableAuto", "enableAutomaticAdd"}
 # and, with auto-add, adds and searches movies/series. A disabled list skips it.
 IMPORT_LIST_ENABLE = {"enabled", "enableAutomaticAdd"}
 # config/host keys holding credentials. GET returns the API key and the
-# login's salted password hash in clear (passwordConfirmation always empty);
-# declaring them would mean rotating a credential, which arr-sync never does
-# (the API key is pinned through the app's environment, see auth.nix). A PUT
-# echoes the hash back, and Servarr's UserService.Upsert re-hashes only a
-# password that differs from the stored hash, so the login is kept.
-CREDENTIAL_SETTINGS = {"apiKey", "password", "passwordConfirmation"}
+# login's user name and salted password hash in clear (passwordConfirmation
+# always empty). None can be declared there: the API key is pinned through the
+# app's environment (see auth.nix), and the login is restored whole from its
+# secret file (see restore_login), because config/host can't take a hash:
+# UserService.Upsert treats any password differing from the stored hash as
+# plaintext and hashes it again, so a PUT of another hash makes the hash
+# string itself the password. A PUT echoes the live hash back, which keeps the
+# login (Upsert leaves an equal hash alone); check_login_unchanged re-reads it
+# just before the PUT, in case it was changed in the UI after planning.
+CREDENTIAL_SETTINGS = {"apiKey", "username", "password", "passwordConfirmation"}
+# The login as Servarr stores it (table Users, one row): the user name
+# (lowercased by the app), base64 PBKDF2-HMAC-SHA512 hash (32 bytes), its
+# base64 salt (16 bytes), the iteration count, and the Guid the login cookie
+# names. Secret file keys -> Users columns.
+LOGIN_COLUMNS = {
+    "identifier": "Identifier",
+    "username": "Username",
+    "password": "Password",
+    "salt": "Salt",
+    "iterations": "Iterations",
+}
 # Credential slots that may only be declared empty ("none set"); a set value
 # would have to come from a secret file, which settings don't take.
 EMPTY_ONLY_SETTINGS = {"proxyUsername", "proxyPassword", "sslCertPassword"}
@@ -321,6 +345,218 @@ class StoredSecrets:
         if table is None or resource_id not in table:
             return None
         return table[resource_id].get(field)
+
+
+def read_login(path):
+    """The login from its secret file (a JSON object with LOGIN_COLUMNS' keys).
+
+    Checked against the shape Servarr writes, so a value it would never accept
+    (or a plaintext password in the hash's place) is refused before anything
+    is compared or written. Errors name the key, never a value."""
+
+    def b64(key, size):
+        try:
+            if len(base64.b64decode(login[key], validate=True)) == size:
+                return
+        except (binascii.Error, TypeError, ValueError):
+            pass
+        raise ValueError(f"login secret: '{key}' is not {size} bytes of base64")
+
+    with open(path) as handle:
+        try:
+            login = json.loads(handle.read())
+        except ValueError:
+            raise ValueError("login secret: not a JSON object") from None
+    if not isinstance(login, dict) or set(login) != set(LOGIN_COLUMNS):
+        raise ValueError(f"login secret: keys must be {sorted(LOGIN_COLUMNS)}")
+    try:
+        canonical = str(uuid.UUID(login["identifier"])) == login["identifier"]
+    except (AttributeError, TypeError, ValueError):
+        canonical = False
+    if not canonical:
+        raise ValueError("login secret: 'identifier' is not a lowercase Guid")
+    user = login["username"]
+    if not isinstance(user, str) or not user.strip() or user != user.strip().lower():
+        # the app lowercases the name on every save and login
+        raise ValueError("login secret: 'username' must be non-empty lowercase")
+    b64("password", 32)
+    b64("salt", 16)
+    iterations = login["iterations"]
+    if type(iterations) is not int or iterations < 1:
+        raise ValueError("login secret: 'iterations' is not a positive integer")
+    return login
+
+
+def login_rows(con):
+    columns = ", ".join(LOGIN_COLUMNS.values())
+    rows = con.execute(f"SELECT {columns} FROM Users").fetchall()
+    return [dict(zip(LOGIN_COLUMNS, row)) for row in rows]
+
+
+def restore_login(database, secret_path):
+    """Restore the login into an app that has none yet, while it's stopped.
+
+    Neither the API nor config.xml can take a hash (see CREDENTIAL_SETTINGS),
+    so the one row is inserted into the app's own database: only into an empty
+    Users table, in one transaction, under an exclusive lock that fails at once
+    while anything (the running app) has the database open. No other table is
+    read or written, apart from the counter SQLite keeps for Users' ids
+    (sqlite_sequence). A login equal to the secret is left alone; any other
+    login is never touched, and the run fails naming the differing keys.
+    Before the app's first start there is no database (or no Users table)
+    yet: nothing is done, and the login is restored at its next start."""
+    login = read_login(secret_path)
+    if not os.path.exists(database):
+        log(
+            "no database yet; the app creates it at this start, the login is restored at its next"
+        )
+        return
+    # Compare read-only first: the app may leave its -wal behind when stopped,
+    # and the last read-write connection to close checkpoints it into the
+    # database (same data, other bytes), so the usual runs (a login equal or
+    # differing) never open one; only an empty Users table, or a database the
+    # read-only connection can't read, gets the locked read-write path.
+    uri = f"file:{urllib.parse.quote(database)}?mode=ro"
+    try:
+        con = sqlite3.connect(uri, uri=True, timeout=30)
+        try:
+            if not con.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'Users'"
+            ).fetchall():
+                log(
+                    "the database has no Users table yet; the login is restored at the app's next start"
+                )
+                return
+            rows = login_rows(con)
+        finally:
+            con.close()
+    except sqlite3.OperationalError:
+        # e.g. an old Users without Salt/Iterations: the locked path below
+        # checks again and decides
+        rows = []
+    if rows == [login]:
+        log("login matches its secret; nothing written")
+        return
+    if rows:
+        differ = sorted(
+            {key for row in rows for key in LOGIN_COLUMNS if row[key] != login[key]}
+        )
+        raise SystemExit(
+            f"the app has {len(rows)} login(s) differing from the secret "
+            f"({', '.join(differ)}); left as is, nothing written"
+        )
+    uri = f"file:{urllib.parse.quote(database)}?mode=rw"
+    # isolation_level=None: the transaction is exactly the BEGIN/COMMIT below
+    con = sqlite3.connect(uri, uri=True, timeout=0, isolation_level=None)
+    committed = False
+    try:
+        # an exclusive lock, held to the end: fails while another connection
+        # has the database open (WAL mode keeps a shared lock per connection)
+        con.execute("PRAGMA locking_mode=EXCLUSIVE")
+        try:
+            con.execute("BEGIN EXCLUSIVE")
+        except sqlite3.OperationalError as err:
+            raise SystemExit(
+                f"database in use ({err}); is the app running? Nothing written"
+            ) from err
+        try:
+            tables = con.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'Users'"
+            ).fetchall()
+            if not tables:
+                log(
+                    "the database has no Users table yet; the login is restored at the app's next start"
+                )
+                return
+            columns = {row[1] for row in con.execute("PRAGMA table_info(Users)")}
+            missing = sorted(set(LOGIN_COLUMNS.values()) - columns)
+            if missing:
+                raise SystemExit(f"Users has no column(s) {missing}; nothing written")
+            rows = login_rows(con)
+            if rows == [login]:
+                log("login matches its secret; nothing written")
+                return
+            if rows:
+                differ = sorted(
+                    {
+                        key
+                        for row in rows
+                        for key in LOGIN_COLUMNS
+                        if row[key] != login[key]
+                    }
+                )
+                raise SystemExit(
+                    f"the app has {len(rows)} login(s) differing from the secret "
+                    f"({', '.join(differ)}); left as is, nothing written"
+                )
+            con.execute(
+                f"INSERT INTO Users ({', '.join(LOGIN_COLUMNS.values())}) "
+                "VALUES (?, ?, ?, ?, ?)",
+                [login[key] for key in LOGIN_COLUMNS],
+            )
+            if login_rows(con) != [login]:
+                raise SystemExit("login not stored as read back; nothing written")
+            con.execute("COMMIT")
+            committed = True
+        finally:
+            if con.in_transaction:
+                con.execute("ROLLBACK")
+    finally:
+        try:
+            con.close()
+        except sqlite3.Error as err:
+            # closing checkpoints the -wal: past the COMMIT the login is stored
+            if committed:
+                raise SystemExit(
+                    f"login restored, but closing the database failed: {err}"
+                ) from err
+            raise
+    if committed:
+        log(f"login '{login['username']}' restored from its secret")
+
+
+def plan_login(plan, spec):
+    """Compare the app's login with its secret file; never written here.
+
+    Equal is a note; a differing one is a mismatch (the run fails, the live
+    login is kept); none at all is a problem, so nothing is written until the
+    app's next start has restored it (config/host can't even be saved without
+    a password then)."""
+    try:
+        login = read_login(spec["login"])
+    except (OSError, ValueError) as err:
+        plan.problems.append(
+            str(err) if isinstance(err, ValueError) else f"login secret: {err.strerror}"
+        )
+        return
+    plan.secret_values.update(login[key] for key in ("identifier", "password", "salt"))
+    if not spec.get("database"):
+        plan.problems.append("login: declared without the app's database")
+        return
+    uri = f"file:{urllib.parse.quote(spec['database'])}?mode=ro"
+    try:
+        con = sqlite3.connect(uri, uri=True, timeout=30)
+        try:
+            rows = login_rows(con)
+        finally:
+            con.close()
+    except sqlite3.Error as err:
+        log(f"cannot read the login from the database: {err}")
+        plan.unverifiable.append("login")
+        return
+    if not rows:
+        plan.problems.append(
+            "login: the app has none yet; it's restored from its secret before "
+            "the app's next start (restart it)"
+        )
+    elif len(rows) > 1:
+        plan.problems.append(f"login: the app has {len(rows)} logins, expected one")
+    else:
+        differ = [key for key in LOGIN_COLUMNS if rows[0][key] != login[key]]
+        if differ:
+            plan.mismatches.append(f"login ({', '.join(differ)})")
+        else:
+            plan.notes.append("login matches its secret")
 
 
 class Plan:
@@ -818,6 +1054,8 @@ def plan_custom_filters(api, plan, desired):
 
 def make_plan(api, spec, secrets):
     plan = Plan()
+    if spec.get("login"):
+        plan_login(plan, spec)
     try:
         if spec.get("rootFolders"):
             plan_root_folders(
@@ -864,7 +1102,7 @@ def report(name, plan):
     for item in plan.mismatches:
         log(f"{name}: {item} differs from its secret file; live value kept")
     for item in plan.unverifiable:
-        log(f"{name}: {item} is masked and the database can't confirm it; left as is")
+        log(f"{name}: {item} can't be checked against the database; left as is")
     for item in plan.held:
         log(f"{name}: HELD {item}")
     log(
@@ -944,8 +1182,25 @@ def with_tag_ids(api, write):
     return write
 
 
+def check_login_unchanged(api, write):
+    """Before a config/host PUT: the login it echoes must still be the live one.
+
+    The body carries the hash read while planning; had the password been
+    changed in the UI since, the app would take that old hash for a new
+    plaintext password (see CREDENTIAL_SETTINGS). Read again just before the
+    PUT, which leaves only the moment between this GET and the PUT."""
+    if not write["path"].startswith("/config/host/"):
+        return
+    live = api.get("/config/host")
+    if any(live.get(key) != write["body"].get(key) for key in ("username", "password")):
+        raise ApiError(
+            "PUT", write["path"], 409, "the login changed since planning; not written"
+        )
+
+
 def execute(api, write):
     write = with_tag_ids(api, write)
+    check_login_unchanged(api, write)
     if write["method"] != "POST":
         api.request(write["method"], write["path"], write["body"], write["query"])
         return
@@ -1092,6 +1347,13 @@ def main(argv):
         return 0
     if len(argv) >= 3 and argv[1] == "preview":
         return preview(load_spec(argv[2]), "--expect-no-changes" in argv[3:])
+    if len(argv) == 4 and argv[1] == "restore-login":
+        try:
+            restore_login(argv[2], argv[3])
+        except (OSError, ValueError, sqlite3.Error) as err:
+            # the message names the key or file, never a value
+            raise SystemExit(f"nothing written: {err}") from None
+        return 0
     raise SystemExit(__doc__.split("usage:")[1])
 
 

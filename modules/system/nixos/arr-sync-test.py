@@ -14,6 +14,7 @@ Retry-After, 5xx, a dropped connection after applying) can be injected.
 usage: arr-sync-test.py <dir holding arr_sync.py>
 """
 
+import base64
 import contextlib
 import copy
 import hashlib
@@ -28,6 +29,7 @@ import threading
 import unittest
 import unittest.mock
 import urllib.parse
+import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 sys.path.insert(0, sys.argv.pop(1))
@@ -42,6 +44,43 @@ PLEX_TOKEN = "synthetic-plex-token-1"
 API_KEY = "synthetic-api-key"
 PASSWORD_HASH = "synthetic-password-hash-base64="
 SECRETS = [BOT_TOKEN, OTHER_TOKEN, CHAT_ID, QBIT_PASSWORD, PLEX_TOKEN]
+# Radarr's and Sonarr's Users table, as their migrations leave it (from hoard's
+# databases, 2026-10-16)
+USERS_DDL = """
+CREATE TABLE "Users" ("Id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+  "Identifier" TEXT NOT NULL, "Username" TEXT NOT NULL, "Password" TEXT NOT NULL,
+  "Salt" TEXT, "Iterations" INTEGER);
+CREATE UNIQUE INDEX "IX_Users_Identifier" ON "Users" ("Identifier" ASC);
+CREATE UNIQUE INDEX "IX_Users_Username" ON "Users" ("Username" ASC);
+"""
+LOGIN_PASSWORD = "synthetic-login-password-1"
+
+
+def synthetic_login(password=LOGIN_PASSWORD, username="admin"):
+    """A login as Servarr's UserService stores it, for a synthetic password."""
+    salt = os.urandom(16)
+    digest = hashlib.pbkdf2_hmac("sha512", password.encode(), salt, 10000, 32)
+    return {
+        "identifier": str(uuid.uuid4()),
+        "username": username,
+        "password": base64.b64encode(digest).decode(),
+        "salt": base64.b64encode(salt).decode(),
+        "iterations": 10000,
+    }
+
+
+def verifies(row, password):
+    """Servarr's VerifyHashedPassword: whether a login accepts this password."""
+    digest = hashlib.pbkdf2_hmac(
+        "sha512",
+        password.encode(),
+        base64.b64decode(row["salt"]),
+        row["iterations"],
+        32,
+    )
+    return base64.b64encode(digest).decode() == row["password"]
+
+
 TABLES = {
     "downloadclient": "DownloadClients",
     "notification": "Notifications",
@@ -294,9 +333,21 @@ class FakeServarr:
             con.execute(
                 f"CREATE TABLE {table} (Id INTEGER PRIMARY KEY, Name TEXT, Settings TEXT)"
             )
+        con.executescript(USERS_DDL)
         con.commit()
         # the app keeps its connection open, which keeps the -wal/-shm files
         self.con = con
+
+    def set_login(self, login):
+        """The app's login: its Users row, and the hash config/host returns."""
+        self.con.execute("DELETE FROM Users")
+        self.con.execute(
+            "INSERT INTO Users (Identifier, Username, Password, Salt, Iterations) "
+            "VALUES (?, ?, ?, ?, ?)",
+            [login[key] for key in arr_sync.LOGIN_COLUMNS],
+        )
+        self.con.commit()
+        self.host.update(username=login["username"], password=login["password"])
 
     # -- state helpers -----------------------------------------------------
 
@@ -906,7 +957,7 @@ class ArrSyncTest(unittest.TestCase):
         spec = self.spec(database=None)
         rc, out = self.preview(spec)
         self.assertEqual(rc, 1)
-        self.assertIn("field botToken is masked and the database can't confirm it", out)
+        self.assertIn("field botToken can't be checked against the database", out)
         self.apply_fails(spec)
         self.assertEqual(self.fake.writes(), [])
 
@@ -915,7 +966,7 @@ class ArrSyncTest(unittest.TestCase):
         spec = self.spec(database=os.path.join(self.dir, "missing.db"))
         rc, out = self.preview(spec)
         self.assertEqual(rc, 1)
-        self.assertIn("can't confirm it", out)
+        self.assertIn("can't be checked against the database", out)
 
     def test_blank_clears_a_masked_value(self):
         self.adopted()
@@ -1279,7 +1330,6 @@ class ArrSyncTest(unittest.TestCase):
         )
         spec["settings"]["config/host"] = {
             "bindAddress": "*",
-            "username": "admin",
             "logLevel": "debug",
             "instanceName": "Radarr",
             "proxyPassword": "",
@@ -1606,7 +1656,12 @@ class ArrSyncTest(unittest.TestCase):
         self.assertEqual(self.fake.host["apiKey"], API_KEY)
 
     def test_host_credentials_cant_be_declared(self):
-        for key, value in (("apiKey", "x"), ("password", "x"), ("proxyPassword", "x")):
+        for key, value in (
+            ("apiKey", "x"),
+            ("username", "admin"),
+            ("password", "x"),
+            ("proxyPassword", "x"),
+        ):
             spec = self.full_spec()
             spec["settings"]["config/host"][key] = value
             out, _ = self.apply_fails(spec)
@@ -1625,7 +1680,7 @@ class ArrSyncTest(unittest.TestCase):
         backup = json.loads(text)
         self.assertEqual(backup["/config/host"]["apiKey"], "<redacted>")
         self.assertEqual(backup["/config/naming"]["renameMovies"], False)
-        self.assertEqual(backup["/config/host"]["username"], "admin")
+        self.assertEqual(backup["/config/host"]["username"], "<redacted>")
 
     def test_backup_redacts_a_live_secret_differing_from_sops(self):
         self.adopted_full()
@@ -1659,6 +1714,356 @@ class ArrSyncTest(unittest.TestCase):
         rc, _ = self.preview(expect_no_changes=True)
         self.assertEqual(rc, 1)
         self.assertEqual(self.fake.writes(), [])
+
+    # -- the login ---------------------------------------------------------
+
+    def login_spec(self, login):
+        path = os.path.join(self.dir, "login")
+        with open(path, "w") as handle:
+            json.dump(login, handle)
+        return self.full_spec(login=path)
+
+    def assertNoLogin(self, text, *logins):
+        for login in logins:
+            for key in ("identifier", "password", "salt"):
+                self.assertNotIn(login[key], text)
+
+    def test_login_equal_to_its_secret_writes_nothing(self):
+        self.adopted_full()
+        login = synthetic_login()
+        self.fake.set_login(login)
+        rc, out = self.preview(self.login_spec(login))
+        self.assertEqual(rc, 0, out)
+        self.assertIn("login matches its secret", out)
+        self.assertIn("0 write(s), 0 problem(s), 0 mismatch(es)", out)
+        self.assertNoLogin(out, login)
+        self.apply(self.login_spec(login))
+        self.assertEqual(self.fake.writes(), [])
+
+    def test_differing_login_is_kept_and_its_hash_never_sent(self):
+        # the double-hash regression: a host write echoes the live hash, never
+        # the secret's, which the app would hash again as a plaintext password
+        self.adopted_full()
+        live, other = synthetic_login(), synthetic_login("synthetic-other-password")
+        self.fake.set_login(live)
+        self.fake.host["logLevel"] = "info"
+        out, err = self.apply_fails(self.login_spec(other))
+        self.assertIn(
+            "login (identifier, password, salt) differs from its secret file", out
+        )
+        self.assertIn("secrets differ", err)
+        self.assertEqual([r[1] for r in self.fake.writes()], ["/config/host/1"])
+        self.assertEqual(self.fake.host["password"], live["password"])
+        (row,) = arr_sync.login_rows(self.fake.con)
+        self.assertEqual(row, live)
+        self.assertNoLogin(out + err, live, other)
+
+    def test_login_changed_after_planning_is_not_sent_back(self):
+        # a password changed in the UI between planning and the host write:
+        # echoing the planned hash would make it the new plaintext password
+        self.adopted_full()
+        login = synthetic_login()
+        self.fake.set_login(login)
+        self.fake.host["logLevel"] = "info"
+        changed = synthetic_login("synthetic-new-ui-password")
+        real = arr_sync.with_tag_ids
+
+        def ui_change(api, write):
+            self.fake.host["password"] = changed["password"]
+            return real(api, write)
+
+        with unittest.mock.patch.object(arr_sync, "with_tag_ids", ui_change):
+            _, err = self.apply_fails(self.login_spec(login))
+        self.assertIn("the login changed since planning", err)
+        self.assertEqual(self.fake.writes(), [])
+        self.assertEqual(self.fake.host["password"], changed["password"])
+        self.assertNoLogin(err, login, changed)
+
+    def test_unreadable_database_leaves_the_login_unverifiable(self):
+        self.adopted_full()
+        login = synthetic_login()
+        self.fake.set_login(login)
+        broken = os.path.join(self.dir, "broken.db")
+        with open(broken, "w") as handle:
+            handle.write("not a database\n" * 100)
+        spec = self.login_spec(login)
+        rc, out = self.preview(dict(spec, database=broken))
+        self.assertEqual(rc, 1)
+        self.assertIn("cannot read the login from the database", out)
+        self.assertIn("radarr: login can't be checked against the database", out)
+
+    def test_app_without_a_login_gets_no_writes(self):
+        self.adopted_full()
+        self.fake.host.update(username="", password="")
+        self.fake.settings["config/naming"]["renameMovies"] = False
+        out, err = self.apply_fails(self.login_spec(synthetic_login()))
+        self.assertIn("login: the app has none yet", out)
+        self.assertIn("nothing written", err)
+        self.assertEqual(self.fake.writes(), [])
+
+    def test_bad_login_secret_is_a_problem(self):
+        self.adopted_full()
+        login = synthetic_login()
+        self.fake.set_login(login)
+        out, _ = self.apply_fails(self.login_spec(dict(login, password=LOGIN_PASSWORD)))
+        self.assertIn("'password' is not 32 bytes of base64", out)
+        self.assertNotIn(LOGIN_PASSWORD, out)
+        self.assertEqual(self.fake.writes(), [])
+
+    def test_backup_redacts_the_login(self):
+        self.adopted_full()
+        login = synthetic_login()
+        self.fake.set_login(login)
+        self.fake.settings["config/naming"]["renameMovies"] = False
+        self.apply(self.login_spec(login))
+        (name,) = os.listdir(self.backups)
+        with open(os.path.join(self.backups, name)) as handle:
+            text = handle.read()
+        self.assertNoLogin(text, login)
+        self.assertEqual(json.loads(text)["/config/host"]["username"], "<redacted>")
+
+
+class RestoreLoginTest(unittest.TestCase):
+    """restore_login against a database shaped like the app's (WAL, real Users)."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.db = os.path.join(self.tmp.name, "radarr.db")
+        con = sqlite3.connect(self.db)
+        con.execute("PRAGMA journal_mode=WAL")
+        con.executescript(USERS_DDL)
+        # stands for the library and history, which must stay untouched
+        con.execute("CREATE TABLE History (Id INTEGER PRIMARY KEY, Data TEXT)")
+        con.executemany(
+            "INSERT INTO History (Data) VALUES (?)",
+            [(f"event {n}",) for n in range(50)],
+        )
+        con.commit()
+        con.close()
+        self.login = synthetic_login()
+        self.secret = self.write_secret(self.login)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def write_secret(self, value, name="login"):
+        path = os.path.join(self.tmp.name, name)
+        with open(path, "w") as handle:
+            handle.write(value if isinstance(value, str) else json.dumps(value))
+        return path
+
+    def restore(self, secret=None):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            arr_sync.restore_login(self.db, secret or self.secret)
+        self.assertNoLogin(out.getvalue())
+        return out.getvalue()
+
+    def restore_fails(self, secret=None):
+        out = io.StringIO()
+        with (
+            contextlib.redirect_stdout(out),
+            self.assertRaises((SystemExit, ValueError)) as caught,
+        ):
+            arr_sync.restore_login(self.db, secret or self.secret)
+        self.assertNoLogin(out.getvalue() + str(caught.exception))
+        return str(caught.exception)
+
+    def assertNoLogin(self, text):
+        for key in ("identifier", "password", "salt"):
+            self.assertNotIn(self.login[key], text)
+        self.assertNotIn(LOGIN_PASSWORD, text)
+
+    def rows(self):
+        con = sqlite3.connect(self.db)
+        try:
+            return arr_sync.login_rows(con)
+        finally:
+            con.close()
+
+    def history(self):
+        con = sqlite3.connect(self.db)
+        try:
+            return con.execute("SELECT * FROM History ORDER BY Id").fetchall()
+        finally:
+            con.close()
+
+    def insert(self, login):
+        con = sqlite3.connect(self.db)
+        con.execute(
+            "INSERT INTO Users (Identifier, Username, Password, Salt, Iterations) "
+            "VALUES (?, ?, ?, ?, ?)",
+            [login[key] for key in arr_sync.LOGIN_COLUMNS],
+        )
+        con.commit()
+        con.close()
+
+    def test_fresh_install_gets_the_login_and_only_that(self):
+        history = self.history()
+        out = self.restore()
+        self.assertIn("login 'admin' restored", out)
+        (row,) = self.rows()
+        self.assertEqual(row, self.login)
+        # the app's check: the original password logs in, nothing else does
+        self.assertTrue(verifies(row, LOGIN_PASSWORD))
+        self.assertFalse(verifies(row, "synthetic-wrong-password"))
+        self.assertFalse(verifies(row, self.login["password"]))
+        self.assertEqual(self.history(), history)
+        con = sqlite3.connect(self.db)
+        self.assertEqual(con.execute("PRAGMA integrity_check").fetchone(), ("ok",))
+        self.assertEqual(con.execute("PRAGMA journal_mode").fetchone(), ("wal",))
+        con.close()
+
+    def test_second_run_changes_nothing(self):
+        self.restore()
+        before = file_digest(self.db)
+        out = self.restore()
+        self.assertIn("login matches its secret; nothing written", out)
+        self.assertEqual(file_digest(self.db), before)
+
+    def test_wal_left_by_the_app_is_not_checkpointed(self):
+        # an app stopped without checkpointing leaves its -wal (Sonarr does):
+        # a run with nothing to write must leave every file as it is
+        self.restore()
+        app = sqlite3.connect(self.db)
+        app.execute("PRAGMA wal_autocheckpoint=0")
+        app.execute("INSERT INTO History (Data) VALUES ('after the restore')")
+        app.commit()
+        stopped = os.path.join(self.tmp.name, "stopped")
+        os.mkdir(stopped)
+        for suffix in ("", "-wal", "-shm"):
+            with (
+                open(self.db + suffix, "rb") as src,
+                open(os.path.join(stopped, "radarr.db" + suffix), "wb") as dst,
+            ):
+                dst.write(src.read())
+        app.close()
+        self.db = os.path.join(stopped, "radarr.db")
+        self.assertGreater(os.path.getsize(self.db + "-wal"), 0)
+        before = file_digest(self.db)
+        self.assertIn("nothing written", self.restore())
+        self.assertEqual(file_digest(self.db), before)
+        other = self.write_secret(synthetic_login("synthetic-other-password"), "other")
+        self.assertIn("left as is", self.restore_fails(other))
+        self.assertEqual(file_digest(self.db), before)
+
+    def test_differing_login_is_never_overwritten(self):
+        other = synthetic_login("synthetic-other-password")
+        self.insert(other)
+        before = file_digest(self.db)
+        err = self.restore_fails()
+        self.assertIn("differing from the secret (identifier, password, salt)", err)
+        self.assertEqual(self.rows(), [other])
+        self.assertEqual(file_digest(self.db), before)
+        for key in ("identifier", "password", "salt"):
+            self.assertNotIn(other[key], err)
+
+    def test_restore_beside_a_wal_left_by_the_app(self):
+        # the app stopped with frames still in its -wal: they survive the insert
+        app = sqlite3.connect(self.db)
+        app.execute("PRAGMA wal_autocheckpoint=0")
+        app.execute("INSERT INTO History (Data) VALUES ('in the wal')")
+        app.commit()
+        stopped = os.path.join(self.tmp.name, "stopped")
+        os.mkdir(stopped)
+        for suffix in ("", "-wal", "-shm"):
+            with (
+                open(self.db + suffix, "rb") as src,
+                open(os.path.join(stopped, "radarr.db" + suffix), "wb") as dst,
+            ):
+                dst.write(src.read())
+        history = self.history()
+        app.close()
+        self.db = os.path.join(stopped, "radarr.db")
+        self.assertIn("restored", self.restore())
+        self.assertEqual(self.rows(), [self.login])
+        self.assertEqual(self.history(), history)
+        self.assertEqual(history[-1][1], "in the wal")
+        con = sqlite3.connect(self.db)
+        self.assertEqual(con.execute("PRAGMA integrity_check").fetchone(), ("ok",))
+        con.close()
+
+    def test_users_without_salt_columns_is_refused(self):
+        con = sqlite3.connect(self.db)
+        con.executescript(
+            'DROP TABLE Users; CREATE TABLE "Users" ("Id" INTEGER NOT NULL PRIMARY KEY '
+            'AUTOINCREMENT, "Identifier" TEXT NOT NULL, "Username" TEXT NOT NULL, '
+            '"Password" TEXT NOT NULL);'
+        )
+        con.close()
+        err = self.restore_fails()
+        self.assertIn("Users has no column(s) ['Iterations', 'Salt']", err)
+
+    def test_command_line(self):
+        self.assertEqual(
+            arr_sync.main(["arr-sync", "restore-login", self.db, self.secret]), 0
+        )
+        self.assertEqual(self.rows(), [self.login])
+        bad = self.write_secret(dict(self.login, iterations=0), "bad")
+        with self.assertRaises(SystemExit) as caught:
+            arr_sync.main(["arr-sync", "restore-login", self.db, bad])
+        self.assertIn(
+            "nothing written: login secret: 'iterations'", str(caught.exception)
+        )
+
+    def test_other_user_name_is_a_conflict(self):
+        self.insert(dict(self.login, username="someone"))
+        err = self.restore_fails()
+        self.assertIn("(username)", err)
+
+    def test_legacy_unsalted_login_is_a_conflict(self):
+        self.insert(dict(self.login, salt=None, iterations=None))
+        err = self.restore_fails()
+        self.assertIn("(iterations, salt)", err)
+
+    def test_open_database_is_refused(self):
+        # the running app: a WAL connection that has read the database
+        app = sqlite3.connect(self.db)
+        app.execute("SELECT COUNT(*) FROM Users").fetchone()
+        try:
+            err = self.restore_fails()
+        finally:
+            app.close()
+        self.assertIn("database in use", err)
+        self.assertEqual(self.rows(), [])
+
+    def test_no_database_yet_creates_nothing(self):
+        os.remove(self.db)
+        out = self.restore()
+        self.assertIn("no database yet", out)
+        self.assertFalse(os.path.exists(self.db))
+
+    def test_no_users_table_yet_writes_nothing(self):
+        con = sqlite3.connect(self.db)
+        con.execute("DROP TABLE Users")
+        con.commit()
+        con.close()
+        before = file_digest(self.db)
+        out = self.restore()
+        self.assertIn("no Users table yet", out)
+        self.assertEqual(file_digest(self.db), before)
+
+    def test_invalid_secret_is_refused_before_the_database(self):
+        cases = {
+            "plaintext password": dict(self.login, password=LOGIN_PASSWORD),
+            "short salt": dict(self.login, salt=base64.b64encode(b"x" * 8).decode()),
+            "uppercase name": dict(self.login, username="Admin"),
+            "extra key": dict(self.login, plain=LOGIN_PASSWORD),
+            "missing key": {k: v for k, v in self.login.items() if k != "salt"},
+            "boolean iterations": dict(self.login, iterations=True),
+            "uppercase guid": dict(
+                self.login, identifier=self.login["identifier"].upper()
+            ),
+        }
+        before = file_digest(self.db)
+        for case, value in cases.items():
+            with self.subTest(case):
+                err = self.restore_fails(self.write_secret(value, "bad"))
+                self.assertIn("login secret", err)
+        err = self.restore_fails(self.write_secret("not json", "bad"))
+        self.assertIn("not a JSON object", err)
+        self.assertEqual(file_digest(self.db), before)
+        self.assertEqual(self.rows(), [])
 
 
 def set_field(resource, name, value):

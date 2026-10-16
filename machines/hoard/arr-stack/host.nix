@@ -8,9 +8,10 @@
 #     updateAutomatically, and authenticationMethod whenever ./auth.nix
 #     delegates auth to the gateway;
 #   - the rest is declared below.
-# Not declarable: the API key and the login's password (GET returns its salted
-# hash; arr-sync never rotates a credential, see CREDENTIAL_SETTINGS in
-# arr-sync.py), and trustCgnatIpAddresses, which config/host doesn't map: GET
+# Not declared here: the API key (./auth.nix) and the login, user name and
+# password, which config/host can't take as a hash (see CREDENTIAL_SETTINGS in
+# arr-sync.py); ./sync.nix restores the login whole from SOPS instead. Nor
+# trustCgnatIpAddresses, which config/host doesn't map: GET
 # always answers false whatever is stored, so it can't be compared. It's unset
 # (false) in both config.xml files. Any config/host save, here or in the UI,
 # sends that false back: set it through the environment
@@ -97,7 +98,6 @@ let
         # ./auth.nix switches the method to External behind the gateway's SSO
         authenticationMethod = "forms";
         authenticationRequired = "enabled";
-        username = "admin";
         logLevel = "debug";
         consoleLogLevel = "";
         # MB per log file
