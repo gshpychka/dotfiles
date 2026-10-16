@@ -97,9 +97,11 @@ let
     };
   };
 
-  # The gateway takes the agent of a /v1/responses request from its session
-  # key's `agent:<id>:` prefix alone (src/gateway/http-utils.ts, agents/command/prepare.ts
-  # at e178c39e), so these keys are what make consults run as the voice agent.
+  # The agent a /v1/responses request runs as, with that agent's tools, is its
+  # session key's `agent:<id>:` prefix (gateway/openai-compatible-agent-run.ts at
+  # e178c39e), so these keys are what make consults run as the voice agent. The
+  # broker also names the agent (x-openclaw-agent-id): with two explicit agents
+  # the gateway refuses a request that names none (gateway/http-utils.ts).
   voiceSessionKey = "agent:${cfg.agent.id}:main";
   observerSessionKey = "agent:${cfg.agent.id}:observer";
   # The agent of my.openclaw.mainSessionKey, agent:main:main.
@@ -113,20 +115,36 @@ let
   # included, stays out until named here. Home Assistant's own tools never
   # are, apart from read-only ones added per host: Home Assistant alone acts
   # on the home, hearing the speech itself (packages/voice-broker/src/voice_broker/assist.py).
+  # Each only reads: web_fetch is GET-only and its SSRF guard refuses private and
+  # loopback addresses, Home Assistant's included (tools/web-fetch.ts, infra/net/ssrf.ts).
+  # The policy was checked with the gateway's own compiled matcher on the evaluated
+  # config (workspace tmp/parallel-ha-audit-20261017/policy-check.mjs).
   agentAllow = [
     "web_search"
     "web_fetch"
     "memory_search"
     "memory_get"
-    "session_status"
   ]
   ++ cfg.agent.allow;
   # Denied as well, against an allowlist entry that would match them: deny
   # always wins (src/agents/tool-policy-match.ts). Each is a way to act beyond
   # a spoken answer, or to reach the credentials in the gateway's environment:
   # commands and code, the gateway and its plugins and config, other agents
-  # and sessions, files, devices and the host's NixOS control.
+  # and sessions, files, devices and the host's NixOS control. session_status
+  # among them: it takes another session's key and sets that session's model,
+  # main's Telegram session included (agents/tools/session-status-tool.ts).
+  # Plugins' mutating tools are named too, but never `group:plugins`: that
+  # would take memory_* and every MCP tool, GetLiveContext included.
   agentDeny = [
+    "session_status"
+    "automations"
+    "file_write"
+    "codex_session_send"
+    "codex_session_interrupt"
+    "github_publish"
+    "skill_workshop"
+    "wiki_apply"
+    "workboard_*"
     "exec"
     "process"
     "code_execution"
