@@ -85,3 +85,38 @@ live-conversations; developers.home-assistant.io/docs/voice/pipelines/;
 docs.openclaw.ai/gateway/openresponses-http-api; Gateway protocol chat.inject
 schema/handler. Existing official APIs and installed HTTP/WebSocket libraries
 were adequate; no routing framework or new service was needed.
+
+## Final compatibility and safe owner checks
+
+The installed optional advisory hooks are now preserved narrowly (common source
+commit 0897f09), with sidecar injection default OFF. The installed speaker_id.py
+is copied byte-for-byte, no new identity/voice/enrollment work. Advisory remains
+untrusted, nonauthoritative OpenClaw metadata, not classifier/HA input. Audio goes
+to Live before the optional queue-only tap; failures detach the sidecar and
+cleanup errors cannot interrupt device close. No service or drop-in was changed.
+
+Package-only baseline comparison (sole checkout; stop if initial status is not
+empty; never reset/stash someone else's work):
+
+```sh
+cd /var/lib/openclaw/workspace/dotfiles
+git status --short
+# Continue only if empty.
+git switch test/voice-ha-naive
+nix build .#nixosConfigurations.hoard.pkgs.voice-broker --out-link /tmp/voice-ha-owner-naive
+git switch main
+git status --short --branch
+```
+
+The naive package has no replay CLI. For a free 28-case naive replay and the full
+classifier/shadow/Decisions comparison handoff, use the commands in
+https://github.com/gshpychka/realm/blob/test/voice-ha-classifier/packages/voice-broker/ROUTING.md
+Default replay measures naive even on classifier branches; no provider calls
+without explicit --config plus --allow-api. Do not repeat the paid benchmark.
+
+Final independent source QA: /var/lib/openclaw/workspace/tmp/voice-ha-final-qa-20261016.md.
+Full hoard system evidence predates compatibility; final verification uses package
+build/tests only. Previous all-systems flake evaluation exited137, not a pass.
+Keep the live zz-preserve-live-no-probe-082912a.conf override unchanged until a
+separately authorized test activation; preserve its original package/config pair
+for rollback. No Gateway restart or full-system activation is needed for checks.
