@@ -1,7 +1,9 @@
 # link-sanitizer
 
-Telegram bot that replies to messages whose links carry tracking parameters
-(`utm_*`, `fbclid`, `si`, …) with the cleaned links. An
+Telegram bot that replies to messages whose links carry tracking parameters or
+tracking redirects with the cleaned links. The rules come from
+[url-sanitize](https://github.com/antonio-orionus/url-sanitize)'s merged
+ClearURLs, AdGuard, Brave and Firefox catalog. An
 [Alchemy](https://alchemy.run) stack on AWS: Telegram posts updates to the
 `Receiver` Lambda's function URL, which queues each reply on SQS for the
 `Sender` Lambda to deliver through the Bot API.

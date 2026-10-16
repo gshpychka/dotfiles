@@ -1,25 +1,10 @@
+import { sanitize } from "@url-sanitize/merged";
 import type { MessageEntity } from "./telegram.ts";
 
-/** Query parameters that only carry tracking data. */
-export const trackingParameters: ReadonlySet<string> = new Set([
-  "utm_source",
-  "utm_medium",
-  "utm_campaign",
-  "utm_name",
-  "utm_term",
-  "utm_content",
-  "gclid",
-  "fbclid",
-  "igshid",
-  "mc_eid",
-  "mc_cid",
-  "_hsenc",
-  "_hsmi",
-  "hsCtaTracking",
-  "si",
-]);
-
 const schemePattern = /^[a-z][a-z\d+.-]*:\/\//i;
+
+// a redirect's target can carry tracking of its own or wrap another redirect
+const maxPasses = 4;
 
 /** The links Telegram marked in a message's text. */
 export const extractUrls = (text: string, entities: readonly MessageEntity[]): string[] =>
@@ -27,28 +12,27 @@ export const extractUrls = (text: string, entities: readonly MessageEntity[]): s
     .filter((entity) => entity.type === "url")
     .map((entity) => text.slice(entity.offset, entity.offset + entity.length));
 
-/** `link` without its tracking parameters, or undefined when it has none. */
-export const stripTracking = (link: string): string | undefined => {
-  // Telegram also marks links without a scheme (example.com/page); they parse
-  // against https and keep their schemeless form
-  const schemeless = !schemePattern.test(link);
-  const url = URL.parse(schemeless ? `https://${link}` : link);
-  if (url === null) return undefined;
-
-  // raw pairs keep the remaining parameters byte for byte; URLSearchParams
-  // would re-encode them
-  const pairs = url.search.slice(1).split("&");
-  const kept = pairs.filter((pair) => {
-    const [name] = new URLSearchParams(pair).keys();
-    return name === undefined || !trackingParameters.has(name);
-  });
-  if (kept.length === pairs.length) return undefined;
-
-  url.search = kept.join("&");
-  return schemeless ? url.href.slice("https://".length) : url.href;
+const sanitizeFully = (url: string, passes = maxPasses): string => {
+  const result = sanitize(url);
+  switch (result.kind) {
+    case "cleaned":
+    case "redirected":
+      return passes > 1 ? sanitizeFully(result.url, passes - 1) : result.url;
+    case "unchanged":
+    case "blocked":
+      return url;
+  }
 };
 
-/** The message's links that carry tracking parameters, stripped of them. */
+/** `link` without tracking parameters and redirect wrappers, or undefined when it has neither. */
+export const stripTracking = (link: string): string | undefined => {
+  // Telegram also marks links without a scheme (example.com/page)
+  const url = schemePattern.test(link) ? link : `https://${link}`;
+  const cleaned = sanitizeFully(url);
+  return cleaned === url ? undefined : cleaned;
+};
+
+/** The message's links that carry tracking, cleaned of it. */
 export const cleanLinks = (text: string, entities: readonly MessageEntity[]): string[] =>
   extractUrls(text, entities).flatMap((link) => stripTracking(link) ?? []);
 

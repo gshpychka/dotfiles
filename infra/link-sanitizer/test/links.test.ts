@@ -41,9 +41,18 @@ describe("stripTracking", () => {
     );
   });
 
+  it("removes a site's own tracking parameters", () => {
+    expect(stripTracking("https://www.youtube.com/watch?v=abc&si=xyz&pp=123")).toBe(
+      "https://www.youtube.com/watch?v=abc",
+    );
+    expect(stripTracking("https://x.com/user/status/1?s=20&t=abc")).toBe(
+      "https://x.com/user/status/1",
+    );
+  });
+
   it("keeps the encoding of the remaining parameters", () => {
-    expect(stripTracking("https://example.com/search?q=a%2Cb+c&si=abc")).toBe(
-      "https://example.com/search?q=a%2Cb+c",
+    expect(stripTracking("https://example.com/search?q=a,b%20c&utm_source=x")).toBe(
+      "https://example.com/search?q=a,b%20c",
     );
   });
 
@@ -53,8 +62,14 @@ describe("stripTracking", () => {
     );
   });
 
-  it("keeps links without a scheme schemeless", () => {
-    expect(stripTracking("example.com/page?fbclid=abc")).toBe("example.com/page");
+  it("unwraps redirects and cleans their targets", () => {
+    expect(
+      stripTracking("https://www.google.com/url?q=https://example.com/page%3Futm_source%3Dx&sa=D"),
+    ).toBe("https://example.com/page");
+  });
+
+  it("cleans links without a scheme", () => {
+    expect(stripTracking("example.com/page?fbclid=abc")).toBe("https://example.com/page");
   });
 
   it("returns undefined without tracking parameters", () => {
