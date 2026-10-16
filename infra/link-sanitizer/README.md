@@ -27,3 +27,8 @@ while the bot's webhook stays on `prod`.
 
 `bun install` regenerates `bun.nix`, the Nix form of `bun.lock` that the flake
 check installs from.
+
+`patches/` carries
+[alchemy-run/distilled#650](https://github.com/alchemy-run/distilled/pull/650),
+which resolves SSO sessions from `AWS_CONFIG_FILE`, where the infra shell keeps
+the AWS profiles.

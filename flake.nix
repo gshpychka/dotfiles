@@ -291,7 +291,15 @@
               link-sanitizer = pkgs.stdenvNoCC.mkDerivation {
                 name = "check-link-sanitizer";
                 src = "${self}/infra/link-sanitizer";
-                bunDeps = bun2nix.fetchBunDeps { bunNix = ./infra/link-sanitizer/bun.nix; };
+                bunDeps = bun2nix.fetchBunDeps {
+                  bunNix = ./infra/link-sanitizer/bun.nix;
+                  # the hook drops patchedDependencies before bun install, so the cache carries the patches
+                  overrides = bun2nix.patchedDependenciesToOverrides {
+                    patchedDependencies = lib.mapAttrs (
+                      _: patch: ./infra/link-sanitizer + "/${patch}"
+                    ) (lib.importJSON ./infra/link-sanitizer/package.json).patchedDependencies;
+                  };
+                };
                 nativeBuildInputs = [ bun2nix.hook ];
                 buildPhase = "bun run check";
                 installPhase = "touch $out";
