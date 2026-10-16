@@ -126,11 +126,11 @@ local intents; Ukrainian may need the existing Remote LLM. No pipeline settings
 were changed and backend results remain final-text delivery, not incremental
 intent-progress speech.
 
-Deployment caveat: effective live package z76j1mi33p6abl2qwlmwaj0si47220n6 has
-conversation.py/live.py speaker-advisory changes absent from canonical main.
-It remains pinned by zz-preserve-live-no-probe-082912a.conf and was NOT replaced.
-Parent must explicitly reconcile that baseline before a final test activation;
-do not treat a runtime override as canonical source or silently remove it.
+Installed baseline: effective live package z76j1mi33p6abl2qwlmwaj0si47220n6 remains
+pinned by zz-preserve-live-no-probe-082912a.conf and was NOT replaced. The narrow
+optional advisory compatibility merge described below preserves its hooks in
+the routing candidate; no sidecar is enabled. Live activation is a separate
+operator step, not part of package testing.
 
 ## Copy/paste: non-activating owner checks
 
@@ -172,11 +172,12 @@ After any failed build/replay, return to main manually (do not reset/clean).
 
 ## Exact non-activating deployment handoff (2026-10-16)
 
-Validated code revision before this documentation-only update:
-73022c76abfa0693386dd66b3eb9700e9e81d865 (classifier branch).
+Historical pre-compatibility code revision:
+73022c76abfa0693386dd66b3eb9700e9e81d865. Its system closure below is historical
+evidence ONLY, not the final advisory-compatible activation candidate.
 
-- Built system: /nix/store/x4phpy2dplpqhvylj16b44lzfqm041jd-nixos-system-hoard-26.11.20261011.7fd4004
-- Broker: /nix/store/hk704xw7qlpy1b415abn08xda2hn8bag-voice-broker-0.1.0
+- Historical built system: /nix/store/x4phpy2dplpqhvylj16b44lzfqm041jd-nixos-system-hoard-26.11.20261011.7fd4004
+- Historical broker: /nix/store/hk704xw7qlpy1b415abn08xda2hn8bag-voice-broker-0.1.0
 - Config: /nix/store/wzm2fvxajn5bf8bgxmc781y2pr0azc3k-voice-broker.json
 - Candidate service user: voice-broker; existing systemd credentials remain
   openai-api-key, device-token, home-assistant-token, openclaw-secret and identity.
@@ -205,10 +206,18 @@ The installed optional hooks are nevertheless real compatibility surface:
 Conversation accepts speaker_id, rejects simultaneous recording, closes it on
 exit, exposes a failure-tolerant snapshot, and feeds cleaned PCM **after** Live
 streaming without awaiting inference. Live's legacy task builder appends an
-advisory explicitly forbidden for authorization. The routing candidate does not
-contain these hooks or speaker_id.py. Its routed request also cannot be assumed
-to preserve that optional task-note behavior. Do not claim byte/source parity
-or silently discard these hooks merely because production startup leaves them off.
+advisory explicitly forbidden for authorization. The routing candidate now preserves
+these hooks via narrow edits, not whole-file replacement. speaker_id.py is an
+exact copy of the installed module (SHA256
+c66374d84bda2656f98f77335c0697585f571a1df046df4ada93ad0a3aaec858). No new
+identification, enrollment, configuration or dependencies were added. Cleanup
+also isolates close failures and disables a failed tap before closing it.
+
+Legacy consults retain the installed advisory wording. Routed OpenClaw receives
+the note in a separate JSON speaker_advisory field, explicitly untrusted and
+never identity proof/authorization. Latest user text/history stay unchanged.
+Classifier payloads and HA intent input omit this metadata entirely. It cannot
+select a route or authorize a device action. No advisory appears by default.
 
 Effective live override remains:
 /run/systemd/system/voice-broker.service.d/zz-preserve-live-no-probe-082912a.conf
@@ -218,13 +227,34 @@ A normal package build never changes it; a system build/activation alone must
 not be assumed to replace that effective ExecStart. Preserve this file and the
 old package/config as rollback evidence. This lane has not edited either.
 
-**Ready now:** package/offline owner comparison using the commands above.
-**Live activation blocker:** no advisory-compatible merged candidate has been
-built/tested. Before any future live test, the deployment owner must preserve the
-existing optional hook behavior in a reviewed merge with routing (including the
-routed OpenClaw context boundary), validate it, and explicitly reconcile only the
-voice-broker override while retaining rollback. Do not copy either entire source
-file over the other: that loses routing or advisory behavior. Do not restart the
-Gateway, remove the override, activate the listed closure or run voice-broker
-manually as part of this handoff. No recording, playback, HA actuator action,
-new enrollment, provider call or service/config change is needed for offline checks.
+**Ready now:** package/offline comparison and an advisory-compatible candidate
+for separately authorized owner voice testing. Compatibility is no longer an
+implementation blocker; the sidecar remains OFF and the live service unchanged.
+
+Before any later authorized activation, preserve the effective override and
+old broker/config verbatim for rollback. Explicitly reconcile only voice-broker's
+ExecStart against the final package/config below; do not assume NixOS activation
+will supersede the /run override. Do not copy whole conversation/live files over
+each other, blindly remove the drop-in, or restart the Gateway. This document
+performs no activation and supplies no automatic deploy command.
+
+The prior hoard system build is scoped to the pre-compatibility code. Final
+compatibility verification is package build/tests only; no heavy full-system or
+full-flake rebuild was rerun. No provider benchmark was repeated.
+
+### Final advisory-compatible package evidence
+
+- Source: classifier code revision 5ec47f9 (common preservation commit 0897f09).
+- Package: /nix/store/pjf8mhpi2z3kvys02hf0zn6727398l42-voice-broker-0.1.0
+- Entry point: /nix/store/pjf8mhpi2z3kvys02hf0zn6727398l42-voice-broker-0.1.0/bin/voice-broker
+- Existing classifier config (unchanged): /nix/store/wzm2fvxajn5bf8bgxmc781y2pr0azc3k-voice-broker.json
+- Test log: /tmp/voice-ha-advisory-classifier-final-build.log:212,
+  **126 passed in 7.23s**, including seven focused compatibility regressions and
+  classifier metadata-exclusion regression in the existing factory test.
+- Installed final package offline replay: 28 cases, 16/28 naive policy labels,
+  two inappropriate HA routes; no backend/API calls. Not a new model benchmark.
+
+Rollback must restore the original effective ExecStart pair, not the historical
+system closure above: old broker z76j1mi33p6abl2qwlmwaj0si47220n6 and old config
+2psfk1gha2zrgykyw8qclgjzzr0fzhky, preserving all other service settings/credentials.
+The final compatible package is built, **not activated**.
