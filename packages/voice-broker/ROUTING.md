@@ -131,3 +131,100 @@ conversation.py/live.py speaker-advisory changes absent from canonical main.
 It remains pinned by zz-preserve-live-no-probe-082912a.conf and was NOT replaced.
 Parent must explicitly reconcile that baseline before a final test activation;
 do not treat a runtime override as canonical source or silently remove it.
+
+## Copy/paste: non-activating owner checks
+
+Use the sole checkout. Stop if it has uncommitted work; do not stash/reset someone
+else's work. These commands build only the package, never switch NixOS or restart
+a service. Repeat with shadow or decisions in place of classifier to inspect those
+configurations; decisions remains account-blocked. No API calls are made here.
+
+```sh
+cd /var/lib/openclaw/workspace/dotfiles
+git status --short
+# Continue only if status is empty.
+git switch test/voice-ha-classifier
+nix build .#nixosConfigurations.hoard.pkgs.voice-broker --out-link /tmp/voice-ha-owner-package
+/tmp/voice-ha-owner-package/bin/voice-broker-replay --limit 28
+git switch main
+git status --short --branch
+```
+
+The commands above are shell commands (run in
+/var/lib/openclaw/workspace/dotfiles). Run the initial status there and proceed
+only if empty. Branch switch does not select the replay router: **without config,
+replay ALWAYS measures the offline naive baseline**, including on classifier,
+shadow and decisions branches. It is a CLI/dataset smoke test, not a fresh model
+accuracy comparison. See benchmark-results.json for the existing paid comparison.
+Do not add --config/--allow-api during these free checks.
+
+For the naive package-only comparison:
+
+```sh
+git switch test/voice-ha-naive
+nix build .#nixosConfigurations.hoard.pkgs.voice-broker --out-link /tmp/voice-ha-owner-naive
+git switch main
+```
+
+That earlier package has no replay entry point; the offline
+baseline replay in the classifier package above measures the same naive router.
+After any failed build/replay, return to main manually (do not reset/clean).
+
+## Exact non-activating deployment handoff (2026-10-16)
+
+Validated code revision before this documentation-only update:
+73022c76abfa0693386dd66b3eb9700e9e81d865 (classifier branch).
+
+- Built system: /nix/store/x4phpy2dplpqhvylj16b44lzfqm041jd-nixos-system-hoard-26.11.20261011.7fd4004
+- Broker: /nix/store/hk704xw7qlpy1b415abn08xda2hn8bag-voice-broker-0.1.0
+- Config: /nix/store/wzm2fvxajn5bf8bgxmc781y2pr0azc3k-voice-broker.json
+- Candidate service user: voice-broker; existing systemd credentials remain
+  openai-api-key, device-token, home-assistant-token, openclaw-secret and identity.
+- Package build test evidence: /tmp/voice-ha-classifier-system-final-build.log,
+  line 226: 119 passed in 6.97s. This is an actual package check, not a replay score.
+- Independent read-only review: archived transcript
+  /var/lib/openclaw/agents/main/sessions/d7a56319-641d-4603-aa32-5bdeccad4b3c.jsonl.deleted.2026-10-16T05-05-57.670Z.87e2cf39cfff493bbb6c0ab72f26b5c7.zst
+  final message e67fdeff-16b8-451d-9e36-4d503d58f750, 05:05:45 UTC:
+  "Signoff: no remaining implementation blockers found in the reviewed integration."
+  Review preceded the final replay CLI and request-budget/sampling changes; it is
+  not a separate review of those later changes. Final 119 tests cover them.
+- Full hoard build succeeded. All-systems flake evaluation exited 137; its
+  replacement was cancelled for memory safety. No full-flake pass is claimed.
+  Gateway health subsequently recovered under native custodian supervision.
+
+### Source / effective drop-in compatibility assessment
+
+Read-only comparison against the pinned installed source found only two changed
+Python files versus canonical main (conversation.py and live.py), plus the
+optional speaker_id.py module. Installed __main__.py is identical to main and
+constructs Conversation without speaker_id; normal production startup therefore
+leaves the optional advisory sidecar OFF. No new identification work is needed
+or authorized for this routing comparison.
+
+The installed optional hooks are nevertheless real compatibility surface:
+Conversation accepts speaker_id, rejects simultaneous recording, closes it on
+exit, exposes a failure-tolerant snapshot, and feeds cleaned PCM **after** Live
+streaming without awaiting inference. Live's legacy task builder appends an
+advisory explicitly forbidden for authorization. The routing candidate does not
+contain these hooks or speaker_id.py. Its routed request also cannot be assumed
+to preserve that optional task-note behavior. Do not claim byte/source parity
+or silently discard these hooks merely because production startup leaves them off.
+
+Effective live override remains:
+/run/systemd/system/voice-broker.service.d/zz-preserve-live-no-probe-082912a.conf
+It clears ExecStart and pins broker z76j1mi33p6abl2qwlmwaj0si47220n6 with config
+/nix/store/2psfk1gha2zrgykyw8qclgjzzr0fzhky-voice-broker.json.
+A normal package build never changes it; a system build/activation alone must
+not be assumed to replace that effective ExecStart. Preserve this file and the
+old package/config as rollback evidence. This lane has not edited either.
+
+**Ready now:** package/offline owner comparison using the commands above.
+**Live activation blocker:** no advisory-compatible merged candidate has been
+built/tested. Before any future live test, the deployment owner must preserve the
+existing optional hook behavior in a reviewed merge with routing (including the
+routed OpenClaw context boundary), validate it, and explicitly reconcile only the
+voice-broker override while retaining rollback. Do not copy either entire source
+file over the other: that loses routing or advisory behavior. Do not restart the
+Gateway, remove the override, activate the listed closure or run voice-broker
+manually as part of this handoff. No recording, playback, HA actuator action,
+new enrollment, provider call or service/config change is needed for offline checks.
