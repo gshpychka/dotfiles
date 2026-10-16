@@ -9,7 +9,7 @@ import re
 import httpx2
 import pytest
 from openai import APIConnectionError, AsyncOpenAI, PermissionDeniedError
-from voice_broker.config import MIN_ROUTING_TIMEOUT_S
+from voice_broker.config import MAX_ROUTING_TIMEOUT_S, MIN_ROUTING_TIMEOUT_S
 from voice_broker.routing import CHOICES, DecisionsRouter, RouteRequest, RoutingFailed
 
 
@@ -170,6 +170,23 @@ def test_the_real_client_is_configured_without_retries():
     router = DecisionsRouter(AsyncOpenAI(api_key="sk-test"), "gpt-6-luna", 1.5)
 
     assert router._client.max_retries == 0 and router._client.timeout == 1.5
+
+
+def test_no_phase_of_the_real_request_has_a_shorter_limit():
+    # The SDK's default limits connecting to 5 s; the routing limit must replace it in every phase.
+    requests: list[httpx2.Request] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        requests.append(request)
+        return httpx2.Response(200, json=answer("openclaw"))
+
+    client = AsyncOpenAI(api_key="sk-test", http_client=httpx2.AsyncClient(transport=httpx2.MockTransport(handler)))
+
+    decision = route(client, timeout_s=MAX_ROUTING_TIMEOUT_S)  # type: ignore[arg-type]
+
+    assert decision.route == "openclaw"
+    (request,) = requests
+    assert request.extensions["timeout"] == dict.fromkeys(["connect", "read", "write", "pool"], MAX_ROUTING_TIMEOUT_S)
 
 
 @pytest.mark.parametrize("timeout_s", [0, -1, float("inf"), float("nan")])

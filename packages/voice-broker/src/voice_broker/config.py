@@ -21,6 +21,10 @@ def _read_secret(path: str) -> str:
 # 0.3-0.6 s of the limit from hoard. Cold Decisions answers took 0.78-1.12 s, and on
 # 2026-10-16 22:24 a request got no answer within 1.5 s and had to be asked again.
 MIN_ROUTING_TIMEOUT_S = 3.0
+# The longest accepted: a diagnostic allowance for telling a slow Decisions answer from none,
+# set on hoard after two requests on 2026-10-16 23:01 ran out of 4 s. The user waits this
+# long, while Live keeps talking, before being asked to try again.
+MAX_ROUTING_TIMEOUT_S = 30.0
 
 # Leads the identity file's text: the assistant's description of itself.
 _IDENTITY_LEAD = "Who you are, in your own words; the backend is your own memory and tools:"
@@ -179,9 +183,10 @@ def _routing(raw: dict[str, Any]) -> Routing:
     )
     if not routing.model or not routing.pipeline:
         raise ValueError("routing needs a model and a pipeline")
-    if not MIN_ROUTING_TIMEOUT_S <= routing.timeout_s <= 10:
+    if not MIN_ROUTING_TIMEOUT_S <= routing.timeout_s <= MAX_ROUTING_TIMEOUT_S:
         raise ValueError(
-            f"routing.timeout_s must be in [{MIN_ROUTING_TIMEOUT_S:g}, 10]: a cold classification ran past 1.5 s"
+            f"routing.timeout_s must be in [{MIN_ROUTING_TIMEOUT_S:g}, {MAX_ROUTING_TIMEOUT_S:g}]:"
+            " a cold classification ran past 1.5 s"
         )
     if not 0 < routing.pending_question_s < 300:
         raise ValueError("routing.pending_question_s must be in (0, 300): Home Assistant forgets after 5 minutes")

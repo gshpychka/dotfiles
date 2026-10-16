@@ -12,6 +12,12 @@
       # (assist_pipeline/pipeline/list). The Voice PEs' own pipeline selects
       # don't apply: the broker, not the satellite, runs the pipeline.
       pipeline = "01jmq3hbakt5r0e136vd886hy9";
+      # Diagnostic, not a speed fix: on 2026-10-16 23:01 two requests had no
+      # answer within the default 4 s, and none logged an HTTP response.
+      # 30 s shows whether Decisions answers late or not at all (the failure
+      # log gives the elapsed ms). Each request is still one call, no retry,
+      # no fallback. Back to the default once the cause is known.
+      timeoutSeconds = 30;
     };
 
     settings = {

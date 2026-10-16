@@ -107,6 +107,11 @@ def test_routing_and_the_speakers_home_assistant_device_are_read(tmp_path: Path)
     assert config.devices[0].home_assistant_device_id == "9290a2568e3df21ba0fd2d663249c0ca"
 
 
+def test_the_diagnostic_routing_limit_is_accepted(tmp_path: Path) -> None:
+    config = load(with_routing(write_config(tmp_path), {**ROUTING, "timeout_s": 30}))
+    assert config.routing is not None and config.routing.timeout_s == 30.0
+
+
 def test_routing_needs_every_speakers_home_assistant_device(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="room-assistant"):
         load(with_routing(write_config(tmp_path), ROUTING, device_id=None))
@@ -120,7 +125,8 @@ def test_routing_needs_every_speakers_home_assistant_device(tmp_path: Path) -> N
         {"timeout_s": 0},
         # The limit that ran out on a cold request on 2026-10-16.
         {"timeout_s": 1.5},
-        {"timeout_s": 30},
+        {"timeout_s": 2.9},
+        {"timeout_s": 30.5},
         {"settle_s": 0},
         {"settle_s": 1.5},
         {"pipeline": ""},
