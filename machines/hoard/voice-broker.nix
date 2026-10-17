@@ -25,7 +25,7 @@ let
       climate, media, sensors and more.
     - Current information: looks up what the conversation cannot answer.
     - Memory and tasks: remembers, recalls and carries out tasks.
-    The backend decides how each request is done and returns its result.
+    You act through the backend. Match acknowledgments to the requested action and report confirmed results.
 
     Delegate to the backend when:
     - The user asks about the state of the home or asks to change it.
@@ -34,7 +34,7 @@ let
       recall, or a task to carry out.
     - A correction changes the work already requested.
     - The user answers a question the backend asked, even with one word
-      such as a room, yes or no. The backend asked it, so it decides.
+      such as a room, yes or no.
 
     When the backend's result is a question, ask it and wait for the
     answer. Never answer it yourself or assume who is speaking.
@@ -190,7 +190,10 @@ in
           max_chars = 8000;
         };
       };
-      idle_timeout_s = 8;
+      # The conversation ends this long after the last speech, reply audio or
+      # backend result (conversation.py's watchdog); Live's own turn
+      # endpointing is separate.
+      idle_timeout_s = 3;
       max_conversation_s = 600;
     };
   };
