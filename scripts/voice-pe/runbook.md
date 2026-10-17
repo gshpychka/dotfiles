@@ -267,9 +267,23 @@ the agent of the same name under the OpenAI Conversation integration.
 
 Every consult is a turn of OpenClaw's main agent, in main's own session,
 `agent:main:main`, the one Telegram uses. So a spoken conversation and
-Telegram share one context. A conversation moves only when main's session has
-no room for it. Before its first consult the broker reads, from the running
-gateway, main's context budget and use (`openclaw.py` `preflight`):
+Telegram share one context, and the gateway compacts that session as it must.
+
+The overflow below is **off by default** (`my.voice-broker.overflow.enable`)
+and off on hoard. Turning it on needs the owner's approval of the
+approximation. The estimate is advisory and not atomic: it reads main's last
+recorded usage, then sends the consult as a separate request. A Telegram turn
+can land in between, and the gateway renders the real prompt only at that
+point. No gateway endpoint reserves room and submits in one step (OpenClaw
+e178c39e). So the estimate can't guarantee that main is used only while it has
+room, nor that a conversation moves only when main is really full. A strict
+version needs admission inside the gateway. Also, on 2026-10-17 the HTTP
+history endpoint returned main's assistant `usage` without `contextUsage`
+(the paired CLI's view has it), so every preflight would count as unknown.
+
+With the overflow on, a conversation moves when the estimate finds main's
+session has no room for it. Before its first consult the broker reads, from
+the running gateway, main's context budget and use (`openclaw.py` `preflight`):
 - the budget: the `sessions_list` tool's row for main over `/tools/invoke`;
 - the use: the newest model call's tokens, from main's transcript.
 

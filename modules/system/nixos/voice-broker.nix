@@ -104,9 +104,17 @@ let
   # at e178c39e), so both keys below are main's.
   mainAgent = "main";
   # Overflow sessions are agent:main:voice-overflow:<conversation>, one per
-  # spoken conversation, used only when main's own session is too full for the
-  # consult (packages/voice-broker/src/voice_broker/openclaw.py).
+  # spoken conversation, used only while `overflow.enable` is on and the
+  # broker's estimate says main's own session is too full for the consult
+  # (packages/voice-broker/src/voice_broker/openclaw.py).
   overflowSessionPrefix = "agent:${mainAgent}:voice-overflow:";
+  # The voice-call skill's word on overflow sessions, only while they can exist.
+  overflowCallText = lib.optionalString cfg.overflow.enable (
+    " When this session's context looks too full for it, the conversation goes"
+    + " to a session of its own, which starts with this session's newest messages:"
+    + " find it with sessions_list, searching ${overflowSessionPrefix}, the newest"
+    + " one, and read its outcome with sessions_history."
+  );
 in
 {
   options.my.voice-broker = {
@@ -241,6 +249,25 @@ in
       };
     };
 
+    overflow.enable = lib.mkEnableOption ''
+      moving a spoken conversation to a session of its own (still main's
+      agent, with main's tools) when the broker estimates that main's session
+      is too full for its first consult. The estimate is advisory and not
+      atomic: it reads main's last recorded usage and adds the consult's bytes
+      and `marginTokens`, then sends the consult as a separate request. A
+      Telegram turn can land in between, the gateway re-renders the prompt
+      itself, and no gateway endpoint reserves room and submits in one step
+      (OpenClaw e178c39e; workspace report
+      voice-admission-critical-2026-10-17.md). So it can't guarantee that main
+      is used only while it has room, nor that it moves only when main is
+      really full. Also, on hoard on 2026-10-17 the HTTP history endpoint
+      returned main's assistant `usage` without `contextUsage`, so every
+      preflight would count as unknown and `whenUnknown` would decide alone
+      (workspace report voice-morning-repair-rollout-2026-10-17.md). Off:
+      every consult is a turn of main's own session and the gateway compacts
+      it as it must. Kept off until the gateway admits a request atomically,
+      or the owner accepts the approximation'';
+
     overflow.whenUnknown = lib.mkOption {
       type = lib.types.enum [
         "main"
@@ -248,9 +275,9 @@ in
       ];
       default = "main";
       description = ''
-        Where a spoken conversation goes when main's context use can't be read
-        before its first consult (the gateway unreachable, or no usage
-        recorded yet). `main`: main's own session, the usual place, where the
+        With `overflow.enable`: where a spoken conversation goes when main's
+        context use can't be read before its first consult (the gateway
+        unreachable, or no usage recorded yet). `main`: main's own session, the usual place, where the
         gateway compacts itself if it must; only evidence of a full session
         moves a conversation. `overflow`: a session of its own, keeping
         main's context untouched at the cost of main's context for the
@@ -369,15 +396,21 @@ in
           openclaw = {
             url = openclaw.localUrl;
             token_file = credential openclawCredential;
-            # Every consult is a turn of main, in main's own session unless it is too full.
+            # Every consult is a turn of main, in main's own session; with
+            # overflow.enable, elsewhere when the estimate says it is too full.
+            # null: the broker reads nothing before a consult (config.py).
             session_key = openclaw.mainSessionKey;
             agent = mainAgent;
-            overflow = {
-              session_prefix = overflowSessionPrefix;
-              handoff_max_chars = cfg.overflow.handoffChars;
-              when_unknown = cfg.overflow.whenUnknown;
-              margin_tokens = cfg.overflow.marginTokens;
-            };
+            overflow =
+              if cfg.overflow.enable then
+                {
+                  session_prefix = overflowSessionPrefix;
+                  handoff_max_chars = cfg.overflow.handoffChars;
+                  when_unknown = cfg.overflow.whenUnknown;
+                  margin_tokens = cfg.overflow.marginTokens;
+                }
+              else
+                null;
           };
           calls = {
             socket = callSocket;
@@ -436,11 +469,7 @@ in
 
             The speaker chimes, says the opening in its own words, then listens;
             the owner's reply reaches you as a turn of this session, like anything
-            said at a speaker, so carry on from there. Only when this session's
-            context is too full for it does the conversation go to a session of
-            its own, which starts with this session's newest messages: find it
-            with sessions_list, searching ${overflowSessionPrefix}, the newest
-            one, and read its outcome with sessions_history. The command prints
+            said at a speaker, so carry on from there.${overflowCallText} The command prints
             `started` once the speaker has picked up, or `failed: <reason>` when
             the speaker is muted, in a conversation, or unreachable; then write to
             Telegram instead. Keep the opening to one or two spoken sentences;

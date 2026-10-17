@@ -8,8 +8,9 @@ tools don't narrow the agent's native or MCP tools. The voice starts with the
 newest turns of the history session.
 
 Consults are turns of the agent's own session (agent:main:main), so a spoken
-conversation shares the agent's context with Telegram. Only when that session
-is too full for a conversation's first consult does the conversation get a
+conversation shares the agent's context with Telegram. Only with an overflow
+configured, and only when the broker's advisory estimate finds that session
+too full for a conversation's first consult, does the conversation get a
 session of its own, of the same agent (Conversation below).
 """
 
@@ -143,9 +144,15 @@ class OpenClaw:
         return self._config
 
     async def preflight(self, task: str) -> Fit:
-        """Whether a consult of `task` fits the agent session before the gateway would compact it.
+        """Whether a consult of `task` likely fits the agent session before the gateway would compact it.
 
-        Mirrors the gateway's own check before each prompt
+        An estimate, advisory and not atomic: it reads the last recorded use,
+        and the consult follows as a separate request. Another turn can land
+        in between, and the gateway renders and measures the real prompt only
+        then; no gateway endpoint reserves room and submits in one step
+        (OpenClaw e178c39e). Off unless the module's overflow.enable is on.
+
+        Approximates the gateway's own check before each prompt
         (embedded-agent-runner/run/preemptive-compaction.ts at e178c39e): the
         newest model call's measured prompt and output, then 1.2 times a local
         estimate of what follows it: the rendered system prompt again, and the

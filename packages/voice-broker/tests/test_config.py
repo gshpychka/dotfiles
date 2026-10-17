@@ -287,6 +287,15 @@ def test_without_overflow_none_is_configured(tmp_path: Path) -> None:
     assert load(write_config(tmp_path)).openclaw.overflow is None
 
 
+def test_a_null_overflow_is_none(tmp_path: Path) -> None:
+    # what the Nix module writes while my.voice-broker.overflow.enable is off
+    path = write_config(tmp_path)
+    raw = json.loads(path.read_text())
+    raw["openclaw"] |= {"agent": "main", "overflow": None}
+    path.write_text(json.dumps(raw))
+    assert load(path).openclaw.overflow is None
+
+
 @pytest.mark.parametrize(
     ("overflow", "error"),
     [
