@@ -233,6 +233,39 @@ async def no_script(conn: Connection, session: LiveSession) -> None:
     pass
 
 
+def test_the_session_starts_with_the_instructions_then_the_speakers_place():
+    conn = Connection()
+
+    @asynccontextmanager
+    async def connect():
+        yield conn
+
+    instructions = "Who you are:\n- **Name:** Calcifer\n\nBackchannel policy: Use moderate backchannels.\n"
+    session = LiveSession(
+        Live(model="gpt-live-1", voice="marin", instructions=instructions),
+        "Kitchen",
+        no_consult,
+        nothing_recent,
+        connect,
+        None,
+    )
+
+    async def opened() -> None:
+        async with session.open(Host()):
+            pass
+
+    asyncio.run(opened())
+
+    (started,) = conn.started
+    assert started["instructions"] == (
+        "Who you are:\n- **Name:** Calcifer\n\nBackchannel policy: Use moderate backchannels.\n\n"
+        "This speaker is in the Kitchen. A request that names no place is about the Kitchen.\n"
+    )
+    assert started["model"] == "gpt-live-1"
+    assert started["audio"]["output"] == {"voice": "marin"}
+    assert started["delegation"] == {"type": "client"}
+
+
 def test_the_recent_conversation_leads_the_session():
     async def recall() -> list[Turn]:
         return [("user", "Remind me to call mom."), ("assistant", "Noted, at six.")]
