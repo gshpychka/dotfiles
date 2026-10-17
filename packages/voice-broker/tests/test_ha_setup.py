@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+import asyncio
+
 import pytest
 from voice_broker.ha_setup import (
     DEFAULT_NAME,
     DEFAULT_SOURCE_PIPELINE,
     SetupError,
     State,
+    _backup,
     plan,
+    wait_for_agent,
 )
 
 REMOTE = {
@@ -103,3 +107,57 @@ def test_everything_in_place_plans_nothing():
 def test_anything_it_must_not_touch_stops_it(kwargs, match):
     with pytest.raises(SetupError, match=match):
         plan(state(**kwargs), DEFAULT_NAME, DEFAULT_SOURCE_PIPELINE)
+
+
+def _reads(*states: State):
+    remaining = list(states)
+
+    async def read() -> State:
+        return remaining.pop(0) if len(remaining) > 1 else remaining[0]
+
+    return read
+
+
+def test_the_pipeline_waits_for_the_new_agents_entity_which_home_assistant_adds_after_the_flow_returns():
+    # 2026-10-17: right after the flow, the subentry was there but its entity was not.
+    created = state(subentries=(MAIN_AGENT, HOME_AGENT), agents={"01MAIN": "conversation.chatgpt"})
+    ready = state(subentries=(MAIN_AGENT, HOME_AGENT))
+    steps = asyncio.run(
+        wait_for_agent(_reads(created, created, ready), DEFAULT_NAME, DEFAULT_SOURCE_PIPELINE, interval_s=0)
+    )
+    assert steps.agent_entity == "conversation.voice_broker_home" and steps.pipeline is not None
+
+
+def test_an_entity_that_never_appears_stops_it_before_any_pipeline():
+    created = state(subentries=(MAIN_AGENT, HOME_AGENT), agents={"01MAIN": "conversation.chatgpt"})
+    with pytest.raises(SetupError, match="no conversation entity after"):
+        asyncio.run(wait_for_agent(_reads(created), DEFAULT_NAME, DEFAULT_SOURCE_PIPELINE, timeout_s=0, interval_s=0))
+
+
+def test_an_agent_gone_after_its_creation_stops_it():
+    with pytest.raises(SetupError, match="missing after it was created"):
+        asyncio.run(wait_for_agent(_reads(state()), DEFAULT_NAME, DEFAULT_SOURCE_PIPELINE, interval_s=0))
+
+
+def test_two_backups_within_a_second_do_not_collide(tmp_path):
+    first, second = _backup(tmp_path, state()), _backup(tmp_path, state())
+    assert first != second and first.exists() and second.exists()
+    assert oct(first.stat().st_mode & 0o777) == "0o600"
+
+
+def test_an_existing_pipeline_waits_for_the_new_agents_entity_before_it_is_compared():
+    pipeline = {
+        **REMOTE,
+        "id": "01NEW",
+        "name": DEFAULT_NAME,
+        "conversation_engine": "conversation.voice_broker_home",
+        "tts_engine": None,
+        "tts_language": None,
+        "tts_voice": None,
+    }
+    created = state(
+        pipelines=(REMOTE, pipeline), subentries=(MAIN_AGENT, HOME_AGENT), agents={"01MAIN": "conversation.chatgpt"}
+    )
+    ready = state(pipelines=(REMOTE, pipeline), subentries=(MAIN_AGENT, HOME_AGENT))
+    steps = asyncio.run(wait_for_agent(_reads(created, ready), DEFAULT_NAME, DEFAULT_SOURCE_PIPELINE, interval_s=0))
+    assert steps.agent_entity == "conversation.voice_broker_home" and steps.pipeline is None

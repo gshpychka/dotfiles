@@ -133,12 +133,15 @@ in
     recordings.enable = false;
     homeAssistant.url = "http://homeassistant.${config.my.domain}:8123";
 
-    # Gated, with Jev, until parallel mode's prerequisites are in place: Home
-    # Assistant's home-only agent and "Voice broker home" pipeline
-    # (scripts/voice-pe/runbook.md), and the gateway owner's check of the voice
-    # agent's tool policy (workspace report parallel-ha-audio-production-2026-10-17.md).
-    # Switching is this line alone: "parallel".
-    mode = "gated";
+    # Parallel: Home Assistant hears every utterance and alone acts on the home.
+    # Its prerequisites are in place: Home Assistant's home-only agent
+    # (conversation.voice_broker_home) and "Voice broker home" pipeline
+    # (01m54bbk2zytrd5fqaxd7dee0s), created 2026-10-17 by voice-broker-ha-setup
+    # (scripts/voice-pe/runbook.md), and the voice agent's tool policy, checked
+    # by the gateway's own code (workspace report
+    # parallel-ha-audio-production-2026-10-17.md). Back to Jev's classifier is
+    # this line alone: "gated", with `routing` below unchanged.
+    mode = "parallel";
     # the owner's OpenRouter key, encrypted to hoard_host as well
     openRouter.sopsFile = ../../secrets/openclaw/openrouter.yaml;
 
@@ -176,7 +179,9 @@ in
       pipeline = "Voice broker home";
       # Exposed to Assist as of 2026-10-17 (homeassistant/expose_entity/list), and not about
       # the home: ask_gpt hands the question to another LLM agent, the other is a weather
-      # forecast. Exposure is per assistant, not per agent, so the home-only agent sees them too.
+      # forecast. Exposure is per assistant, not per agent, so the home-only agent sees them too:
+      # its only selectable LLM API is "Assist" (the agent form, 2026-10-17), so no narrower
+      # tool scope exists, and unexposing them would also take them from "Remote".
       nonHomeTools = [
         "ask_gpt"
         "voice_weather_forecasts_full_llm_script"

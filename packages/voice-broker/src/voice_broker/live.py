@@ -24,6 +24,10 @@ GPT-Live stays the only voice:
   Home Assistant turns heard but not yet told, in the order they happened.
   Their audio offsets are logged, not compared with GPT-Live's timeline, whose
   time base the API does not document.
+- Whether the user spoke over the assistant, which decides whether Home
+  Assistant hears the audio held meanwhile (assist.py), is judged within
+  GPT-Live's timeline alone: a user transcript fragment against the assistant's
+  own transcript, both stamped on it. No offset between it and the mic is assumed.
 """
 
 from __future__ import annotations
@@ -85,6 +89,17 @@ _SETTLE_MAX_S = 2.0
 # Classifications of one request when more of it keeps arriving while it is classified.
 _ROUTE_ATTEMPTS = 3
 
+# Parallel: the assistant's transcript fragments this close on Live's timeline are one stretch of its speech.
+_SPAN_JOIN_MS = 500
+# Parallel: user speech starting this soon after the assistant's speech ended on Live's timeline is still over
+# it: the speaker plays it out later than Live stamps it (conversation.py PLAYBACK_LEAD and its hangover).
+_OVER_ASSISTANT_TAIL_MS = 1500
+# Parallel: stretches of the assistant's speech kept to judge user speech against.
+_SPANS_KEPT = 16
+# Parallel: how long ago speech over the assistant began, at least, when its transcript arrives. A
+# fragment's stamps don't include how late it arrives, which is not measured; this assumes up to 2.5 s,
+# so the user's first words are kept. assist.BARGE_IN_BACK_MAX_S bounds it.
+_BACK_MIN_MS = 2500
 # Parallel: how long a finished Home Assistant turn waits for a delegation to claim it before it is told on its own:
 # GPT-Live usually delegates before Home Assistant is done, so this only catches a late delegation.
 _CLAIM_GRACE_S = 1.0
@@ -130,7 +145,7 @@ class HomeEars(Protocol):
     events: asyncio.Queue[HomeEvent]
 
     def feed(self, pcm: np.ndarray, audible: bool) -> None: ...
-    def user_heard(self) -> None: ...
+    def user_heard(self, back_s: float | None, during: bool = False) -> None: ...
     def start(self) -> None: ...
     def stop(self) -> asyncio.Task[None] | None: ...
 
@@ -233,6 +248,13 @@ class LiveSession:
         self._delegation_offset: int | None = None
         # Parallel: Home Assistant's turns by number, until GPT-Live is told.
         self._slots: dict[int, _Slot] = {}
+        # Parallel: the assistant's speech on Live's timeline, [start_ms, end_ms] of each stretch, newest last.
+        self._assistant_spans: deque[list[int]] = deque(maxlen=_SPANS_KEPT)
+        # Parallel: the newest end (ms) of a user transcript fragment on Live's timeline. Only the user's
+        # are taken: they follow the mic audio, while the assistant's are stamped as its speech is made.
+        self._timeline_ms = 0
+        # Parallel: the gaps (HomeTurn.gap) a cut turn was told for: the other pieces of the same cut are not.
+        self._gaps_told: set[int] = set()
         # The newest Home Assistant turn that acted: an observation of an older one is stale.
         self._latest_action: int | None = None
         self._observing: asyncio.Task[None] | None = None
@@ -365,9 +387,12 @@ class LiveSession:
                     self._host.mark_activity()
                     self._user_starts.append(event.start_ms)
                     if self._parallel is not None:
-                        self._parallel.home.user_heard()
+                        self._timeline_ms = max(self._timeline_ms, event.end_ms)
+                        self._parallel.home.user_heard(*self._over_assistant(event.start_ms))
                     self._hear("user", event.delta)
                 case "session.output_transcript.delta":
+                    if self._parallel is not None:
+                        self._assistant_spoke(event.start_ms, event.end_ms)
                     self._hear("assistant", event.delta)
                 case "session.delegation.created":
                     await self._host.set_phase(Phase.THINKING)
@@ -380,6 +405,28 @@ class LiveSession:
                 case "error":
                     log.error("openai error: %s (%s)", event.error.message, event.error.code)
         self._flush_transcripts()
+
+    def _assistant_spoke(self, start_ms: int, end_ms: int) -> None:
+        spans = self._assistant_spans
+        if spans and start_ms <= spans[-1][1] + _SPAN_JOIN_MS:
+            spans[-1][1] = max(spans[-1][1], end_ms)
+        else:
+            spans.append([start_ms, end_ms])
+
+    def _over_assistant(self, start_ms: int) -> tuple[float | None, bool]:
+        """How long ago (s) user speech starting at `start_ms` began, if over the assistant's speech, else None;
+        and whether it began within the assistant's speech itself rather than just after it.
+
+        Both are on Live's own timeline, so no clock or audio offset is assumed: a fragment
+        trailing what the user said before the assistant began starts before its speech.
+        The time ago is measured to the newest end of the user's fragments, which trails the audio.
+        This assumes each fragment is stamped with where its own words start (as every fragment's
+        start_ms is documented), not where the utterance does.
+        """
+        if not any(start <= start_ms <= end + _OVER_ASSISTANT_TAIL_MS for start, end in self._assistant_spans):
+            return None, False
+        during = any(start <= start_ms <= end for start, end in self._assistant_spans)
+        return max(self._timeline_ms - start_ms, _BACK_MIN_MS) / 1000, during
 
     def _hear(self, role: Role, text: str) -> None:
         if self._heard and self._heard[-1][0] != role:
@@ -412,12 +459,27 @@ class LiveSession:
                     slot.claimed = True
                 self._shadow(heard)
                 if any(role == "user" for role, _ in heard):
+                    consult = asyncio.ensure_future(self._consult(self._task(heard)))
                     try:
-                        answer = await self._consult(self._task(heard))
+                        if slots:
+                            await asyncio.wait([consult], timeout=_COMBINE_WAIT_S)
+                            if not consult.done():
+                                # A slow consult (up to openclaw._TIMEOUT_S) holds no home result: Home
+                                # Assistant has acted, and silence could get a command repeated. Each turn is
+                                # told on its own once done, and the agent's answer follows.
+                                log.info("consult still running; home assistant turns told on their own")
+                                for slot in slots:
+                                    slot.claimed = False
+                                    if slot.result.done():
+                                        self._spawn(self._tell_alone(slot))
+                                slots = []
+                        answer = await consult
                         self._consulted = upto
                     except ConsultFailed as e:
                         log.warning("consult failed: %s", e)
                         answer = f"The request failed: {e}"
+                    finally:
+                        consult.cancel()
                 else:
                     answer = ""
                 home = await self._claimed(slots)
@@ -436,6 +498,12 @@ class LiveSession:
         finally:
             if self._consulting is asyncio.current_task():
                 self._consulting = None
+            # A consult that ended unexpectedly leaves no Home Assistant turn claimed and never told.
+            for slot in self._slots.values():
+                if slot.claimed and not slot.delivered:
+                    slot.claimed = False
+                    if slot.result.done() and self._conn is not None:
+                        self._spawn(self._tell_alone(slot))
             self._host.mark_activity()
         if not self.busy and not self._host.assistant_audible:
             await self._host.set_phase(Phase.LISTENING)
@@ -611,8 +679,11 @@ class LiveSession:
             return
         slot.delivered = True
         try:
-            note = _home_note(slot.result.result())
+            result = slot.result.result()
+            note = _home_note(result)
             if note is None:
+                return
+            if not self._first_of_gap(result):
                 return
             await self._ready.wait()
             assert self._conn is not None and self._host is not None
@@ -645,11 +716,20 @@ class LiveSession:
             claimed.slots.append(slot)
             result = slot.result.result()
             claimed.outcomes.append(str(result.outcome))
-            if (note := _home_note(result)) is not None:
+            if (note := _home_note(result)) is not None and self._first_of_gap(result):
                 claimed.notes.append(note[0])
         if pending:
             claimed.notes.append(_HOME_PENDING)
         return claimed
+
+    def _first_of_gap(self, result: HomeTurn) -> bool:
+        """Whether to tell `result`: the pieces of one cut utterance each report it, and it is told once."""
+        if result.gap is None:
+            return True
+        if result.gap in self._gaps_told:
+            return False
+        self._gaps_told.add(result.gap)
+        return True
 
     def _observe(self, result: HomeTurn) -> None:
         """Checks, off the critical path, that what Home Assistant did matches the request."""

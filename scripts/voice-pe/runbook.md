@@ -232,12 +232,26 @@ run it again with `--apply`. It only ever creates, and is safe to re-run:
 
 Check the result in Settings → Voice assistants → "Voice broker home".
 
+Any Home Assistant admin's token works on stdin; the broker's file is root's.
+Done on 2026-10-17 from the openclaw user, with the gateway's own token:
+
+```sh
+grep '^HOME_ASSISTANT_TOKEN=' /run/secrets/rendered/openclaw.env | cut -d= -f2- |
+  voice-broker-ha-setup --url http://homeassistant.glib.sh:8123 \
+    --backup-dir /var/lib/openclaw/workspace/backups/parallel-ha-20261017 [--apply]
+```
+
+It created agent `conversation.voice_broker_home` (subentry
+`01M54BAX3BE2NG46PNZSNWYNAJ`) and pipeline `01m54bbk2zytrd5fqaxd7dee0s`. The
+preferred pipeline ("Remote") and the exposure (99 entities) were unchanged.
+
 Exposure to Assist is set per assistant, not per agent. So the new agent can
 also see the exposed non-home scripts, `ask_gpt` and the weather script. Its
 prompt tells it not to use them for non-home questions. If it does, the broker
 counts that as non-home work (`nonHomeTools`), never as home evidence.
 Unexposing them would also take them from "Remote", so that is left to the
-owner.
+owner. A narrower tool scope for the agent alone does not exist: its only
+selectable LLM API is "Assist".
 
 `ask_gpt`'s announcement targets a device that was no longer in Home
 Assistant's device registry on 2026-10-17, so its use plays nothing on a speaker.

@@ -32,7 +32,9 @@ import os
 import sys
 import time
 import urllib.request
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Self
 
@@ -43,6 +45,10 @@ DEFAULT_NAME = "Voice broker home"
 # "Remote", whose speech recognition (stt.groq, English) the new pipeline keeps.
 DEFAULT_SOURCE_PIPELINE = "01jmq3hbakt5r0e136vd886hy9"
 OPENAI_DOMAIN = "openai_conversation"
+# Home Assistant adds a new agent's conversation entity when it reloads the
+# entry, after the subentry flow has returned: on 2026-10-17 the state read
+# right after the flow had the subentry but not yet its entity.
+AGENT_ENTITY_WAIT_S = 30.0
 
 # The agent's prompt. Abstaining needs no wording the broker reads: the broker
 # takes ownership from tool calls alone (assist.py), so this prompt only keeps
@@ -84,8 +90,11 @@ class Plan:
     pipeline: dict[str, Any] | None
 
 
-def plan(state: State, name: str, source_pipeline: str) -> Plan:
-    """What to create, from what exists; raises SetupError on anything it must not touch."""
+def plan(state: State, name: str, source_pipeline: str, *, entity_pending: bool = False) -> Plan:
+    """What to create, from what exists; raises SetupError on anything it must not touch.
+
+    entity_pending: the agent was just created, so its conversation entity may not exist yet.
+    """
     if len(state.openai_entries) != 1:
         raise SetupError(f"expected one {OPENAI_DOMAIN} entry, found {len(state.openai_entries)}")
     entry_id, subentries = state.openai_entries[0]
@@ -93,7 +102,7 @@ def plan(state: State, name: str, source_pipeline: str) -> Plan:
     if len(agents) > 1:
         raise SetupError(f"{len(agents)} agents named {name!r}")
     agent_entity = state.agents_by_subentry.get(agents[0]["subentry_id"]) if agents else None
-    if agents and agent_entity is None:
+    if agents and agent_entity is None and not entity_pending:
         raise SetupError(f"agent {name!r} has no conversation entity")
 
     existing = [p for p in state.pipelines if p.get("name") == name]
@@ -121,12 +130,35 @@ def plan(state: State, name: str, source_pipeline: str) -> Plan:
         differences = sorted(
             key
             for key, value in {**wanted, "conversation_engine": agent_entity}.items()
-            if key not in ("tts_language", "tts_voice", "wake_word_id") and pipeline.get(key) != value
+            if key not in ("tts_language", "tts_voice", "wake_word_id")
+            and pipeline.get(key) != value
+            # Compared once the agent just created has its entity, on a later read.
+            and not (key == "conversation_engine" and entity_pending and agent_entity is None)
         )
         if differences:
             raise SetupError(f"pipeline {name!r} exists with different {', '.join(differences)}; left as it is")
         return Plan(entry_id, not agents, agent_entity, None)
     return Plan(entry_id, not agents, agent_entity, wanted)
+
+
+async def wait_for_agent(
+    read: Callable[[], Awaitable[State]],
+    name: str,
+    source_pipeline: str,
+    timeout_s: float = AGENT_ENTITY_WAIT_S,
+    interval_s: float = 0.5,
+) -> Plan:
+    """The plan once the agent just created has its conversation entity; SetupError after timeout_s."""
+    deadline = time.monotonic() + timeout_s
+    while True:
+        steps = plan(await read(), name, source_pipeline, entity_pending=True)
+        if steps.create_agent:
+            raise SetupError(f"agent {name!r} is missing after it was created")
+        if steps.agent_entity is not None:
+            return steps
+        if time.monotonic() >= deadline:
+            raise SetupError(f"agent {name!r} has no conversation entity after {timeout_s:.0f} s")
+        await asyncio.sleep(interval_s)
 
 
 class _HomeAssistant:
@@ -209,7 +241,8 @@ class _HomeAssistant:
 
 def _backup(directory: Path, state: State) -> Path:
     directory.mkdir(parents=True, exist_ok=True, mode=0o700)
-    path = directory / f"ha-voice-setup-before-{time.strftime('%Y%m%dT%H%M%S')}.json"
+    # microseconds: a dry run right after --apply, within the same second, must not collide
+    path = directory / f"ha-voice-setup-before-{datetime.now().astimezone().strftime('%Y%m%dT%H%M%S.%f')}.json"
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, "w") as f:
         json.dump(
@@ -239,9 +272,7 @@ async def _run(args: argparse.Namespace, token: str) -> None:
             return
         if steps.create_agent:
             ha.create_agent(steps.entry_id, args.name)
-        after = await ha.state()
-        steps = plan(after, args.name, args.source_pipeline)
-        assert steps.agent_entity is not None
+        steps = await wait_for_agent(ha.state, args.name, args.source_pipeline)
         if steps.pipeline is not None:
             created = await ha.call(
                 "assist_pipeline/pipeline/create", **steps.pipeline, conversation_engine=steps.agent_entity

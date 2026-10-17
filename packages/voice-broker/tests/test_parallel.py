@@ -24,7 +24,9 @@ class Ears:
     def __init__(self) -> None:
         self.events: asyncio.Queue = asyncio.Queue()
         self.fed: list[tuple[int, bool]] = []
-        self.user_heard_count = 0
+        # What each user transcript fragment told it: how long ago speech over the assistant began, or None.
+        self.heard: list[float | None] = []
+        self.during: list[bool] = []
         self.started = False
         self.stopped = False
         self.finishing: asyncio.Task | None = None
@@ -32,8 +34,9 @@ class Ears:
     def feed(self, pcm: np.ndarray, audible: bool) -> None:
         self.fed.append((len(pcm), audible))
 
-    def user_heard(self) -> None:
-        self.user_heard_count += 1
+    def user_heard(self, back_s: float | None, during: bool = False) -> None:
+        self.heard.append(back_s)
+        self.during.append(during)
 
     def start(self) -> None:
         self.started = True
@@ -54,8 +57,9 @@ class Ears:
         heard="turn on the kitchen light",
         reason="",
         asks=False,
+        gap=None,
     ):
-        self.events.put_nowait(HomeTurn(turn, outcome, speech, heard, tuple(tools), 1000, 9000, reason, asks))
+        self.events.put_nowait(HomeTurn(turn, outcome, speech, heard, tuple(tools), 1000, 9000, reason, asks, gap))
 
 
 class Conn(Connection):
@@ -71,6 +75,11 @@ class Conn(Connection):
 
     async def _instruct(self, **kwargs) -> None:
         self.instructions.append(kwargs)
+
+    def assistant(self, text: str, start_ms: int, end_ms: int) -> None:
+        self.events.put_nowait(
+            SimpleNamespace(type="session.output_transcript.delta", delta=text, start_ms=start_ms, end_ms=end_ms)
+        )
 
 
 class Agent:
@@ -147,7 +156,7 @@ def test_a_home_request_live_does_not_delegate_reaches_it_from_home_assistant_al
     conn = asyncio.run(run(script, ears, agent))
     assert told(conn) == [(None, "Home Assistant: The kitchen light is on.")]
     assert agent.tasks == []
-    assert ears.started and ears.stopped and ears.user_heard_count == 1
+    assert ears.started and ears.stopped and ears.heard == [None]
 
 
 def test_a_delegation_claims_the_home_turn_under_way_and_tells_both_results_once():
@@ -410,3 +419,96 @@ def test_an_action_with_a_follow_up_question_is_told_as_the_question():
     (said,) = [content for _, content in told(conn)]
     assert said.startswith("Home Assistant asks: Done. Anything else?")
     assert "don't delegate it" in said
+
+
+def test_whether_the_user_spoke_over_the_assistant_is_judged_on_lives_own_timeline():
+    ears, agent = Ears(), Agent()
+
+    async def script(conn: Conn, session: LiveSession) -> None:
+        conn.user("Turn on the", start_ms=1000)  # nobody else speaking
+        conn.assistant("Sure,", 2000, 3000)
+        # The end of the user's request, transcribed after the assistant began: it started before.
+        conn.user(" light.", start_ms=1500)
+        conn.user("No, wait", start_ms=2500)  # over the assistant
+        conn.user("stop", start_ms=4200)  # just after its speech, which the speaker still plays out
+        conn.user("Thanks.", start_ms=6000)  # well after
+        # A long reply stamped far ahead of the user's audio: the time ago follows the user's own
+        # fragments, never the assistant's stamps.
+        conn.assistant("Here is a long story.", 7000, 20000)
+        conn.user("Enough", start_ms=9900)
+        conn.user(" already.", start_ms=7000)  # a fragment of speech that began earlier, delivered late
+        await settle()
+
+    asyncio.run(run(script, ears, agent))
+    # At least the transcript's assumed lag; more when the user's own fragments show more.
+    assert ears.heard == [None, None, 2.5, 2.5, None, 2.5, 3.0]
+    # Within the assistant's speech itself, or in the moments after it the speaker still plays it out.
+    assert ears.during == [False, False, True, False, False, True, True]
+
+
+def test_a_home_result_is_told_at_once_while_a_slow_consult_runs_on():
+    """Home Assistant acted: a consult of up to 90 s must not keep the user from hearing so."""
+    ears, agent = Ears(), Agent("It is 14:05.", delay=0.5)
+
+    async def script(conn: Conn, session: LiveSession) -> None:
+        conn.user("Turn on the light, and what time is it?")
+        ears.hears(1)
+        await settle()
+        conn.delegate("dlg_1")
+        await settle()
+        ears.did(1, Outcome.ACTED, "The light is on.", ON)
+        await asyncio.sleep(0.3)  # past _COMBINE_WAIT_S, the consult still running
+        assert told(conn) == [(None, "Home Assistant: The light is on.")]
+
+    conn = asyncio.run(run(script, ears, agent))
+    # The agent's answer follows, without telling the home's result again.
+    assert told(conn) == [(None, "Home Assistant: The light is on."), ("dlg_1", "It is 14:05.")]
+
+
+def test_the_pieces_of_one_cut_utterance_are_told_as_one_failure():
+    ears, agent = Ears(), Agent("Sure.")
+
+    async def script(conn: Conn, session: LiveSession) -> None:
+        conn.user("Turn on the kitchen light.")
+        for turn in (1, 2, 3):
+            ears.hears(turn)
+        await settle()
+        conn.delegate("dlg_1")
+        await settle()
+        ears.did(1, Outcome.FAILED, reason="audio backlog", gap=1)
+        ears.did(2, Outcome.FAILED, reason="speech cut", gap=1)
+        ears.did(3, Outcome.FAILED, reason="speech cut", gap=1)
+
+    conn = asyncio.run(run(script, ears, agent))
+    ((delegation, answer),) = told(conn)
+    # One cut, told once: the pieces after its first are the same utterance.
+    assert delegation == "dlg_1" and "(audio backlog)" in answer and "(speech cut)" not in answer
+
+
+def test_a_consult_that_breaks_leaves_no_home_result_untold():
+    ears, agent = Ears(), Agent(RuntimeError("bug"), delay=0.02)
+
+    async def script(conn: Conn, session: LiveSession) -> None:
+        conn.user("Turn on the light, and what time is it?")
+        ears.hears(1)
+        await settle()
+        conn.delegate("dlg_1")
+        await settle()
+        ears.did(1, Outcome.ACTED, "The light is on.", ON)
+
+    conn = asyncio.run(run(script, ears, agent))
+    assert (None, "Home Assistant: The light is on.") in told(conn)
+
+
+def test_each_cut_is_told_once_on_its_own_and_a_separate_one_again():
+    ears, agent = Ears(), Agent()
+
+    async def script(conn: Conn, session: LiveSession) -> None:
+        for turn, gap in ((1, 1), (2, 1), (3, 1), (4, 2)):
+            ears.hears(turn)
+            ears.did(turn, Outcome.FAILED, reason="speech cut", gap=gap)
+        await settle()
+
+    conn = asyncio.run(run(script, ears, agent))
+    # Two cuts, the second a separate request that failed the same way: both told.
+    assert len(conn.thinking) == 2 and all("speech cut" in t["content"] for t in conn.thinking)

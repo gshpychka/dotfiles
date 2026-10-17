@@ -40,13 +40,16 @@ the household runs; the paths below are under homeassistant/components/assist_pi
   utterance is cancelled the same way (GAP_GUARD_S).
 - Echo: speech recognition gets no audio while the assistant is audible, as on
   Home Assistant's own satellites, so GPT-Live's echo cannot become a command;
-  see feed(). A barge-in passes the last held second on, but only a transcript
-  BARGE_IN_GRACE_S into the assistant's speech counts as one: an earlier one most
-  likely trails the user's previous utterance, and a short reply looks the same
-  as an early interruption. After such a transcript the held audio is dropped and
-  a gap is marked, so an early interruption is never acted on in part.
+  see feed(). The held audio is decided once the assistant stops, never spliced:
+  - The user spoke over the assistant (user_heard, judged on Live's timeline, so
+    a transcript trailing the user's previous utterance never counts): it all
+    goes on from shortly before their words, or from the hold's start when they
+    were already mid-utterance, a backchannel included.
+  - Nobody did: it was echo and is dropped. An utterance it interrupted gets
+    silence in its place, so Home Assistant hears that utterance end whole.
 - Lost speech is never acted on in part: a run that ends mid-utterance (a lost
-  connection, an error) leaves a gap like a dropped backlog does.
+  connection, an error) leaves a gap like a dropped backlog does. Speech a gap
+  cuts is always reported as a turn that did nothing, never dropped silently.
 """
 
 from __future__ import annotations
@@ -59,7 +62,7 @@ import logging
 import time
 from collections import deque
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 from urllib.parse import urlsplit, urlunsplit
 
@@ -91,16 +94,29 @@ IDLE_RUN_AGE_S = RUN_TIMEOUT_S - 15.0
 GAP_GUARD_S = 1.0
 # Audio queued for Home Assistant at most. A connection this far behind drops the oldest,
 # and a run that loses audio of its utterance is cancelled before it can act on part of it.
-MAX_BACKLOG_S = 10.0
+# It outlasts a run's intent stage (_RUN_DEADLINE_S) plus another conversation's run holding
+# the device's lock (RUN_TIMEOUT_S), so audio waiting on those is never dropped: about 3.8 MB.
+# Draining it costs latency, IDLE_SETTLE_S per IDLE_RESTART_S of silence, never audio.
+MAX_BACKLOG_S = 120.0
 # After the assistant stops being audible, how long to wait for GPT-Live to report the user
-# speaking over it (a barge-in) before the held audio is dropped.
-BARGE_IN_WAIT_S = 0.5
-# Audio from the end of the assistant's speech that a barge-in passes on. It holds
-# the user's first words, and the last of the echo-cancelled assistant audio.
-BARGE_IN_KEEP_S = 1.0
-# GPT-Live's transcript trails the speech, so a transcript this soon after the assistant became audible
-# is taken for the end of the user's previous utterance, not for speech over the assistant.
-BARGE_IN_GRACE_S = 1.5
+# speaking over it before the held audio is dropped: its transcript trails the speech, by a lag
+# not measured here. Audio after the assistant waits meanwhile; it is delayed, not lost.
+BARGE_IN_WAIT_S = 2.0
+# A report later than that, this soon after echo was dropped, still cuts the rest of the speech
+# before Home Assistant acts on it, as long as Home Assistant has not heard its end (stt-vad-end).
+# After that it can no longer be stopped, and the turn is reported as possibly acting on part of it.
+LATE_EVIDENCE_S = 5.0
+# Held audio kept before speech over the assistant at most: more could hand a long reply's echo to
+# speech recognition. Speech that began earlier is never acted on in part.
+BARGE_IN_BACK_MAX_S = 4.0
+# Audio held while the assistant is audible, at most: Home Assistant's segmenter takes no longer
+# command. An utterance that loses its start to this is never acted on (a gap).
+HOLD_MAX_S = 15.0
+# Speech over the assistant goes on from this long before its transcript says it began.
+BARGE_IN_PREROLL_S = 0.5
+# Silence put in place of dropped echo that interrupted an utterance: past the segmenter's
+# 0.7 s end of speech, so Home Assistant takes the utterance as it was before the echo.
+ECHO_SILENCE_S = 1.0
 # Before a run is cancelled, messages already on their way are read for this long: one may be intent-start.
 _DRAIN_S = 0.2
 # Speech the segmenter needs before stt-vad-start (vad.py VoiceCommandSegmenter.speech_seconds).
@@ -161,6 +177,9 @@ class HomeTurn:
     reason: str = ""
     # Its speech is a question Home Assistant waits on, whatever else the turn did.
     asks: bool = False
+    # The gap in what Home Assistant heard that cut this turn's speech, numbered within the
+    # conversation: the cut pieces of one utterance share it. None: not cut.
+    gap: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -235,6 +254,8 @@ class _Run:
     # (run audio offset in samples, frame) of every frame sent, in order.
     sent: list[tuple[int, _Frame]] = field(default_factory=list)
     sent_samples: int = 0
+    # Audio was sent since Home Assistant last had IDLE_SETTLE_S to report speech in it.
+    unsettled: bool = False
     # VAD timestamps, ms of run audio.
     vad_start_ms: int | None = None
     vad_end_ms: int | None = None
@@ -249,6 +270,11 @@ class _Run:
     output: dict[str, Any] | None = None
     processed_locally: bool = False
     error: str | None = None
+    # The gap that cut it (HomeTurn.gap).
+    gap: int | None = None
+    # Speech over the assistant was reported only after Home Assistant had this utterance whole:
+    # it may have acted on the utterance's rest alone.
+    cut_late: bool = False
 
     def index_at(self, ms: int) -> int | None:
         """The conversation sample index at `ms` of run audio."""
@@ -313,17 +339,33 @@ class HomeListener:
         self._gap_at: int | None = None
         # Why the newest gap is to be told, on the first speech it cuts; None once told.
         self._gap_reason: str | None = None
+        # Gaps so far: the newest's number (HomeTurn.gap).
+        self._gaps = 0
         # The assistant is audible: audio is held, not sent.
         self._holding = False
-        self._holding_since = 0.0
-        # A transcript came within the grace of this hold.
-        self._heard_in_grace = False
-        self._held: deque[_Frame] = deque()
+        # Held audio, each frame with whether the assistant was audible in it: a pause between two
+        # of its replies is held too, undecided.
+        self._held: deque[tuple[_Frame, bool]] = deque()
         self._held_samples = 0
-        # The assistant stopped being audible: audio waits until a barge-in is ruled in or out.
+        # Held audio was released past HOLD_MAX_S, the assistant's as silence for up to this many samples.
+        self._held_trimmed = False
+        self._trim_silence = 0
+        # End index of the newest of the assistant's audio released as silence that way.
+        self._trim_silenced_end: int | None = None
+        # The assistant stopped being audible: audio waits until speech over it is ruled in or out.
         self._deciding_until: float | None = None
-        self._undecided: list[_Frame] = []
-        self._barged_in = False
+        # Conversation sample indexes from which, and up to which, the user spoke over the assistant;
+        # None: nobody did.
+        self._barge_in_at: int | None = None
+        self._barge_in_to = 0
+        # Conversation sample index at the newest transcript of speech over the assistant.
+        self._barge_in_last: int | None = None
+        # Index of the first audio of the hold under way.
+        self._hold_start = 0
+        # (end index, listener clock, hold start index) of the newest held audio decided to be echo alone.
+        self._silenced: tuple[int, float, int] | None = None
+        # Speech starting before this index is untouched by the newest gap: it was over before the gap's audio.
+        self._gap_floor: int | None = None
 
         self._msg_id = 0
         self._turns = 0
@@ -340,74 +382,163 @@ class HomeListener:
         """One block of echo-cancelled MIC_RATE audio, and whether the assistant was audible meanwhile."""
         frame = _Frame(self._next_index, pcm)
         self._next_index += len(pcm)
-        if audible:
-            if not self._holding:
-                if self._deciding_until is not None:
-                    # The assistant speaks again before the last pause was decided: what the
-                    # pause held was heard while it was silent, so it goes on.
-                    self._decide()
-                self._holding = True
-                self._holding_since = self._clock()
-                self._barged_in = False
-                self._heard_in_grace = False
+        if audible and not self._holding:
+            if self._deciding_until is None:
                 self._held.clear()
                 self._held_samples = 0
-            self._held.append(frame)
-            self._held_samples += len(pcm)
-            while self._held_samples - len(self._held[0].pcm) >= BARGE_IN_KEEP_S * MIC_RATE:
-                self._held_samples -= len(self._held.popleft().pcm)
-            return
-        if self._holding:
+                self._held_trimmed = False
+                self._trim_silence = 0
+                self._trim_silenced_end = None
+                self._barge_in_at = None
+                self._barge_in_last = None
+                self._hold_start = frame.index
+            # Otherwise the assistant speaks again before the last pause was decided: the pause stays
+            # held, undecided, so speech over the assistant in it still counts.
+            self._holding = True
+            self._deciding_until = None
+        elif not audible and self._holding:
             self._holding = False
             self._deciding_until = self._clock() + BARGE_IN_WAIT_S
-            self._undecided = []
-        if self._deciding_until is not None:
-            self._undecided.append(frame)
-            if self._barged_in or self._clock() >= self._deciding_until:
+        if self._holding or self._deciding_until is not None:
+            self._held.append((frame, audible))
+            self._held_samples += len(pcm)
+            while self._held_samples > HOLD_MAX_S * MIC_RATE:
+                # Released, not dropped, as if no one spoke over the assistant: a pause's audio goes on,
+                # and the assistant's becomes silence. Speech over it found later to start before the
+                # oldest audio still held is never acted on in part (_decide).
+                oldest, was_audible = self._held.popleft()
+                self._held_samples -= len(oldest.pcm)
+                self._held_trimmed = True
+                if not was_audible:
+                    self._enqueue(oldest)
+                    self._trim_silence = 0
+                elif self._trim_silence < ECHO_SILENCE_S * MIC_RATE:
+                    n = min(len(oldest.pcm), int(ECHO_SILENCE_S * MIC_RATE) - self._trim_silence)
+                    self._enqueue(_Frame(oldest.index, np.zeros(n, dtype=np.int16)))
+                    self._trim_silence += n
+                if was_audible:
+                    self._trim_silenced_end = oldest.index + len(oldest.pcm)
+            if self._deciding_until is not None and self._clock() >= self._deciding_until:
                 self._decide()
             return
         self._enqueue(frame)
 
-    def user_heard(self) -> None:
-        """GPT-Live heard the user speak; over the assistant, while audio is held."""
+    def user_heard(self, back_s: float | None, during: bool = False) -> None:
+        """GPT-Live heard the user speak, starting `back_s` ago over the assistant; None: not over it.
+
+        GPT-Live judges that on its own timeline (live.py), where a transcript trailing what the
+        user said before the assistant began starts before the assistant's speech: it never counts.
+        `during`: it started within the assistant's speech itself, not in the moments after it the
+        speaker may still be playing it out.
+        """
+        if back_s is None:
+            return
+        start = max(0, self._next_index - int((min(back_s, BARGE_IN_BACK_MAX_S) + BARGE_IN_PREROLL_S) * MIC_RATE))
         if not (self._holding or self._deciding_until is not None):
+            silenced = self._silenced
+            if during and silenced is not None and self._clock() - silenced[1] <= LATE_EVIDENCE_S:
+                # Speech over the assistant reported after held audio was decided to be echo alone. No hold
+                # began since, and it started within the assistant's speech, so it is about that audio,
+                # whatever its age says (the lag is not measured): the rest, already on its way to Home
+                # Assistant, is cut before it is acted on, and told. A transcript starting just after the
+                # assistant's speech may be a new request instead, which is heard as usual.
+                log.warning("speech over the assistant reported late; cutting the rest of it")
+                self._silenced = None
+                end, _, hold_start = silenced
+                run = self._run
+                # Speech from before the assistant began is not cut: it may be a whole request, the late
+                # transcript a mere "thanks" over the reply. But it may also have gone on into the reply,
+                # so its turn is told as possibly done in part.
+                if run is not None and run.speech_start is not None and run.speech_start < hold_start:
+                    run.cut_late = True
+                self._mark_gap(end, "speech cut", floor=hold_start)
+                if run is not None and run.audio_done and self._cut(run):
+                    run.cut_late = True
             return
-        if self._clock() - self._holding_since < BARGE_IN_GRACE_S:
-            # Most likely the transcript of what the user said before the assistant began: letting it
-            # count would hand the assistant's own echo to speech recognition. It may also be a very
-            # early interruption, which a short reply looks the same as: _decide marks a gap for that.
-            self._heard_in_grace = True
-            return
-        self._barged_in = True
+        if back_s > BARGE_IN_BACK_MAX_S:
+            # Its start is older than the audio kept for it: never acted on in part.
+            self._mark_gap(start, "speech cut")
+        self._barge_in_at = start if self._barge_in_at is None else min(self._barge_in_at, start)
+        # Its transcript trails the speech: the user may have gone on speaking for up to its lag since,
+        # and the transcript of that may come only after the decision.
+        self._barge_in_to = self._next_index + int(BARGE_IN_WAIT_S * MIC_RATE)
+        self._barge_in_last = self._next_index
         if self._deciding_until is not None:
             self._decide()
 
     def _decide(self) -> None:
-        """Passes on the held audio after a barge-in, or drops it, then everything after it."""
-        if self._barged_in:
-            log.info("barge-in: passing %.1f s of held audio to home assistant", self._held_samples / MIC_RATE)
-            for frame in self._held:
-                self._enqueue(frame)
-        elif self._held and self._heard_in_grace:
-            # The user may have spoken over the assistant's first moments, and those words are
-            # dropped with its echo: what follows at once may be the rest of a request.
-            self._gap_at = self._undecided[0].index if self._undecided else self._next_index
-            self._gap_reason = "speech over the assistant"
+        """Passes the held audio on as speech over the assistant, or drops it as echo; never splices.
+
+        Audio held in a pause, while the assistant was not audible, always goes on. Echo becomes
+        silence as long as it was, up to ECHO_SILENCE_S: the user was silent then, so an utterance
+        the reply began in before Home Assistant heard it end (0.7 s) ends as it was, or goes on
+        after a short backchannel as it was.
+        """
+        keep_from = self._barge_in_at
+        audible_end = max((f.index + len(f.pcm) for f, audible in self._held if audible), default=None)
+        last = self._barge_in_last
+        if last is not None and audible_end is not None and audible_end - last >= BARGE_IN_WAIT_S * MIC_RATE:
+            # The assistant went on well past the newest transcript: speech after it would have been
+            # transcribed before now, so the assistant's audio after it is echo alone.
+            self._barge_in_to = last
+        if keep_from is not None:
+            log.info("speech over the assistant: passing held audio to home assistant")
+            if self._held_trimmed and keep_from < self._held[0][0].index:
+                # Its start was dropped past HOLD_MAX_S: never acted on in part.
+                self._mark_gap(self._held[0][0].index, "speech cut")
+        silence = self._trim_silence
+        silenced_end: int | None = None
+        for frame, audible in self._held:
+            end = frame.index + len(frame.pcm)
+            if not audible or (keep_from is not None and end > keep_from and frame.index < self._barge_in_to):
+                cut = 0 if not audible or keep_from is None else max(0, keep_from - frame.index)
+                self._enqueue(_Frame(frame.index + cut, frame.pcm[cut:]))
+                silence = 0
+            else:
+                silenced_end = end
+                if silence < ECHO_SILENCE_S * MIC_RATE:
+                    n = min(len(frame.pcm), int(ECHO_SILENCE_S * MIC_RATE) - silence)
+                    self._enqueue(_Frame(frame.index, np.zeros(n, dtype=np.int16)))
+                    silence += n
+        silenced_end = silenced_end or self._trim_silenced_end
+        # Only a decision of echo alone can be wrong for want of a transcript: with one, what followed
+        # its window was decided with the transcripts of all of it, as they trail by its lag at most.
+        self._silenced = (
+            (silenced_end, self._clock(), self._hold_start) if keep_from is None and silenced_end is not None else None
+        )
         self._held.clear()
         self._held_samples = 0
+        self._held_trimmed = False
+        self._trim_silence = 0
+        self._trim_silenced_end = None
         self._deciding_until = None
-        self._barged_in = False
-        self._heard_in_grace = False
-        for frame in self._undecided:
-            self._enqueue(frame)
-        self._undecided = []
+        self._barge_in_at = None
+        self._barge_in_last = None
+
+    def _mark_gap(self, at: int, reason: str, floor: int | None = None) -> None:
+        """Audio before `at` that may be the user's is lost: speech from about there is never acted on.
+
+        `floor`: speech starting before it is not affected.
+        """
+        if not self._overrun:
+            # A new gap: one already open since the last speech heard whole is the same episode.
+            self._gaps += 1
+        self._overrun = True
+        # Never back: a later gap already marked stays.
+        self._gap_at = at if self._gap_at is None else max(self._gap_at, at)
+        self._gap_floor = floor
+        self._gap_reason = reason
+        self._wake.set()
 
     def _enqueue(self, frame: _Frame) -> None:
         self._queue.append(frame)
         self._queued += len(frame.pcm)
         while self._queued > MAX_BACKLOG_S * MIC_RATE:
             self._queued -= len(self._queue.popleft().pcm)
+            if not self._overrun:
+                self._gaps += 1
             self._overrun = True
+            self._gap_floor = None
             self._gap_at = self._queue[0].index
             self._gap_reason = "audio backlog"
         self._wake.set()
@@ -421,11 +552,15 @@ class HomeListener:
         if self._gap_at is None or not run.sent:
             return False
         start = run.speech_start if run.speech_start is not None else run.sent[0][1].index
+        if self._gap_floor is not None and start < self._gap_floor:
+            return False
         return start - self._gap_at < GAP_GUARD_S * MIC_RATE
 
     def _gap_after(self, run: _Run) -> None:
         """Marks a gap when `run` ended, already told, before Home Assistant had its whole utterance."""
         if run.vad_start_ms is not None and not run.audio_done:
+            self._gaps += 1
+            self._gap_floor = None
             self._gap_ahead()
 
     def _past_speech_start(self, run: _Run, reason: str = "") -> _Restart:
@@ -623,11 +758,12 @@ class HomeListener:
                             lost_middle = run.speech_start is not None and run.speech_start <= self._gap_at
                             await _stopped(sender)
                             sender = None
-                            # The first cut after a gap is reported: it may be a request of its own.
-                            reason = "audio backlog" if lost_middle else (self._gap_reason or "")
+                            # Every cut is reported, never dropped silently: it may be a request of its own,
+                            # spoken right after the gap, that the user must repeat.
+                            reason = "audio backlog" if lost_middle else (self._gap_reason or "speech cut")
                             self._gap_reason = None
-                            if reason:
-                                self.events.put_nowait(HeardSpeech(run.turn))
+                            run.gap = self._gaps
+                            self.events.put_nowait(HeardSpeech(run.turn))
                             await self._restart(ws, run, run_id, self._past_speech_start(run, reason))
                             return
                         # Audio dropped before this speech began is no part of it.
@@ -706,7 +842,20 @@ class HomeListener:
         while not self._stopping:
             age = self._clock() - run.started
             if run.vad_start_ms is None and age >= IDLE_RUN_AGE_S:
+                if run.unsettled:
+                    # As below: what was just sent, a burst released after the assistant perhaps,
+                    # may hold speech Home Assistant has not reported yet.
+                    run.unsettled = False
+                    await asyncio.sleep(IDLE_SETTLE_S)
+                    continue
                 restart.set_result(idle)
+                return
+            if self._overrun and run.speech_start is not None and not run.intent_started and self._cut(run):
+                # Part of this utterance was dropped: never act on the rest. Checked with nothing queued
+                # too, since a gap can be marked late (user_heard), which wakes this.
+                run.gap = self._gaps
+                restart.set_result(self._past_speech_start(run, self._gap_reason or "audio backlog"))
+                self._gap_reason = None
                 return
             if not self._queue:
                 self._wake.clear()
@@ -717,16 +866,12 @@ class HomeListener:
                 else:
                     await self._wake.wait()
                 continue
-            if self._overrun and run.speech_start is not None and not run.intent_started:
-                # Part of this utterance was dropped: never act on the rest.
-                restart.set_result(self._past_speech_start(run, "audio backlog"))
-                self._gap_reason = None
-                return
             frame = self._queue.popleft()
             self._queued -= len(frame.pcm)
             run.sent.append((run.sent_samples, frame))
             run.sent_samples += len(frame.pcm)
             await ws.send(prefix + frame.pcm.astype("<i2").tobytes())
+            run.unsettled = True
             if run.vad_start_ms is None and run.sent_samples >= IDLE_RESTART_S * MIC_RATE:
                 # Sent is not heard yet: a backlog goes out far faster than Home Assistant reports on it.
                 await asyncio.sleep(IDLE_SETTLE_S)
@@ -736,6 +881,9 @@ class HomeListener:
 
     def _finish(self, run: _Run, reason: str = "") -> None:
         turn = _turn(run, self._policy, reason)
+        if run.cut_late and turn.outcome in (Outcome.ACTED, Outcome.ANSWERED, Outcome.ASKED):
+            # It may have acted on the end of a request whose start was taken for echo.
+            turn = replace(turn, outcome=Outcome.UNCERTAIN, reason="speech cut late", gap=run.gap or self._gaps)
         log.log(
             logging.WARNING if turn.outcome == Outcome.UNCERTAIN else logging.INFO,
             "home assistant turn %d: %s%s%s",
@@ -812,7 +960,9 @@ def _turn(run: _Run, policy: ToolPolicy, reason: str) -> HomeTurn:
     tools = tuple(run.tools)
 
     def made(outcome: Outcome, speech: str = "", why: str = "", asks: bool = False) -> HomeTurn:
-        return HomeTurn(run.turn, outcome, speech, run.heard, tools, run.speech_start, run.speech_end, why, asks)
+        return HomeTurn(
+            run.turn, outcome, speech, run.heard, tools, run.speech_start, run.speech_end, why, asks, run.gap
+        )
 
     if run.output is None:
         why = reason or run.error or "no result"
