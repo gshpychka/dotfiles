@@ -6,6 +6,7 @@ import asyncio
 import bisect
 import heapq
 import itertools
+import random
 import time
 from contextlib import asynccontextmanager
 
@@ -13,7 +14,7 @@ import numpy as np
 import pytest
 from test_conversation import ScriptedLive, SimDevice
 from test_live import Connection, Host, block, nothing_recent, session_with
-from test_parallel import Conn, Ears, told
+from test_parallel import Agent, Conn, Ears, told
 from voice_broker import live
 from voice_broker._aec import EchoCanceller
 from voice_broker.assist import Outcome
@@ -203,6 +204,38 @@ def test_a_stalled_send_is_caught_up_paced_not_in_a_burst():
     assert np.array_equal(np.concatenate(send.audio), np.concatenate(put))
     # The idle time earned no credit: the 4 s held went at the pace, not at once.
     assert most_sent_within(send.sends, 1.0) <= bound(1.0)
+
+
+@pytest.mark.parametrize("seed", range(6))
+def test_after_any_stall_no_instant_or_window_exceeds_the_bound(seed):
+    # The stalled piece lands when Live takes it, with the lead after it: never both at full size.
+    rng = random.Random(seed)
+
+    async def main():
+        clock = FakeClock()
+        p, put = pacer(clock), []
+        send = Recorder(clock, stall={rng.randrange(0, 400): rng.uniform(0.1, 5) for _ in range(4)})
+        p.start(send)
+
+        async def mic() -> None:
+            for _ in range(300):
+                await clock.sleep(rng.choice([0.0, 0.02, 0.02, 0.1, 2.0]))
+                n = rng.randrange(1, RATE // 5)
+                if p.pending_samples + n <= 15 * RATE:
+                    put.append(np.full(n, len(put) % 30000, dtype=np.int16))
+                    p.put(put[-1])
+
+        talking = asyncio.ensure_future(mic())
+        await clock.run_until(2000)
+        await talking
+        await clock.run_until(4000)
+        await p.close()
+        return send, put
+
+    send, put = asyncio.run(main())
+    assert np.array_equal(np.concatenate(send.audio), np.concatenate(put))
+    for window_s in (0.0, 0.05, 0.3, 1.0, 10.0):
+        assert most_sent_within(send.sends, window_s) <= bound(window_s), window_s
 
 
 def test_more_than_fifteen_seconds_held_before_start_is_an_error_not_a_trim():
@@ -414,6 +447,50 @@ def test_home_assistant_is_told_only_after_live_has_heard_the_request(monkeypatc
     before, midway, after = asyncio.run(main())
     assert before == [] and midway == []
     assert after == [(None, "Home Assistant: The kitchen light is off.")]
+
+
+def test_a_delegation_tells_no_home_result_whose_request_live_has_not_heard(monkeypatch):
+    monkeypatch.setattr(live, "_CLAIM_GRACE_S", 0.05)
+    monkeypatch.setattr(live, "_COMBINE_WAIT_S", 0.5)
+
+    async def main():
+        clock, conn, ears = FakeClock(), Conn(), Ears()
+        session = parallel_session(clock, conn, ears)
+        session._consult = Agent("").consult
+        told_at: list[tuple[int, str]] = []
+        comment = conn.session.commentary.append
+
+        async def recorded(**kwargs):
+            told_at.append((session._mic.sent_samples, kwargs["content"]))
+            await comment(**kwargs)
+
+        conn.session.commentary.append = recorded
+        # 8 s heard while Live starts, two requests in it; Home Assistant hears both live.
+        for _ in range(80):
+            await session.on_mic(block(1000, ms=100))
+        async with session.open(Host()):
+            receiving = asyncio.create_task(session.receive())
+            ears.hears(1)
+            ears.hears(2)
+            await asyncio.sleep(0.01)
+            # Live, paced, has heard only the first, and delegates it.
+            conn.user("Turn on the kitchen light.")
+            conn.delegate("dlg_1")
+            await asyncio.sleep(0.01)
+            ears.did(1, Outcome.ACTED, "The kitchen light is on.")
+            ears.did(2, Outcome.ACTED, "The door is locked.")
+            await asyncio.sleep(0.2)
+            second_heard = session._slots[2].heard
+            await clock.run_until(30)
+            await asyncio.sleep(0.2)
+            await conn.events.put(None)
+            await receiving
+        return told_at, second_heard
+
+    told_at, second_heard = asyncio.run(main())
+    door = [sent for sent, content in told_at if "door is locked" in content]
+    # Told once, and only after Live has heard the request.
+    assert len(door) == 1 and door[0] >= second_heard
 
 
 def test_speech_over_the_assistant_is_dated_on_the_mic_including_the_pacer_lag():

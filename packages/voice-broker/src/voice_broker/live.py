@@ -346,7 +346,9 @@ class _MicPacer:
                 if (wait := due - self._ahead_s - now) > 0:
                     await self._sleep(wait)
                 await send(samples)
-                due += len(samples) / (self._rate * self._speed)
+                # Charged from when Live took it: after a stalled send, that piece and a fresh lead
+                # would otherwise land at one instant.
+                due = max(due, self._clock()) + len(samples) / (self._rate * self._speed)
                 self.pending_samples -= len(samples)
                 self.sent_samples += len(samples)
                 self._progress.set()
@@ -857,6 +859,12 @@ class LiveSession:
                 # Released: _listen_home tells GPT-Live on its own once it is done.
                 slot.claimed = False
                 pending = True
+                continue
+            if self._mic.sent_samples < slot.heard:
+                # GPT-Live hasn't heard this request yet: at startup the mic reaches it paced, behind Home
+                # Assistant. Released, and told on its own once GPT-Live has heard it (_tell_alone).
+                slot.claimed = False
+                self._spawn(self._tell_alone(slot))
                 continue
             slot.delivered = True
             claimed.slots.append(slot)
