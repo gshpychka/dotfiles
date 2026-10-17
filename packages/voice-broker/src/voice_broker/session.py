@@ -24,6 +24,10 @@ class SessionRefused(Exception):
     """OpenAI rejected the session before it started."""
 
 
+class MicOverflow(Exception):
+    """More mic audio waits for the model than a session holds: the conversation ends instead of losing any."""
+
+
 class Host(Protocol):
     """What a model session can do to the conversation it runs in."""
 

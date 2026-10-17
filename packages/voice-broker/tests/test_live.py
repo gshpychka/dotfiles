@@ -8,8 +8,9 @@ from contextlib import asynccontextmanager
 from types import SimpleNamespace
 
 import numpy as np
+import pytest
 from voice_broker.config import Live
-from voice_broker.live import LiveSession
+from voice_broker.live import LiveSession, MicOverflow
 from voice_broker.openclaw import ConsultFailed, HistoryUnavailable, Turn
 from voice_broker.protocol import MIC_RATE, SPEAKER_RATE, Phase
 
@@ -299,6 +300,7 @@ def test_mic_audio_heard_before_the_session_opens_reaches_it_first():
         await session.on_mic(block(2000, ms=200))
         async with session.open(Host()):
             await session.on_mic(block(-1000, ms=200))
+            await session._mic.drained()
         return conn
 
     conn = asyncio.run(main())
@@ -311,20 +313,31 @@ def test_mic_audio_heard_before_the_session_opens_reaches_it_first():
     assert np.allclose(levels, [1000, 2000, -1000], atol=5)
 
 
-def test_the_held_audio_keeps_its_newest_fifteen_seconds():
-    async def main() -> Connection:
+def test_held_audio_past_fifteen_seconds_ends_the_conversation_instead_of_losing_its_start():
+    async def main() -> tuple[Connection, int, str]:
         conn = Connection()
         session = await session_with(conn)
-        for _ in range(200):
+        blocks = 0
+        try:
+            for _ in range(200):
+                await session.on_mic(block(1000, ms=100))
+                blocks += 1
+        except MicOverflow as e:
+            error = str(e)
+        else:
+            raise AssertionError("no overflow")
+        with pytest.raises(MicOverflow):
             await session.on_mic(block(1000, ms=100))
         async with session.open(Host()):
             pass
-        return conn
+        return conn, blocks, error
 
-    conn = asyncio.run(main())
+    conn, blocks, error = asyncio.run(main())
 
-    held = sum(len(chunk) for chunk in conn.audio)
-    assert SPEAKER_RATE * 14 < held <= SPEAKER_RATE * 15
+    # Nothing held was dropped to make room, and the session never heard a trimmed start.
+    assert 140 <= blocks <= 150
+    assert "more than 15 s" in error
+    assert conn.audio == []
 
 
 def test_a_call_opens_with_the_agents_words():

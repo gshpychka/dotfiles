@@ -39,7 +39,7 @@ from .protocol import (
     parse_control,
 )
 from .recorder import NullRecorder, Recorder
-from .session import ModelSession, SessionRefused
+from .session import MicOverflow, ModelSession, SessionRefused
 
 log = logging.getLogger(__name__)
 
@@ -61,6 +61,7 @@ class EndReason(enum.StrEnum):
     IDLE = "idle"
     MAX_DURATION = "max duration"
     OPENAI_GONE = "openai disconnected"
+    MIC_OVERFLOW = "mic audio overflow"
 
 
 class DeviceSocket(Protocol):
@@ -105,8 +106,27 @@ class Conversation:
         started = time.monotonic()
         # The device streams from its first frame; the session holds what arrives before it is open.
         device = asyncio.create_task(self._device_loop(), name="device")
+        running = asyncio.current_task()
+        assert running is not None
+        opened = False
+        aborted = False
+        # Set once run() is tearing down: an overflow then has nothing left to abandon.
+        finishing = False
+
+        def device_done(task: asyncio.Task[None]) -> None:
+            nonlocal aborted
+            if task.cancelled() or not isinstance(task.exception(), MicOverflow):
+                return
+            self._end(EndReason.MIC_OVERFLOW)
+            if not opened and not finishing:
+                # The session is still starting: abandon it rather than start one that can't hear the start.
+                aborted = True
+                running.cancel()
+
+        device.add_done_callback(device_done)
         try:
             async with self._session.open(self):
+                opened = True
                 await self.set_phase(Phase.LISTENING)
                 tasks = [
                     device,
@@ -125,7 +145,13 @@ class Conversation:
                 ended.cancel()
         except SessionRefused as e:
             log.error("openai refused the session: %s", e)
+        except asyncio.CancelledError:
+            # Only the abandoned start is absorbed; a cancellation from outside still ends run().
+            if not aborted or running.uncancel() > 0:
+                raise
+            log.error("conversation task device failed before the session opened", exc_info=device.exception())
         finally:
+            finishing = True
             device.cancel()
             await asyncio.gather(device, return_exceptions=True)
             self._recorder.close()

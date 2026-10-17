@@ -56,7 +56,7 @@ from .home_assistant import HomeAssistantFailed, HomeReply
 from .openclaw import ConsultFailed, HistoryUnavailable, Role, Turn
 from .protocol import SPEAKER_RATE, Phase
 from .routing import RouteDecision, RouteRequest, RoutingFailed
-from .session import Host, SessionRefused, located, placement
+from .session import Host, MicOverflow, SessionRefused, located, placement
 
 log = logging.getLogger(__name__)
 
@@ -66,8 +66,17 @@ _AUDIO_EVENTS = frozenset({"session.output_audio.delta"})
 _APPEND_MAX_BYTES = 500
 # Live takes this many initial messages at most.
 _INPUT_MAX_ITEMS = 128
-# Mic audio held for a session still starting; the device gives a startup 10 s.
+# Mic audio not yet sent to Live, at most: held while the session starts (the device gives a startup
+# 10 s), then while it catches up. More ends the conversation (MicOverflow): its start is never dropped.
 _BACKLOG_MAX_SAMPLES = SPEAKER_RATE * 15
+# Live hears held audio at most this much faster than real time, so a startup backlog
+# reaches it as speech, not as one burst: 15 s held takes 75 s to catch up.
+_CATCH_UP_SPEED = 1.2
+# How far ahead of that pace the stream may run (s of wall time): the mic's jitter, never a burst. At any
+# instant at most _CATCH_UP_SPEED x this plus one piece goes at once (0.4 s).
+_PACE_AHEAD_S = 0.25
+# The most audio in one append: a held stretch is paced in pieces.
+_PIECE_SAMPLES = SPEAKER_RATE // 10
 # Leads the initial messages, which are the agent's conversation before this one.
 _HISTORY_LEAD = "Your text conversation with the user so far; the spoken conversation follows it."
 # Ends the initial messages of a call: the backend is what the instructions call the agent.
@@ -201,6 +210,8 @@ class _Slot:
     delivered: bool = False
     # Set once GPT-Live has it: an observation of the turn comes after the turn itself.
     told: asyncio.Event = field(default_factory=asyncio.Event)
+    # The mic stream's length when its result came: GPT-Live hears of it only after hearing that far.
+    heard: int = 0
 
 
 @dataclass
@@ -215,6 +226,128 @@ class _Claimed:
 
 # Turns finishing after their conversation ended, kept until they end.
 _FINISHING: set[asyncio.Task[None]] = set()
+
+
+class _MicPacer:
+    """The one way mic audio reaches Live: in order, at most `speed` times real time, and bounded.
+
+    Pacing is a leaky bucket (GCRA): a piece goes once the stream is no more than `ahead_s` of wall time
+    ahead of `speed` times real time. Idle time earns no credit beyond that lead, so a stall never turns
+    into a burst: at any instant at most `speed * ahead_s` plus one piece goes. Audio the mic has sent
+    counts until Live has taken it.
+    """
+
+    def __init__(
+        self,
+        rate: int,
+        max_samples: int,
+        speed: float = _CATCH_UP_SPEED,
+        ahead_s: float = _PACE_AHEAD_S,
+        piece_samples: int = _PIECE_SAMPLES,
+        clock: Callable[[], float] = time.monotonic,
+        sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+    ) -> None:
+        self._rate = rate
+        self._max_samples = max_samples
+        self._speed = speed
+        self._ahead_s = ahead_s
+        self._piece_samples = piece_samples
+        self._clock = clock
+        self._sleep = sleep
+        self._queue: deque[np.ndarray] = deque()
+        # Samples heard but not yet taken by Live, in flight included.
+        self.pending_samples = 0
+        self.sent_samples = 0
+        # Every sample ever accepted: a mark in the stream (reached()).
+        self.put_samples = 0
+        self._wake = asyncio.Event()
+        # Set on every piece Live takes, and when sending stops.
+        self._progress = asyncio.Event()
+        self._idle = asyncio.Event()
+        self._idle.set()
+        self._task: asyncio.Task[None] | None = None
+        self._error: BaseException | None = None
+        self._closed = False
+
+    def put(self, samples: np.ndarray) -> None:
+        """Queues `samples` for Live; never awaits. Raises MicOverflow, or the failure of an earlier send."""
+        if self._closed:
+            # The conversation has ended: there is no Live left to hear it.
+            return
+        if self._error is not None:
+            raise self._error
+        if self.pending_samples + len(samples) > self._max_samples:
+            self._error = MicOverflow(
+                f"{(self.pending_samples + len(samples)) / self._rate:.1f} s of mic audio waiting for Live, "
+                f"more than {self._max_samples / self._rate:.0f} s"
+            )
+            raise self._error
+        self._queue.append(samples)
+        self.pending_samples += len(samples)
+        self.put_samples += len(samples)
+        self._idle.clear()
+        self._wake.set()
+
+    def start(self, send: Callable[[np.ndarray], Awaitable[None]]) -> None:
+        assert self._task is None and not self._closed
+        self._task = asyncio.ensure_future(self._run(send))
+
+    async def reached(self, mark: int) -> bool:
+        """Waits until Live has taken the stream up to `mark` (a put_samples value); False: it never will."""
+        while self.sent_samples < mark:
+            if self._closed or self._error is not None:
+                return False
+            self._progress.clear()
+            await self._progress.wait()
+        return True
+
+    async def drained(self) -> None:
+        """Returns once Live has taken everything queued so far."""
+        await self._idle.wait()
+
+    async def close(self) -> None:
+        """Stops sending; what is still queued goes nowhere, and is logged."""
+        self._closed = True
+        if self._task is not None:
+            self._task.cancel()
+            await asyncio.gather(self._task, return_exceptions=True)
+        if self.pending_samples:
+            log.info("conversation ended with %.1f s of mic audio unsent", self.pending_samples / self._rate)
+        self._queue.clear()
+        self.pending_samples = 0
+        self._idle.set()
+        self._progress.set()
+
+    async def _run(self, send: Callable[[np.ndarray], Awaitable[None]]) -> None:
+        # Theoretical send time of the next piece, on `clock`.
+        due = self._clock()
+        try:
+            while True:
+                while not self._queue:
+                    self._idle.set()
+                    self._wake.clear()
+                    await self._wake.wait()
+                samples = self._queue.popleft()
+                if len(samples) > self._piece_samples:
+                    self._queue.appendleft(samples[self._piece_samples :])
+                    samples = samples[: self._piece_samples]
+                now = self._clock()
+                due = max(due, now)
+                if (wait := due - self._ahead_s - now) > 0:
+                    await self._sleep(wait)
+                await send(samples)
+                due += len(samples) / (self._rate * self._speed)
+                self.pending_samples -= len(samples)
+                self.sent_samples += len(samples)
+                self._progress.set()
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:  # noqa: BLE001 -- any send failure is handed to the mic, which ends the conversation
+            # The next put raises it, so the conversation ends on it rather than going deaf.
+            log.error("sending mic audio to live failed: %s", e)
+            self._error = e
+            self._idle.set()
+            self._progress.set()
 
 
 def live_connector(client: AsyncOpenAI) -> LiveConnector:
@@ -268,9 +401,8 @@ class LiveSession:
         self._to_openai_rate = mic_to_speaker_rate()
         self._conn: AsyncLiveConnection | None = None
         self._host: Host | None = None
-        # Mic audio heard before the session is open, at SPEAKER_RATE, in order.
-        self._backlog: deque[np.ndarray] = deque()
-        self._backlog_samples = 0
+        # Mic audio on its way to Live, at SPEAKER_RATE: held until the session is open, then paced.
+        self._mic = _MicPacer(SPEAKER_RATE, _BACKLOG_MAX_SAMPLES)
         # Transcript fragments in delivery order.
         self._heard: list[Turn] = []
         self._logged = 0
@@ -301,11 +433,8 @@ class LiveSession:
                         break
                     if event.type == "error":
                         raise SessionRefused(f"{event.error.message} ({event.error.code})")
-                # What the mic sent so far goes first; a block arriving meanwhile joins the backlog.
-                while self._backlog:
-                    samples = self._backlog.popleft()
-                    self._backlog_samples -= len(samples)
-                    await conn.session.input_audio.append(audio=_audio(samples))
+                # What the mic sent so far goes first, paced, and every later block after it.
+                self._mic.start(lambda samples: conn.session.input_audio.append(audio=_audio(samples)))
                 self._conn = conn
                 self._ready.set()
                 try:
@@ -314,12 +443,15 @@ class LiveSession:
                     if self._consulting is not None:
                         self._consulting.cancel()
                     self._conn = None
+                    await self._mic.close()
         finally:
+            # Everything that can't be interrupted first: a cancellation at the await below skips nothing.
             for task in self._tasks:
                 task.cancel()
             if self._parallel is not None and (finishing := self._parallel.home.stop()) is not None:
                 _FINISHING.add(finishing)
                 finishing.add_done_callback(_FINISHING.discard)
+            await self._mic.close()
 
     @property
     def busy(self) -> bool:
@@ -362,16 +494,8 @@ class LiveSession:
         upsampled = self._to_openai_rate(samples)
         if len(upsampled) == 0:
             return
-        if self._conn is None:
-            self._hold(upsampled)
-            return
-        await self._conn.session.input_audio.append(audio=_audio(upsampled))
-
-    def _hold(self, samples: np.ndarray) -> None:
-        self._backlog.append(samples)
-        self._backlog_samples += len(samples)
-        while self._backlog_samples > _BACKLOG_MAX_SAMPLES:
-            self._backlog_samples -= len(self._backlog.popleft())
+        # Raises MicOverflow, which ends the conversation (conversation.py's device task).
+        self._mic.put(upsampled)
 
     # -- OpenAI side ---------------------------------------------------------
 
@@ -388,7 +512,11 @@ class LiveSession:
                     self._user_starts.append(event.start_ms)
                     if self._parallel is not None:
                         self._timeline_ms = max(self._timeline_ms, event.end_ms)
-                        self._parallel.home.user_heard(*self._over_assistant(event.start_ms))
+                        back_s, during = self._over_assistant(event.start_ms)
+                        if back_s is not None:
+                            # Live's timeline trails the mic by what the pacer still holds; Home Assistant's doesn't.
+                            back_s += self._mic.pending_samples / SPEAKER_RATE
+                        self._parallel.home.user_heard(back_s, during)
                     self._hear("user", event.delta)
                 case "session.output_transcript.delta":
                     if self._parallel is not None:
@@ -666,6 +794,7 @@ class LiveSession:
                 )
                 if not slot.result.done():
                     slot.result.set_result(result)
+                    slot.heard = self._mic.put_samples
                 if result.outcome == Outcome.ACTED:
                     self._latest_action = result.turn
                     self._observe(result)
@@ -686,7 +815,10 @@ class LiveSession:
             if not self._first_of_gap(result):
                 return
             await self._ready.wait()
-            assert self._conn is not None and self._host is not None
+            # Not before GPT-Live has heard the request: at startup the mic reaches it paced, behind Home Assistant.
+            if not await self._mic.reached(slot.heard) or self._conn is None:
+                return
+            assert self._host is not None
             text, speakable = note
             append = self._conn.session.commentary.append if speakable else self._conn.session.thinking.append
             for chunk in _chunks(text):
