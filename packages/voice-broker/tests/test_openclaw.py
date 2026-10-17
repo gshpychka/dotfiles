@@ -13,6 +13,7 @@ import pytest
 from voice_broker.config import History
 from voice_broker.config import OpenClaw as OpenClawConfig
 from voice_broker.config import Overflow
+from voice_broker import openclaw as openclaw_module
 from voice_broker.openclaw import ConsultFailed, HistoryUnavailable, OpenClaw, Turn
 
 Handler = Callable[[httpx2.Request], httpx2.Response]
@@ -211,10 +212,11 @@ def test_an_unreadable_conversation_is_unavailable():
 # -- a conversation's session: main's, or its own when main's is full ------------
 
 PREFIX = "agent:main:voice-overflow:"
-OVERFLOW = Overflow(session_prefix=PREFIX, handoff_max_chars=60, fits_when_unknown=True)
+OVERFLOW = Overflow(session_prefix=PREFIX, handoff_max_chars=60, fits_when_unknown=True, margin_tokens=0)
 # The gateway's own budget for main on hoard, 2026-10-17: 500000, compacting past 480000.
 WINDOW = 500_000
 THRESHOLD = 480_000
+UNKNOWN_OVERFLOWS = Overflow(PREFIX, 60, fits_when_unknown=False, margin_tokens=0)
 
 
 def usage(prompt_and_output: int, state: str = "available") -> dict:
@@ -349,9 +351,10 @@ def test_messages_after_the_newest_recorded_call_count_by_their_bytes():
     after = message("user", text("y" * 2000), age_s=0)
     gateway = Gateway(messages=[message("assistant", text("ok")) | {"usage": usage(THRESHOLD - 1500)}, after])
     assert first_consult(gateway) == f"{PREFIX}room-assistant-1"
-    # Without a recorded call among those read, they count on top of the row's prompt.
-    unrecorded = Gateway(row_total=THRESHOLD - 1500, messages=[after])
-    assert first_consult(unrecorded) == f"{PREFIX}room-assistant-1"
+    # Without a recorded call among those read, what precedes them isn't known: unknown, whatever the row says.
+    unrecorded = Gateway(row_total=10, messages=[after])
+    assert first_consult(unrecorded, cfg=main_config(UNKNOWN_OVERFLOWS)) == f"{PREFIX}room-assistant-1"
+    assert first_consult(Gateway(row_total=10, messages=[after])) == "agent:main:main"
 
 
 def test_an_unavailable_usage_record_is_not_a_measurement():
@@ -379,11 +382,12 @@ def test_a_full_main_session_gets_the_conversation_its_own_with_a_bounded_handof
     assert first_consult(gateway) == f"{PREFIX}room-assistant-1"
     ((session, sent),) = gateway.turns
     assert session == f"{PREFIX}room-assistant-1"
-    lead, said, request = sent.split("\n\n", 2)[0], sent.split("\n\n")[0], sent.rsplit("\n\n", 1)[1]
+    handoff, request = sent.rsplit("\n\n", 1)
+    lead, said = handoff.split("\n", 1)
     assert lead.startswith("Your main session is too full")
     assert request == "Will it rain?"
     # The newest of main's messages within the 60-character bound, oldest kept first; no more.
-    assert "assistant: Mum lands at six.\nuser: Remind me at five.\nassistant: Will do." in said
+    assert said == "assistant: Mum lands at six.\nuser: Remind me at five.\nassistant: Will do."
     assert "old Telegram" not in sent
     # The same agent: the overflow key is main's, and main is named.
     assert gateway.requests[-1].headers["x-openclaw-agent-id"] == "main"
@@ -395,8 +399,8 @@ def test_unknown_use_follows_the_configured_policy_and_says_so(caplog):
             return httpx2.Response(500, json={"ok": False})
         return Gateway()(request)
 
-    to_main = main_config(Overflow(PREFIX, 60, fits_when_unknown=True))
-    to_overflow = main_config(Overflow(PREFIX, 60, fits_when_unknown=False))
+    to_main = main_config(Overflow(PREFIX, 60, fits_when_unknown=True, margin_tokens=0))
+    to_overflow = main_config(Overflow(PREFIX, 60, fits_when_unknown=False, margin_tokens=0))
     caplog.set_level(logging.INFO, logger="voice_broker.openclaw")
     for handler in (broken, Gateway(window=None), Gateway(rows=[]), Gateway(row_total=None)):
         assert first_consult(handler, cfg=to_main) == "agent:main:main"  # type: ignore[arg-type]
@@ -409,10 +413,12 @@ def test_unknown_use_follows_the_configured_policy_and_says_so(caplog):
 def test_mains_row_is_found_by_its_alias_and_only_main_s():
     other = {"key": "agent:voice:main", "agentId": "voice", "contextTokens": 1, "totalTokens": 1}
     by_key = {"key": "agent:main:main", "agentId": "main", "contextTokens": WINDOW, "totalTokens": THRESHOLD}
-    assert first_consult(Gateway(rows=[other, by_key])) == f"{PREFIX}room-assistant-1"
+    measured = [message("assistant", text("ok")) | {"usage": usage(1000)}]
+    # The row's prompt counts when it is the larger: this row is main's, the other agent's is ignored.
+    assert first_consult(Gateway(rows=[other, by_key], messages=measured)) == f"{PREFIX}room-assistant-1"
     two = {"key": "main", "agentId": "main", "contextTokens": WINDOW, "totalTokens": 1}
     # Two rows for the session can't be told apart: unknown, not a guess.
-    unknown = main_config(Overflow(PREFIX, 60, fits_when_unknown=False))
+    unknown = main_config(Overflow(PREFIX, 60, fits_when_unknown=False, margin_tokens=0))
     assert first_consult(Gateway(rows=[by_key, two]), cfg=unknown) == f"{PREFIX}room-assistant-1"
 
 
@@ -503,8 +509,9 @@ def test_two_first_consults_together_are_placed_once():
     with_gateway(gateway, use)
     assert gateway.paths().count("/tools/invoke") == 1
     assert {session for session, _ in gateway.turns} == {f"{PREFIX}room-assistant-1"}
-    # One handoff, on whichever request went first.
+    # One handoff, on the request sent first: the second waits until it is built.
     assert sum(sent.startswith("Your main session") for _, sent in gateway.turns) == 1
+    assert gateway.turns[0][1].startswith("Your main session")
 
 
 def test_the_voice_still_starts_with_mains_history_in_an_overflow_conversation():
@@ -542,6 +549,111 @@ def test_a_handoff_that_cant_be_read_doesnt_stop_the_request():
     assert first_consult(gateway) == f"{PREFIX}room-assistant-1"
     # The overflow session starts without main's messages, and the request still goes, once.
     assert gateway.turns == [(f"{PREFIX}room-assistant-1", "Will it rain?")]
+
+
+def measured_at(tokens: int) -> list[dict]:
+    return [message("assistant", text("ok")) | {"usage": usage(tokens)}]
+
+
+def test_the_margin_counts_what_the_gateway_adds_again():
+    margin = main_config(Overflow(PREFIX, 60, fits_when_unknown=True, margin_tokens=12_000))
+    assert first_consult(Gateway(messages=measured_at(THRESHOLD - 12_100)), cfg=margin) == "agent:main:main"
+    assert first_consult(Gateway(messages=measured_at(THRESHOLD - 12_000)), cfg=margin) == f"{PREFIX}room-assistant-1"
+
+
+@pytest.mark.parametrize(
+    "newer",
+    [
+        # an unmeasured call after a measured one: the gateway then estimates all of it, and so can't the broker
+        message("assistant", text("ok")) | {"usage": usage(0, "unavailable")},
+        message("assistant", text("ok")) | {"usage": {"input": 5, "output": 1}},
+        # shown cut, or with blocks the endpoint may show less of
+        message("user", text("p" * 8000)),
+        message("user", {"type": "image", "data": "..."}),
+    ],
+)
+def test_use_that_cant_be_bounded_is_unknown(newer: dict):
+    gateway = Gateway(messages=[*measured_at(1000), newer])
+    assert first_consult(gateway, cfg=main_config(UNKNOWN_OVERFLOWS)) == f"{PREFIX}room-assistant-1"
+    assert first_consult(Gateway(messages=[*measured_at(1000), newer])) == "agent:main:main"
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"ok": True, "result": {"details": {"sessions": None}}},
+        {"ok": True, "result": {"details": {"sessions": [{"key": ["main"], "agentId": "main"}]}}},
+        {"ok": True, "result": {"details": {"sessions": [{"key": "main", "agentId": "main", "contextTokens": 1e400}]}}},
+        {"ok": True, "result": {"details": {"sessions": [{"key": "main", "agentId": "main", "contextTokens": "big"}]}}},
+        {"ok": True, "result": None},
+        {"ok": False, "error": {"type": "tool_call_blocked"}},
+        ["not", "an", "object"],
+    ],
+)
+def test_a_malformed_or_refused_sessions_list_is_unknown_not_a_crash(body: object):
+    class Odd(Gateway):
+        def __call__(self, request: httpx2.Request) -> httpx2.Response:
+            if request.url.path == "/tools/invoke":
+                self.requests.append(request)
+                return httpx2.Response(200, json=body)
+            return super().__call__(request)
+
+    assert first_consult(Odd(messages=measured_at(1000)), cfg=main_config(UNKNOWN_OVERFLOWS)) == (
+        f"{PREFIX}room-assistant-1"
+    )
+
+
+def test_odd_numbers_are_no_numbers():
+    for odd in (float("nan"), float("inf"), 1e400, -5, 2.5, True, "7"):
+        assert openclaw_module._tokens(odd) is None
+    assert openclaw_module._tokens(7.0) == 7
+
+
+def test_an_unreachable_preflight_and_a_missing_session_are_unknown():
+    class Slow(Gateway):
+        def __call__(self, request: httpx2.Request) -> httpx2.Response:
+            if request.url.path == "/tools/invoke":
+                raise httpx2.ReadTimeout("timed out", request=request)
+            return super().__call__(request)
+
+    class Missing(Gateway):
+        def __call__(self, request: httpx2.Request) -> httpx2.Response:
+            if request.url.path.endswith("/history"):
+                return httpx2.Response(404, json={"ok": False, "error": {"type": "not_found"}})
+            return super().__call__(request)
+
+    for gateway in (Slow(messages=measured_at(1000)), Missing()):
+        assert first_consult(gateway, cfg=main_config(UNKNOWN_OVERFLOWS)) == f"{PREFIX}room-assistant-1"
+        # The request still goes, exactly once.
+        assert len(gateway.turns) == 1
+
+
+def test_a_preflight_bug_costs_no_request(monkeypatch):
+    async def broken(self, task):
+        raise RuntimeError("bug")
+
+    monkeypatch.setattr(OpenClaw, "preflight", broken)
+    gateway = Gateway()
+    assert first_consult(gateway) == "agent:main:main"
+    assert gateway.turns == [("agent:main:main", "Will it rain?")]
+
+
+def test_a_failed_first_overflow_consult_is_not_resent_and_its_follow_up_stays():
+    gateway = Gateway(messages=measured_at(THRESHOLD), consult=times_out)
+
+    async def use(client: OpenClaw) -> None:
+        conversation = client.conversation("room-assistant-1")
+        with pytest.raises(ConsultFailed):
+            await conversation.consult("Book the table.")
+        gateway.consult = None
+        await conversation.consult("For two.")
+
+    with_gateway(gateway, use)
+    (first, second) = gateway.turns
+    assert first[0] == second[0] == f"{PREFIX}room-assistant-1"
+    assert first[1].startswith("Your main session is too full")
+    # No second handoff, no replay of the failed request.
+    assert second[1] == "For two."
 
 
 # -- the voice agent's sessions and the observer -----------------------------

@@ -273,17 +273,20 @@ gateway, main's context budget and use (`openclaw.py` `preflight`):
 - the budget: the `sessions_list` tool's row for main over `/tools/invoke`;
 - the use: the newest model call's tokens, from main's transcript.
 
-If the consult would take main past the point where the gateway compacts
-first (its window less the reserve), the conversation gets a session of its
-own, `agent:main:voice-overflow:<speaker>-<id>`. That session is main's agent
+The broker adds the consult's bytes and `overflow.marginTokens`, which stands
+for the rendered system prompt the gateway estimates again before each prompt.
+If that would take main past the point where the gateway compacts first (its
+window less the reserve), the conversation gets a session of its own, `agent:main:voice-overflow:<speaker>-<id>`. That session is main's agent
 too, with a bounded handoff of main's newest messages
 (`my.voice-broker.overflow.handoffChars`).
 
 The choice is made once per conversation, and its follow-ups stay with it. A
 consult is never resent elsewhere after its request, even one that failed or
 timed out, because it may have acted. The next conversation is placed afresh.
-When the use can't be read, `overflow.whenUnknown` decides, and the journal
-says `context use unknown`. The journal logs each placement as
+When the use can't be read or bounded, `overflow.whenUnknown` decides, and
+the journal says `context use unknown (<why>)`. That covers a failed read, an
+unmeasured newest call, no call among the 20 newest messages, and a newer
+message shown cut or with an image. The journal logs each placement as
 `consults in <session>: <used> + <request> of <threshold> tokens`, numbers only.
 
 To read main's numbers by hand, read-only:

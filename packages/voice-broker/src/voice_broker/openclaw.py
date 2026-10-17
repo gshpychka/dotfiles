@@ -18,6 +18,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import math
 import time
 from dataclasses import dataclass
 from typing import Any, Literal
@@ -106,7 +107,7 @@ class Fit:
     fits: bool
     # Tokens the session's next prompt carries before the consult; None when unknown.
     used: int | None = None
-    # An upper bound of the consult's own tokens.
+    # An upper bound of the consult's own tokens, with the margin for what the gateway counts again.
     request: int = 0
     # The prompt size past which the gateway compacts first; None when unknown.
     threshold: int | None = None
@@ -144,40 +145,46 @@ class OpenClaw:
     async def preflight(self, task: str) -> Fit:
         """Whether a consult of `task` fits the agent session before the gateway would compact it.
 
-        Read, not estimated: the window is the running gateway's own for the
-        session (the sessions_list tool, the row sessions.list projects; a
-        separate process's view of the store can lack the model's window and
-        show a default), and the use is the larger of the row's last prompt and
-        the newest model call's prompt plus its output, from the transcript. The
-        consult's own size is bounded by its UTF-8 bytes, which no token spans
-        less of. Unknown use (a read failed, or the gateway has no numbers yet)
-        is told as such and decided by overflow.when_unknown, never guessed.
+        Mirrors the gateway's own check before each prompt
+        (embedded-agent-runner/run/preemptive-compaction.ts at e178c39e): the
+        newest model call's measured prompt and output, then 1.2 times a local
+        estimate of what follows it: the rendered system prompt again, and the
+        newer messages. The parts:
+        - the window: the running gateway's own for the session (the
+          sessions_list tool, the row sessions.list projects; a separate
+          process's view of the store can lack the model's window and show a
+          default);
+        - the measured use: the newest call's contextUsage from the transcript,
+          or the row's last prompt when that is larger;
+        - the newer messages: their bytes as the transcript shows them;
+        - the consult itself: its UTF-8 bytes, which no token spans less of;
+        - the system prompt the gateway counts again: overflow.margin_tokens,
+          which this endpoint can't read.
+        Unknown use is told as such and decided by overflow.when_unknown, never
+        guessed. Unknown means: a read failed, the gateway gave no window, the
+        newest call's usage is not measured (the gateway then estimates the
+        whole transcript), none of the messages read records a call, or a newer
+        message may be shown cut or without its images, so its size can't be
+        bounded.
         """
         overflow = self._config.overflow
         assert overflow is not None
         request = len(self._config.instructions.encode()) + len(task.encode())
         try:
-            (window, prompt), (newest, after) = await asyncio.gather(self._row(), self._newest_usage())
+            (window, prompt), (measured, after) = await asyncio.gather(self._row(), self._newest_usage())
         except _UsageUnknown as e:
             return Fit(overflow.fits_when_unknown, request=request, unknown=str(e))
-        # Messages newer than the newest recorded call are on top of it; with no call recorded
-        # among the messages read, they are on top of the row's prompt.
-        known: list[int] = []
-        if newest is not None:
-            known.append(newest + after)
-        if prompt is not None:
-            known.append(prompt if newest is not None else prompt + after)
-        if window is None or not known:
-            reason = "no window" if window is None else "no usage yet"
-            return Fit(overflow.fits_when_unknown, request=request, unknown=reason)
-        used = max(known)
+        used = max(measured, prompt or 0) + after
         threshold = window - min(_RESERVE_FLOOR_TOKENS, int(window * _MAX_RESERVE_RATIO))
-        return Fit(used + request < threshold, used=used, request=request, threshold=threshold)
+        needed = request + overflow.margin_tokens
+        return Fit(used + needed < threshold, used=used, request=needed, threshold=threshold)
 
-    async def _row(self) -> tuple[int | None, int | None]:
-        """The gateway's window for the agent session, and its last prompt's tokens, each None when not known."""
+    async def _row(self) -> tuple[int, int | None]:
+        """The gateway's window for the agent session, and its last prompt's tokens when it has them."""
         session_key = self._config.session_key
         agent = session_key.split(":")[1]
+        # The tool shows the agent's main session as "main" (_MAIN_ALIAS), any other by its key.
+        names = {session_key, _MAIN_ALIAS} if session_key == f"agent:{agent}:{_MAIN_ALIAS}" else {session_key}
         try:
             response = await self._http.post(
                 f"{self._config.url}/tools/invoke",
@@ -191,22 +198,31 @@ class OpenClaw:
             )
             response.raise_for_status()
             body = response.json()
-            if body.get("ok") is not True:
-                raise _UsageUnknown(f"sessions_list refused: {body.get('error')!r}")
+            if not isinstance(body, dict) or body.get("ok") is not True:
+                raise _UsageUnknown("sessions_list refused")
             rows = body["result"]["details"]["sessions"]
-        except (httpx2.HTTPError, LookupError, TypeError, ValueError, AttributeError) as e:
+            if not isinstance(rows, list):
+                raise TypeError(type(rows).__name__)
+            matching = [
+                r
+                for r in rows
+                if isinstance(r, dict)
+                and isinstance(r.get("key"), str)
+                and r["key"] in names
+                and r.get("agentId") == agent
+            ]
+        except (httpx2.HTTPError, LookupError, TypeError, ValueError) as e:
             raise _UsageUnknown(f"sessions_list: {type(e).__name__}") from e
-        # The tool shows the agent's main session as "main" (_MAIN_ALIAS), any other by its key.
-        names = {session_key, _MAIN_ALIAS} if session_key == f"agent:{agent}:{_MAIN_ALIAS}" else {session_key}
-        matching = [r for r in rows if isinstance(r, dict) and r.get("key") in names and r.get("agentId") == agent]
         if len(matching) != 1:
             raise _UsageUnknown(f"{len(matching)} rows for the session")
         (row,) = matching
-        return _tokens(row.get("contextTokens")), _tokens(row.get("totalTokens"))
+        if (window := _tokens(row.get("contextTokens"))) is None or window == 0:
+            raise _UsageUnknown("no window")
+        return window, _tokens(row.get("totalTokens"))
 
-    async def _newest_usage(self) -> tuple[int | None, int]:
-        """The newest model call's prompt plus output tokens, None when no message records them, and an
-        upper bound of the tokens of the messages after it."""
+    async def _newest_usage(self) -> tuple[int, int]:
+        """The newest model call's measured prompt plus output tokens, and an upper bound of the
+        tokens of the messages after it."""
         session = quote(self._config.session_key, safe="")
         try:
             response = await self._http.get(
@@ -215,9 +231,6 @@ class OpenClaw:
                 headers={"Authorization": f"Bearer {self._config.token}"},
                 timeout=_HISTORY_TIMEOUT_S,
             )
-            if response.status_code == 404:
-                # A session that never ran: nothing in it yet.
-                return None, 0
             response.raise_for_status()
             messages = response.json()["messages"]
             if not isinstance(messages, list):
@@ -226,13 +239,21 @@ class OpenClaw:
             raise _UsageUnknown(f"history: {type(e).__name__}") from e
         after = 0
         for message in reversed(messages):
-            usage = message.get("usage") if isinstance(message, dict) else None
-            context = usage.get("contextUsage") if isinstance(usage, dict) else None
-            total = _tokens(context.get("totalTokens")) if isinstance(context, dict) else None
-            if total is not None and context.get("state") == "available":
+            if not isinstance(message, dict):
+                raise _UsageUnknown("malformed message")
+            usage = message.get("usage")
+            if message.get("role") == "assistant" and isinstance(usage, dict):
+                # Any call the gateway recorded is its boundary (isProviderContextUsageBarrier):
+                # measured, it counts; not measured, the gateway estimates everything instead.
+                context = usage.get("contextUsage")
+                total = _tokens(context.get("totalTokens")) if isinstance(context, dict) else None
+                if total is None or context.get("state") != "available":
+                    raise _UsageUnknown("newest call not measured")
                 return total, after
+            if not _bounded(message):
+                raise _UsageUnknown("a newer message's size can't be bounded")
             after += len(json.dumps(message, ensure_ascii=False).encode())
-        return None, after
+        raise _UsageUnknown(f"no call in the newest {len(messages)} messages")
 
     def conversation(self, conversation_id: str) -> Conversation:
         """The consults of one spoken conversation, `conversation_id` unique to it."""
@@ -374,14 +395,15 @@ class Conversation:
 
     async def consult(self, task: str) -> str:
         """The agent's answer to `task`, a turn of the conversation's session."""
+        # Held until the first consult's input is ready, handoff included, so none overtakes it.
         async with self._placing:
-            first = self._session is None
-            if first:
-                self._session = await self._place(task)
-        config = self._openclaw.config
-        if first and self._session != config.session_key:
-            task = await self._handoff(task)
-        return await self._openclaw.consult(task, self._session)
+            if self._session is None:
+                session = await self._place(task)
+                if session != self._openclaw.config.session_key:
+                    task = await self._handoff(task)
+                self._session = session
+            session = self._session
+        return await self._openclaw.consult(task, session)
 
     async def recent(self) -> list[Turn]:
         return await self._openclaw.recent()
@@ -391,7 +413,11 @@ class Conversation:
         config = self._openclaw.config
         if config.overflow is None:
             return config.session_key
-        fit = await self._openclaw.preflight(task)
+        try:
+            fit = await self._openclaw.preflight(task)
+        except Exception as e:  # a bug here must not cost the user the request: the policy decides
+            log.exception("preflight failed")
+            fit = Fit(config.overflow.fits_when_unknown, unknown=f"preflight failed: {type(e).__name__}")
         if fit.fits:
             log.info("consults in %s: %s", config.session_key, fit)
             return config.session_key
@@ -419,9 +445,30 @@ class Conversation:
 
 def _tokens(value: Any) -> int | None:
     """A token count the gateway gave, None unless it is a non-negative whole number."""
-    if isinstance(value, bool) or not isinstance(value, int | float) or value < 0 or value != int(value):
+    if isinstance(value, bool) or not isinstance(value, int | float):
         return None
-    return int(value)
+    if isinstance(value, float) and not (math.isfinite(value) and value.is_integer()):
+        return None
+    return int(value) if value >= 0 else None
+
+
+# The history endpoint shows a text part cut to this many characters
+# (gateway/chat-display-projection.helpers.ts DEFAULT_CHAT_HISTORY_TEXT_MAX_CHARS at e178c39e).
+_HISTORY_TEXT_MAX_CHARS = 8_000
+
+
+def _bounded(message: dict[str, Any]) -> bool:
+    """Whether a message as the history endpoint shows it is as large as the agent's own copy: all text, none cut."""
+    content = message.get("content")
+    parts = content if isinstance(content, list) else [{"type": "text", "text": content}]
+    for part in parts:
+        if not isinstance(part, dict) or part.get("type") != "text":
+            # An image or other block: the endpoint may show less of it than the model gets.
+            return False
+        text = part.get("text")
+        if not isinstance(text, str) or len(text) >= _HISTORY_TEXT_MAX_CHARS:
+            return False
+    return True
 
 
 def _turns(messages: list[Any], since: float) -> list[Turn]:

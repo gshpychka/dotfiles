@@ -74,6 +74,9 @@ class Overflow:
     # Whether a consult counts as fitting the agent session when its context use can't be read
     # (OVERFLOW_WHEN_UNKNOWN): an explicit choice, never a guess.
     fits_when_unknown: bool
+    # Tokens the gateway's own check counts on top of what the broker can read: chiefly the agent's
+    # rendered system prompt, estimated again before each prompt (openclaw.py preflight).
+    margin_tokens: int
 
 
 # overflow.when_unknown in the JSON: the session a conversation goes to when the agent session's use is unknown.
@@ -246,16 +249,21 @@ def _overflow(raw: dict[str, Any], session_key: str) -> Overflow:
         session_prefix=raw["session_prefix"],
         handoff_max_chars=int(raw["handoff_max_chars"]),
         fits_when_unknown=when_unknown == "main",
+        margin_tokens=int(raw["margin_tokens"]),
     )
     # The agent is the session key's `agent:<id>:` prefix: an overflow session of another agent
     # would run with that agent's tools.
     agent_prefix = ":".join(session_key.split(":")[:2]) + ":"
     if not session_key.startswith("agent:") or not overflow.session_prefix.startswith(agent_prefix):
         raise ValueError(f"openclaw.overflow sessions must be {session_key!r}'s agent's")
-    if not overflow.session_prefix.endswith(":") or overflow.session_prefix.count(":") < 3:
+    name = overflow.session_prefix.removeprefix(agent_prefix).removesuffix(":")
+    if not overflow.session_prefix.endswith(":") or not name or ":" in name:
         raise ValueError("openclaw.overflow.session_prefix must be agent:<id>:<name>:")
-    if overflow.handoff_max_chars < 0:
-        raise ValueError("openclaw.overflow.handoff_max_chars must be at least 0")
+    # Overflow sessions are their own, never the agent session or one under it.
+    if overflow.session_prefix.startswith(f"{session_key}:"):
+        raise ValueError(f"openclaw.overflow.session_prefix must not be under {session_key!r}")
+    if overflow.handoff_max_chars < 0 or overflow.margin_tokens < 0:
+        raise ValueError("openclaw.overflow.handoff_max_chars and margin_tokens must be at least 0")
     return overflow
 
 

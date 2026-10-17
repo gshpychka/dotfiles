@@ -258,6 +258,18 @@ in
       '';
     };
 
+    overflow.marginTokens = lib.mkOption {
+      type = lib.types.ints.unsigned;
+      # Before each prompt the gateway adds 1.2 x (chars / 4) of the rendered
+      # system prompt to the measured use (preemptive-compaction.ts,
+      # context-token-pressure.ts at e178c39e), and no HTTP endpoint shows
+      # that prompt's size. Main's was 39,320 characters on 2026-10-17
+      # (its session's systemPromptReport), so 11,796 tokens; 16,000 leaves
+      # room for it to grow by a third. Re-measure if skills or AGENTS.md grow.
+      default = 16000;
+      description = "Tokens counted on top of a consult before main's session counts as too full: what the gateway's own check adds that the broker can't read.";
+    };
+
     overflow.handoffChars = lib.mkOption {
       type = lib.types.ints.between 0 8000;
       default = 2000;
@@ -300,6 +312,11 @@ in
           {
             assertion = openclaw.enable && openclaw.responsesEndpoint.enable;
             message = "my.voice-broker hands delegated work to OpenClaw on this host; enable my.openclaw and its responsesEndpoint.";
+          }
+          {
+            # Consults and overflow sessions are main's by their keys' prefix; the broker refuses a mismatch at start.
+            assertion = lib.hasPrefix "agent:${mainAgent}:" openclaw.mainSessionKey;
+            message = "my.voice-broker consults main in my.openclaw.mainSessionKey, which names another agent.";
           }
           {
             assertion =
@@ -359,6 +376,7 @@ in
               session_prefix = overflowSessionPrefix;
               handoff_max_chars = cfg.overflow.handoffChars;
               when_unknown = cfg.overflow.whenUnknown;
+              margin_tokens = cfg.overflow.marginTokens;
             };
           };
           calls = {
@@ -420,9 +438,9 @@ in
             the owner's reply reaches you as a turn of this session, like anything
             said at a speaker, so carry on from there. Only when this session's
             context is too full for it does the conversation go to a session of
-            its own, ${overflowSessionPrefix}<id>, which starts with this
-            session's newest messages; read its outcome there with
-            sessions_history. The command prints
+            its own, which starts with this session's newest messages: find it
+            with sessions_list, searching ${overflowSessionPrefix}, the newest
+            one, and read its outcome with sessions_history. The command prints
             `started` once the speaker has picked up, or `failed: <reason>` when
             the speaker is muted, in a conversation, or unreachable; then write to
             Telegram instead. Keep the opening to one or two spoken sentences;

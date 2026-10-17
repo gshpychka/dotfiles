@@ -259,7 +259,12 @@ def test_a_session_of_another_agent_than_the_named_one_is_refused(tmp_path: Path
 
 # -- main's overflow sessions ----------------------------------------------------
 
-OVERFLOW_RAW = {"session_prefix": "agent:main:voice-overflow:", "handoff_max_chars": 2000, "when_unknown": "main"}
+OVERFLOW_RAW = {
+    "session_prefix": "agent:main:voice-overflow:",
+    "handoff_max_chars": 2000,
+    "when_unknown": "main",
+    "margin_tokens": 16000,
+}
 
 
 def with_overflow(tmp_path: Path, **overflow: object) -> Path:
@@ -272,7 +277,9 @@ def with_overflow(tmp_path: Path, **overflow: object) -> Path:
 
 def test_overflow_sessions_are_read(tmp_path: Path) -> None:
     openclaw = load(with_overflow(tmp_path)).openclaw
-    assert openclaw.overflow == Overflow("agent:main:voice-overflow:", 2000, fits_when_unknown=True)
+    assert openclaw.overflow == Overflow(
+        "agent:main:voice-overflow:", 2000, fits_when_unknown=True, margin_tokens=16000
+    )
     assert load(with_overflow(tmp_path, when_unknown="overflow")).openclaw.overflow.fits_when_unknown is False
 
 
@@ -288,6 +295,10 @@ def test_without_overflow_none_is_configured(tmp_path: Path) -> None:
         ({"session_prefix": "agent:main:"}, "must be agent:<id>:<name>:"),
         ({"session_prefix": "agent:main:voice-overflow"}, "must be agent:<id>:<name>:"),
         ({"handoff_max_chars": -1}, "at least 0"),
+        ({"margin_tokens": -1}, "at least 0"),
+        ({"session_prefix": "agent:main:main:"}, "must not be under"),
+        ({"session_prefix": "agent:main::"}, "must be agent:<id>:<name>:"),
+        ({"session_prefix": "agent:main:a:b:"}, "must be agent:<id>:<name>:"),
         ({"when_unknown": "guess"}, "must be one of main, overflow"),
     ],
 )
