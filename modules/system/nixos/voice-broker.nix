@@ -97,80 +97,16 @@ let
     };
   };
 
-  # The agent a /v1/responses request runs as, with that agent's tools, is its
-  # session key's `agent:<id>:` prefix (gateway/openai-compatible-agent-run.ts at
-  # e178c39e), so these keys are what make consults run as the voice agent. The
-  # broker also names the agent (x-openclaw-agent-id): with two explicit agents
-  # the gateway refuses a request that names none (gateway/http-utils.ts).
-  voiceSessionKey = "agent:${cfg.agent.id}:main";
-  observerSessionKey = "agent:${cfg.agent.id}:observer";
-  # The agent of my.openclaw.mainSessionKey, agent:main:main.
+  # Every consult is a turn of the main agent, the owner's assistant with its
+  # own tools and memory: the owner's choice on 2026-10-17, over a separate,
+  # restricted voice agent. The agent a /v1/responses request runs as is its
+  # session key's `agent:<id>:` prefix (gateway/openai-compatible-agent-run.ts
+  # at e178c39e), so both keys below are main's.
   mainAgent = "main";
-  # Channels the gateway runs: every one is main's, as before the voice agent.
-  enabledChannels = lib.attrNames (
-    lib.filterAttrs (_: channel: channel.enabled or true) (gw.config.channels or { })
-  );
-
-  # The voice agent's tools: an allowlist, so a tool added later, an MCP tool
-  # included, stays out until named here. Home Assistant's own tools never
-  # are, apart from read-only ones added per host: Home Assistant alone acts
-  # on the home, hearing the speech itself (packages/voice-broker/src/voice_broker/assist.py).
-  # Each only reads: web_fetch is GET-only and its SSRF guard refuses private and
-  # loopback addresses, Home Assistant's included (tools/web-fetch.ts, infra/net/ssrf.ts).
-  # The policy was checked with the gateway's own compiled matcher on the evaluated
-  # config (workspace tmp/parallel-ha-audit-20261017/policy-check.mjs).
-  agentAllow = [
-    "web_search"
-    "web_fetch"
-    "memory_search"
-    "memory_get"
-  ]
-  ++ cfg.agent.allow;
-  # Denied as well, against an allowlist entry that would match them: deny
-  # always wins (src/agents/tool-policy-match.ts). Each is a way to act beyond
-  # a spoken answer, or to reach the credentials in the gateway's environment:
-  # commands and code, the gateway and its plugins and config, other agents
-  # and sessions, files, devices and the host's NixOS control. session_status
-  # among them: it takes another session's key and sets that session's model,
-  # main's Telegram session included (agents/tools/session-status-tool.ts).
-  # Plugins' mutating tools are named too, but never `group:plugins`: that
-  # would take memory_* and every MCP tool, GetLiveContext included.
-  agentDeny = [
-    "session_status"
-    "automations"
-    "file_write"
-    "codex_session_send"
-    "codex_session_interrupt"
-    "github_publish"
-    "skill_workshop"
-    "wiki_apply"
-    "workboard_*"
-    "exec"
-    "process"
-    "code_execution"
-    "terminal"
-    "secrets"
-    "gateway"
-    "plugins"
-    "openclaw"
-    "nodes"
-    "computer"
-    "browser"
-    "sessions_spawn"
-    "subagents"
-    "sessions_send"
-    "sessions_history"
-    "conversations_send"
-    "conversations_turn"
-    "agents_wait"
-    "message"
-    "read"
-    "write"
-    "edit"
-    "apply_patch"
-    "nixos_control"
-  ]
-  ++ cfg.agent.deny;
+  # Overflow sessions are agent:main:voice-overflow:<conversation>, one per
+  # spoken conversation, used only when main's own session is too full for the
+  # consult (packages/voice-broker/src/voice_broker/openclaw.py).
+  overflowSessionPrefix = "agent:${mainAgent}:voice-overflow:";
 in
 {
   options.my.voice-broker = {
@@ -218,10 +154,11 @@ in
         - `gated`: a classifier (`routing`) sends each one to Home Assistant's
           conversation agent or to OpenClaw's main agent, never both.
         - `parallel`: Home Assistant hears every utterance on its own
-          pipeline (`homeAssistant.pipeline`) and alone acts on the home;
-          delegated requests go to the dedicated `agent`, which can't. No
-          classifier gates anything.
-        Gated and parallel need homeAssistantDeviceId on every Voice PE.
+          pipeline (`homeAssistant.pipeline`) and alone acts on the home. No
+          classifier gates anything. Refused for now: main answers delegated
+          requests, and it can act on the home too.
+        Gated and parallel need homeAssistantDeviceId on every Voice PE. In
+        every mode a consult is a turn of main (`overflow` below).
       '';
     };
 
@@ -304,30 +241,33 @@ in
       };
     };
 
-    agent = {
-      id = lib.mkOption {
-        type = lib.types.str;
-        default = "voice";
-        description = "Parallel mode: the OpenClaw agent consults and observations run as, the main agent's assistant without its home-action and escape tools.";
-      };
-      allow = lib.mkOption {
-        type = lib.types.listOf lib.types.str;
-        default = [ ];
-        description = "Tools the voice agent gets beyond the module's own read-only, non-home set, such as an MCP server's read-only tools.";
-      };
-      deny = lib.mkOption {
-        type = lib.types.listOf lib.types.str;
-        default = [ ];
-        description = "Tools denied beyond the module's own list; a pattern ending in `*` keeps a whole MCP server away.";
-      };
+    overflow.whenUnknown = lib.mkOption {
+      type = lib.types.enum [
+        "main"
+        "overflow"
+      ];
+      default = "main";
+      description = ''
+        Where a spoken conversation goes when main's context use can't be read
+        before its first consult (the gateway unreachable, or no usage
+        recorded yet). `main`: main's own session, the usual place, where the
+        gateway compacts itself if it must; only evidence of a full session
+        moves a conversation. `overflow`: a session of its own, keeping
+        main's context untouched at the cost of main's context for the
+        conversation.
+      '';
     };
 
-    observer.enable = lib.mkEnableOption ''
-      in parallel mode, a read-only check, after each Home Assistant action,
-      that the home matches the request. It runs off the critical path as a
-      turn of the voice agent, only for turns with action evidence, and only a
-      discrepancy is told; a fix goes back to Home Assistant through the user.
-      Each check is an agent turn'';
+    overflow.handoffChars = lib.mkOption {
+      type = lib.types.ints.between 0 8000;
+      default = 2000;
+      description = ''
+        When main's session is too full for a spoken conversation, which then
+        gets a session of its own: how much text of main's newest messages
+        that session's first consult starts with. Bounded, so the handoff
+        never brings main's context to the new session in full.
+      '';
+    };
 
     identityFile = lib.mkOption {
       type = lib.types.nullOr lib.types.str;
@@ -386,10 +326,6 @@ in
             message = "my.voice-broker's jev classifier runs on OpenRouter; set my.voice-broker.openRouter.sopsFile.";
           }
           {
-            assertion = !cfg.observer.enable || parallel;
-            message = "my.voice-broker.observer checks Home Assistant's own actions, which only parallel mode has.";
-          }
-          {
             assertion = !cfg.homeAssistant.shadow.enable || parallel;
             message = "my.voice-broker.homeAssistant.shadow shadows parallel mode; gated mode's classifier is my.voice-broker.routing.";
           }
@@ -416,6 +352,14 @@ in
           openclaw = {
             url = openclaw.localUrl;
             token_file = credential openclawCredential;
+            # Every consult is a turn of main, in main's own session unless it is too full.
+            session_key = openclaw.mainSessionKey;
+            agent = mainAgent;
+            overflow = {
+              session_prefix = overflowSessionPrefix;
+              handoff_max_chars = cfg.overflow.handoffChars;
+              when_unknown = cfg.overflow.whenUnknown;
+            };
           };
           calls = {
             socket = callSocket;
@@ -472,24 +416,13 @@ in
 
                 voice-broker-call --socket ${callSocket} <Area> "<what to tell the owner>"
 
-          ''
-          + (
-            if parallel then
-              ''
-                The speaker chimes, says the opening in its own words, then listens.
-                The owner's reply goes to the voice agent, session ${voiceSessionKey},
-                not to this session: read its outcome there with sessions_history. Home
-                Assistant hears the reply too and alone carries out anything in it
-                about the home. The command prints
-              ''
-            else
-              ''
-                The speaker chimes, says the opening in its own words, then listens;
-                the owner's reply reaches you as a turn of this session, like anything
-                said at a speaker, so carry on from there. The command prints
-              ''
-          )
-          + ''
+            The speaker chimes, says the opening in its own words, then listens;
+            the owner's reply reaches you as a turn of this session, like anything
+            said at a speaker, so carry on from there. Only when this session's
+            context is too full for it does the conversation go to a session of
+            its own, ${overflowSessionPrefix}<id>, which starts with this
+            session's newest messages; read its outcome there with
+            sessions_history. The command prints
             `started` once the speaker has picked up, or `failed: <reason>` when
             the speaker is muted, in a conversation, or unreachable; then write to
             Telegram instead. Keep the opening to one or two spoken sentences;
@@ -559,11 +492,6 @@ in
         };
       }
 
-      # Consult and gated: consults are turns of main's own session, with main's tools, as before parallel mode.
-      (lib.mkIf (!parallel) {
-        my.voice-broker.settings.openclaw.session_key = openclaw.mainSessionKey;
-      })
-
       (lib.mkIf gated {
         my.voice-broker.settings.routing = classifierSettings cfg.routing // {
           inherit (cfg.routing) pipeline;
@@ -575,84 +503,25 @@ in
       (lib.mkIf parallel {
         assertions = [
           {
-            assertion = openclaw.mainSessionKey == "agent:${mainAgent}:main";
-            message = "my.voice-broker pins main as the owner of every gateway surface; my.openclaw.mainSessionKey names another agent.";
-          }
-          {
-            assertion = enabledChannels != [ ];
-            message = "my.voice-broker binds the gateway's channels to main, and found none enabled.";
-          }
-          {
-            assertion = cfg.agent.id != mainAgent;
-            message = "my.voice-broker.agent must be its own agent: main has the home-action tools the voice agent is denied.";
+            # Parallel mode makes Home Assistant the home's only actor. Consults
+            # are main's turns, and main has Home Assistant's action tools, so a
+            # consult on speech Home Assistant also heard could act a second
+            # time. Neither the request's own tools nor tool_choice narrow the
+            # agent's native or MCP tools (openclaw.py), and at OpenClaw
+            # e178c39e no trusted, per-request narrowing of main's tools exists
+            # for agent:main:main, a session Telegram shares (workspace report
+            # voice-main-overflow-session-2026-10-17.md). Until one does, and is
+            # verified, parallel mode is refused rather than run with two actors.
+            assertion = false;
+            message = "my.voice-broker.mode parallel needs consults that can't act on the home; main's can, and OpenClaw has no request-scoped tool policy to stop them. Use gated.";
           }
         ];
 
-        my.voice-broker.settings = {
-          home_assistant = {
-            inherit (cfg.homeAssistant) pipeline;
-            read_only_tools = cfg.homeAssistant.readOnlyTools;
-            non_home_tools = cfg.homeAssistant.nonHomeTools;
-            shadow = lib.mkIf cfg.homeAssistant.shadow.enable (classifierSettings cfg.homeAssistant.shadow);
-          };
-          openclaw = {
-            # Named on each request too: with two agents the gateway has no default agent to fall back on.
-            agent = cfg.agent.id;
-            session_key = voiceSessionKey;
-            # The voice starts with the main agent's conversation, as before the voice agent existed.
-            history_session_key = openclaw.mainSessionKey;
-            observer_session_key = lib.mkIf cfg.observer.enable observerSessionKey;
-          };
-        };
-
-        # A second agent makes the roster multi-agent, which OpenClaw only accepts
-        # with explicit ownership: a `default = true` marker fails `config validate`
-        # ("Legacy agents.entries default markers need explicit surface owners").
-        # This is what `openclaw doctor --fix` writes for that marker on main
-        # (src/commands/doctor/shared/legacy-config-migrations.runtime.entries.ts,
-        # src/config/legacy.default-agent-roles.ts at e178c39e), so every surface
-        # main owned implicitly stays main's:
-        # - its workspace, pinned (unpinned, an agent's is <defaults.workspace>/<id>)
-        # - every enabled channel, Telegram included, as a binding
-        # - the system agent, which runs agent-less cron jobs and owns workspace plugins
-        # - the session store, and talk
-        # Heartbeat and auth inheritance need no owner here: agents.defaults sets
-        # heartbeat, and auth inheritance is only recorded for an owner other than main.
-        services.openclaw-gateway.config = {
-          agents = {
-            ownership = "explicit";
-            defaults = {
-              systemAgent.agentId = mainAgent;
-              sessionStore.agentId = mainAgent;
-            };
-            entries = {
-              ${mainAgent}.workspace = openclaw.workspace;
-              ${cfg.agent.id} = {
-                # main's workspace, read-only to it (no read/write tools): its
-                # identity, and its notes for memory_search, without a workspace of its own
-                inherit (openclaw) workspace;
-                tools = {
-                  allow = agentAllow;
-                  deny = agentDeny;
-                  # Code mode is on by default ("auto") for the agents' model, gpt-6.1-sol, and
-                  # gives the model a JavaScript exec of its own that `deny` doesn't remove. It
-                  # runs in a Node vm, which is no security sandbox
-                  # (src/agents/harness/tool-surface-bridge.ts, config/schema.help.runtime.ts at e178c39e).
-                  codeMode = false;
-                };
-                # no delegation to other agents, whose tools would be theirs
-                subagents.allowAgents = [ ];
-              };
-            };
-          };
-          bindings = map (channel: {
-            agentId = mainAgent;
-            match = {
-              inherit channel;
-              accountId = "*";
-            };
-          }) enabledChannels;
-          talk.agentId = mainAgent;
+        my.voice-broker.settings.home_assistant = {
+          inherit (cfg.homeAssistant) pipeline;
+          read_only_tools = cfg.homeAssistant.readOnlyTools;
+          non_home_tools = cfg.homeAssistant.nonHomeTools;
+          shadow = lib.mkIf cfg.homeAssistant.shadow.enable (classifierSettings cfg.homeAssistant.shadow);
         };
       })
     ]

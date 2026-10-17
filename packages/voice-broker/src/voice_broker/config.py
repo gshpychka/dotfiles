@@ -64,6 +64,23 @@ class History:
 
 
 @dataclass(frozen=True, slots=True)
+class Overflow:
+    """A spoken conversation's own session, for when the agent's session is too full for it (openclaw.py)."""
+
+    # The overflow session's key is this, then the conversation's id: the same agent, a new session.
+    session_prefix: str
+    # Text of the agent session's newest messages the overflow session starts with, at most.
+    handoff_max_chars: int
+    # Whether a consult counts as fitting the agent session when its context use can't be read
+    # (OVERFLOW_WHEN_UNKNOWN): an explicit choice, never a guess.
+    fits_when_unknown: bool
+
+
+# overflow.when_unknown in the JSON: the session a conversation goes to when the agent session's use is unknown.
+OVERFLOW_WHEN_UNKNOWN = ("main", "overflow")
+
+
+@dataclass(frozen=True, slots=True)
 class OpenClaw:
     """The OpenClaw gateway that carries out delegated work."""
 
@@ -87,6 +104,8 @@ class OpenClaw:
     # With more than one agent the gateway has no default for this endpoint: an unnamed
     # request fails (src/gateway/http-utils.ts resolveDefaultAgentId under explicit ownership).
     agent: str | None = None
+    # None: every consult is a turn of session_key, however full it is.
+    overflow: Overflow | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -219,6 +238,27 @@ def _history(raw: dict[str, Any]) -> History:
     )
 
 
+def _overflow(raw: dict[str, Any], session_key: str) -> Overflow:
+    when_unknown = raw["when_unknown"]
+    if when_unknown not in OVERFLOW_WHEN_UNKNOWN:
+        raise ValueError(f"openclaw.overflow.when_unknown must be one of {', '.join(OVERFLOW_WHEN_UNKNOWN)}")
+    overflow = Overflow(
+        session_prefix=raw["session_prefix"],
+        handoff_max_chars=int(raw["handoff_max_chars"]),
+        fits_when_unknown=when_unknown == "main",
+    )
+    # The agent is the session key's `agent:<id>:` prefix: an overflow session of another agent
+    # would run with that agent's tools.
+    agent_prefix = ":".join(session_key.split(":")[:2]) + ":"
+    if not session_key.startswith("agent:") or not overflow.session_prefix.startswith(agent_prefix):
+        raise ValueError(f"openclaw.overflow sessions must be {session_key!r}'s agent's")
+    if not overflow.session_prefix.endswith(":") or overflow.session_prefix.count(":") < 3:
+        raise ValueError("openclaw.overflow.session_prefix must be agent:<id>:<name>:")
+    if overflow.handoff_max_chars < 0:
+        raise ValueError("openclaw.overflow.handoff_max_chars must be at least 0")
+    return overflow
+
+
 def _openclaw(raw: dict[str, Any]) -> OpenClaw:
     openclaw = OpenClaw(
         url=raw["url"],
@@ -230,6 +270,7 @@ def _openclaw(raw: dict[str, Any]) -> OpenClaw:
         history_session_key=raw.get("history_session_key") or None,
         observer_session_key=raw.get("observer_session_key") or None,
         agent=raw.get("agent") or None,
+        overflow=_overflow(raw["overflow"], raw["session_key"]) if raw.get("overflow") else None,
     )
     if openclaw.agent is not None:
         # The gateway runs the session key's agent whatever agent is named (gateway/openai-compatible-agent-run.ts),

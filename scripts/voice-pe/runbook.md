@@ -205,6 +205,9 @@ pass, flash other PEs. This firmware change needs no NixOS rebuild.
 In parallel mode (`my.voice-broker.mode = "parallel"`), during a Live
 conversation, Home Assistant hears every utterance and is the only thing that
 acts on the home (`packages/voice-broker/src/voice_broker/assist.py`).
+Parallel mode is held for now, and the module refuses it: consults are turns
+of OpenClaw's main agent, which can act on the home as well (see "Consults and
+main's session" below).
 It does this through its own Assist pipeline, named
 `my.voice-broker.homeAssistant.pipeline` on hoard. That pipeline uses a
 dedicated home-only OpenAI agent. The shared agent, `conversation.chatgpt`, is
@@ -259,6 +262,40 @@ Assistant's device registry on 2026-10-17, so its use plays nothing on a speaker
 To undo: first set `my.voice-broker.mode` back to `"gated"` and switch, so Home
 Assistant stops listening. Then delete the "Voice broker home" pipeline, then
 the agent of the same name under the OpenAI Conversation integration.
+
+## Consults and main's session
+
+Every consult is a turn of OpenClaw's main agent, in main's own session,
+`agent:main:main`, the one Telegram uses. So a spoken conversation and
+Telegram share one context. A conversation moves only when main's session has
+no room for it. Before its first consult the broker reads, from the running
+gateway, main's context budget and use (`openclaw.py` `preflight`):
+- the budget: the `sessions_list` tool's row for main over `/tools/invoke`;
+- the use: the newest model call's tokens, from main's transcript.
+
+If the consult would take main past the point where the gateway compacts
+first (its window less the reserve), the conversation gets a session of its
+own, `agent:main:voice-overflow:<speaker>-<id>`. That session is main's agent
+too, with a bounded handoff of main's newest messages
+(`my.voice-broker.overflow.handoffChars`).
+
+The choice is made once per conversation, and its follow-ups stay with it. A
+consult is never resent elsewhere after its request, even one that failed or
+timed out, because it may have acted. The next conversation is placed afresh.
+When the use can't be read, `overflow.whenUnknown` decides, and the journal
+says `context use unknown`. The journal logs each placement as
+`consults in <session>: <used> + <request> of <threshold> tokens`, numbers only.
+
+To read main's numbers by hand, read-only:
+
+```sh
+openclaw gateway call sessions.list --params '{"agentId":"main","search":"agent:main:main","limit":5}' --json |
+  jq -c '.sessions[] | select(.key=="agent:main:main") | {totalTokens, contextTokens, contextBudgetStatus}'
+```
+
+Use the running gateway's view. `openclaw sessions --json` reads the store in
+its own process, which can lack the model's window and show a 200000 default.
+On 2026-10-17 it showed exactly that, while the gateway's budget was 500000.
 
 ## Recording conversations
 

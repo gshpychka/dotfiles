@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import time
 from collections.abc import Awaitable, Callable
 
@@ -11,6 +12,7 @@ import httpx2
 import pytest
 from voice_broker.config import History
 from voice_broker.config import OpenClaw as OpenClawConfig
+from voice_broker.config import Overflow
 from voice_broker.openclaw import ConsultFailed, HistoryUnavailable, OpenClaw, Turn
 
 Handler = Callable[[httpx2.Request], httpx2.Response]
@@ -204,6 +206,342 @@ def test_an_unreadable_conversation_is_unavailable():
     for handler in (missing, unreachable, malformed, not_json):
         with pytest.raises(HistoryUnavailable):
             recent(handler)
+
+
+# -- a conversation's session: main's, or its own when main's is full ------------
+
+PREFIX = "agent:main:voice-overflow:"
+OVERFLOW = Overflow(session_prefix=PREFIX, handoff_max_chars=60, fits_when_unknown=True)
+# The gateway's own budget for main on hoard, 2026-10-17: 500000, compacting past 480000.
+WINDOW = 500_000
+THRESHOLD = 480_000
+
+
+def usage(prompt_and_output: int, state: str = "available") -> dict:
+    return {"input": 1, "output": 1, "contextUsage": {"state": state, "totalTokens": prompt_and_output}}
+
+
+class Gateway:
+    """The gateway's sessions_list, main's transcript and its turns, recording each request."""
+
+    def __init__(
+        self,
+        *,
+        window: int | None = WINDOW,
+        row_total: int | None = None,
+        messages: list[dict] | None = None,
+        rows: list[dict] | None = None,
+        consult: Handler | None = None,
+    ) -> None:
+        self.window = window
+        self.row_total = row_total
+        self.messages = messages if messages is not None else []
+        self.rows = rows
+        self.consult = consult
+        self.requests: list[httpx2.Request] = []
+        # What each turn was sent: (session key, input).
+        self.turns: list[tuple[str, str]] = []
+
+    def __call__(self, request: httpx2.Request) -> httpx2.Response:
+        self.requests.append(request)
+        match request.url.path:
+            case "/tools/invoke":
+                return httpx2.Response(200, json={"ok": True, "result": {"details": {"sessions": self._rows()}}})
+            case "/sessions/agent:main:main/history":
+                return httpx2.Response(200, json={"messages": self.messages})
+            case "/v1/responses":
+                self.turns.append((request.headers["x-openclaw-session-key"], json.loads(request.content)["input"]))
+                if self.consult is not None:
+                    return self.consult(request)
+                return httpx2.Response(200, json=answer("Done."))
+        return httpx2.Response(404, json={"ok": False})
+
+    def _rows(self) -> list[dict]:
+        if self.rows is not None:
+            return self.rows
+        row: dict = {"key": "main", "agentId": "main", "kind": "direct"}
+        if self.window is not None:
+            row["contextTokens"] = self.window
+        if self.row_total is not None:
+            row["totalTokens"] = self.row_total
+        return [row]
+
+    def paths(self) -> list[str]:
+        return [r.url.path for r in self.requests]
+
+
+def main_config(overflow: Overflow | None = OVERFLOW) -> OpenClawConfig:
+    base = config()
+    return OpenClawConfig(
+        **{**{f: getattr(base, f) for f in base.__slots__}, "agent": "main", "overflow": overflow, "instructions": ""}
+    )
+
+
+def with_gateway[T](gateway: Gateway, use: Callable[[OpenClaw], Awaitable[T]], cfg: OpenClawConfig | None = None) -> T:
+    async def main() -> T:
+        client = OpenClaw(cfg or main_config(), http_client=httpx2.AsyncClient(transport=httpx2.MockTransport(gateway)))
+        try:
+            return await use(client)
+        finally:
+            await client.aclose()
+
+    return asyncio.run(main())
+
+
+def first_consult(gateway: Gateway, task: str = "Will it rain?", cfg: OpenClawConfig | None = None) -> str | None:
+    """The session a conversation's first consult of `task` went to."""
+
+    async def use(client: OpenClaw) -> str | None:
+        conversation = client.conversation("room-assistant-1")
+        await conversation.consult(task)
+        return conversation.session_key
+
+    return with_gateway(gateway, use, cfg)
+
+
+def test_a_conversation_consults_mains_own_session_while_it_has_room():
+    gateway = Gateway(
+        row_total=200_000, messages=[message("assistant", text("Hi"), age_s=60) | {"usage": usage(237_000)}]
+    )
+
+    assert first_consult(gateway) == "agent:main:main"
+    # The preflight reads, both before the conversation's first request.
+    assert gateway.paths() == ["/tools/invoke", "/sessions/agent:main:main/history", "/v1/responses"]
+    assert gateway.turns == [("agent:main:main", "Will it rain?")]
+    turn = gateway.requests[-1]
+    # Main, named and by the key's prefix, which is what picks the agent.
+    assert turn.headers["x-openclaw-agent-id"] == "main"
+    invoke = json.loads(gateway.requests[0].content)
+    assert invoke == {
+        "tool": "sessions_list",
+        "args": {"agentId": "main", "search": "agent:main:main", "limit": 5},
+        "sessionKey": "agent:main:main",
+    }
+    assert gateway.requests[0].headers["authorization"] == "Bearer gateway-secret"
+
+
+def test_the_consults_own_size_counts_against_the_room_left():
+    # 1000 tokens below the threshold: a short consult fits, one of 1000 bytes or more doesn't.
+    newest = [message("assistant", text("ok"), age_s=1) | {"usage": usage(THRESHOLD - 1000)}]
+    assert first_consult(Gateway(messages=newest), task="x" * 999) == "agent:main:main"
+    assert first_consult(Gateway(messages=newest), task="x" * 1000) == f"{PREFIX}room-assistant-1"
+    # Multi-byte speech counts by its bytes: 500 Cyrillic letters are 1000 bytes.
+    assert first_consult(Gateway(messages=newest), task="ж" * 500) == f"{PREFIX}room-assistant-1"
+
+
+def test_the_consult_instructions_count_too():
+    newest = [message("assistant", text("ok"), age_s=1) | {"usage": usage(THRESHOLD - 1000)}]
+    base = main_config()
+    long = OpenClawConfig(**{**{f: getattr(base, f) for f in base.__slots__}, "instructions": "i" * 990})
+    assert first_consult(Gateway(messages=newest), task="x" * 9, cfg=long) == "agent:main:main"
+    assert first_consult(Gateway(messages=newest), task="x" * 10, cfg=long) == f"{PREFIX}room-assistant-1"
+
+
+def test_the_larger_of_the_rows_prompt_and_the_newest_calls_counts():
+    # The row's prompt (completion excluded) can lag the transcript, or lead it: the larger decides.
+    lagging = Gateway(row_total=100_000, messages=[message("assistant", text("ok")) | {"usage": usage(THRESHOLD)}])
+    assert first_consult(lagging) == f"{PREFIX}room-assistant-1"
+    leading = Gateway(row_total=THRESHOLD, messages=[message("assistant", text("ok")) | {"usage": usage(1000)}])
+    assert first_consult(leading) == f"{PREFIX}room-assistant-1"
+
+
+def test_messages_after_the_newest_recorded_call_count_by_their_bytes():
+    after = message("user", text("y" * 2000), age_s=0)
+    gateway = Gateway(messages=[message("assistant", text("ok")) | {"usage": usage(THRESHOLD - 1500)}, after])
+    assert first_consult(gateway) == f"{PREFIX}room-assistant-1"
+    # Without a recorded call among those read, they count on top of the row's prompt.
+    unrecorded = Gateway(row_total=THRESHOLD - 1500, messages=[after])
+    assert first_consult(unrecorded) == f"{PREFIX}room-assistant-1"
+
+
+def test_an_unavailable_usage_record_is_not_a_measurement():
+    stale = Gateway(row_total=None, messages=[message("assistant", text("ok")) | {"usage": usage(THRESHOLD, "stale")}])
+    # No usable number at all: unknown, and here (fits_when_unknown) main.
+    assert first_consult(stale) == "agent:main:main"
+
+
+def test_a_small_window_reserves_a_quarter():
+    # 40000 tokens: the reserve is 10000, not 20000, so the threshold is 30000.
+    newest = [message("assistant", text("ok")) | {"usage": usage(25_000)}]
+    assert first_consult(Gateway(window=40_000, messages=newest)) == "agent:main:main"
+    assert first_consult(Gateway(window=40_000, messages=newest), task="x" * 5000) == f"{PREFIX}room-assistant-1"
+
+
+def test_a_full_main_session_gets_the_conversation_its_own_with_a_bounded_handoff():
+    old = [
+        message("user", text("an old Telegram question that is long enough to be left out")),
+        message("assistant", text("Mum lands at six.")),
+        message("user", text("Remind me at five.")),
+        message("assistant", text("Will do.")) | {"usage": usage(THRESHOLD + 5)},
+    ]
+    gateway = Gateway(messages=old)
+
+    assert first_consult(gateway) == f"{PREFIX}room-assistant-1"
+    ((session, sent),) = gateway.turns
+    assert session == f"{PREFIX}room-assistant-1"
+    lead, said, request = sent.split("\n\n", 2)[0], sent.split("\n\n")[0], sent.rsplit("\n\n", 1)[1]
+    assert lead.startswith("Your main session is too full")
+    assert request == "Will it rain?"
+    # The newest of main's messages within the 60-character bound, oldest kept first; no more.
+    assert "assistant: Mum lands at six.\nuser: Remind me at five.\nassistant: Will do." in said
+    assert "old Telegram" not in sent
+    # The same agent: the overflow key is main's, and main is named.
+    assert gateway.requests[-1].headers["x-openclaw-agent-id"] == "main"
+
+
+def test_unknown_use_follows_the_configured_policy_and_says_so(caplog):
+    def broken(request: httpx2.Request) -> httpx2.Response:
+        if request.url.path == "/tools/invoke":
+            return httpx2.Response(500, json={"ok": False})
+        return Gateway()(request)
+
+    to_main = main_config(Overflow(PREFIX, 60, fits_when_unknown=True))
+    to_overflow = main_config(Overflow(PREFIX, 60, fits_when_unknown=False))
+    caplog.set_level(logging.INFO, logger="voice_broker.openclaw")
+    for handler in (broken, Gateway(window=None), Gateway(rows=[]), Gateway(row_total=None)):
+        assert first_consult(handler, cfg=to_main) == "agent:main:main"  # type: ignore[arg-type]
+        assert first_consult(handler, cfg=to_overflow) == f"{PREFIX}room-assistant-1"  # type: ignore[arg-type]
+    assert "context use unknown" in caplog.text
+    # The log carries numbers and keys, never the conversation.
+    assert "Will it rain" not in caplog.text
+
+
+def test_mains_row_is_found_by_its_alias_and_only_main_s():
+    other = {"key": "agent:voice:main", "agentId": "voice", "contextTokens": 1, "totalTokens": 1}
+    by_key = {"key": "agent:main:main", "agentId": "main", "contextTokens": WINDOW, "totalTokens": THRESHOLD}
+    assert first_consult(Gateway(rows=[other, by_key])) == f"{PREFIX}room-assistant-1"
+    two = {"key": "main", "agentId": "main", "contextTokens": WINDOW, "totalTokens": 1}
+    # Two rows for the session can't be told apart: unknown, not a guess.
+    unknown = main_config(Overflow(PREFIX, 60, fits_when_unknown=False))
+    assert first_consult(Gateway(rows=[by_key, two]), cfg=unknown) == f"{PREFIX}room-assistant-1"
+
+
+def times_out(request: httpx2.Request) -> httpx2.Response:
+    raise httpx2.ReadTimeout("timed out", request=request)
+
+
+def overflowed(request: httpx2.Request) -> httpx2.Response:
+    return httpx2.Response(500, json={"error": {"message": "context overflow"}})
+
+
+@pytest.mark.parametrize("failure", [times_out, overflowed])
+def test_a_failed_or_timed_out_consult_is_never_resent_to_the_overflow_session(failure: Handler):
+    gateway = Gateway(messages=[message("assistant", text("ok")) | {"usage": usage(1000)}], consult=failure)
+
+    async def use(client: OpenClaw) -> tuple[str | None, str | None]:
+        conversation = client.conversation("room-assistant-1")
+        with pytest.raises(ConsultFailed):
+            await conversation.consult("Turn the heating up.")
+        placed = conversation.session_key
+        # The next request of the conversation stays where it was placed, and nothing is replayed.
+        gateway.consult = None
+        await conversation.consult("And the hallway?")
+        return placed, conversation.session_key
+
+    assert with_gateway(gateway, use) == ("agent:main:main", "agent:main:main")
+    assert gateway.turns == [("agent:main:main", "Turn the heating up."), ("agent:main:main", "And the hallway?")]
+    # One preflight, before the first request only.
+    assert gateway.paths().count("/tools/invoke") == 1
+
+
+def test_follow_ups_stay_in_the_overflow_session_without_a_second_handoff():
+    gateway = Gateway(messages=[message("assistant", text("Will do.")) | {"usage": usage(THRESHOLD)}])
+
+    async def use(client: OpenClaw) -> None:
+        conversation = client.conversation("kitchen-assistant-7")
+        await conversation.consult("What's on tonight?")
+        # Main got room meanwhile: the conversation stays put, its earlier turns are in its session.
+        gateway.messages = [message("assistant", text("ok")) | {"usage": usage(1000)}]
+        await conversation.consult("And tomorrow?")
+
+    with_gateway(gateway, use)
+    (first, second) = gateway.turns
+    assert first[0] == second[0] == f"{PREFIX}kitchen-assistant-7"
+    assert first[1].startswith("Your main session is too full")
+    assert second[1] == "And tomorrow?"
+    assert gateway.paths().count("/tools/invoke") == 1
+
+
+def test_the_next_conversation_is_placed_afresh_back_in_main_once_it_has_room():
+    gateway = Gateway(messages=[message("assistant", text("ok")) | {"usage": usage(THRESHOLD)}])
+
+    async def use(client: OpenClaw) -> list[str | None]:
+        full = client.conversation("room-assistant-1")
+        await full.consult("one")
+        # Main compacted since.
+        gateway.messages = [message("assistant", text("ok")) | {"usage": usage(40_000)}]
+        later = client.conversation("room-assistant-2")
+        await later.consult("two")
+        return [full.session_key, later.session_key]
+
+    assert with_gateway(gateway, use) == [f"{PREFIX}room-assistant-1", "agent:main:main"]
+    assert gateway.turns[1] == ("agent:main:main", "two")
+
+
+def test_two_speakers_overflow_sessions_are_their_own():
+    gateway = Gateway(messages=[message("assistant", text("Will do.")) | {"usage": usage(THRESHOLD)}])
+
+    async def use(client: OpenClaw) -> None:
+        room, kitchen = client.conversation("room-assistant-1"), client.conversation("kitchen-assistant-1")
+        await room.consult("Room's secret plan.")
+        await kitchen.consult("What time is it?")
+
+    with_gateway(gateway, use)
+    (room, kitchen) = gateway.turns
+    assert room[0] != kitchen[0]
+    # A handoff is main's messages only: nothing said at the other speaker.
+    assert "Room's secret plan" not in kitchen[1]
+
+
+def test_two_first_consults_together_are_placed_once():
+    gateway = Gateway(messages=[message("assistant", text("ok")) | {"usage": usage(THRESHOLD)}])
+
+    async def use(client: OpenClaw) -> None:
+        conversation = client.conversation("room-assistant-1")
+        await asyncio.gather(conversation.consult("a"), conversation.consult("b"))
+
+    with_gateway(gateway, use)
+    assert gateway.paths().count("/tools/invoke") == 1
+    assert {session for session, _ in gateway.turns} == {f"{PREFIX}room-assistant-1"}
+    # One handoff, on whichever request went first.
+    assert sum(sent.startswith("Your main session") for _, sent in gateway.turns) == 1
+
+
+def test_the_voice_still_starts_with_mains_history_in_an_overflow_conversation():
+    history = [message("user", text("Telegram hello")), message("assistant", text("ok")) | {"usage": usage(THRESHOLD)}]
+    gateway = Gateway(messages=history)
+
+    async def use(client: OpenClaw) -> list[Turn]:
+        conversation = client.conversation("room-assistant-1")
+        await conversation.consult("hi")
+        return await conversation.recent()
+
+    assert with_gateway(gateway, use) == [("user", "Telegram hello"), ("assistant", "ok")]
+    assert gateway.paths()[-1] == "/sessions/agent:main:main/history"
+
+
+def test_without_overflow_every_consult_is_mains_and_nothing_is_read_first():
+    gateway = Gateway(messages=[message("assistant", text("ok")) | {"usage": usage(THRESHOLD * 2)}])
+    assert first_consult(gateway, cfg=main_config(overflow=None)) == "agent:main:main"
+    assert gateway.paths() == ["/v1/responses"]
+
+
+class HistoryOnce(Gateway):
+    """Main's transcript reads once, for the preflight, and then fails."""
+
+    def __call__(self, request: httpx2.Request) -> httpx2.Response:
+        if request.url.path.endswith("/history") and "/sessions/agent:main:main/history" in self.paths():
+            self.requests.append(request)
+            return httpx2.Response(503)
+        return super().__call__(request)
+
+
+def test_a_handoff_that_cant_be_read_doesnt_stop_the_request():
+    gateway = HistoryOnce(messages=[message("assistant", text("ok")) | {"usage": usage(THRESHOLD)}])
+
+    assert first_consult(gateway) == f"{PREFIX}room-assistant-1"
+    # The overflow session starts without main's messages, and the request still goes, once.
+    assert gateway.turns == [(f"{PREFIX}room-assistant-1", "Will it rain?")]
 
 
 # -- the voice agent's sessions and the observer -----------------------------

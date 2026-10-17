@@ -96,3 +96,13 @@ def test_a_conversation_runs_home_assistant_as_its_own_speaker(make_config) -> N
     assert mode.home._device_id == ROOM.home_assistant_device_id
     # Runs of every conversation at this speaker take turns.
     assert mode.home._lock is state(b).home_runs
+
+
+def test_every_conversation_gets_consults_of_its_own(make_config) -> None:
+    # An overflow session is a conversation's alone: never shared with the speaker's next one, or another speaker's.
+    b = broker(make_config)
+    first, second = b._consults(ROOM), b._consults(ROOM)
+    assert first is not second
+    assert first.id != second.id
+    assert first.id.startswith("room-assistant-") and second.id.startswith("room-assistant-")
+    assert first.session_key is None

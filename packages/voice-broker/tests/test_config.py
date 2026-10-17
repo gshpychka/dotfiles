@@ -10,6 +10,7 @@ from voice_broker.config import (
     History,
     HomeAssistantAudio,
     JevProvider,
+    Overflow,
     Routing,
     RoutingShadow,
     load,
@@ -254,6 +255,45 @@ def test_a_session_of_another_agent_than_the_named_one_is_refused(tmp_path: Path
     path.write_text(json.dumps(raw))
     with pytest.raises(ValueError, match="is not agent 'voice'"):
         load(path)
+
+
+# -- main's overflow sessions ----------------------------------------------------
+
+OVERFLOW_RAW = {"session_prefix": "agent:main:voice-overflow:", "handoff_max_chars": 2000, "when_unknown": "main"}
+
+
+def with_overflow(tmp_path: Path, **overflow: object) -> Path:
+    path = write_config(tmp_path)
+    raw = json.loads(path.read_text())
+    raw["openclaw"] |= {"agent": "main", "overflow": OVERFLOW_RAW | overflow}
+    path.write_text(json.dumps(raw))
+    return path
+
+
+def test_overflow_sessions_are_read(tmp_path: Path) -> None:
+    openclaw = load(with_overflow(tmp_path)).openclaw
+    assert openclaw.overflow == Overflow("agent:main:voice-overflow:", 2000, fits_when_unknown=True)
+    assert load(with_overflow(tmp_path, when_unknown="overflow")).openclaw.overflow.fits_when_unknown is False
+
+
+def test_without_overflow_none_is_configured(tmp_path: Path) -> None:
+    assert load(write_config(tmp_path)).openclaw.overflow is None
+
+
+@pytest.mark.parametrize(
+    ("overflow", "error"),
+    [
+        # another agent's sessions would run with that agent's tools
+        ({"session_prefix": "agent:voice:voice-overflow:"}, "must be 'agent:main:main''s agent's"),
+        ({"session_prefix": "agent:main:"}, "must be agent:<id>:<name>:"),
+        ({"session_prefix": "agent:main:voice-overflow"}, "must be agent:<id>:<name>:"),
+        ({"handoff_max_chars": -1}, "at least 0"),
+        ({"when_unknown": "guess"}, "must be one of main, overflow"),
+    ],
+)
+def test_a_bad_overflow_is_refused(tmp_path: Path, overflow: dict, error: str) -> None:
+    with pytest.raises(ValueError, match=error.replace("(", r"\(")):
+        load(with_overflow(tmp_path, **overflow))
 
 
 # -- parallel: Home Assistant hears the audio ------------------------------------

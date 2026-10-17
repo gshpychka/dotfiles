@@ -1,11 +1,5 @@
-{ config, lib, ... }:
+{ config, ... }:
 let
-  # my.openclaw.mcpServers' names: OpenClaw names an MCP tool <server>__<tool>
-  # (src/agents/agent-bundle-mcp-names.ts), and Home Assistant's MCP server
-  # names its tools <integration>__<tool>.
-  homeAssistantMcp = "home-assistant";
-  homeAssistantAdminMcp = "home-assistant-admin";
-
   parallel = config.my.voice-broker.mode == "parallel";
 
   # Structured per https://developers.openai.com/api/docs/guides/live-prompting.
@@ -52,7 +46,7 @@ let
     Delegate before giving an answer that depends on backend work.
     Do not guess the result while waiting.
   '';
-  # Parallel: Home Assistant alone acts on the home, and the backend (the voice agent) can't.
+  # Parallel (held, see `mode`): Home Assistant alone acts on the home, so the backend must not.
   liveParallel = ''
     Home policy:
     Home Assistant hears everything said here, on its own, and alone
@@ -117,31 +111,21 @@ let
   '';
 in
 {
-  assertions = [
-    {
-      assertion = lib.all (server: config.my.openclaw.mcpServers ? ${server}) [
-        homeAssistantMcp
-        homeAssistantAdminMcp
-      ];
-      message = "machines/hoard/voice-broker.nix names the voice agent's tools after MCP servers that no longer exist.";
-    }
-  ];
-
   my.voice-broker = {
     enable = true;
     sopsFile = ../../secrets/hoard/voice-broker.yaml;
     recordings.enable = false;
     homeAssistant.url = "http://homeassistant.${config.my.domain}:8123";
 
-    # Parallel: Home Assistant hears every utterance and alone acts on the home.
-    # Its prerequisites are in place: Home Assistant's home-only agent
+    # Gated (Jev's classifier), as deployed since 2026-10-17. Parallel mode is
+    # held: consults are main's turns, with main's Home Assistant tools, and
+    # the module refuses parallel until a trusted per-request narrowing of them
+    # exists (modules/system/nixos/voice-broker.nix). Home Assistant's side of
+    # parallel is in place and kept: the home-only agent
     # (conversation.voice_broker_home) and "Voice broker home" pipeline
     # (01m54bbk2zytrd5fqaxd7dee0s), created 2026-10-17 by voice-broker-ha-setup
-    # (scripts/voice-pe/runbook.md), and the voice agent's tool policy, checked
-    # by the gateway's own code (workspace report
-    # parallel-ha-audio-production-2026-10-17.md). Back to Jev's classifier is
-    # this line alone: "gated", with `routing` below unchanged.
-    mode = "parallel";
+    # (scripts/voice-pe/runbook.md).
+    mode = "gated";
     # the owner's OpenRouter key, encrypted to hoard_host as well
     openRouter.sopsFile = ../../secrets/openclaw/openrouter.yaml;
 
@@ -187,19 +171,6 @@ in
         "voice_weather_forecasts_full_llm_script"
       ];
     };
-
-    agent = {
-      # Home Assistant's MCP tools that only read (their readOnlyHint, tools/list on 2026-10-17)
-      allow = [
-        "${homeAssistantMcp}__homeassistant__GetLiveContext"
-        "${homeAssistantMcp}__llm__GetDateTime"
-      ];
-      # The admin server can change anything in Home Assistant; "*" keeps it from even being listed.
-      deny = [ "${homeAssistantAdminMcp}__*" ];
-    };
-
-    # Checks each Home Assistant action, read-only, through the voice agent.
-    observer.enable = parallel;
 
     settings = {
       live = {

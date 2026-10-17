@@ -7,6 +7,7 @@ import asyncio
 import hmac
 import logging
 import signal
+import uuid
 from contextvars import ContextVar
 from dataclasses import dataclass, field
 from http import HTTPStatus
@@ -25,6 +26,7 @@ from .config import Config, Device
 from .conversation import Conversation
 from .home_assistant import HomeAssistant
 from .live import LiveSession, Mode, Parallel, Routed, live_connector
+from .openclaw import Conversation as Consults
 from .openclaw import OpenClaw
 from .protocol import MIC_RATE, ProtocolError, parse_start
 from .routing import router
@@ -109,6 +111,14 @@ class Broker:
         observe = self._openclaw.observe if self._config.openclaw.observer_session_key else None
         return Parallel(listener, observe, self._router.route if self._router else None)
 
+    def _consults(self, device: Device) -> Consults:
+        """A new conversation's consults at `device`, all in one session: main's, or its own when main's is too full.
+
+        Its id is new for every conversation, so no two conversations, at one
+        speaker or two, ever share an overflow session.
+        """
+        return self._openclaw.conversation(f"{device.name}-{uuid.uuid4().hex[:12]}")
+
     def _in_conversation(self, address: str) -> bool:
         current = self._devices[address].current
         return current is not None and not current.done()
@@ -142,11 +152,12 @@ class Broker:
             log.info("woken by %s", start.wake_word)
         else:
             log.info("answering a call")
+        consults = self._consults(state.device)
         session = LiveSession(
             self._config.live,
             state.device.area,
-            self._openclaw.consult,
-            self._openclaw.recent,
+            consults.consult,
+            consults.recent,
             self._connect,
             opening,
             self._mode(state, opening),
