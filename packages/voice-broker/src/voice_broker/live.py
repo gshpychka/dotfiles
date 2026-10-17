@@ -288,6 +288,16 @@ class _MicPacer:
         self._idle.clear()
         self._wake.set()
 
+    @property
+    def behind(self) -> bool:
+        """More than one piece waits for Live: it is still catching up on what the user said.
+
+        Streaming in real time, at most about a piece is ever waiting, so this
+        holds only while a backlog is paced out (or Live stalls, which the
+        bound turns into MicOverflow).
+        """
+        return self.pending_samples > self._piece_samples
+
     def start(self, send: Callable[[np.ndarray], Awaitable[None]]) -> None:
         assert self._task is None and not self._closed
         self._task = asyncio.ensure_future(self._run(send))
@@ -457,6 +467,10 @@ class LiveSession:
     def busy(self) -> bool:
         # A Home Assistant turn under way keeps the conversation open for its result.
         return self._consulting is not None or any(not slot.delivered for slot in self._slots.values())
+
+    @property
+    def hearing(self) -> bool:
+        return self._mic.behind
 
     def on_playback_finished(self) -> None:
         self._flush_transcripts()

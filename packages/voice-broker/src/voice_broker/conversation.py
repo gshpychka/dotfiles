@@ -284,6 +284,11 @@ class Conversation:
             if now - started > self._config.max_conversation_s:
                 self._end(EndReason.MAX_DURATION)
                 return
+            if self._session.hearing:
+                # Speech the mic pacer still holds is activity the model hasn't reacted to yet: the idle
+                # time starts once it has all reached the model, so a request said while Live was
+                # starting is never ended unheard.
+                self.mark_activity()
             busy = self.assistant_audible or self._session.busy
             if not busy and now - self._last_activity > self._config.idle_timeout_s:
                 self._end(EndReason.IDLE)

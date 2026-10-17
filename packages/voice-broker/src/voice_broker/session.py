@@ -68,3 +68,8 @@ class ModelSession(Protocol):
     def busy(self) -> bool:
         """Delegated work is in progress."""
         ...
+
+    @property
+    def hearing(self) -> bool:
+        """Mic audio is still on its way to the model, which hasn't heard all the user said."""
+        ...

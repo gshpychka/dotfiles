@@ -519,3 +519,62 @@ def test_cancellations_during_cleanup_still_stop_home_assistant_and_the_tasks():
     ears, background = asyncio.run(main())
     assert ears.stopped
     assert background and all(t.done() for t in background)
+
+
+def test_the_pacer_is_behind_only_while_a_backlog_is_paced_out():
+    async def main():
+        clock = FakeClock()
+        p, ramp, put = pacer(clock), Ramp(), []
+        for _ in range(round(6 / BLOCK_S)):
+            p.put(ramp.take(BLOCK_S))
+        p.start(Recorder(clock))
+        catch_up_s = 6 / (_CATCH_UP_SPEED - 1)
+        samples: list[tuple[float, bool]] = []
+
+        async def sample() -> None:
+            while clock.now() < catch_up_s + 10:
+                samples.append((clock.now(), p.behind))
+                await clock.sleep(0.1)
+
+        mic = asyncio.ensure_future(speak(p, clock, ramp, catch_up_s + 10, put))
+        sampler = asyncio.ensure_future(sample())
+        await clock.run_until(catch_up_s + 11)
+        await mic
+        await sampler
+        await p.close()
+        return samples, catch_up_s
+
+    samples, catch_up_s = asyncio.run(main())
+    # Behind all through the catch-up, the user talking meanwhile...
+    assert all(behind for t, behind in samples if t <= catch_up_s - 2)
+    # ...and never once streaming in real time again.
+    assert not any(behind for t, behind in samples if t >= catch_up_s + 1)
+
+
+def test_the_idle_time_starts_only_once_the_model_has_heard_the_held_speech(make_config):
+    class Session:
+        busy = False
+        hearing = True
+
+    async def main():
+        device = SimDevice(talk_after_s=99)
+        session = Session()
+        idle_s = 0.6
+        conversation = Conversation(
+            make_config(idle_timeout_s=idle_s), "test", device, session, EchoCanceller(MIC_RATE)
+        )
+        watchdog = asyncio.ensure_future(conversation._watchdog(time.monotonic()))
+        # Live is still catching up on the request for longer than the idle timeout: nothing ends.
+        await asyncio.sleep(4 * idle_s)
+        held_open = not watchdog.done() and conversation.end_reason is None
+        session.hearing = False
+        heard = time.monotonic()
+        await asyncio.wait_for(watchdog, 5)
+        device._task.cancel()
+        return held_open, time.monotonic() - heard, conversation.end_reason, idle_s
+
+    held_open, idled_after, reason, idle_s = asyncio.run(main())
+    assert held_open
+    # Then it idles out as usual, counted from the last held speech (the watchdog looks every 0.5 s).
+    assert reason == EndReason.IDLE
+    assert idle_s - 0.5 <= idled_after <= idle_s + 1.0
