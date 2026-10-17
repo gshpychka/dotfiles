@@ -655,3 +655,45 @@ def test_the_idle_time_starts_only_once_the_model_has_heard_the_held_speech(make
     # Then it idles out as usual, counted from the last held speech (the watchdog looks every 0.5 s).
     assert reason == EndReason.IDLE
     assert idle_s - 0.5 <= idled_after <= idle_s + 1.0
+
+
+def test_a_home_result_heard_in_real_time_goes_with_the_delegations_one_answer(monkeypatch):
+    # No backlog: Home Assistant's result arrives while the newest mic block is still on its way to Live.
+    monkeypatch.setattr(live, "_CLAIM_GRACE_S", 0.3)
+    monkeypatch.setattr(live, "_COMBINE_WAIT_S", 1.0)
+
+    async def main():
+        conn, ears = Conn(), Ears()
+
+        async def slow_append(audio):
+            await asyncio.sleep(0.03)  # a WebSocket write takes a moment
+
+        conn.session.input_audio.append = slow_append
+
+        @asynccontextmanager
+        async def connect():
+            yield conn
+
+        agent = Agent("Rain after four.", delay=0.05)
+        live_config = Live(model="gpt-live-1", voice="marin", instructions="")
+        session = LiveSession(live_config, "Kitchen", agent.consult, nothing_recent, connect, None, Parallel(ears))
+        async with session.open(Host()):
+            receiving = asyncio.create_task(session.receive())
+            conn.user("Turn on the kitchen light and tell me if it rains.")
+            ears.hears(1)
+            await asyncio.sleep(0.01)
+            conn.delegate("dlg_1")
+            await asyncio.sleep(0.01)
+            for _ in range(20):
+                await session.on_mic(block(0, ms=10))
+                await asyncio.sleep(0.01)
+            await session.on_mic(block(0, ms=10))
+            ears.did(1, Outcome.ACTED, "The kitchen light is on.")
+            await asyncio.sleep(1.0)
+            await conn.events.put(None)
+            await receiving
+        return told(conn)
+
+    said = asyncio.run(main())
+    # The mixed request: one answer carrying both, not split.
+    assert len(said) == 1 and said[0][0] == "dlg_1" and "kitchen light is on" in said[0][1], said

@@ -860,9 +860,11 @@ class LiveSession:
                 slot.claimed = False
                 pending = True
                 continue
-            if self._mic.sent_samples < slot.heard:
+            if self._mic.behind and self._mic.sent_samples < slot.heard:
                 # GPT-Live hasn't heard this request yet: at startup the mic reaches it paced, behind Home
-                # Assistant. Released, and told on its own once GPT-Live has heard it (_tell_alone).
+                # Assistant. Released, and told on its own once GPT-Live has heard it (_tell_alone). Streaming
+                # in real time, at most the piece in flight is unsent (`slot.heard` is the stream at the
+                # result, past the request's end), so the result goes with this answer.
                 slot.claimed = False
                 self._spawn(self._tell_alone(slot))
                 continue
